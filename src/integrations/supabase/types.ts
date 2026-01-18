@@ -519,6 +519,45 @@ export type Database = {
           },
         ]
       }
+      product_components: {
+        Row: {
+          component_product_id: string
+          created_at: string
+          id: string
+          parent_product_id: string
+          quantity: number
+        }
+        Insert: {
+          component_product_id: string
+          created_at?: string
+          id?: string
+          parent_product_id: string
+          quantity?: number
+        }
+        Update: {
+          component_product_id?: string
+          created_at?: string
+          id?: string
+          parent_product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_components_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_components_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_uoms: {
         Row: {
           abbreviation: string | null
