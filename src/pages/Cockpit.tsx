@@ -448,28 +448,6 @@ const Cockpit = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Location Info Banner */}
-        <Card className="mb-8 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20">
-          <CardContent className="py-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                <MapPin className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">{selectedLocation?.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {selectedLocation?.address_line1}, {selectedLocation?.city}, {selectedLocation?.state}
-                </p>
-              </div>
-              <div className="ml-auto">
-                <span className="px-3 py-1 rounded-full bg-background text-sm font-medium">
-                  {selectedLocation?.type}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
