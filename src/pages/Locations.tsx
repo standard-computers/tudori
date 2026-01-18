@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,12 +29,13 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users } from 'lucide-react';
+import { SortableTableHead } from '@/components/SortableTableHead';
+import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface Location {
@@ -63,6 +65,162 @@ interface LocationUser {
 }
 
 const LOCATION_TYPES = ['Warehouse', 'Store', 'Office', 'Distribution Center', 'Manufacturing', 'Showroom'];
+
+// Separated table component with sorting/filtering
+const LocationTable = ({
+  locations,
+  onEdit,
+  onDelete,
+}: {
+  locations: Location[];
+  onEdit: (location: Location) => void;
+  onDelete: (id: string) => void;
+}) => {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(locations, 'location_id', 'asc');
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  return (
+    <div className="space-y-2">
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-sm text-muted-foreground">
+            Showing {sortedAndFilteredData.length} of {locations.length} locations
+          </span>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+            <X className="w-3 h-3 mr-1" />
+            Clear filters
+          </Button>
+          {Object.entries(filters).map(([key, value]) => value && (
+            <Badge key={key} variant="secondary" className="text-xs">
+              {key}: {value}
+              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="ID"
+                sortKey="location_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['location_id']}
+                onFilter={(value) => setFilter('location_id', value)}
+                className="w-24"
+              />
+              <SortableTableHead
+                label="Name"
+                sortKey="name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['name']}
+                onFilter={(value) => setFilter('name', value)}
+              />
+              <SortableTableHead
+                label="Type"
+                sortKey="type"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['type']}
+                onFilter={(value) => setFilter('type', value)}
+              />
+              <SortableTableHead
+                label="Address"
+                sortKey="address_line1"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['address_line1']}
+                onFilter={(value) => setFilter('address_line1', value)}
+              />
+              <SortableTableHead
+                label="City"
+                sortKey="city"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['city']}
+                onFilter={(value) => setFilter('city', value)}
+              />
+              <SortableTableHead
+                label="State"
+                sortKey="state"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['state']}
+                onFilter={(value) => setFilter('state', value)}
+              />
+              <SortableTableHead
+                label="Actions"
+                sortKey=""
+                currentSortKey=""
+                currentSortDirection={null}
+                onSort={() => {}}
+                filterable={false}
+                className="w-24"
+              />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedAndFilteredData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  No locations match your filters
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedAndFilteredData.map((location) => (
+                <TableRow key={location.id}>
+                  <TableCell className="font-mono text-sm">{location.location_id}</TableCell>
+                  <TableCell className="font-medium">{location.name}</TableCell>
+                  <TableCell>{location.type}</TableCell>
+                  <TableCell>{location.address_line1}</TableCell>
+                  <TableCell>{location.city}</TableCell>
+                  <TableCell>{location.state}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(location)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(location.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
 
 const Locations = () => {
   const navigate = useNavigate();
@@ -605,51 +763,11 @@ const Locations = () => {
             </Button>
           </div>
         ) : (
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {locations.map((location) => (
-                  <TableRow key={location.id}>
-                    <TableCell className="font-mono text-sm">{location.location_id}</TableCell>
-                    <TableCell className="font-medium">{location.name}</TableCell>
-                    <TableCell>{location.type}</TableCell>
-                    <TableCell>{location.address_line1}</TableCell>
-                    <TableCell>{location.city}</TableCell>
-                    <TableCell>{location.state}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(location)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(location.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <LocationTable
+            locations={locations}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
       </main>
     </div>

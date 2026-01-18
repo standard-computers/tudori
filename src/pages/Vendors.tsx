@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,12 +28,13 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { SortableTableHead } from '@/components/SortableTableHead';
+import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface Vendor {
@@ -54,6 +56,162 @@ interface Vendor {
 }
 
 const VENDOR_TYPES = ['Supplier', 'Manufacturer', 'Distributor', 'Contractor', 'Service Provider', 'Consultant'];
+
+// Separated table component with sorting/filtering
+const VendorTable = ({
+  vendors,
+  onEdit,
+  onDelete,
+}: {
+  vendors: Vendor[];
+  onEdit: (vendor: Vendor) => void;
+  onDelete: (id: string) => void;
+}) => {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(vendors, 'vendor_id', 'asc');
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  return (
+    <div className="space-y-2">
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-sm text-muted-foreground">
+            Showing {sortedAndFilteredData.length} of {vendors.length} vendors
+          </span>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+            <X className="w-3 h-3 mr-1" />
+            Clear filters
+          </Button>
+          {Object.entries(filters).map(([key, value]) => value && (
+            <Badge key={key} variant="secondary" className="text-xs">
+              {key}: {value}
+              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="ID"
+                sortKey="vendor_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['vendor_id']}
+                onFilter={(value) => setFilter('vendor_id', value)}
+                className="w-24"
+              />
+              <SortableTableHead
+                label="Name"
+                sortKey="name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['name']}
+                onFilter={(value) => setFilter('name', value)}
+              />
+              <SortableTableHead
+                label="Type"
+                sortKey="type"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['type']}
+                onFilter={(value) => setFilter('type', value)}
+              />
+              <SortableTableHead
+                label="Contact"
+                sortKey="contact_name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['contact_name']}
+                onFilter={(value) => setFilter('contact_name', value)}
+              />
+              <SortableTableHead
+                label="Email"
+                sortKey="email"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['email']}
+                onFilter={(value) => setFilter('email', value)}
+              />
+              <SortableTableHead
+                label="Phone"
+                sortKey="phone"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['phone']}
+                onFilter={(value) => setFilter('phone', value)}
+              />
+              <SortableTableHead
+                label="Actions"
+                sortKey=""
+                currentSortKey=""
+                currentSortDirection={null}
+                onSort={() => {}}
+                filterable={false}
+                className="w-24"
+              />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedAndFilteredData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  No vendors match your filters
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedAndFilteredData.map((vendor) => (
+                <TableRow key={vendor.id}>
+                  <TableCell className="font-mono text-sm">{vendor.vendor_id}</TableCell>
+                  <TableCell className="font-medium">{vendor.name}</TableCell>
+                  <TableCell>{vendor.type}</TableCell>
+                  <TableCell>{vendor.contact_name || '-'}</TableCell>
+                  <TableCell>{vendor.email || '-'}</TableCell>
+                  <TableCell>{vendor.phone || '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(vendor)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(vendor.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -566,51 +724,11 @@ const Vendors = () => {
             </Button>
           </div>
         ) : (
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vendors.map((vendor) => (
-                  <TableRow key={vendor.id}>
-                    <TableCell className="font-mono text-sm">{vendor.vendor_id}</TableCell>
-                    <TableCell className="font-medium">{vendor.name}</TableCell>
-                    <TableCell>{vendor.type}</TableCell>
-                    <TableCell>{vendor.contact_name || '-'}</TableCell>
-                    <TableCell>{vendor.email || '-'}</TableCell>
-                    <TableCell>{vendor.phone || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(vendor)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(vendor.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <VendorTable
+            vendors={vendors}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
       </main>
     </div>
