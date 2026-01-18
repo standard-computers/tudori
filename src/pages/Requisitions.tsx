@@ -283,9 +283,14 @@ const Requisitions = () => {
       }, 0);
 
       // Determine vendor_id: if "all vendors" but single item, use item's vendor
-      let effectiveVendorId = runFormData.vendor_id || null;
-      if (!effectiveVendorId && suggestedItems.length === 1 && suggestedItems[0].product.vendor_id) {
-        effectiveVendorId = `vendor:${suggestedItems[0].product.vendor_id}`;
+      // Parse the prefixed format to get the raw UUID for database storage
+      let effectiveVendorId: string | null = null;
+      if (runFormData.vendor_id) {
+        const parsed = parseVendorValue(runFormData.vendor_id);
+        effectiveVendorId = parsed?.type === 'vendor' ? parsed.id : null;
+      } else if (suggestedItems.length === 1 && suggestedItems[0].product.vendor_id) {
+        // Single item with no vendor selected - use the item's vendor
+        effectiveVendorId = suggestedItems[0].product.vendor_id;
       }
 
       // Create requisition
