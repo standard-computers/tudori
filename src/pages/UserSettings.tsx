@@ -103,11 +103,17 @@ const SortableAppItem = ({ app, onToggleVisibility }: SortableAppItemProps) => {
 const UserSettings = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
   const [openInNewTab, setOpenInNewTab] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null });
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Set transaction on mount
+  useEffect(() => {
+    setTransaction('uset');
+  }, [setTransaction]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

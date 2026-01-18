@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTransaction } from '@/contexts/StatusBarContext';
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  useTransaction('init');
 
   useEffect(() => {
     if (!loading) {

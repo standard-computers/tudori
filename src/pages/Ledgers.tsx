@@ -81,6 +81,7 @@ interface Location {
 const Ledgers = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -111,6 +112,17 @@ const Ledgers = () => {
   const formRef = useRef<HTMLFormElement>(null);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(isEditing ? 'ldgr/edit' : 'ldgr/new');
+    } else if (viewingLedger) {
+      setTransaction('ldgr/view');
+    } else {
+      setTransaction('ldgr');
+    }
+  }, [isDialogOpen, isEditing, viewingLedger, setTransaction]);
 
   useEffect(() => {
     if (!authLoading && !user) {

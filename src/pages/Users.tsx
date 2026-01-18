@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ const roleDescriptions: Record<string, string> = {
 const Users = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -71,6 +73,11 @@ const Users = () => {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [noCompany, setNoCompany] = useState(false);
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    setTransaction(isDialogOpen ? 'user/new' : 'user');
+  }, [isDialogOpen, setTransaction]);
 
   // Invite form
   const [email, setEmail] = useState('');

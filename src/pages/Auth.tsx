@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTransaction } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ const signupStep2Schema = z.object({
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  useTransaction('auth');
   const [isLogin, setIsLogin] = useState(true);
   const [signupStep, setSignupStep] = useState(1);
   const [loading, setLoading] = useState(false);
