@@ -136,6 +136,86 @@ export type Database = {
           },
         ]
       }
+      deliveries: {
+        Row: {
+          carrier: string | null
+          company_id: string
+          created_at: string
+          delivered_date: string | null
+          delivery_id: string
+          expected_date: string | null
+          id: string
+          location_id: string | null
+          notes: string | null
+          purchase_order_id: string | null
+          status: string
+          tracking_number: string | null
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          carrier?: string | null
+          company_id: string
+          created_at?: string
+          delivered_date?: string | null
+          delivery_id: string
+          expected_date?: string | null
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          purchase_order_id?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          carrier?: string | null
+          company_id?: string
+          created_at?: string
+          delivered_date?: string | null
+          delivery_id?: string
+          expected_date?: string | null
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          purchase_order_id?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -832,6 +912,7 @@ export type Database = {
     }
     Functions: {
       get_next_customer_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_delivery_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_next_po_number: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
