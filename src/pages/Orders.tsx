@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useEffect, useState, useRef } from 'react';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,6 +130,13 @@ const Orders = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Ctrl+S to save
+  useSaveShortcut(() => {
+    if (isCreateDialogOpen && !isSubmitting) {
+      handleCreateOrder();
+    }
+  }, isCreateDialogOpen);
   
   // View dialog state
   const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
@@ -872,6 +879,7 @@ const Orders = () => {
             <Button onClick={handleCreateOrder} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Create Order
+              <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
         </DialogContent>

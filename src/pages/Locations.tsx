@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useEffect, useState, useRef } from 'react';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,6 +71,14 @@ const Locations = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Ctrl+S to save
+  useSaveShortcut(() => {
+    if (isDialogOpen && formRef.current) {
+      formRef.current.requestSubmit();
+    }
+  }, isDialogOpen);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextLocationId, setNextLocationId] = useState('0001');
   const [activeTab, setActiveTab] = useState('general');
@@ -385,8 +393,8 @@ const Locations = () => {
                   <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px]">
-                <form onSubmit={handleSubmit}>
+              <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Location' : 'Add Location'}</DialogTitle>
                     <DialogDescription>
@@ -573,6 +581,7 @@ const Locations = () => {
                       disabled={!isEditing && locations.some(l => l.location_id === formData.location_id)}
                     >
                       {isEditing ? 'Update' : 'Create'}
+                      <Kbd className="ml-2">⌘S</Kbd>
                     </Button>
                   </DialogFooter>
                 </form>

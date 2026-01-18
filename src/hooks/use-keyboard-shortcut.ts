@@ -31,3 +31,21 @@ export function useKeyboardShortcut(key: string, callback: () => void, enabled: 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown, enabled]);
 }
+
+// New hook for Ctrl+S save shortcut - works in dialogs and forms
+export function useSaveShortcut(callback: () => void, enabled: boolean = true) {
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Check for Ctrl+S or Cmd+S (Mac)
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      callback();
+    }
+  }, [callback]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown, enabled]);
+}

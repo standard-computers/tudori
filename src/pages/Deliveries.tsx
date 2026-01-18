@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,6 +95,15 @@ const Deliveries = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextDeliveryId, setNextDeliveryId] = useState('DEL-0001');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Ctrl+S to save
+  useSaveShortcut(() => {
+    if (isDialogOpen && formRef.current) {
+      formRef.current.requestSubmit();
+    }
+  }, isDialogOpen);
+
   const [formData, setFormData] = useState({
     delivery_id: '',
     purchase_order_id: '',
@@ -342,8 +351,8 @@ const Deliveries = () => {
                   <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px]">
-                <form onSubmit={handleSubmit}>
+              <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>
                     <DialogDescription>
@@ -503,6 +512,7 @@ const Deliveries = () => {
                     </Button>
                     <Button type="submit">
                       {isEditing ? 'Update' : 'Create'}
+                      <Kbd className="ml-2">⌘S</Kbd>
                     </Button>
                   </DialogFooter>
                 </form>
