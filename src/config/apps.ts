@@ -16,6 +16,7 @@ import {
   MapPin,
   FileSpreadsheet,
   Percent,
+  Gauge,
   LucideIcon
 } from 'lucide-react';
 
@@ -28,6 +29,7 @@ export interface AppTile {
 }
 
 export const defaultApps: AppTile[] = [
+  { name: 'Cockpit', icon: Gauge, color: 'bg-gradient-to-br from-orange-500 to-red-500', description: 'Location dashboard', path: '/cockpit' },
   { name: 'Sales', icon: DollarSign, color: 'bg-emerald-500', description: 'Manage orders & revenue', path: null },
   { name: 'Inventory', icon: Warehouse, color: 'bg-blue-500', description: 'Stock management', path: null },
   { name: 'Locations', icon: MapPin, color: 'bg-green-500', description: 'Warehouses & stores', path: '/locations' },
