@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useEffect, useState, useRef } from 'react';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -217,6 +217,7 @@ const Vendors = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { addMessage, setTransaction } = useStatusBar();
+  const formRef = useRef<HTMLFormElement>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -249,6 +250,13 @@ const Vendors = () => {
       setTransaction('vend');
     }
   }, [isDialogOpen, isEditing, setTransaction]);
+
+  // Ctrl+S to save
+  useSaveShortcut(() => {
+    if (isDialogOpen && formRef.current) {
+      formRef.current.requestSubmit();
+    }
+  }, isDialogOpen);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -515,7 +523,7 @@ const Vendors = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <form onSubmit={handleSubmit}>
+                <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Vendor' : 'Add Vendor'}</DialogTitle>
                     <DialogDescription>
@@ -711,6 +719,7 @@ const Vendors = () => {
                       disabled={!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id)}
                     >
                       {isEditing ? 'Update' : 'Create'}
+                      <Kbd className="ml-2">⌘S</Kbd>
                     </Button>
                   </DialogFooter>
                 </form>

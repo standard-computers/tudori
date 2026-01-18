@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
@@ -100,6 +100,7 @@ const Requisitions = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
+  const runFormRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(true);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -132,6 +133,13 @@ const Requisitions = () => {
       setTransaction('req');
     }
   }, [isDialogOpen, isViewDialogOpen, isRunDialogOpen, setTransaction]);
+
+  // Ctrl+S to save in run dialog
+  useSaveShortcut(() => {
+    if (isRunDialogOpen && !isRunning && suggestedItems.length > 0) {
+      handleRunRequisition();
+    }
+  }, isRunDialogOpen);
   
   // Run dialog form state
   const [runFormData, setRunFormData] = useState({
@@ -633,7 +641,10 @@ const Requisitions = () => {
                   Creating...
                 </>
               ) : (
-                'Create Requisition'
+                <>
+                  Create Requisition
+                  <Kbd className="ml-2">⌘S</Kbd>
+                </>
               )}
             </Button>
           </DialogFooter>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -58,6 +58,13 @@ const Rates = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingRate, setEditingRate] = useState<TaxRate | null>(null);
+
+  // Ctrl+S to save
+  useSaveShortcut(() => {
+    if (isDialogOpen && !isSubmitting) {
+      handleSubmit();
+    }
+  }, isDialogOpen);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -442,6 +449,7 @@ const Rates = () => {
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {editingRate ? 'Update' : 'Create'}
+              <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
