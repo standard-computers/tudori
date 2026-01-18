@@ -714,7 +714,33 @@ const Orders = () => {
   };
 
   const handleDeleteOrder = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this purchase order?')) return;
+    // Check for associated deliveries
+    const { data: deliveries } = await supabase
+      .from('deliveries')
+      .select('id, status')
+      .eq('purchase_order_id', id);
+
+    // Check if any delivery is already delivered
+    const deliveredDelivery = deliveries?.find(d => d.status === 'delivered');
+    if (deliveredDelivery) {
+      toast.error('Cannot delete PO - associated delivery has been delivered');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this purchase order? Any associated deliveries will also be deleted.')) return;
+
+    // Delete associated non-delivered deliveries first
+    if (deliveries && deliveries.length > 0) {
+      const { error: deliveryError } = await supabase
+        .from('deliveries')
+        .delete()
+        .eq('purchase_order_id', id);
+
+      if (deliveryError) {
+        toast.error('Failed to delete associated deliveries');
+        return;
+      }
+    }
 
     const { error } = await supabase
       .from('purchase_orders')
