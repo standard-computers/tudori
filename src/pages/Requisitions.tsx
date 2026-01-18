@@ -274,6 +274,12 @@ const Requisitions = () => {
         return sum + (item.product.price || 0) * item.quantity;
       }, 0);
 
+      // Determine vendor_id: if "all vendors" but single item, use item's vendor
+      let effectiveVendorId = runFormData.vendor_id || null;
+      if (!effectiveVendorId && suggestedItems.length === 1 && suggestedItems[0].product.vendor_id) {
+        effectiveVendorId = `vendor:${suggestedItems[0].product.vendor_id}`;
+      }
+
       // Create requisition
       const { data: requisition, error: reqError } = await supabase
         .from('requisitions')
@@ -282,7 +288,7 @@ const Requisitions = () => {
           requisition_id: nextId,
           status: 'draft',
           location_id: runFormData.location_id || null,
-          vendor_id: runFormData.vendor_id || null,
+          vendor_id: effectiveVendorId,
           total_amount: totalAmount,
           notes: `Auto-generated requisition for ${locations.find(l => l.id === runFormData.location_id)?.name || 'location'}`,
         })
@@ -378,6 +384,10 @@ const Requisitions = () => {
       const taxAmount = subtotal * 0.1;
       const totalAmount = subtotal + taxAmount;
 
+      // Parse vendor_id from requisition (handles 'vendor:uuid' format)
+      const parsedVendor = requisition.vendor_id ? parseVendorValue(requisition.vendor_id) : null;
+      const poVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+
       // Create purchase order
       const { data: newPO, error: poError } = await supabase
         .from('purchase_orders')
@@ -385,7 +395,7 @@ const Requisitions = () => {
           company_id: companyId,
           po_number: poNumber,
           status: 'draft',
-          vendor_id: requisition.vendor_id,
+          vendor_id: poVendorId,
           location_id: requisition.location_id,
           requisition_id: requisition.id,
           subtotal,
