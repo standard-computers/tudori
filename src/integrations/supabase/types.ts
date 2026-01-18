@@ -162,6 +162,41 @@ export type Database = {
           },
         ]
       }
+      product_uoms: {
+        Row: {
+          abbreviation: string | null
+          conversion_factor: number
+          created_at: string
+          id: string
+          name: string
+          product_id: string
+        }
+        Insert: {
+          abbreviation?: string | null
+          conversion_factor?: number
+          created_at?: string
+          id?: string
+          name: string
+          product_id: string
+        }
+        Update: {
+          abbreviation?: string | null
+          conversion_factor?: number
+          created_at?: string
+          id?: string
+          name?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_uoms_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
