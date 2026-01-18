@@ -417,6 +417,45 @@ export type Database = {
           },
         ]
       }
+      purchase_order_tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          purchase_order_id: string
+          tax_amount: number
+          tax_rate_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          purchase_order_id: string
+          tax_amount?: number
+          tax_rate_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          purchase_order_id?: string
+          tax_amount?: number
+          tax_rate_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_tax_rates_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_tax_rates_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_orders: {
         Row: {
           company_id: string
