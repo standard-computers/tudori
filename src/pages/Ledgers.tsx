@@ -41,7 +41,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -99,6 +109,12 @@ const Ledgers = () => {
   // View dialog
   const [viewingLedger, setViewingLedger] = useState<Ledger | null>(null);
   const [ledgerTransactions, setLedgerTransactions] = useState<LedgerTransaction[]>([]);
+  
+  // Transaction detail dialog
+  const [viewingTransaction, setViewingTransaction] = useState<LedgerTransaction | null>(null);
+  const [isDeleteTxDialogOpen, setIsDeleteTxDialogOpen] = useState(false);
+  const [isDeletingTx, setIsDeletingTx] = useState(false);
+  const [isAdjustingOff, setIsAdjustingOff] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   
   // Form state
@@ -353,6 +369,90 @@ const Ledgers = () => {
       adjustment: 'Adjustment',
     };
     return labels[type] || type;
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!viewingTransaction || !viewingLedger) return;
+    
+    setIsDeletingTx(true);
+    try {
+      // Delete the transaction
+      const { error: txError } = await supabase
+        .from('ledger_transactions' as any)
+        .delete()
+        .eq('id', viewingTransaction.id);
+      
+      if (txError) throw txError;
+
+      // Update ledger balance
+      const newBalance = viewingLedger.balance - viewingTransaction.amount;
+      const { error: ledgerError } = await supabase
+        .from('ledgers' as any)
+        .update({ balance: newBalance })
+        .eq('id', viewingLedger.id);
+      
+      if (ledgerError) throw ledgerError;
+
+      toast.success('Transaction deleted');
+      setViewingTransaction(null);
+      setIsDeleteTxDialogOpen(false);
+      
+      // Refresh data
+      await fetchLedgerTransactions(viewingLedger.id);
+      await fetchLedgers(companyId!);
+      // Update the viewing ledger with new balance
+      setViewingLedger(prev => prev ? { ...prev, balance: newBalance } : null);
+    } catch (error: any) {
+      console.error('Error deleting transaction:', error);
+      toast.error(error.message || 'Failed to delete transaction');
+    } finally {
+      setIsDeletingTx(false);
+    }
+  };
+
+  const handleAdjustOff = async () => {
+    if (!viewingTransaction || !viewingLedger) return;
+    
+    setIsAdjustingOff(true);
+    try {
+      // Create a negating transaction
+      const adjustmentAmount = -viewingTransaction.amount;
+      const { error: txError } = await supabase
+        .from('ledger_transactions' as any)
+        .insert({
+          ledger_id: viewingLedger.id,
+          transaction_type: 'adjustment',
+          amount: adjustmentAmount,
+          description: `Adjustment to offset transaction: ${viewingTransaction.reference_number || viewingTransaction.id.slice(0, 8)}`,
+          reference_number: `ADJ-${viewingTransaction.reference_number || viewingTransaction.id.slice(0, 8)}`,
+          transaction_date: new Date().toISOString(),
+        });
+      
+      if (txError) throw txError;
+
+      // Update ledger balance
+      const newBalance = viewingLedger.balance + adjustmentAmount;
+      const { error: ledgerError } = await supabase
+        .from('ledgers' as any)
+        .update({ balance: newBalance })
+        .eq('id', viewingLedger.id);
+      
+      if (ledgerError) throw ledgerError;
+
+      toast.success('Adjustment transaction created');
+      setViewingTransaction(null);
+      
+      // Refresh data
+      await fetchLedgerTransactions(viewingLedger.id);
+      await fetchLedgers(companyId!);
+      // Update the viewing ledger with new balance
+      setViewingLedger(prev => prev ? { ...prev, balance: newBalance } : null);
+    } catch (error: any) {
+      console.error('Error creating adjustment:', error);
+      toast.error(error.message || 'Failed to create adjustment');
+    } finally {
+      setIsAdjustingOff(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -633,7 +733,11 @@ const Ledgers = () => {
                 </TableHeader>
                 <TableBody>
                   {ledgerTransactions.map((tx) => (
-                    <TableRow key={tx.id}>
+                    <TableRow 
+                      key={tx.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setViewingTransaction(tx)}
+                    >
                       <TableCell className="whitespace-nowrap">
                         {format(new Date(tx.transaction_date), 'MMM d, yyyy')}
                       </TableCell>
@@ -662,6 +766,113 @@ const Ledgers = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Transaction Detail Dialog */}
+      <Dialog open={!!viewingTransaction} onOpenChange={() => setViewingTransaction(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewingTransaction && viewingTransaction.amount < 0 ? (
+                <TrendingDown className="w-5 h-5 text-destructive" />
+              ) : (
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              )}
+              Transaction Details
+            </DialogTitle>
+            <DialogDescription>
+              View and manage this transaction
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewingTransaction && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Date</Label>
+                  <p className="text-sm font-medium">
+                    {format(new Date(viewingTransaction.transaction_date), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <Badge variant="outline" className="mt-1">
+                    {getTransactionTypeLabel(viewingTransaction.transaction_type)}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Reference</Label>
+                <p className="font-mono text-sm">{viewingTransaction.reference_number || '—'}</p>
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <p className="text-sm">{viewingTransaction.description || 'No description'}</p>
+              </div>
+
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <Label className="text-xs text-muted-foreground">Amount</Label>
+                <p className={`text-2xl font-bold ${viewingTransaction.amount < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                  {viewingTransaction.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(viewingTransaction.amount))}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteTxDialogOpen(true)}
+              disabled={isDeletingTx || isAdjustingOff}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAdjustOff}
+              disabled={isDeletingTx || isAdjustingOff}
+            >
+              <Scale className="w-4 h-4 mr-2" />
+              {isAdjustingOff ? 'Creating...' : 'Adjust Off'}
+            </Button>
+            <div className="flex-1" />
+            <Button variant="ghost" onClick={() => setViewingTransaction(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Transaction Confirmation */}
+      <AlertDialog open={isDeleteTxDialogOpen} onOpenChange={setIsDeleteTxDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction? This will update the ledger balance and cannot be undone.
+              {viewingTransaction && (
+                <span className="block mt-2 font-medium">
+                  Amount: {formatCurrency(viewingTransaction.amount)}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingTx}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTransaction}
+              disabled={isDeletingTx}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingTx ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
