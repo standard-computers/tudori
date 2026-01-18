@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TaxRate {
@@ -46,6 +46,12 @@ interface TaxRate {
   name: string;
   rate: number;
   is_default: boolean;
+}
+
+interface SelectedTaxRate {
+  tax_rate_id: string;
+  name: string;
+  rate: number;
 }
 
 interface PurchaseOrder {
@@ -67,6 +73,7 @@ interface PurchaseOrder {
   location?: { name: string } | null;
   requisition?: { requisition_id: string } | null;
   tax_rate?: { name: string; rate: number } | null;
+  applied_tax_rates?: { tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[];
 }
 
 interface PurchaseOrderItem {
@@ -132,10 +139,13 @@ const Orders = () => {
   const [formData, setFormData] = useState({
     vendor_id: '',
     location_id: '',
-    tax_rate_id: '',
     notes: '',
   });
   const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number }[]>([]);
+  const [selectedTaxRates, setSelectedTaxRates] = useState<SelectedTaxRate[]>([]);
+  const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
+  const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
+  const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -230,17 +240,18 @@ const Orders = () => {
       .order('name');
     setTaxRates(data || []);
     
-    // Set default tax rate in form
+    // Set default tax rate in selected rates
     const defaultRate = data?.find(r => r.is_default);
     if (defaultRate) {
-      setFormData(prev => ({ ...prev, tax_rate_id: defaultRate.id }));
+      setSelectedTaxRates([{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }]);
     }
   };
 
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
-    setFormData({ vendor_id: '', location_id: '', tax_rate_id: defaultRate?.id || '', notes: '' });
+    setFormData({ vendor_id: '', location_id: '', notes: '' });
     setOrderItems([]);
+    setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }] : []);
     setIsCreateDialogOpen(true);
   };
 
@@ -274,17 +285,30 @@ const Orders = () => {
     return orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   };
 
-  const getSelectedTaxRate = () => {
-    return taxRates.find(r => r.id === formData.tax_rate_id)?.rate || 0;
+  const calculateTotalTaxRate = () => {
+    return selectedTaxRates.reduce((sum, r) => sum + r.rate, 0);
   };
 
   const calculateTax = () => {
-    return calculateTotal() * (getSelectedTaxRate() / 100);
+    return calculateTotal() * (calculateTotalTaxRate() / 100);
   };
 
   const calculateGrandTotal = () => {
     return calculateTotal() + calculateTax();
   };
+
+  const addTaxRate = (taxRateId: string) => {
+    const rate = taxRates.find(r => r.id === taxRateId);
+    if (rate && !selectedTaxRates.find(sr => sr.tax_rate_id === taxRateId)) {
+      setSelectedTaxRates([...selectedTaxRates, { tax_rate_id: rate.id, name: rate.name, rate: rate.rate }]);
+    }
+  };
+
+  const removeTaxRate = (taxRateId: string) => {
+    setSelectedTaxRates(selectedTaxRates.filter(r => r.tax_rate_id !== taxRateId));
+  };
+
+  const availableTaxRates = taxRates.filter(r => !selectedTaxRates.find(sr => sr.tax_rate_id === r.id));
 
   const handleCreateOrder = async () => {
     if (!formData.vendor_id) {
@@ -311,9 +335,8 @@ const Orders = () => {
       });
 
       const subtotal = calculateTotal();
-      const taxRate = getSelectedTaxRate();
-      const taxAmount = subtotal * (taxRate / 100);
-      const totalAmount = subtotal + taxAmount;
+      const taxAmount = calculateTax();
+      const totalAmount = calculateGrandTotal();
 
       // Create purchase order
       const { data: order, error: orderError } = await supabase
@@ -324,7 +347,7 @@ const Orders = () => {
           status: 'draft',
           vendor_id: formData.vendor_id || null,
           location_id: formData.location_id || null,
-          tax_rate_id: formData.tax_rate_id || null,
+          tax_rate_id: selectedTaxRates.length === 1 ? selectedTaxRates[0].tax_rate_id : null,
           subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
@@ -332,6 +355,23 @@ const Orders = () => {
         })
         .select()
         .single();
+
+      if (orderError) throw orderError;
+
+      // Create purchase order tax rates
+      if (selectedTaxRates.length > 0) {
+        const taxRatesToInsert = selectedTaxRates.map(sr => ({
+          purchase_order_id: order.id,
+          tax_rate_id: sr.tax_rate_id,
+          tax_amount: subtotal * (sr.rate / 100),
+        }));
+
+        const { error: taxError } = await supabase
+          .from('purchase_order_tax_rates')
+          .insert(taxRatesToInsert);
+
+        if (taxError) throw taxError;
+      }
 
       if (orderError) throw orderError;
 
@@ -373,7 +413,99 @@ const Orders = () => {
       .eq('purchase_order_id', order.id);
 
     setViewItems(items || []);
+
+    // Fetch applied tax rates
+    const { data: appliedTaxRates } = await supabase
+      .from('purchase_order_tax_rates')
+      .select(`
+        tax_rate_id,
+        tax_amount,
+        tax_rate:tax_rates(name, rate)
+      `)
+      .eq('purchase_order_id', order.id);
+
+    setViewTaxRates((appliedTaxRates as any) || []);
+    setIsEditingTaxRates(false);
     setIsViewDialogOpen(true);
+  };
+
+  const handleEditTaxRates = () => {
+    setEditTaxRates(viewTaxRates.map(vt => ({
+      tax_rate_id: vt.tax_rate_id,
+      name: vt.tax_rate.name,
+      rate: vt.tax_rate.rate,
+    })));
+    setIsEditingTaxRates(true);
+  };
+
+  const addEditTaxRate = (taxRateId: string) => {
+    const rate = taxRates.find(r => r.id === taxRateId);
+    if (rate && !editTaxRates.find(er => er.tax_rate_id === taxRateId)) {
+      setEditTaxRates([...editTaxRates, { tax_rate_id: rate.id, name: rate.name, rate: rate.rate }]);
+    }
+  };
+
+  const removeEditTaxRate = (taxRateId: string) => {
+    setEditTaxRates(editTaxRates.filter(r => r.tax_rate_id !== taxRateId));
+  };
+
+  const availableEditTaxRates = taxRates.filter(r => !editTaxRates.find(er => er.tax_rate_id === r.id));
+
+  const handleSaveTaxRates = async () => {
+    if (!viewOrder) return;
+    setIsSubmitting(true);
+
+    try {
+      // Delete existing tax rates
+      await supabase
+        .from('purchase_order_tax_rates')
+        .delete()
+        .eq('purchase_order_id', viewOrder.id);
+
+      // Calculate new totals
+      const subtotal = viewOrder.subtotal || 0;
+      const totalTaxRate = editTaxRates.reduce((sum, r) => sum + r.rate, 0);
+      const taxAmount = subtotal * (totalTaxRate / 100);
+      const totalAmount = subtotal + taxAmount;
+
+      // Insert new tax rates
+      if (editTaxRates.length > 0) {
+        const taxRatesToInsert = editTaxRates.map(er => ({
+          purchase_order_id: viewOrder.id,
+          tax_rate_id: er.tax_rate_id,
+          tax_amount: subtotal * (er.rate / 100),
+        }));
+
+        await supabase
+          .from('purchase_order_tax_rates')
+          .insert(taxRatesToInsert);
+      }
+
+      // Update PO totals
+      await supabase
+        .from('purchase_orders')
+        .update({
+          tax_rate_id: editTaxRates.length === 1 ? editTaxRates[0].tax_rate_id : null,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+        })
+        .eq('id', viewOrder.id);
+
+      // Refresh view
+      setViewTaxRates(editTaxRates.map(er => ({
+        tax_rate_id: er.tax_rate_id,
+        tax_amount: subtotal * (er.rate / 100),
+        tax_rate: { name: er.name, rate: er.rate },
+      })));
+      setViewOrder({ ...viewOrder, tax_amount: taxAmount, total_amount: totalAmount });
+      setIsEditingTaxRates(false);
+      toast.success('Tax rates updated');
+      fetchOrders();
+    } catch (error: any) {
+      toast.error('Failed to update tax rates');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -589,36 +721,54 @@ const Orders = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tax_rate">Tax Rate</Label>
-                <Select
-                  value={formData.tax_rate_id || "none"}
-                  onValueChange={(value) => setFormData({ ...formData, tax_rate_id: value === "none" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select tax rate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No tax</SelectItem>
-                    {taxRates.map((rate) => (
-                      <SelectItem key={rate.id} value={rate.id}>
-                        {rate.name} ({rate.rate}%)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Order notes..."
+                rows={2}
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Order notes..."
-                  rows={2}
-                />
+            {/* Tax Rates Section */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Tax Rates</Label>
+                {availableTaxRates.length > 0 && (
+                  <Select onValueChange={addTaxRate}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Add tax rate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTaxRates.map((rate) => (
+                        <SelectItem key={rate.id} value={rate.id}>
+                          {rate.name} ({rate.rate}%)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
+              
+              {selectedTaxRates.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No tax rates applied</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {selectedTaxRates.map((sr) => (
+                    <Badge key={sr.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
+                      {sr.name} ({sr.rate}%)
+                      <button
+                        type="button"
+                        onClick={() => removeTaxRate(sr.tax_rate_id)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Order Items */}
@@ -693,12 +843,18 @@ const Orders = () => {
                       <span className="text-muted-foreground">Subtotal:</span>
                       <span className="font-mono">${calculateTotal().toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-end gap-8 text-sm">
-                      <span className="text-muted-foreground">
-                        Tax ({getSelectedTaxRate()}%):
-                      </span>
-                      <span className="font-mono">${calculateTax().toFixed(2)}</span>
-                    </div>
+                    {selectedTaxRates.map((sr) => (
+                      <div key={sr.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                        <span className="text-muted-foreground">{sr.name} ({sr.rate}%):</span>
+                        <span className="font-mono">${(calculateTotal() * sr.rate / 100).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    {selectedTaxRates.length === 0 && (
+                      <div className="flex justify-end gap-8 text-sm">
+                        <span className="text-muted-foreground">Tax:</span>
+                        <span className="font-mono">$0.00</span>
+                      </div>
+                    )}
                     <div className="flex justify-end gap-8 text-base font-semibold">
                       <span>Total:</span>
                       <span className="font-mono">${calculateGrandTotal().toFixed(2)}</span>
@@ -813,15 +969,100 @@ const Orders = () => {
                 </div>
               </div>
 
+              {/* Tax Rates Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-muted-foreground">Tax Rates</Label>
+                  {!isEditingTaxRates && (
+                    <Button variant="ghost" size="sm" onClick={handleEditTaxRates}>
+                      <Pencil className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+
+                {isEditingTaxRates ? (
+                  <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Edit Tax Rates</span>
+                      {availableEditTaxRates.length > 0 && (
+                        <Select onValueChange={addEditTaxRate}>
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Add tax rate" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableEditTaxRates.map((rate) => (
+                              <SelectItem key={rate.id} value={rate.id}>
+                                {rate.name} ({rate.rate}%)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    
+                    {editTaxRates.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No tax rates</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {editTaxRates.map((er) => (
+                          <Badge key={er.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
+                            {er.name} ({er.rate}%)
+                            <button
+                              type="button"
+                              onClick={() => removeEditTaxRate(er.tax_rate_id)}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => setIsEditingTaxRates(false)}>
+                        <X className="w-4 h-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={handleSaveTaxRates} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  viewTaxRates.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {viewTaxRates.map((vt) => (
+                        <Badge key={vt.tax_rate_id} variant="outline">
+                          {vt.tax_rate.name} ({vt.tax_rate.rate}%)
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No tax rates applied</p>
+                  )
+                )}
+              </div>
+
               <div className="border-t pt-4">
                 <div className="flex justify-end gap-8 text-sm">
                   <span className="text-muted-foreground">Subtotal:</span>
                   <span className="font-mono">${Number(viewOrder.subtotal || 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-end gap-8 text-sm">
-                  <span className="text-muted-foreground">Tax:</span>
-                  <span className="font-mono">${Number(viewOrder.tax_amount || 0).toFixed(2)}</span>
-                </div>
+                {viewTaxRates.map((vt) => (
+                  <div key={vt.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                    <span className="text-muted-foreground">{vt.tax_rate.name} ({vt.tax_rate.rate}%):</span>
+                    <span className="font-mono">${Number(vt.tax_amount || 0).toFixed(2)}</span>
+                  </div>
+                ))}
+                {viewTaxRates.length === 0 && (
+                  <div className="flex justify-end gap-8 text-sm">
+                    <span className="text-muted-foreground">Tax:</span>
+                    <span className="font-mono">$0.00</span>
+                  </div>
+                )}
                 <div className="flex justify-end gap-8 text-base font-semibold">
                   <span>Total:</span>
                   <span className="font-mono">${Number(viewOrder.total_amount || 0).toFixed(2)}</span>
