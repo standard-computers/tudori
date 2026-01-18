@@ -353,9 +353,7 @@ const Users = () => {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
-                    <Shield className="w-6 h-6 text-white" />
-                  </div>
+                  <Shield className="w-7 h-7 text-purple-500" />
                   <span className="text-lg font-display font-bold text-foreground">Users & Access</span>
                 </div>
               </div>
@@ -395,9 +393,7 @@ const Users = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
+                <Shield className="w-7 h-7 text-purple-500" />
                 <span className="text-lg font-display font-bold text-foreground">Users & Access</span>
               </div>
             </div>

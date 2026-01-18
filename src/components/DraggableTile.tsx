@@ -62,8 +62,8 @@ export const DraggableTile = ({
       {...listeners}
       onClick={handleClick}
     >
-      <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center mb-4`}>
-        <Icon className="w-6 h-6 text-white" />
+      <div className="w-12 h-12 flex items-center justify-center mb-4">
+        <Icon className={`w-8 h-8 ${color}`} />
       </div>
       <h3 className="font-display font-semibold text-foreground mb-1">{name}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>

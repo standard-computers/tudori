@@ -274,9 +274,7 @@ const Rates = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yellow-500 flex items-center justify-center">
-                  <Percent className="w-5 h-5 text-white" />
-                </div>
+                <Percent className="w-7 h-7 text-yellow-500" />
                 <h1 className="text-xl font-display font-bold text-foreground">Tax Rates</h1>
               </div>
             </div>

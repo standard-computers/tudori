@@ -482,9 +482,7 @@ const Settings = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-500 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
+                <Building2 className="w-7 h-7 text-slate-500" />
                 <h1 className="text-xl font-display font-bold text-foreground">Settings</h1>
               </div>
             </div>
@@ -525,9 +523,7 @@ const Settings = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-500 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
+              <Building2 className="w-7 h-7 text-slate-500" />
               <h1 className="text-xl font-display font-bold text-foreground">Settings</h1>
             </div>
           </div>
