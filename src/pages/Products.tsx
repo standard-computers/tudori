@@ -693,7 +693,7 @@ const Products = () => {
                         .maybeSingle();
                       return data;
                     }}
-                    onApply={(product) => {
+                    onApply={async (product) => {
                       setFormData(prev => ({
                         ...prev,
                         vendor_id: product.vendor_id || '',
@@ -704,6 +704,23 @@ const Products = () => {
                         price: product.price?.toString() || '',
                         unit: product.unit || 'each',
                       }));
+                      
+                      // Also copy components if this is a Finished Goods product
+                      if (product.category === 'Finished Goods') {
+                        const { data: componentData } = await supabase
+                          .from('product_components')
+                          .select('component_product_id, quantity, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)')
+                          .eq('parent_product_id', product.id);
+                        
+                        if (componentData && componentData.length > 0) {
+                          setComponents(componentData.map(c => ({
+                            component_product_id: c.component_product_id,
+                            quantity: c.quantity?.toString() || '1',
+                            product: c.component_product as ProductComponent['product'],
+                          })));
+                          toast.success(`Copied ${componentData.length} component(s)`);
+                        }
+                      }
                     }}
                   />
                 )}
