@@ -126,7 +126,7 @@ const ProductTable = ({
           ))}
         </div>
       )}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
+      <div className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
