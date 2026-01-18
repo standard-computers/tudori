@@ -45,7 +45,7 @@ const apps = [
   { name: 'Tasks', icon: ClipboardList, color: 'bg-rose-500', description: 'To-dos & projects', path: null },
   { name: 'Messages', icon: MessageSquare, color: 'bg-lime-500', description: 'Team communication', path: null },
   { name: 'Users', icon: UserCog, color: 'bg-purple-500', description: 'Team & access control', path: '/users' },
-  { name: 'Settings', icon: Settings, color: 'bg-slate-500', description: 'Configuration', path: null },
+  { name: 'Settings', icon: Settings, color: 'bg-slate-500', description: 'Configuration', path: '/settings' },
 ];
 
 const Dashboard = () => {
