@@ -349,14 +349,14 @@ const Products = () => {
                     <div className="space-y-2">
                       <Label htmlFor="vendor_id">Vendor (Supplier)</Label>
                       <Select
-                        value={formData.vendor_id}
-                        onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                        value={formData.vendor_id || "none"}
+                        onValueChange={(value) => setFormData({ ...formData, vendor_id: value === "none" ? "" : value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a vendor..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {vendors.map((vendor) => (
                             <SelectItem key={vendor.id} value={vendor.id}>
                               {vendor.name} ({vendor.vendor_id})
