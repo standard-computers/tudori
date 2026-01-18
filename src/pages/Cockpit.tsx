@@ -126,7 +126,7 @@ const Cockpit = () => {
   // Inventory state
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
-  const [activeTab, setActiveTab] = useState('storage');
+  const [activeTab, setActiveTab] = useState('actions');
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -167,13 +167,13 @@ const Cockpit = () => {
   }, [selectedLocationId, locations]);
 
   useEffect(() => {
-    if (selectedLocationId && isWarehouseOrDC) {
+    if (selectedLocationId) {
       fetchAreas();
     } else {
       setAreas([]);
       setBins([]);
     }
-  }, [selectedLocationId, selectedLocation]);
+  }, [selectedLocationId]);
 
   useEffect(() => {
     if (selectedLocationId) {
@@ -641,284 +641,307 @@ const Cockpit = () => {
           </Card>
         </div>
 
-        {/* Quick Actions & Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>Common tasks for this location</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/orders')}>
-                <ShoppingCart className="w-5 h-5" />
-                <span>New Order</span>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/requisitions')}>
-                <Package className="w-5 h-5" />
-                <span>Requisition</span>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/products')}>
-                <Package className="w-5 h-5" />
-                <span>Products</span>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/vendors')}>
-                <Users className="w-5 h-5" />
-                <span>Vendors</span>
-              </Button>
-            </CardContent>
-          </Card>
+        {/* Main Tabbed Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+            <TabsTrigger value="actions" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Quick Actions
+            </TabsTrigger>
+            <TabsTrigger value="areas" className="flex items-center gap-2">
+              <Grid3X3 className="w-4 h-4" />
+              Areas
+              {areas.length > 0 && (
+                <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  {areas.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="bins" className="flex items-center gap-2">
+              <Box className="w-4 h-4" />
+              Bins
+              {bins.length > 0 && (
+                <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  {bins.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="flex items-center gap-2">
+              <Boxes className="w-4 h-4" />
+              Inventory
+              {inventory.length > 0 && (
+                <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  {inventory.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                Recent Activity
-              </CardTitle>
-              <CardDescription>Latest updates at this location</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <AlertCircle className="w-10 h-10 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No recent activity</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Activity will appear here as you work
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Storage & Inventory Tabs - Only for Warehouse/DC */}
-        {isWarehouseOrDC && (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="storage" className="flex items-center gap-2">
-                <Grid3X3 className="w-4 h-4" />
-                Storage
-              </TabsTrigger>
-              <TabsTrigger value="inventory" className="flex items-center gap-2">
-                <Boxes className="w-4 h-4" />
-                Inventory
-                {inventory.length > 0 && (
-                  <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                    {inventory.length}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="storage" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Areas */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Grid3X3 className="w-5 h-5" />
-                        Areas
-                      </CardTitle>
-                      <CardDescription>Warehouse zones and sections</CardDescription>
-                    </div>
-                    <Button size="sm" onClick={() => openAreaDialog()}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Area
-                      <Kbd>A</Kbd>
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {areas.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <Grid3X3 className="w-10 h-10 text-muted-foreground mb-3" />
-                        <p className="text-muted-foreground">No areas defined</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Create areas to organize your warehouse
-                        </p>
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead className="text-right">Bins</TableHead>
-                            <TableHead className="w-20"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {areas.map((area) => (
-                            <TableRow key={area.id}>
-                              <TableCell className="font-mono">{area.area_id}</TableCell>
-                              <TableCell>{area.name}</TableCell>
-                              <TableCell className="text-right">{bins.filter(b => b.area_id === area.id).length}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1 justify-end">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openAreaDialog(area)}>
-                                    <Pencil className="w-4 h-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteArea(area.id)}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Bins */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Box className="w-5 h-5" />
-                        Bins
-                      </CardTitle>
-                      <CardDescription>Storage locations within areas</CardDescription>
-                    </div>
-                    <Button size="sm" onClick={() => openBinDialog()} disabled={areas.length === 0}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Bin
-                      <Kbd>B</Kbd>
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {bins.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <Box className="w-10 h-10 text-muted-foreground mb-3" />
-                        <p className="text-muted-foreground">No bins defined</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {areas.length === 0 ? 'Create an area first' : 'Create bins to track inventory locations'}
-                        </p>
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Area</TableHead>
-                            <TableHead className="w-20"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {bins.map((bin) => {
-                            const area = areas.find(a => a.id === bin.area_id);
-                            return (
-                              <TableRow key={bin.id}>
-                                <TableCell className="font-mono">{bin.bin_id}</TableCell>
-                                <TableCell>{bin.name}</TableCell>
-                                <TableCell>{area?.name || '—'}</TableCell>
-                                <TableCell>
-                                  <div className="flex gap-1 justify-end">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openBinDialog(bin)}>
-                                      <Pencil className="w-4 h-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteBin(bin.id)}>
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="inventory" className="mt-6">
+          {/* Quick Actions Tab */}
+          <TabsContent value="actions" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Boxes className="w-5 h-5" />
-                      Inventory
-                    </CardTitle>
-                    <CardDescription>Products stored at this location</CardDescription>
-                  </div>
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search products..."
-                      value={inventorySearch}
-                      onChange={(e) => setInventorySearch(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Quick Actions
+                  </CardTitle>
+                  <CardDescription>Common tasks for this location</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {inventory.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Boxes className="w-12 h-12 text-muted-foreground mb-3" />
-                      <p className="text-muted-foreground font-medium">No inventory at this location</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Inventory will appear here when products are received
-                      </p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product ID</TableHead>
-                          <TableHead>Product Name</TableHead>
-                          <TableHead>SKU</TableHead>
-                          <TableHead>Bin</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Min</TableHead>
-                          <TableHead className="text-right">Max</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {inventory
-                          .filter(item => {
-                            if (!inventorySearch) return true;
-                            const search = inventorySearch.toLowerCase();
-                            return (
-                              item.product?.name?.toLowerCase().includes(search) ||
-                              item.product?.product_id?.toLowerCase().includes(search) ||
-                              item.product?.sku?.toLowerCase().includes(search) ||
-                              item.bin?.bin_id?.toLowerCase().includes(search)
-                            );
-                          })
-                          .map((item) => {
-                            const isLow = item.min_quantity && item.quantity <= item.min_quantity;
-                            const isHigh = item.max_quantity && item.quantity >= item.max_quantity;
-                            return (
-                              <TableRow key={item.id} className={isLow ? 'bg-amber-500/5' : isHigh ? 'bg-blue-500/5' : ''}>
-                                <TableCell className="font-mono">{item.product?.product_id || '—'}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {item.product?.name || 'Unknown'}
-                                    {isLow && (
-                                      <span className="text-xs bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded">Low</span>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">{item.product?.sku || '—'}</TableCell>
-                                <TableCell className="font-mono text-sm">{item.bin?.bin_id || 'Unassigned'}</TableCell>
-                                <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                                <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>
-                                <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '—'}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
-                  )}
+                <CardContent className="grid grid-cols-2 gap-3">
+                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/orders')}>
+                    <ShoppingCart className="w-5 h-5" />
+                    <span>New Order</span>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/requisitions')}>
+                    <Package className="w-5 h-5" />
+                    <span>Requisition</span>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/products')}>
+                    <Package className="w-5 h-5" />
+                    <span>Products</span>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/vendors')}>
+                    <Users className="w-5 h-5" />
+                    <span>Vendors</span>
+                  </Button>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
-        )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Recent Activity
+                  </CardTitle>
+                  <CardDescription>Latest updates at this location</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <AlertCircle className="w-10 h-10 text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No recent activity</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Activity will appear here as you work
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Areas Tab */}
+          <TabsContent value="areas" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Grid3X3 className="w-5 h-5" />
+                    Areas
+                  </CardTitle>
+                  <CardDescription>Zones and sections at this location</CardDescription>
+                </div>
+                <Button size="sm" onClick={() => openAreaDialog()}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Area
+                  <Kbd>A</Kbd>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {areas.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Grid3X3 className="w-12 h-12 text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground font-medium">No areas defined</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Create areas to organize this location
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Bins</TableHead>
+                        <TableHead className="w-20"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {areas.map((area) => (
+                        <TableRow key={area.id}>
+                          <TableCell className="font-mono">{area.area_id}</TableCell>
+                          <TableCell className="font-medium">{area.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{area.description || '—'}</TableCell>
+                          <TableCell className="text-right">{bins.filter(b => b.area_id === area.id).length}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openAreaDialog(area)}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteArea(area.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bins Tab */}
+          <TabsContent value="bins" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Box className="w-5 h-5" />
+                    Bins
+                  </CardTitle>
+                  <CardDescription>Storage locations within areas</CardDescription>
+                </div>
+                <Button size="sm" onClick={() => openBinDialog()} disabled={areas.length === 0}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Bin
+                  <Kbd>B</Kbd>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {bins.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Box className="w-12 h-12 text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground font-medium">No bins defined</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {areas.length === 0 ? 'Create an area first to add bins' : 'Create bins to track inventory locations'}
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Area</TableHead>
+                        <TableHead>Capacity</TableHead>
+                        <TableHead className="w-20"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bins.map((bin) => {
+                        const area = areas.find(a => a.id === bin.area_id);
+                        return (
+                          <TableRow key={bin.id}>
+                            <TableCell className="font-mono">{bin.bin_id}</TableCell>
+                            <TableCell className="font-medium">{bin.name}</TableCell>
+                            <TableCell>{area?.name || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{bin.capacity || '—'}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 justify-end">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openBinDialog(bin)}>
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteBin(bin.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Inventory Tab */}
+          <TabsContent value="inventory" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Boxes className="w-5 h-5" />
+                    Inventory
+                  </CardTitle>
+                  <CardDescription>Products stored at this location</CardDescription>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products..."
+                    value={inventorySearch}
+                    onChange={(e) => setInventorySearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {inventory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Boxes className="w-12 h-12 text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground font-medium">No inventory at this location</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Inventory will appear here when products are received
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product ID</TableHead>
+                        <TableHead>Product Name</TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Bin</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Min</TableHead>
+                        <TableHead className="text-right">Max</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {inventory
+                        .filter(item => {
+                          if (!inventorySearch) return true;
+                          const search = inventorySearch.toLowerCase();
+                          return (
+                            item.product?.name?.toLowerCase().includes(search) ||
+                            item.product?.product_id?.toLowerCase().includes(search) ||
+                            item.product?.sku?.toLowerCase().includes(search) ||
+                            item.bin?.bin_id?.toLowerCase().includes(search)
+                          );
+                        })
+                        .map((item) => {
+                          const isLow = item.min_quantity && item.quantity <= item.min_quantity;
+                          const isHigh = item.max_quantity && item.quantity >= item.max_quantity;
+                          return (
+                            <TableRow key={item.id} className={isLow ? 'bg-amber-500/5' : isHigh ? 'bg-blue-500/5' : ''}>
+                              <TableCell className="font-mono">{item.product?.product_id || '—'}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {item.product?.name || 'Unknown'}
+                                  {isLow && (
+                                    <span className="text-xs bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded">Low</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{item.product?.sku || '—'}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.bin?.bin_id || 'Unassigned'}</TableCell>
+                              <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '—'}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
 
       <Dialog open={isAreaDialogOpen} onOpenChange={setIsAreaDialogOpen}>
