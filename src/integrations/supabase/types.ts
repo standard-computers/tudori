@@ -372,6 +372,109 @@ export type Database = {
           },
         ]
       }
+      requisition_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          requisition_id: string
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+          requisition_id: string
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          requisition_id?: string
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisition_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_items_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "requisitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisitions: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          location_id: string | null
+          notes: string | null
+          requisition_id: string
+          status: string
+          total_amount: number | null
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          requisition_id: string
+          status?: string
+          total_amount?: number | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          requisition_id?: string
+          status?: string
+          total_amount?: number | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisitions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisitions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisitions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string
@@ -507,6 +610,10 @@ export type Database = {
       get_next_customer_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_requisition_id: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_vendor_id: { Args: { p_company_id: string }; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
