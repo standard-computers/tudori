@@ -2,11 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
-import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useSaveShortcut, useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Kbd } from '@/components/ui/kbd';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import {
   Select,
   SelectContent,
@@ -356,6 +358,55 @@ const Cockpit = () => {
     fetchAreas();
   };
 
+  // Copy handlers for Area and Bin
+  const fetchAreaForCopy = async (areaId: string): Promise<Area | null> => {
+    const { data } = await supabase
+      .from('areas')
+      .select('*')
+      .eq('area_id', areaId)
+      .maybeSingle();
+    return data;
+  };
+
+  const applyAreaCopy = (data: Area) => {
+    setAreaFormData({
+      ...areaFormData,
+      name: data.name,
+      description: data.description || '',
+    });
+  };
+
+  const fetchBinForCopy = async (binId: string): Promise<Bin | null> => {
+    const { data } = await supabase
+      .from('bins')
+      .select('*')
+      .eq('bin_id', binId)
+      .maybeSingle();
+    return data;
+  };
+
+  const applyBinCopy = (data: Bin) => {
+    setBinFormData({
+      ...binFormData,
+      name: data.name,
+      description: data.description || '',
+      capacity: data.capacity || '',
+    });
+  };
+
+  // Keyboard shortcuts for creating areas and bins
+  useKeyboardShortcut('a', () => {
+    if (isWarehouseOrDC && selectedLocationId) {
+      openAreaDialog();
+    }
+  });
+
+  useKeyboardShortcut('b', () => {
+    if (isWarehouseOrDC && selectedLocationId && areas.length > 0) {
+      openBinDialog();
+    }
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -605,6 +656,7 @@ const Cockpit = () => {
                 <Button size="sm" onClick={() => openAreaDialog()}>
                   <Plus className="w-4 h-4 mr-1" />
                   Add Area
+                  <Kbd>A</Kbd>
                 </Button>
               </CardHeader>
               <CardContent>
@@ -663,6 +715,7 @@ const Cockpit = () => {
                 <Button size="sm" onClick={() => openBinDialog()} disabled={areas.length === 0}>
                   <Plus className="w-4 h-4 mr-1" />
                   Add Bin
+                  <Kbd>B</Kbd>
                 </Button>
               </CardHeader>
               <CardContent>
@@ -714,9 +767,15 @@ const Cockpit = () => {
         )}
       </main>
 
-      {/* Area Dialog */}
       <Dialog open={isAreaDialogOpen} onOpenChange={setIsAreaDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
+          {!editingArea && (
+            <CopyFromIdDialog<Area>
+              onFetch={fetchAreaForCopy}
+              onApply={applyAreaCopy}
+              idLabel="Area ID"
+            />
+          )}
           <form ref={areaFormRef} onSubmit={handleAreaSubmit}>
             <DialogHeader>
               <DialogTitle>{editingArea ? 'Edit Area' : 'Add Area'}</DialogTitle>
@@ -769,6 +828,13 @@ const Cockpit = () => {
       {/* Bin Dialog */}
       <Dialog open={isBinDialogOpen} onOpenChange={setIsBinDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
+          {!editingBin && (
+            <CopyFromIdDialog<Bin>
+              onFetch={fetchBinForCopy}
+              onApply={applyBinCopy}
+              idLabel="Bin ID"
+            />
+          )}
           <form ref={binFormRef} onSubmit={handleBinSubmit}>
             <DialogHeader>
               <DialogTitle>{editingBin ? 'Edit Bin' : 'Add Bin'}</DialogTitle>
