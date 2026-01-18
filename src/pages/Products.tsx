@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,8 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { SortableTableHead } from '@/components/SortableTableHead';
+import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface Product {
@@ -64,6 +67,165 @@ interface Vendor {
 
 const PRODUCT_CATEGORIES = ['Raw Materials', 'Components', 'Finished Goods', 'Packaging', 'Equipment', 'Supplies', 'Services'];
 const PRODUCT_UNITS = ['each', 'box', 'case', 'pallet', 'kg', 'lb', 'liter', 'gallon', 'meter', 'foot', 'roll', 'bag', 'bundle', 'sheet'];
+
+// Separated table component with sorting/filtering
+const ProductTable = ({
+  products,
+  onEdit,
+  onDelete,
+}: {
+  products: Product[];
+  onEdit: (product: Product) => void;
+  onDelete: (id: string) => void;
+}) => {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(products, 'product_id', 'asc');
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  return (
+    <div className="space-y-2">
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-sm text-muted-foreground">
+            Showing {sortedAndFilteredData.length} of {products.length} products
+          </span>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+            <X className="w-3 h-3 mr-1" />
+            Clear filters
+          </Button>
+          {Object.entries(filters).map(([key, value]) => value && (
+            <Badge key={key} variant="secondary" className="text-xs">
+              {key}: {value}
+              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="ID"
+                sortKey="product_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['product_id']}
+                onFilter={(value) => setFilter('product_id', value)}
+                className="w-24"
+              />
+              <SortableTableHead
+                label="Name"
+                sortKey="name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['name']}
+                onFilter={(value) => setFilter('name', value)}
+              />
+              <SortableTableHead
+                label="SKU"
+                sortKey="sku"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['sku']}
+                onFilter={(value) => setFilter('sku', value)}
+              />
+              <SortableTableHead
+                label="Category"
+                sortKey="category"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['category']}
+                onFilter={(value) => setFilter('category', value)}
+              />
+              <SortableTableHead
+                label="Vendor"
+                sortKey="vendors.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['vendors.name']}
+                onFilter={(value) => setFilter('vendors.name', value)}
+              />
+              <SortableTableHead
+                label="Price"
+                sortKey="price"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['price']}
+                onFilter={(value) => setFilter('price', value)}
+                className="text-right"
+              />
+              <SortableTableHead
+                label="Actions"
+                sortKey=""
+                currentSortKey=""
+                currentSortDirection={null}
+                onSort={() => {}}
+                filterable={false}
+                className="w-24"
+              />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedAndFilteredData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  No products match your filters
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedAndFilteredData.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
+                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>{product.sku || '-'}</TableCell>
+                  <TableCell>{product.category || '-'}</TableCell>
+                  <TableCell>{product.vendors?.name || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    {product.price ? `$${product.price.toFixed(2)}` : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(product)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(product.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
 
 const Products = () => {
   const navigate = useNavigate();
@@ -648,53 +810,11 @@ const Products = () => {
             </Button>
           </div>
         ) : (
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.sku || '-'}</TableCell>
-                    <TableCell>{product.category || '-'}</TableCell>
-                    <TableCell>{product.vendors?.name || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      {product.price ? `$${product.price.toFixed(2)}` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(product)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(product.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ProductTable
+            products={products}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
       </main>
     </div>
