@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -40,7 +39,6 @@ interface Company {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
-  useTransaction('dash');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [apps, setApps] = useState<AppTile[]>([]);
@@ -177,7 +175,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -250,7 +248,9 @@ const Dashboard = () => {
           <h1 className="text-3xl font-display font-bold text-foreground">
             Good {getTimeOfDay()}, {profile?.first_name || "there"}!
           </h1>
-          <p className="text-muted-foreground mt-1">What would you like to work on today?</p>
+          <p className="text-muted-foreground mt-1">
+            What would you like to work on today? <span className="text-xs">(Drag tiles to reorganize)</span>
+          </p>
         </div>
 
         {/* Apps grid with drag and drop */}
