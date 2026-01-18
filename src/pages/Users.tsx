@@ -332,7 +332,7 @@ const Users = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => navigate('/auth')} className="w-full">
+              <Button onClick={() => navigate('/complete-profile')} className="w-full">
                 Complete Setup
               </Button>
             </CardContent>
