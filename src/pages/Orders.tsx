@@ -39,6 +39,13 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface TaxRate {
+  id: string;
+  name: string;
+  rate: number;
+  is_default: boolean;
+}
+
 interface PurchaseOrder {
   id: string;
   po_number: string;
@@ -46,6 +53,7 @@ interface PurchaseOrder {
   vendor_id: string | null;
   location_id: string | null;
   requisition_id: string | null;
+  tax_rate_id: string | null;
   subtotal: number;
   tax_amount: number;
   total_amount: number;
@@ -56,6 +64,7 @@ interface PurchaseOrder {
   vendor?: { name: string } | null;
   location?: { name: string } | null;
   requisition?: { requisition_id: string } | null;
+  tax_rate?: { name: string; rate: number } | null;
 }
 
 interface PurchaseOrderItem {
@@ -105,6 +114,7 @@ const Orders = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   
   // Dialog states
@@ -120,6 +130,7 @@ const Orders = () => {
   const [formData, setFormData] = useState({
     vendor_id: '',
     location_id: '',
+    tax_rate_id: '',
     notes: '',
   });
   const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number }[]>([]);
@@ -142,6 +153,7 @@ const Orders = () => {
       fetchLocations();
       fetchVendors();
       fetchProducts();
+      fetchTaxRates();
     }
   }, [companyId]);
 
@@ -165,7 +177,8 @@ const Orders = () => {
         *,
         vendor:vendors(name),
         location:locations(name),
-        requisition:requisitions(requisition_id)
+        requisition:requisitions(requisition_id),
+        tax_rate:tax_rates(name, rate)
       `)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
@@ -206,8 +219,25 @@ const Orders = () => {
     setProducts(data || []);
   };
 
+  const fetchTaxRates = async () => {
+    const { data } = await supabase
+      .from('tax_rates')
+      .select('id, name, rate, is_default')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('name');
+    setTaxRates(data || []);
+    
+    // Set default tax rate in form
+    const defaultRate = data?.find(r => r.is_default);
+    if (defaultRate) {
+      setFormData(prev => ({ ...prev, tax_rate_id: defaultRate.id }));
+    }
+  };
+
   const handleCreateClick = () => {
-    setFormData({ vendor_id: '', location_id: '', notes: '' });
+    const defaultRate = taxRates.find(r => r.is_default);
+    setFormData({ vendor_id: '', location_id: '', tax_rate_id: defaultRate?.id || '', notes: '' });
     setOrderItems([]);
     setIsCreateDialogOpen(true);
   };
@@ -239,6 +269,18 @@ const Orders = () => {
     return orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   };
 
+  const getSelectedTaxRate = () => {
+    return taxRates.find(r => r.id === formData.tax_rate_id)?.rate || 0;
+  };
+
+  const calculateTax = () => {
+    return calculateTotal() * (getSelectedTaxRate() / 100);
+  };
+
+  const calculateGrandTotal = () => {
+    return calculateTotal() + calculateTax();
+  };
+
   const handleCreateOrder = async () => {
     if (!formData.vendor_id) {
       toast.error('Please select a vendor');
@@ -264,7 +306,8 @@ const Orders = () => {
       });
 
       const subtotal = calculateTotal();
-      const taxAmount = subtotal * 0.1; // 10% tax
+      const taxRate = getSelectedTaxRate();
+      const taxAmount = subtotal * (taxRate / 100);
       const totalAmount = subtotal + taxAmount;
 
       // Create purchase order
@@ -276,6 +319,7 @@ const Orders = () => {
           status: 'draft',
           vendor_id: formData.vendor_id || null,
           location_id: formData.location_id || null,
+          tax_rate_id: formData.tax_rate_id || null,
           subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
@@ -539,14 +583,36 @@ const Orders = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Order notes..."
-                rows={2}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tax_rate">Tax Rate</Label>
+                <Select
+                  value={formData.tax_rate_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, tax_rate_id: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tax rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No tax</SelectItem>
+                    {taxRates.map((rate) => (
+                      <SelectItem key={rate.id} value={rate.id}>
+                        {rate.name} ({rate.rate}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Order notes..."
+                  rows={2}
+                />
+              </div>
             </div>
 
             {/* Order Items */}
@@ -622,12 +688,14 @@ const Orders = () => {
                       <span className="font-mono">${calculateTotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-end gap-8 text-sm">
-                      <span className="text-muted-foreground">Tax (10%):</span>
-                      <span className="font-mono">${(calculateTotal() * 0.1).toFixed(2)}</span>
+                      <span className="text-muted-foreground">
+                        Tax ({getSelectedTaxRate()}%):
+                      </span>
+                      <span className="font-mono">${calculateTax().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-end gap-8 text-base font-semibold">
                       <span>Total:</span>
-                      <span className="font-mono">${(calculateTotal() * 1.1).toFixed(2)}</span>
+                      <span className="font-mono">${calculateGrandTotal().toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
