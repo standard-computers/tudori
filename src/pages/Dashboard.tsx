@@ -29,7 +29,7 @@ import {
 } from '@dnd-kit/sortable';
 import { DraggableTile } from '@/components/DraggableTile';
 import { defaultApps, AppTile } from '@/config/apps';
-import { DollarSign, ShoppingCart, Users } from 'lucide-react';
+
 
 interface Profile {
   first_name: string;
@@ -296,42 +296,6 @@ const Dashboard = () => {
           </SortableContext>
         </DndContext>
 
-        {/* Quick stats */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
-          <div className="glass-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-display font-bold text-foreground mt-1">$0.00</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-success" />
-              </div>
-            </div>
-          </div>
-          <div className="glass-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Orders</p>
-                <p className="text-2xl font-display font-bold text-foreground mt-1">0</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                <ShoppingCart className="w-6 h-6 text-accent" />
-              </div>
-            </div>
-          </div>
-          <div className="glass-card rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Customers</p>
-                <p className="text-2xl font-display font-bold text-foreground mt-1">0</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   );
