@@ -41,7 +41,7 @@ const Cockpit = () => {
 
   // Set transaction
   useEffect(() => {
-    setTransaction('cock');
+    setTransaction('cpit');
   }, [setTransaction]);
 
   useEffect(() => {
