@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -30,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
@@ -47,6 +49,19 @@ interface Location {
   country: string;
 }
 
+interface CompanyUser {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface LocationUser {
+  id: string;
+  location_id: string;
+  user_id: string;
+}
+
 const LOCATION_TYPES = ['Warehouse', 'Store', 'Office', 'Distribution Center', 'Manufacturing', 'Showroom'];
 
 const Locations = () => {
@@ -58,6 +73,13 @@ const Locations = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextLocationId, setNextLocationId] = useState('0001');
+  const [activeTab, setActiveTab] = useState('general');
+  
+  // Users state
+  const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
+  const [locationUsers, setLocationUsers] = useState<LocationUser[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  
   const [formData, setFormData] = useState({
     location_id: '',
     name: '',
@@ -86,6 +108,7 @@ const Locations = () => {
     if (companyId) {
       fetchLocations();
       fetchNextLocationId();
+      fetchCompanyUsers();
     }
   }, [companyId]);
 
@@ -126,6 +149,32 @@ const Locations = () => {
     }
   };
 
+  const fetchCompanyUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, user_id, first_name, last_name')
+      .eq('company_id', companyId!);
+
+    if (!error && data) {
+      setCompanyUsers(data);
+    }
+  };
+
+  const fetchLocationUsers = async (locationId: string) => {
+    const { data, error } = await supabase
+      .from('location_users')
+      .select('*')
+      .eq('location_id', locationId);
+
+    if (!error && data) {
+      setLocationUsers(data);
+      setSelectedUserIds(data.map(lu => lu.user_id));
+    } else {
+      setLocationUsers([]);
+      setSelectedUserIds([]);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       location_id: nextLocationId,
@@ -140,6 +189,9 @@ const Locations = () => {
     });
     setIsEditing(false);
     setEditingId(null);
+    setActiveTab('general');
+    setSelectedUserIds([]);
+    setLocationUsers([]);
   };
 
   const handleOpenDialog = () => {
@@ -151,7 +203,7 @@ const Locations = () => {
   // Keyboard shortcut for adding new location
   useKeyboardShortcut('n', handleOpenDialog);
 
-  const handleEdit = (location: Location) => {
+  const handleEdit = async (location: Location) => {
     setFormData({
       location_id: location.location_id,
       name: location.name,
@@ -165,6 +217,8 @@ const Locations = () => {
     });
     setIsEditing(true);
     setEditingId(location.id);
+    setActiveTab('general');
+    await fetchLocationUsers(location.id);
     setIsDialogOpen(true);
   };
 
@@ -184,57 +238,119 @@ const Locations = () => {
     fetchNextLocationId();
   };
 
+  const handleUserToggle = (userId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedUserIds(prev => [...prev, userId]);
+    } else {
+      setSelectedUserIds(prev => prev.filter(id => id !== userId));
+    }
+  };
+
+  const saveLocationUsers = async (locationId: string) => {
+    // Get current location users
+    const { data: currentUsers } = await supabase
+      .from('location_users')
+      .select('user_id')
+      .eq('location_id', locationId);
+
+    const currentUserIds = currentUsers?.map(u => u.user_id) || [];
+    
+    // Users to add
+    const toAdd = selectedUserIds.filter(id => !currentUserIds.includes(id));
+    // Users to remove
+    const toRemove = currentUserIds.filter(id => !selectedUserIds.includes(id));
+
+    // Add new users
+    if (toAdd.length > 0) {
+      const { error } = await supabase
+        .from('location_users')
+        .insert(toAdd.map(userId => ({ location_id: locationId, user_id: userId })));
+      
+      if (error) {
+        console.error('Error adding location users:', error);
+        throw error;
+      }
+    }
+
+    // Remove users
+    if (toRemove.length > 0) {
+      const { error } = await supabase
+        .from('location_users')
+        .delete()
+        .eq('location_id', locationId)
+        .in('user_id', toRemove);
+      
+      if (error) {
+        console.error('Error removing location users:', error);
+        throw error;
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isEditing && editingId) {
-      const { error } = await supabase
-        .from('locations')
-        .update({
-          name: formData.name,
-          type: formData.type,
-          address_line1: formData.address_line1,
-          address_line2: formData.address_line2 || null,
-          city: formData.city,
-          state: formData.state,
-          postal_code: formData.postal_code,
-          country: formData.country,
-        })
-        .eq('id', editingId);
+    try {
+      if (isEditing && editingId) {
+        const { error } = await supabase
+          .from('locations')
+          .update({
+            name: formData.name,
+            type: formData.type,
+            address_line1: formData.address_line1,
+            address_line2: formData.address_line2 || null,
+            city: formData.city,
+            state: formData.state,
+            postal_code: formData.postal_code,
+            country: formData.country,
+          })
+          .eq('id', editingId);
 
-      if (error) {
-        toast.error('Failed to update location');
-        return;
+        if (error) throw error;
+
+        // Save location users
+        await saveLocationUsers(editingId);
+
+        toast.success('Location updated');
+      } else {
+        const { data: newLocation, error } = await supabase
+          .from('locations')
+          .insert({
+            company_id: companyId!,
+            location_id: formData.location_id,
+            name: formData.name,
+            type: formData.type,
+            address_line1: formData.address_line1,
+            address_line2: formData.address_line2 || null,
+            city: formData.city,
+            state: formData.state,
+            postal_code: formData.postal_code,
+            country: formData.country,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Save location users for new location
+        if (newLocation && selectedUserIds.length > 0) {
+          await supabase
+            .from('location_users')
+            .insert(selectedUserIds.map(userId => ({ 
+              location_id: newLocation.id, 
+              user_id: userId 
+            })));
+        }
+
+        toast.success('Location created');
       }
 
-      toast.success('Location updated');
-    } else {
-      const { error } = await supabase
-        .from('locations')
-        .insert({
-          company_id: companyId!,
-          location_id: formData.location_id,
-          name: formData.name,
-          type: formData.type,
-          address_line1: formData.address_line1,
-          address_line2: formData.address_line2 || null,
-          city: formData.city,
-          state: formData.state,
-          postal_code: formData.postal_code,
-          country: formData.country,
-        });
-
-      if (error) {
-        toast.error('Failed to create location');
-        return;
-      }
-
-      toast.success('Location created');
+      setIsDialogOpen(false);
+      fetchLocations();
+      fetchNextLocationId();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save location');
     }
-
-    setIsDialogOpen(false);
-    fetchLocations();
-    fetchNextLocationId();
   };
 
   if (loading) {
@@ -269,129 +385,186 @@ const Locations = () => {
                   <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[550px]">
                 <form onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Location' : 'Add Location'}</DialogTitle>
                     <DialogDescription>
-                      {isEditing ? 'Update location details.' : 'Add a new location to your company.'}
+                      {isEditing ? 'Update location details and user access.' : 'Add a new location to your company.'}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="general">General</TabsTrigger>
+                      <TabsTrigger value="users">
+                        <Users className="w-4 h-4 mr-2" />
+                        Users ({selectedUserIds.length})
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="general" className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="location_id">Location ID</Label>
+                          <Input
+                            id="location_id"
+                            value={formData.location_id}
+                            onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+                            disabled={isEditing}
+                            className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && locations.some(l => l.location_id === formData.location_id) ? 'border-destructive border-2' : ''}`}
+                            required
+                          />
+                          {!isEditing && locations.some(l => l.location_id === formData.location_id) && (
+                            <p className="text-sm text-destructive flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              This ID is already in use
+                            </p>
+                          )}
+                          {!isEditing && !locations.some(l => l.location_id === formData.location_id) && formData.location_id && (
+                            <p className="text-sm text-amber-600 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              ID cannot be changed after creation
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="type">Type</Label>
+                          <Select
+                            value={formData.type}
+                            onValueChange={(value) => setFormData({ ...formData, type: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {LOCATION_TYPES.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="location_id">Location ID</Label>
+                        <Label htmlFor="name">Location Name</Label>
                         <Input
-                          id="location_id"
-                          value={formData.location_id}
-                          onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
-                          disabled={isEditing}
-                          className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && locations.some(l => l.location_id === formData.location_id) ? 'border-destructive border-2' : ''}`}
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="Main Warehouse"
                           required
                         />
-                        {!isEditing && locations.some(l => l.location_id === formData.location_id) && (
-                          <p className="text-sm text-destructive flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            This ID is already in use
-                          </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="address_line1">Address Line 1</Label>
+                        <Input
+                          id="address_line1"
+                          value={formData.address_line1}
+                          onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                          placeholder="123 Main Street"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="address_line2">Address Line 2</Label>
+                        <Input
+                          id="address_line2"
+                          value={formData.address_line2}
+                          onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                          placeholder="Suite 100"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            value={formData.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            value={formData.state}
+                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="postal_code">Postal Code</Label>
+                          <Input
+                            id="postal_code"
+                            value={formData.postal_code}
+                            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="country">Country</Label>
+                          <Input
+                            id="country"
+                            value={formData.country}
+                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="users" className="mt-4">
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Select users who can access this location in the Cockpit. Only selected users will be able to view this location.
+                        </p>
+                        {companyUsers.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                            <p>No users found in your company.</p>
+                          </div>
+                        ) : (
+                          <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                            {companyUsers.map((companyUser) => (
+                              <div 
+                                key={companyUser.user_id} 
+                                className="flex items-center gap-3 p-3 hover:bg-muted/50"
+                              >
+                                <Checkbox
+                                  id={`user-${companyUser.user_id}`}
+                                  checked={selectedUserIds.includes(companyUser.user_id)}
+                                  onCheckedChange={(checked) => 
+                                    handleUserToggle(companyUser.user_id, checked as boolean)
+                                  }
+                                />
+                                <label 
+                                  htmlFor={`user-${companyUser.user_id}`}
+                                  className="flex-1 cursor-pointer"
+                                >
+                                  <span className="font-medium">
+                                    {companyUser.first_name} {companyUser.last_name}
+                                  </span>
+                                </label>
+                              </div>
+                            ))}
+                          </div>
                         )}
-                        {!isEditing && !locations.some(l => l.location_id === formData.location_id) && formData.location_id && (
+                        {selectedUserIds.length === 0 && (
                           <p className="text-sm text-amber-600 flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
-                            ID cannot be changed after creation
+                            No users selected. This location won't be visible in Cockpit to anyone.
                           </p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="type">Type</Label>
-                        <Select
-                          value={formData.type}
-                          onValueChange={(value) => setFormData({ ...formData, type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {LOCATION_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Location Name</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Main Warehouse"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line1">Address Line 1</Label>
-                      <Input
-                        id="address_line1"
-                        value={formData.address_line1}
-                        onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                        placeholder="123 Main Street"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line2">Address Line 2</Label>
-                      <Input
-                        id="address_line2"
-                        value={formData.address_line2}
-                        onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                        placeholder="Suite 100"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
-                        <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="state">State</Label>
-                        <Input
-                          id="state"
-                          value={formData.state}
-                          onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="postal_code">Postal Code</Label>
-                        <Input
-                          id="postal_code"
-                          value={formData.postal_code}
-                          onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="country">Country</Label>
-                        <Input
-                          id="country"
-                          value={formData.country}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <DialogFooter className="mt-6">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>

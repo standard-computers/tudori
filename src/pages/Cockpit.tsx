@@ -17,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, DollarSign, TrendingUp, AlertCircle, Lock } from 'lucide-react';
 
 interface Location {
   id: string;
@@ -50,10 +50,10 @@ const Cockpit = () => {
   }, [user]);
 
   useEffect(() => {
-    if (companyId) {
-      fetchLocations();
+    if (companyId && user) {
+      fetchAccessibleLocations();
     }
-  }, [companyId]);
+  }, [companyId, user]);
 
   useEffect(() => {
     if (selectedLocationId && locations.length > 0) {
@@ -74,11 +74,26 @@ const Cockpit = () => {
     }
   };
 
-  const fetchLocations = async () => {
+  const fetchAccessibleLocations = async () => {
+    // First get locations the user has access to via location_users
+    const { data: accessibleLocationIds } = await supabase
+      .from('location_users')
+      .select('location_id')
+      .eq('user_id', user!.id);
+
+    if (!accessibleLocationIds || accessibleLocationIds.length === 0) {
+      setLocations([]);
+      return;
+    }
+
+    const locationIds = accessibleLocationIds.map(l => l.location_id);
+
+    // Then fetch the actual location data for those locations
     const { data } = await supabase
       .from('locations')
       .select('id, location_id, name, type, address_line1, city, state')
       .eq('company_id', companyId!)
+      .in('id', locationIds)
       .order('location_id');
 
     setLocations(data || []);
@@ -128,14 +143,17 @@ const Cockpit = () => {
             <CardContent className="space-y-6">
               {locations.length === 0 ? (
                 <div className="text-center py-4">
-                  <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">No locations found.</p>
+                  <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground font-medium">No accessible locations</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    You don't have access to any locations. Contact your administrator to be added to a location.
+                  </p>
                   <Button 
                     variant="link" 
                     onClick={() => navigate('/locations')}
                     className="mt-2"
                   >
-                    Add your first location
+                    Manage locations
                   </Button>
                 </div>
               ) : (
