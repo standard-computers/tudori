@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2 } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
 import {
   DndContext,
   closestCenter,
@@ -114,6 +116,13 @@ const UserSettings = () => {
   useEffect(() => {
     setTransaction('uset');
   }, [setTransaction]);
+
+  // Ctrl+S to save profile
+  useSaveShortcut(() => {
+    if (!savingProfile) {
+      handleSaveProfile();
+    }
+  }, true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -349,6 +358,7 @@ const UserSettings = () => {
                   <Button onClick={handleSaveProfile} disabled={savingProfile}>
                     {savingProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Save Changes
+                    <Kbd className="ml-2">⌘S</Kbd>
                   </Button>
                 </div>
               </CardContent>
