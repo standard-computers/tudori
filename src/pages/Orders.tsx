@@ -60,6 +60,8 @@ interface PurchaseOrder {
   status: string;
   vendor_id: string | null;
   location_id: string | null;
+  bill_to_location_id: string | null;
+  ledger_id: string | null;
   requisition_id: string | null;
   tax_rate_id: string | null;
   subtotal: number;
@@ -71,6 +73,8 @@ interface PurchaseOrder {
   created_at: string;
   vendor?: { name: string } | null;
   location?: { name: string } | null;
+  bill_to_location?: { name: string } | null;
+  ledger?: { name: string } | null;
   requisition?: { requisition_id: string } | null;
   tax_rate?: { name: string; rate: number } | null;
   applied_tax_rates?: { tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[];
@@ -95,6 +99,13 @@ interface Vendor {
   id: string;
   name: string;
   vendor_id: string;
+}
+
+interface Ledger {
+  id: string;
+  name: string;
+  location_id: string | null;
+  is_active: boolean;
 }
 
 interface Product {
@@ -124,6 +135,7 @@ const Orders = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   
   // Dialog states
@@ -146,6 +158,7 @@ const Orders = () => {
   const [formData, setFormData] = useState({
     vendor_id: '',
     location_id: '',
+    bill_to_location_id: '',
     notes: '',
   });
   const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number }[]>([]);
@@ -173,6 +186,7 @@ const Orders = () => {
       fetchVendors();
       fetchProducts();
       fetchTaxRates();
+      fetchLedgers();
     }
   }, [companyId]);
 
@@ -195,7 +209,9 @@ const Orders = () => {
       .select(`
         *,
         vendor:vendors(name),
-        location:locations(name),
+        location:locations!purchase_orders_location_id_fkey(name),
+        bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name),
+        ledger:ledgers(name),
         requisition:requisitions(requisition_id),
         tax_rate:tax_rates(name, rate)
       `)
@@ -254,9 +270,19 @@ const Orders = () => {
     }
   };
 
+  const fetchLedgers = async () => {
+    const { data } = await supabase
+      .from('ledgers' as any)
+      .select('id, name, location_id, is_active')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('name');
+    setLedgers((data as any) || []);
+  };
+
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
-    setFormData({ vendor_id: '', location_id: '', notes: '' });
+    setFormData({ vendor_id: '', location_id: '', bill_to_location_id: '', notes: '' });
     setOrderItems([]);
     setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }] : []);
     setIsCreateDialogOpen(true);
@@ -333,6 +359,43 @@ const Orders = () => {
       return;
     }
 
+    // Check if ledgers exist
+    if (ledgers.length === 0) {
+      toast.error('Please create a ledger first before creating purchase orders');
+      return;
+    }
+
+    // Determine which ledger to use
+    let selectedLedgerId: string | null = null;
+    
+    if (ledgers.length === 1) {
+      // If only one ledger, use it automatically
+      selectedLedgerId = ledgers[0].id;
+    } else if (formData.bill_to_location_id) {
+      // Find ledger for the bill-to location
+      const locationLedger = ledgers.find(l => l.location_id === formData.bill_to_location_id);
+      if (locationLedger) {
+        selectedLedgerId = locationLedger.id;
+      } else {
+        // Find a general ledger (no location)
+        const generalLedger = ledgers.find(l => !l.location_id);
+        if (generalLedger) {
+          selectedLedgerId = generalLedger.id;
+        } else {
+          toast.error('No ledger found for the selected bill-to location. Please create a ledger for this location or select a different location.');
+          return;
+        }
+      }
+    } else {
+      // No bill-to location, use general ledger
+      const generalLedger = ledgers.find(l => !l.location_id);
+      if (generalLedger) {
+        selectedLedgerId = generalLedger.id;
+      } else {
+        selectedLedgerId = ledgers[0].id; // Fall back to first ledger
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -354,6 +417,8 @@ const Orders = () => {
           status: 'draft',
           vendor_id: formData.vendor_id || null,
           location_id: formData.location_id || null,
+          bill_to_location_id: formData.bill_to_location_id || null,
+          ledger_id: selectedLedgerId,
           tax_rate_id: selectedTaxRates.length === 1 ? selectedTaxRates[0].tax_rate_id : null,
           subtotal,
           tax_amount: taxAmount,
@@ -380,7 +445,24 @@ const Orders = () => {
         if (taxError) throw taxError;
       }
 
-      if (orderError) throw orderError;
+      // Create ledger transaction (negative amount for purchase)
+      if (selectedLedgerId) {
+        const { error: txError } = await supabase
+          .from('ledger_transactions' as any)
+          .insert({
+            ledger_id: selectedLedgerId,
+            transaction_type: 'purchase_order',
+            reference_id: order.id,
+            reference_number: poNumber,
+            amount: -totalAmount, // Negative for purchases
+            description: `Purchase Order ${poNumber}`,
+          });
+
+        if (txError) {
+          console.error('Error creating ledger transaction:', txError);
+          // Don't throw, the PO was created successfully
+        }
+      }
 
       // Create order items
       const itemsToInsert = orderItems.map(item => ({
@@ -728,14 +810,38 @@ const Orders = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Order notes..."
-                rows={2}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bill_to_location">Bill To Location</Label>
+                <Select
+                  value={formData.bill_to_location_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, bill_to_location_id: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No location (use general ledger)</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  The ledger for this location will record the transaction
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Order notes..."
+                  rows={2}
+                />
+              </div>
             </div>
 
             {/* Tax Rates Section */}
