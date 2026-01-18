@@ -374,34 +374,51 @@ const Ledgers = () => {
   const handleDeleteTransaction = async () => {
     if (!viewingTransaction || !viewingLedger) return;
     
+    // Capture values before any state changes
+    const txId = viewingTransaction.id;
+    const txAmount = viewingTransaction.amount;
+    const ledgerId = viewingLedger.id;
+    const currentBalance = viewingLedger.balance;
+    
     setIsDeletingTx(true);
     try {
       // Delete the transaction
       const { error: txError } = await supabase
         .from('ledger_transactions' as any)
         .delete()
-        .eq('id', viewingTransaction.id);
+        .eq('id', txId);
       
       if (txError) throw txError;
 
       // Update ledger balance
-      const newBalance = viewingLedger.balance - viewingTransaction.amount;
+      const newBalance = currentBalance - txAmount;
       const { error: ledgerError } = await supabase
         .from('ledgers' as any)
         .update({ balance: newBalance })
-        .eq('id', viewingLedger.id);
+        .eq('id', ledgerId);
       
       if (ledgerError) throw ledgerError;
 
-      toast.success('Transaction deleted');
-      setViewingTransaction(null);
-      setIsDeleteTxDialogOpen(false);
+      // Refresh data FIRST before closing dialogs
+      const { data: updatedTransactions } = await supabase
+        .from('ledger_transactions' as any)
+        .select('*')
+        .eq('ledger_id', ledgerId)
+        .order('transaction_date', { ascending: false });
       
-      // Refresh data
-      await fetchLedgerTransactions(viewingLedger.id);
-      await fetchLedgers(companyId!);
+      setLedgerTransactions((updatedTransactions as any) || []);
+      
       // Update the viewing ledger with new balance
       setViewingLedger(prev => prev ? { ...prev, balance: newBalance } : null);
+      
+      // Refresh main ledgers list
+      await fetchLedgers(companyId!);
+
+      toast.success('Transaction deleted');
+      
+      // Close dialogs after data is refreshed
+      setViewingTransaction(null);
+      setIsDeleteTxDialogOpen(false);
     } catch (error: any) {
       console.error('Error deleting transaction:', error);
       toast.error(error.message || 'Failed to delete transaction');
