@@ -41,9 +41,10 @@ interface DocumentIdConfig {
 }
 
 const DOCUMENT_TYPES = [
-  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-' },
-  { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-' },
-  { value: 'delivery', label: 'Delivery', prefix_placeholder: 'DEL-' },
+  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: '' },
+  { value: 'requisition', label: 'Requisition', prefix_placeholder: '' },
+  { value: 'delivery', label: 'Delivery', prefix_placeholder: '' },
+  { value: 'ledger', label: 'Ledger', prefix_placeholder: '' },
   { value: 'vendor', label: 'Vendor', prefix_placeholder: '' },
   { value: 'customer', label: 'Customer', prefix_placeholder: '' },
   { value: 'product', label: 'Product', prefix_placeholder: '' },
