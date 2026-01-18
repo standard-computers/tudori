@@ -61,6 +61,7 @@ const Users = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [noCompany, setNoCompany] = useState(false);
 
   // Invite form
   const [email, setEmail] = useState('');
@@ -82,16 +83,17 @@ const Users = () => {
 
   const fetchTeamData = async () => {
     setLoading(true);
+    setNoCompany(false);
     
     // Get current user's profile and company
-    const { data: profileData } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('user_id', user!.id)
-      .single();
+      .maybeSingle();
 
-    if (!profileData?.company_id) {
-      toast.error('No company found');
+    if (profileError || !profileData?.company_id) {
+      setNoCompany(true);
       setLoading(false);
       return;
     }
@@ -294,6 +296,48 @@ const Users = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (noCompany) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center h-16">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-lg font-display font-bold text-foreground">Users & Access</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <Card className="glass-card max-w-md mx-auto text-center">
+            <CardHeader>
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <CardTitle className="font-display">No Company Profile</CardTitle>
+              <CardDescription>
+                Your account doesn't have a company profile set up yet. Please sign up with company information to access user management.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/auth')} className="w-full">
+                Complete Setup
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
