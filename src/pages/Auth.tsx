@@ -152,7 +152,60 @@ const Auth = () => {
     }
 
     if (authData.user) {
-      // Create company
+      // Check if user has a pending invitation
+      const { data: invitation } = await supabase
+        .from('invitations')
+        .select('id, company_id, role')
+        .eq('email', email.toLowerCase())
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (invitation) {
+        // User was invited - join existing company
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: authData.user.id,
+            company_id: invitation.company_id,
+            first_name: firstName,
+            last_name: lastName,
+          });
+
+        if (profileError) {
+          toast.error('Failed to create profile: ' + profileError.message);
+          setLoading(false);
+          return;
+        }
+
+        // Assign the invited role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            company_id: invitation.company_id,
+            role: invitation.role,
+          });
+
+        if (roleError) {
+          toast.error('Failed to assign role: ' + roleError.message);
+          setLoading(false);
+          return;
+        }
+
+        // Mark invitation as accepted
+        await supabase
+          .from('invitations')
+          .update({ accepted_at: new Date().toISOString() })
+          .eq('id', invitation.id);
+
+        toast.success('Welcome! You have joined the company.');
+        navigate('/dashboard');
+        setLoading(false);
+        return;
+      }
+
+      // No invitation - create new company
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .insert({

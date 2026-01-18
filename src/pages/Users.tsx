@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2 } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock } from 'lucide-react';
 import { z } from 'zod';
 
 interface TeamMember {
@@ -24,6 +24,14 @@ interface TeamMember {
   role: 'owner' | 'admin' | 'member' | 'viewer';
 }
 
+interface Invitation {
+  id: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  created_at: string;
+  expires_at: string;
+}
+
 interface UserRole {
   user_id: string;
   role: 'owner' | 'admin' | 'member' | 'viewer';
@@ -31,8 +39,6 @@ interface UserRole {
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
   role: z.enum(['admin', 'member', 'viewer']),
 });
 
@@ -55,6 +61,7 @@ const Users = () => {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,8 +72,6 @@ const Users = () => {
 
   // Invite form
   const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [role, setRole] = useState<'admin' | 'member' | 'viewer'>('member');
 
   useEffect(() => {
@@ -121,6 +126,18 @@ const Users = () => {
       .select('user_id, role')
       .eq('company_id', profileData.company_id);
 
+    // Get pending invitations
+    const { data: invitationsData } = await supabase
+      .from('invitations')
+      .select('id, email, role, created_at, expires_at')
+      .eq('company_id', profileData.company_id)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString());
+
+    if (invitationsData) {
+      setInvitations(invitationsData as Invitation[]);
+    }
+
     if (profiles && roles) {
       const rolesMap = new Map<string, UserRole['role']>();
       roles.forEach((r) => rolesMap.set(r.user_id, r.role as UserRole['role']));
@@ -149,7 +166,7 @@ const Users = () => {
     e.preventDefault();
     setErrors({});
 
-    const result = inviteSchema.safeParse({ email, firstName, lastName, role });
+    const result = inviteSchema.safeParse({ email, role });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -166,62 +183,72 @@ const Users = () => {
 
     setInviteLoading(true);
 
-    // Create user account with temporary password
-    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
-    
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password: tempPassword,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
-      },
-    });
+    try {
+      // Check if email already has a pending invitation
+      const { data: existingInvite } = await supabase
+        .from('invitations')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .eq('company_id', companyId)
+        .is('accepted_at', null)
+        .maybeSingle();
 
-    if (authError) {
-      toast.error(authError.message);
-      setInviteLoading(false);
-      return;
-    }
-
-    if (authData.user) {
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id,
-          company_id: companyId,
-          first_name: firstName,
-          last_name: lastName,
-        });
-
-      if (profileError) {
-        toast.error('Failed to create profile: ' + profileError.message);
+      if (existingInvite) {
+        toast.error('This email already has a pending invitation');
         setInviteLoading(false);
         return;
       }
 
-      // Assign role
-      const { error: roleError } = await supabase
-        .from('user_roles')
+      // Check if user already exists in the company
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('company_id', companyId);
+
+      // Create invitation
+      const { error: inviteError } = await supabase
+        .from('invitations')
         .insert({
-          user_id: authData.user.id,
+          email: email.toLowerCase(),
           company_id: companyId,
           role,
+          invited_by: user!.id,
         });
 
-      if (roleError) {
-        toast.error('Failed to assign role: ' + roleError.message);
+      if (inviteError) {
+        if (inviteError.code === '23505') {
+          toast.error('This email has already been invited');
+        } else {
+          toast.error('Failed to create invitation: ' + inviteError.message);
+        }
         setInviteLoading(false);
         return;
       }
 
-      toast.success(`User ${firstName} ${lastName} has been invited!`);
+      toast.success(`Invitation sent to ${email}! They can now sign up to join your company.`);
       setIsDialogOpen(false);
       resetForm();
       fetchTeamData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    const { error } = await supabase
+      .from('invitations')
+      .delete()
+      .eq('id', invitationId);
+
+    if (error) {
+      toast.error('Failed to cancel invitation');
+      return;
     }
 
-    setInviteLoading(false);
+    toast.success('Invitation cancelled');
+    fetchTeamData();
   };
 
   const handleUpdateRole = async (member: TeamMember, newRole: 'admin' | 'member' | 'viewer') => {
@@ -286,8 +313,6 @@ const Users = () => {
 
   const resetForm = () => {
     setEmail('');
-    setFirstName('');
-    setLastName('');
     setRole('member');
     setErrors({});
   };
@@ -370,41 +395,20 @@ const Users = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Add Team Member</DialogTitle>
+                    <DialogTitle>Invite Team Member</DialogTitle>
                     <DialogDescription>
-                      Invite a new user to join your organization
+                      Send an invitation to join your organization. They'll be able to sign up with this email.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleInvite} className="space-y-4 mt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input
-                          id="firstName"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className={errors.firstName ? 'border-destructive' : ''}
-                        />
-                        {errors.firstName && <p className="text-sm text-destructive">{errors.firstName}</p>}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input
-                          id="lastName"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className={errors.lastName ? 'border-destructive' : ''}
-                        />
-                        {errors.lastName && <p className="text-sm text-destructive">{errors.lastName}</p>}
-                      </div>
-                    </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">Email Address</Label>
                       <Input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        placeholder="colleague@example.com"
                         className={errors.email ? 'border-destructive' : ''}
                       />
                       {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
@@ -429,7 +433,7 @@ const Users = () => {
                       </Button>
                       <Button type="submit" disabled={inviteLoading}>
                         {inviteLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                        Add User
+                        Send Invitation
                       </Button>
                     </DialogFooter>
                   </form>
@@ -464,6 +468,65 @@ const Users = () => {
           })}
         </div>
 
+        {/* Pending Invitations */}
+        {invitations.length > 0 && (
+          <Card className="glass-card mb-8">
+            <CardHeader>
+              <CardTitle className="font-display flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Pending Invitations
+              </CardTitle>
+              <CardDescription>Users who have been invited but haven't signed up yet</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Invited</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invitations.map((invitation) => (
+                    <TableRow key={invitation.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                          <span className="font-medium">{invitation.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={roleColors[invitation.role]}>
+                          {invitation.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(invitation.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {canManageUsers && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancelInvitation(invitation.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Team members table */}
         <Card className="glass-card">
           <CardHeader>
@@ -484,21 +547,21 @@ const Users = () => {
                   <TableRow key={member.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback className="bg-primary text-primary-foreground">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
                             {member.first_name[0]}{member.last_name[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">{member.first_name} {member.last_name}</p>
                           {member.user_id === user?.id && (
-                            <span className="text-xs text-muted-foreground">(You)</span>
+                            <p className="text-xs text-muted-foreground">You</p>
                           )}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {editingMember?.id === member.id && member.role !== 'owner' ? (
+                      {editingMember?.id === member.id ? (
                         <Select 
                           value={member.role} 
                           onValueChange={(v) => handleUpdateRole(member, v as 'admin' | 'member' | 'viewer')}
@@ -520,19 +583,19 @@ const Users = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       {canManageUsers && member.role !== 'owner' && member.user_id !== user?.id && (
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             onClick={() => setEditingMember(editingMember?.id === member.id ? null : member)}
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
+                            size="sm"
                             onClick={() => handleRemoveUser(member)}
+                            className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
