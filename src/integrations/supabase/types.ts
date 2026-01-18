@@ -416,6 +416,70 @@ export type Database = {
           },
         ]
       }
+      inventory: {
+        Row: {
+          bin_id: string | null
+          created_at: string
+          id: string
+          last_counted_at: string | null
+          location_id: string
+          max_quantity: number | null
+          min_quantity: number | null
+          notes: string | null
+          product_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          bin_id?: string | null
+          created_at?: string
+          id?: string
+          last_counted_at?: string | null
+          location_id: string
+          max_quantity?: number | null
+          min_quantity?: number | null
+          notes?: string | null
+          product_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          bin_id?: string | null
+          created_at?: string
+          id?: string
+          last_counted_at?: string | null
+          location_id?: string
+          max_quantity?: number | null
+          min_quantity?: number | null
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
