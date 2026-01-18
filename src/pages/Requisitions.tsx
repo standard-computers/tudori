@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import {
   Select,
   SelectContent,
@@ -487,75 +489,12 @@ const Requisitions = () => {
             </Button>
           </div>
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requisitions.map((req) => (
-                  <TableRow key={req.id}>
-                    <TableCell className="font-mono">{req.requisition_id}</TableCell>
-                    <TableCell>
-                      <Badge className={`${statusColors[req.status]} text-white`}>
-                        {req.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{req.location?.name || '-'}</TableCell>
-                    <TableCell>{req.vendor?.name || 'All Vendors'}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${req.total_amount?.toFixed(2) || '0.00'}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(req.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewRequisition(req)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleConvertToPO(req)}
-                              disabled={req.status === 'ordered' || req.status === 'completed'}
-                            >
-                              <ShoppingCart className="w-4 h-4 mr-2" />
-                              Convert to PO
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteRequisition(req.id)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <RequisitionsTable 
+            requisitions={requisitions} 
+            onViewRequisition={handleViewRequisition} 
+            onConvertToPO={handleConvertToPO}
+            onDeleteRequisition={handleDeleteRequisition} 
+          />
         )}
       </main>
 
@@ -781,5 +720,165 @@ const Requisitions = () => {
     </div>
   );
 };
+
+// Separate table component for sorting/filtering
+function RequisitionsTable({
+  requisitions,
+  onViewRequisition,
+  onConvertToPO,
+  onDeleteRequisition,
+}: {
+  requisitions: Requisition[];
+  onViewRequisition: (requisition: Requisition) => void;
+  onConvertToPO: (requisition: Requisition) => void;
+  onDeleteRequisition: (id: string) => void;
+}) {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(requisitions, 'requisition_id', 'desc');
+
+  const hasFilters = Object.values(filters).some((v) => v);
+
+  return (
+    <div className="space-y-4">
+      {hasFilters && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground">Active filters:</span>
+          {Object.entries(filters).map(([key, value]) =>
+            value ? (
+              <Badge key={key} variant="secondary">
+                {key}: {value}
+              </Badge>
+            ) : null
+          )}
+          <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+            Clear all
+          </Button>
+        </div>
+      )}
+      <div className="rounded-lg border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="ID"
+                sortKey="requisition_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['requisition_id']}
+                onFilter={(v) => setFilter('requisition_id', v)}
+              />
+              <SortableTableHead
+                label="Status"
+                sortKey="status"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['status']}
+                onFilter={(v) => setFilter('status', v)}
+              />
+              <SortableTableHead
+                label="Location"
+                sortKey="location.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['location.name']}
+                onFilter={(v) => setFilter('location.name', v)}
+              />
+              <SortableTableHead
+                label="Vendor"
+                sortKey="vendor.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['vendor.name']}
+                onFilter={(v) => setFilter('vendor.name', v)}
+              />
+              <SortableTableHead
+                label="Total"
+                sortKey="total_amount"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                className="text-right"
+                filterable={false}
+              />
+              <SortableTableHead
+                label="Created"
+                sortKey="created_at"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedAndFilteredData.map((req) => (
+              <TableRow key={req.id}>
+                <TableCell className="font-mono">{req.requisition_id}</TableCell>
+                <TableCell>
+                  <Badge className={`${statusColors[req.status]} text-white`}>
+                    {req.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{req.location?.name || '-'}</TableCell>
+                <TableCell>{req.vendor?.name || 'All Vendors'}</TableCell>
+                <TableCell className="text-right font-mono">
+                  ${req.total_amount?.toFixed(2) || '0.00'}
+                </TableCell>
+                <TableCell>
+                  {new Date(req.created_at).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onViewRequisition(req)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onConvertToPO(req)}
+                          disabled={req.status === 'ordered' || req.status === 'completed'}
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Convert to PO
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDeleteRequisition(req.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 export default Requisitions;
