@@ -383,6 +383,21 @@ const Requisitions = () => {
         return;
       }
 
+      // Fetch active ledgers for auto-selection
+      const { data: ledgersData } = await supabase
+        .from('ledgers' as any)
+        .select('id, name, location_id, is_active')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name');
+
+      const ledgers = (ledgersData as any) || [];
+
+      if (ledgers.length === 0) {
+        toast.error('Please create a ledger first before converting to PO');
+        return;
+      }
+
       // Get next PO number
       const { data: poNumber, error: poNumError } = await supabase.rpc('get_next_po_number', {
         p_company_id: companyId,
@@ -401,6 +416,26 @@ const Requisitions = () => {
       const parsedVendor = requisition.vendor_id ? parseVendorValue(requisition.vendor_id) : null;
       const poVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
 
+      // Auto-select ledger: prefer location-specific, then first active
+      let selectedLedgerId: string | null = null;
+      if (ledgers.length === 1) {
+        selectedLedgerId = ledgers[0].id;
+      } else if (requisition.location_id) {
+        // Find ledger for the requisition location
+        const locationLedger = ledgers.find((l: any) => l.location_id === requisition.location_id);
+        if (locationLedger) {
+          selectedLedgerId = locationLedger.id;
+        } else {
+          // Find a general ledger (no location) or use first active
+          const generalLedger = ledgers.find((l: any) => !l.location_id);
+          selectedLedgerId = generalLedger?.id || ledgers[0].id;
+        }
+      } else {
+        // No location, use general ledger or first active
+        const generalLedger = ledgers.find((l: any) => !l.location_id);
+        selectedLedgerId = generalLedger?.id || ledgers[0].id;
+      }
+
       // Create purchase order
       const { data: newPO, error: poError } = await supabase
         .from('purchase_orders')
@@ -410,6 +445,8 @@ const Requisitions = () => {
           status: 'draft',
           vendor_id: poVendorId,
           location_id: requisition.location_id,
+          bill_to_location_id: requisition.location_id, // Use same location for bill-to
+          ledger_id: selectedLedgerId,
           requisition_id: requisition.id,
           subtotal,
           tax_amount: taxAmount,
@@ -435,6 +472,38 @@ const Requisitions = () => {
         .insert(poItems);
 
       if (poItemsError) throw poItemsError;
+
+      // Create ledger transaction (negative amount for purchase)
+      if (selectedLedgerId) {
+        const { error: txError } = await supabase
+          .from('ledger_transactions' as any)
+          .insert({
+            ledger_id: selectedLedgerId,
+            transaction_type: 'purchase_order',
+            reference_id: newPO.id,
+            reference_number: poNumber,
+            amount: -totalAmount, // Negative for purchases
+            description: `Purchase Order ${poNumber} (from Req ${requisition.requisition_id})`,
+          });
+
+        if (txError) {
+          console.error('Error creating ledger transaction:', txError);
+          // Don't throw, the PO was created successfully
+        }
+
+        // Update ledger balance
+        const selectedLedger = ledgers.find((l: any) => l.id === selectedLedgerId);
+        if (selectedLedger) {
+          const { error: balanceError } = await supabase
+            .from('ledgers' as any)
+            .update({ balance: (selectedLedger.balance || 0) - totalAmount })
+            .eq('id', selectedLedgerId);
+
+          if (balanceError) {
+            console.error('Error updating ledger balance:', balanceError);
+          }
+        }
+      }
 
       // Update requisition status to 'ordered'
       const { error: updateError } = await supabase
