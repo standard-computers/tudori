@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -140,6 +141,9 @@ const SalesOrders = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Use vendor sources hook for ship from options (vendors + DC/warehouse locations)
+  const { vendorOptions: shipFromOptions } = useVendorSources(companyId);
   
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -755,12 +759,12 @@ const SalesOrders = () => {
             <div className="space-y-2">
               <Label htmlFor="location">Ship From</Label>
               <SearchableSelect
-                options={locationOptions}
+                options={shipFromOptions}
                 value={formData.location_id}
                 onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                placeholder="Select location"
+                placeholder="Select source"
                 allowClear
-                clearLabel="No location"
+                clearLabel="No source"
               />
             </div>
 
