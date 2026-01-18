@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,10 +33,16 @@ interface Location {
 const Cockpit = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [locations, setLocations] = useState<Location[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+
+  // Set transaction
+  useEffect(() => {
+    setTransaction('cock');
+  }, [setTransaction]);
 
   useEffect(() => {
     if (!loading && !user) {

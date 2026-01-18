@@ -3,6 +3,7 @@ import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-short
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -225,11 +226,21 @@ const LocationTable = ({
 const Locations = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [locations, setLocations] = useState<Location[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(isEditing ? 'loc/edit' : 'loc/new');
+    } else {
+      setTransaction('loc');
+    }
+  }, [isDialogOpen, isEditing, setTransaction]);
 
   // Ctrl+S to save
   useSaveShortcut(() => {

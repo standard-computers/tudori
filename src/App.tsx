@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { StatusBarProvider } from "@/contexts/StatusBarContext";
+import { StatusBar } from "@/components/StatusBar";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -32,26 +34,31 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/complete-profile" element={<CompleteProfile />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/locations" element={<Locations />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/requisitions" element={<Requisitions />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/rates" element={<Rates />} />
-            <Route path="/user-settings" element={<UserSettings />} />
-            <Route path="/cockpit" element={<Cockpit />} />
-            <Route path="/deliveries" element={<Deliveries />} />
-            <Route path="/ledgers" element={<Ledgers />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <StatusBarProvider>
+            <div className="pb-7">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/locations" element={<Locations />} />
+                <Route path="/vendors" element={<Vendors />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/requisitions" element={<Requisitions />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/rates" element={<Rates />} />
+                <Route path="/user-settings" element={<UserSettings />} />
+                <Route path="/cockpit" element={<Cockpit />} />
+                <Route path="/deliveries" element={<Deliveries />} />
+                <Route path="/ledgers" element={<Ledgers />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <StatusBar />
+          </StatusBarProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

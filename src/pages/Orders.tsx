@@ -4,6 +4,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,6 +135,7 @@ const statusColors: Record<string, string> = {
 const Orders = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -149,6 +151,17 @@ const Orders = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isCreateDialogOpen) {
+      setTransaction('ord/new');
+    } else if (isViewDialogOpen) {
+      setTransaction('ord/view');
+    } else {
+      setTransaction('ord');
+    }
+  }, [isCreateDialogOpen, isViewDialogOpen, setTransaction]);
 
   // Ctrl+S to save
   useSaveShortcut(() => {

@@ -4,6 +4,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
