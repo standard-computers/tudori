@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Location {
@@ -278,9 +278,23 @@ const Locations = () => {
                         <Input
                           id="location_id"
                           value={formData.location_id}
-                          disabled
-                          className="bg-muted"
+                          onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+                          disabled={isEditing}
+                          className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && locations.some(l => l.location_id === formData.location_id) ? 'border-destructive border-2' : ''}`}
+                          required
                         />
+                        {!isEditing && locations.some(l => l.location_id === formData.location_id) && (
+                          <p className="text-sm text-destructive flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            This ID is already in use
+                          </p>
+                        )}
+                        {!isEditing && !locations.some(l => l.location_id === formData.location_id) && formData.location_id && (
+                          <p className="text-sm text-amber-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            ID cannot be changed after creation
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="type">Type</Label>
@@ -375,7 +389,12 @@ const Locations = () => {
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit">{isEditing ? 'Update' : 'Create'}</Button>
+                    <Button 
+                      type="submit" 
+                      disabled={!isEditing && locations.some(l => l.location_id === formData.location_id)}
+                    >
+                      {isEditing ? 'Update' : 'Create'}
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
