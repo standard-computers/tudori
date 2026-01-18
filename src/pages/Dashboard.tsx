@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,8 +21,25 @@ import {
   MessageSquare,
   UserCog,
   MapPin,
-  Building
+  Building,
+  LucideIcon
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { DraggableTile } from '@/components/DraggableTile';
 
 interface Profile {
   first_name: string;
@@ -34,7 +51,15 @@ interface Company {
   name: string;
 }
 
-const apps = [
+interface AppTile {
+  name: string;
+  icon: LucideIcon;
+  color: string;
+  description: string;
+  path: string | null;
+}
+
+const defaultApps: AppTile[] = [
   { name: 'Sales', icon: DollarSign, color: 'bg-emerald-500', description: 'Manage orders & revenue', path: null },
   { name: 'Inventory', icon: Warehouse, color: 'bg-blue-500', description: 'Stock management', path: null },
   { name: 'Locations', icon: MapPin, color: 'bg-green-500', description: 'Warehouses & stores', path: '/locations' },
@@ -57,6 +82,18 @@ const Dashboard = () => {
   const { user, loading, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
+  const [apps, setApps] = useState<AppTile[]>(defaultApps);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (!loading && !user) {
@@ -67,6 +104,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchProfile();
+      fetchPreferences();
     }
   }, [user]);
 
@@ -91,6 +129,66 @@ const Dashboard = () => {
           setCompany(companyData);
         }
       }
+    }
+  };
+
+  const fetchPreferences = async () => {
+    const { data } = await supabase
+      .from('user_preferences')
+      .select('dashboard_tile_order')
+      .eq('user_id', user!.id)
+      .maybeSingle();
+
+    if (data?.dashboard_tile_order) {
+      // Reorder apps based on saved preferences
+      const orderedApps = data.dashboard_tile_order
+        .map((name: string) => defaultApps.find(app => app.name === name))
+        .filter(Boolean) as AppTile[];
+      
+      // Add any new apps that might not be in saved preferences
+      const savedNames = new Set(data.dashboard_tile_order);
+      const newApps = defaultApps.filter(app => !savedNames.has(app.name));
+      
+      setApps([...orderedApps, ...newApps]);
+    }
+  };
+
+  const savePreferences = useCallback(async (newOrder: string[]) => {
+    if (!user) return;
+
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('user_preferences')
+        .update({ dashboard_tile_order: newOrder })
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('user_preferences')
+        .insert({ user_id: user.id, dashboard_tile_order: newOrder });
+    }
+  }, [user]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setApps((items) => {
+        const oldIndex = items.findIndex(item => item.name === active.id);
+        const newIndex = items.findIndex(item => item.name === over.id);
+        
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        
+        // Save the new order
+        savePreferences(newItems.map(item => item.name));
+        
+        return newItems;
+      });
     }
   };
 
@@ -159,31 +257,36 @@ const Dashboard = () => {
             Good {getTimeOfDay()}, {profile?.first_name || 'there'}!
           </h1>
           <p className="text-muted-foreground mt-1">
-            What would you like to work on today?
+            What would you like to work on today? <span className="text-xs">(Drag tiles to reorganize)</span>
           </p>
         </div>
 
-        {/* Apps grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {apps.map((app, index) => (
-            <div
-              key={app.name}
-              className="app-tile animate-slide-up"
-              style={{ animationDelay: `${index * 50}ms` }}
-              onClick={() => {
-                if (app.path) {
-                  navigate(app.path);
-                }
-              }}
-            >
-              <div className={`w-12 h-12 rounded-xl ${app.color} flex items-center justify-center mb-4`}>
-                <app.icon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-display font-semibold text-foreground mb-1">{app.name}</h3>
-              <p className="text-sm text-muted-foreground">{app.description}</p>
+        {/* Apps grid with drag and drop */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={apps.map(app => app.name)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {apps.map((app, index) => (
+                <DraggableTile
+                  key={app.name}
+                  id={app.name}
+                  name={app.name}
+                  icon={app.icon}
+                  color={app.color}
+                  description={app.description}
+                  path={app.path}
+                  index={index}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
 
         {/* Quick stats */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
