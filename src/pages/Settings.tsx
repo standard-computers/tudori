@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building2, Save, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowLeft, Building2, Save, Loader2, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Company {
@@ -25,12 +27,33 @@ interface Company {
   country: string;
 }
 
+interface DocumentIdConfig {
+  id?: string;
+  company_id: string;
+  document_type: string;
+  prefix: string;
+  num_digits: number;
+  starting_number: number;
+}
+
+const DOCUMENT_TYPES = [
+  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-' },
+  { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-' },
+  { value: 'delivery', label: 'Delivery', prefix_placeholder: 'DEL-' },
+  { value: 'vendor', label: 'Vendor', prefix_placeholder: '' },
+  { value: 'customer', label: 'Customer', prefix_placeholder: '' },
+  { value: 'product', label: 'Product', prefix_placeholder: '' },
+  { value: 'location', label: 'Location', prefix_placeholder: '' },
+];
+
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
+  const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -92,6 +115,9 @@ const Settings = () => {
             postal_code: companyData.postal_code || '',
             country: companyData.country || ''
           });
+
+          // Fetch document configs
+          await fetchDocumentConfigs(profile.company_id);
         }
       }
     } catch (error) {
@@ -102,9 +128,50 @@ const Settings = () => {
     }
   };
 
+  const fetchDocumentConfigs = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('document_id_config')
+        .select('*')
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      // Initialize configs for all document types
+      const configs: DocumentIdConfig[] = DOCUMENT_TYPES.map(docType => {
+        const existingConfig = data?.find(c => c.document_type === docType.value);
+        return existingConfig || {
+          company_id: companyId,
+          document_type: docType.value,
+          prefix: docType.prefix_placeholder,
+          num_digits: 4,
+          starting_number: 1
+        };
+      });
+
+      setDocumentConfigs(configs);
+    } catch (error) {
+      console.error('Error fetching document configs:', error);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleConfigChange = (
+    docType: string,
+    field: 'prefix' | 'num_digits' | 'starting_number',
+    value: string | number
+  ) => {
+    setDocumentConfigs(prev =>
+      prev.map(config =>
+        config.document_type === docType
+          ? { ...config, [field]: value }
+          : config
+      )
+    );
   };
 
   const handleSaveCompany = async () => {
@@ -140,6 +207,57 @@ const Settings = () => {
     }
   };
 
+  const handleSaveConfigs = async () => {
+    if (!company) return;
+
+    setSavingConfig(true);
+    try {
+      // Upsert all configs
+      for (const config of documentConfigs) {
+        if (config.id) {
+          // Update existing
+          const { error } = await supabase
+            .from('document_id_config')
+            .update({
+              prefix: config.prefix,
+              num_digits: config.num_digits,
+              starting_number: config.starting_number
+            })
+            .eq('id', config.id);
+
+          if (error) throw error;
+        } else {
+          // Insert new
+          const { error } = await supabase
+            .from('document_id_config')
+            .insert({
+              company_id: company.id,
+              document_type: config.document_type,
+              prefix: config.prefix,
+              num_digits: config.num_digits,
+              starting_number: config.starting_number
+            });
+
+          if (error) throw error;
+        }
+      }
+
+      // Refresh configs to get IDs
+      await fetchDocumentConfigs(company.id);
+      toast.success('Document ID configuration saved');
+    } catch (error: any) {
+      console.error('Error saving document configs:', error);
+      toast.error(error.message || 'Failed to save configuration');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const getPreviewId = (config: DocumentIdConfig): string => {
+    const paddedNumber = String(config.starting_number).padStart(config.num_digits, '0');
+    return `${config.prefix}${paddedNumber}`;
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -172,6 +290,7 @@ const Settings = () => {
         <Tabs defaultValue="company" className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="company">Company</TabsTrigger>
+            <TabsTrigger value="config">Config</TabsTrigger>
             <TabsTrigger value="preferences" disabled>Preferences</TabsTrigger>
             <TabsTrigger value="billing" disabled>Billing</TabsTrigger>
           </TabsList>
@@ -348,6 +467,111 @@ const Settings = () => {
                 </div>
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="config" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Settings2 className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <CardTitle>Document ID Configuration</CardTitle>
+                    <CardDescription>
+                      Configure how document IDs are generated for each document type
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Document Type</TableHead>
+                      <TableHead>Prefix</TableHead>
+                      <TableHead>Number of Digits</TableHead>
+                      <TableHead>Starting Number</TableHead>
+                      <TableHead>Preview</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {documentConfigs.map((config) => {
+                      const docTypeInfo = DOCUMENT_TYPES.find(d => d.value === config.document_type);
+                      return (
+                        <TableRow key={config.document_type}>
+                          <TableCell className="font-medium">
+                            {docTypeInfo?.label || config.document_type}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={config.prefix}
+                              onChange={(e) =>
+                                handleConfigChange(config.document_type, 'prefix', e.target.value)
+                              }
+                              placeholder="e.g., PO-"
+                              className="w-24"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={String(config.num_digits)}
+                              onValueChange={(value) =>
+                                handleConfigChange(config.document_type, 'num_digits', parseInt(value))
+                              }
+                            >
+                              <SelectTrigger className="w-20">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="4">4</SelectItem>
+                                <SelectItem value="5">5</SelectItem>
+                                <SelectItem value="6">6</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={config.starting_number}
+                              onChange={(e) =>
+                                handleConfigChange(
+                                  config.document_type,
+                                  'starting_number',
+                                  parseInt(e.target.value) || 1
+                                )
+                              }
+                              className="w-24"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
+                              {getPreviewId(config)}
+                            </code>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveConfigs} disabled={savingConfig}>
+                {savingConfig ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Configuration
+                  </>
+                )}
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="preferences">
