@@ -321,19 +321,83 @@ const Requisitions = () => {
   };
 
   const handleConvertToPO = async (requisition: Requisition) => {
-    // Update status to 'ordered' to indicate conversion to PO
-    const { error } = await supabase
-      .from('requisitions')
-      .update({ status: 'ordered' })
-      .eq('id', requisition.id);
+    try {
+      // Fetch requisition items
+      const { data: reqItems, error: itemsError } = await supabase
+        .from('requisition_items')
+        .select('*, product:products(name, price)')
+        .eq('requisition_id', requisition.id);
 
-    if (error) {
-      toast.error('Failed to convert to purchase order');
-      return;
+      if (itemsError) throw itemsError;
+
+      if (!reqItems || reqItems.length === 0) {
+        toast.error('No items found in this requisition');
+        return;
+      }
+
+      // Get next PO number
+      const { data: poNumber, error: poNumError } = await supabase.rpc('get_next_po_number', {
+        p_company_id: companyId,
+      });
+
+      if (poNumError) throw poNumError;
+
+      // Calculate totals
+      const subtotal = reqItems.reduce((sum, item) => {
+        return sum + (item.unit_price || item.product?.price || 0) * item.quantity;
+      }, 0);
+      const taxAmount = subtotal * 0.1;
+      const totalAmount = subtotal + taxAmount;
+
+      // Create purchase order
+      const { data: newPO, error: poError } = await supabase
+        .from('purchase_orders')
+        .insert({
+          company_id: companyId,
+          po_number: poNumber,
+          status: 'draft',
+          vendor_id: requisition.vendor_id,
+          location_id: requisition.location_id,
+          requisition_id: requisition.id,
+          subtotal,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          notes: `Converted from requisition ${requisition.requisition_id}`,
+        })
+        .select()
+        .single();
+
+      if (poError) throw poError;
+
+      // Create purchase order items
+      const poItems = reqItems.map(item => ({
+        purchase_order_id: newPO.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price || item.product?.price || 0,
+        total_price: (item.unit_price || item.product?.price || 0) * item.quantity,
+      }));
+
+      const { error: poItemsError } = await supabase
+        .from('purchase_order_items')
+        .insert(poItems);
+
+      if (poItemsError) throw poItemsError;
+
+      // Update requisition status to 'ordered'
+      const { error: updateError } = await supabase
+        .from('requisitions')
+        .update({ status: 'ordered' })
+        .eq('id', requisition.id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`Requisition ${requisition.requisition_id} converted to ${poNumber}`);
+      fetchRequisitions();
+    } catch (error: any) {
+      console.error('Error converting to PO:', error);
+      toast.error(error.message || 'Failed to convert to purchase order');
     }
-
-    toast.success(`Requisition ${requisition.requisition_id} converted to Purchase Order`);
-    fetchRequisitions();
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
