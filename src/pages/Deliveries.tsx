@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/table';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Truck, Pencil, Trash2 } from 'lucide-react';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -375,6 +376,34 @@ const Deliveries = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                {!isEditing && (
+                  <CopyFromIdDialog<Delivery>
+                    idLabel="Delivery ID"
+                    onFetch={async (id) => {
+                      const { data } = await supabase
+                        .from('deliveries')
+                        .select('*')
+                        .eq('company_id', companyId!)
+                        .eq('delivery_id', id)
+                        .maybeSingle();
+                      return data;
+                    }}
+                    onApply={(delivery) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        status: delivery.status,
+                        purchase_order_id: delivery.purchase_order_id || '',
+                        location_id: delivery.location_id || '',
+                        vendor_id: delivery.vendor_id || '',
+                        carrier: delivery.carrier || '',
+                        tracking_number: '', // Don't copy tracking number
+                        expected_date: delivery.expected_date || '',
+                        delivered_date: '',
+                        notes: delivery.notes || '',
+                      }));
+                    }}
+                  />
+                )}
                 <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>

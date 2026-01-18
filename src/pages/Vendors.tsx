@@ -36,6 +36,7 @@ import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 
 interface Vendor {
   id: string;
@@ -523,6 +524,38 @@ const Vendors = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                {!isEditing && (
+                  <CopyFromIdDialog<Vendor>
+                    idLabel="Vendor ID"
+                    onFetch={async (id) => {
+                      const { data } = await supabase
+                        .from('vendors')
+                        .select('*')
+                        .eq('company_id', companyId!)
+                        .eq('vendor_id', id)
+                        .maybeSingle();
+                      return data;
+                    }}
+                    onApply={(vendor) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        name: vendor.name,
+                        type: vendor.type,
+                        contact_name: vendor.contact_name || '',
+                        email: vendor.email || '',
+                        phone: vendor.phone || '',
+                        address_line1: vendor.address_line1 || '',
+                        address_line2: vendor.address_line2 || '',
+                        city: vendor.city || '',
+                        state: vendor.state || '',
+                        postal_code: vendor.postal_code || '',
+                        country: vendor.country || 'United States',
+                        website: vendor.website || '',
+                        notes: vendor.notes || '',
+                      }));
+                    }}
+                  />
+                )}
                 <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Vendor' : 'Add Vendor'}</DialogTitle>
