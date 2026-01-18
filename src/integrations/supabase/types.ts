@@ -162,6 +162,66 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          category: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price: number | null
+          product_id: string
+          sku: string | null
+          unit: string | null
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price?: number | null
+          product_id: string
+          sku?: string | null
+          unit?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price?: number | null
+          product_id?: string
+          sku?: string | null
+          unit?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -315,6 +375,7 @@ export type Database = {
     }
     Functions: {
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_product_id: { Args: { p_company_id: string }; Returns: string }
       get_next_vendor_id: { Args: { p_company_id: string }; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
