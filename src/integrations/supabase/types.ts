@@ -567,7 +567,6 @@ export type Database = {
       }
       ledgers: {
         Row: {
-          balance: number
           company_id: string
           created_at: string
           description: string | null
@@ -579,7 +578,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          balance?: number
           company_id: string
           created_at?: string
           description?: string | null
@@ -591,7 +589,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          balance?: number
           company_id?: string
           created_at?: string
           description?: string | null
