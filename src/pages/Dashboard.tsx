@@ -49,6 +49,7 @@ const Dashboard = () => {
   const [company, setCompany] = useState<Company | null>(null);
   const [apps, setApps] = useState<AppTile[]>([]);
   const [hiddenTiles, setHiddenTiles] = useState<Set<string>>(new Set());
+  const [openAppsInNewTab, setOpenAppsInNewTab] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -101,12 +102,13 @@ const Dashboard = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-      .select('dashboard_tile_order, hidden_tiles')
+      .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     const hidden = new Set((data?.hidden_tiles as string[]) || []);
     setHiddenTiles(hidden);
+    setOpenAppsInNewTab(data?.open_apps_in_new_tab || false);
 
     if (data?.dashboard_tile_order) {
       // Reorder apps based on saved preferences
@@ -290,6 +292,7 @@ const Dashboard = () => {
                     description={app.description}
                     path={app.path}
                     index={index}
+                    openInNewTab={openAppsInNewTab}
                   />
                 ))}
             </div>

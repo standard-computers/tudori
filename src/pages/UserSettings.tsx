@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -29,6 +32,12 @@ import { defaultApps, AppTile } from '@/config/apps';
 
 interface AppPreference extends AppTile {
   visible: boolean;
+}
+
+interface UserProfile {
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
 }
 
 interface SortableAppItemProps {
@@ -95,6 +104,9 @@ const UserSettings = () => {
   const { user, loading } = useAuth();
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
+  const [openInNewTab, setOpenInNewTab] = useState(false);
+  const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -116,17 +128,31 @@ const UserSettings = () => {
   useEffect(() => {
     if (user) {
       fetchPreferences();
+      fetchProfile();
     }
   }, [user]);
+
+  const fetchProfile = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, avatar_url')
+      .eq('user_id', user!.id)
+      .single();
+
+    if (data) {
+      setProfile(data);
+    }
+  };
 
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-      .select('dashboard_tile_order, hidden_tiles')
+      .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     const hiddenTiles = new Set((data?.hidden_tiles as string[]) || []);
+    setOpenInNewTab(data?.open_apps_in_new_tab || false);
     
     if (data?.dashboard_tile_order) {
       const orderedApps = data.dashboard_tile_order
@@ -147,7 +173,7 @@ const UserSettings = () => {
     }
   };
 
-  const savePreferences = useCallback(async (newApps: AppPreference[]) => {
+  const savePreferences = useCallback(async (newApps: AppPreference[], newOpenInNewTab?: boolean) => {
     if (!user) return;
     setSaving(true);
 
@@ -160,27 +186,37 @@ const UserSettings = () => {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    const updateData: any = { 
+      dashboard_tile_order: order,
+      hidden_tiles: hidden 
+    };
+    
+    if (newOpenInNewTab !== undefined) {
+      updateData.open_apps_in_new_tab = newOpenInNewTab;
+    }
+
     if (existing) {
       await supabase
         .from('user_preferences')
-        .update({ 
-          dashboard_tile_order: order,
-          hidden_tiles: hidden 
-        })
+        .update(updateData)
         .eq('user_id', user.id);
     } else {
       await supabase
         .from('user_preferences')
         .insert({ 
           user_id: user.id, 
-          dashboard_tile_order: order,
-          hidden_tiles: hidden 
+          ...updateData
         });
     }
 
     setSaving(false);
     toast.success('Preferences saved');
   }, [user]);
+
+  const handleOpenInNewTabChange = async (checked: boolean) => {
+    setOpenInNewTab(checked);
+    await savePreferences(apps, checked);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -213,6 +249,27 @@ const UserSettings = () => {
     toast.success('Dashboard reset to defaults');
   };
 
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+      })
+      .eq('user_id', user.id);
+
+    setSavingProfile(false);
+
+    if (error) {
+      toast.error('Failed to save profile');
+    } else {
+      toast.success('Profile saved');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -235,44 +292,117 @@ const UserSettings = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Dashboard Apps</CardTitle>
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              General
+            </TabsTrigger>
+            <TabsTrigger value="apps" className="flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4" />
+              Apps
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
                 <CardDescription>
-                  Drag to reorder and toggle visibility of dashboard tiles
+                  Update your personal information
                 </CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleReset} disabled={saving}>
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={apps.map(app => app.name)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {apps.map((app) => (
-                    <SortableAppItem
-                      key={app.name}
-                      app={app}
-                      onToggleVisibility={handleToggleVisibility}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name</Label>
+                    <Input
+                      id="first_name"
+                      value={profile.first_name}
+                      onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                      placeholder="Enter your first name"
                     />
-                  ))}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name</Label>
+                    <Input
+                      id="last_name"
+                      value={profile.last_name}
+                      onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                      placeholder="Enter your last name"
+                    />
+                  </div>
                 </div>
-              </SortableContext>
-            </DndContext>
-          </CardContent>
-        </Card>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input value={user?.email || ''} disabled className="bg-muted" />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveProfile} disabled={savingProfile}>
+                    {savingProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Save Changes
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="apps">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Dashboard Apps</CardTitle>
+                    <CardDescription>
+                      Drag to reorder and toggle visibility of dashboard tiles
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleReset} disabled={saving}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/50">
+                  <Checkbox 
+                    id="open-new-tab" 
+                    checked={openInNewTab}
+                    onCheckedChange={handleOpenInNewTabChange}
+                  />
+                  <Label 
+                    htmlFor="open-new-tab" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Open apps in new tabs
+                  </Label>
+                </div>
+                
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={apps.map(app => app.name)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {apps.map((app) => (
+                        <SortableAppItem
+                          key={app.name}
+                          app={app}
+                          onToggleVisibility={handleToggleVisibility}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
