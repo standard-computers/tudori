@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Kbd } from '@/components/ui/kbd';
 import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,6 +57,16 @@ const Settings = () => {
   const [savingConfig, setSavingConfig] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
+  const [activeTab, setActiveTab] = useState('company');
+
+  // Ctrl+S to save based on active tab
+  useSaveShortcut(() => {
+    if (activeTab === 'company' && company && !saving) {
+      handleSaveCompany();
+    } else if (activeTab === 'config' && !savingConfig) {
+      handleSaveConfigs();
+    }
+  }, true);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -288,7 +300,7 @@ const Settings = () => {
 
       {/* Main content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="company" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="company">Company</TabsTrigger>
             <TabsTrigger value="config">Config</TabsTrigger>
@@ -462,6 +474,7 @@ const Settings = () => {
                       <>
                         <Save className="w-4 h-4 mr-2" />
                         Save Changes
+                        <Kbd className="ml-2">⌘S</Kbd>
                       </>
                     )}
                   </Button>
@@ -577,6 +590,7 @@ const Settings = () => {
                   <>
                     <Save className="w-4 h-4 mr-2" />
                     Save Configuration
+                    <Kbd className="ml-2">⌘S</Kbd>
                   </>
                 )}
               </Button>
