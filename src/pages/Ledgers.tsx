@@ -881,7 +881,10 @@ const Ledgers = () => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeletingTx}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteTransaction}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteTransaction();
+              }}
               disabled={isDeletingTx}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
