@@ -306,7 +306,7 @@ const Rates = () => {
             </Button>
           </div>
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
