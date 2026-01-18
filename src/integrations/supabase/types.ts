@@ -106,6 +106,62 @@ export type Database = {
           },
         ]
       }
+      locations: {
+        Row: {
+          address_line1: string
+          address_line2: string | null
+          city: string
+          company_id: string
+          country: string
+          created_at: string
+          id: string
+          location_id: string
+          name: string
+          postal_code: string
+          state: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address_line1: string
+          address_line2?: string | null
+          city: string
+          company_id: string
+          country?: string
+          created_at?: string
+          id?: string
+          location_id: string
+          name: string
+          postal_code: string
+          state: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string | null
+          city?: string
+          company_id?: string
+          country?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          name?: string
+          postal_code?: string
+          state?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -187,6 +243,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
