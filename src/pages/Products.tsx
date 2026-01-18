@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -46,6 +47,13 @@ interface Product {
   vendors?: { name: string } | null;
 }
 
+interface ProductUom {
+  id?: string;
+  name: string;
+  abbreviation: string;
+  conversion_factor: string;
+}
+
 interface Vendor {
   id: string;
   vendor_id: string;
@@ -53,7 +61,7 @@ interface Vendor {
 }
 
 const PRODUCT_CATEGORIES = ['Raw Materials', 'Components', 'Finished Goods', 'Packaging', 'Equipment', 'Supplies', 'Services'];
-const PRODUCT_UNITS = ['each', 'box', 'case', 'pallet', 'kg', 'lb', 'liter', 'gallon', 'meter', 'foot'];
+const PRODUCT_UNITS = ['each', 'box', 'case', 'pallet', 'kg', 'lb', 'liter', 'gallon', 'meter', 'foot', 'roll', 'bag', 'bundle', 'sheet'];
 
 const Products = () => {
   const navigate = useNavigate();
@@ -65,6 +73,9 @@ const Products = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextProductId, setNextProductId] = useState('0001');
+  const [activeTab, setActiveTab] = useState('general');
+  const [uoms, setUoms] = useState<ProductUom[]>([]);
+  const [newUom, setNewUom] = useState<ProductUom>({ name: '', abbreviation: '', conversion_factor: '1' });
   const [formData, setFormData] = useState({
     product_id: '',
     vendor_id: '',
@@ -148,6 +159,26 @@ const Products = () => {
     }
   };
 
+  const fetchProductUoms = async (productId: string) => {
+    const { data, error } = await supabase
+      .from('product_uoms')
+      .select('*')
+      .eq('product_id', productId)
+      .order('name');
+
+    if (error) {
+      console.error('Failed to load UOMs:', error);
+      return;
+    }
+
+    setUoms(data?.map(u => ({
+      id: u.id,
+      name: u.name,
+      abbreviation: u.abbreviation || '',
+      conversion_factor: u.conversion_factor?.toString() || '1',
+    })) || []);
+  };
+
   const resetForm = () => {
     setFormData({
       product_id: nextProductId,
@@ -159,6 +190,9 @@ const Products = () => {
       price: '',
       unit: 'each',
     });
+    setUoms([]);
+    setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
+    setActiveTab('general');
     setIsEditing(false);
     setEditingId(null);
   };
@@ -169,7 +203,7 @@ const Products = () => {
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = async (product: Product) => {
     setFormData({
       product_id: product.product_id,
       vendor_id: product.vendor_id || '',
@@ -182,6 +216,8 @@ const Products = () => {
     });
     setIsEditing(true);
     setEditingId(product.id);
+    setActiveTab('general');
+    await fetchProductUoms(product.id);
     setIsDialogOpen(true);
   };
 
@@ -201,11 +237,30 @@ const Products = () => {
     fetchNextProductId();
   };
 
+  const handleAddUom = () => {
+    if (!newUom.name.trim()) {
+      toast.error('UOM name is required');
+      return;
+    }
+    if (uoms.some(u => u.name.toLowerCase() === newUom.name.toLowerCase())) {
+      toast.error('This UOM already exists');
+      return;
+    }
+    setUoms([...uoms, { ...newUom }]);
+    setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
+  };
+
+  const handleRemoveUom = (index: number) => {
+    setUoms(uoms.filter((_, i) => i !== index));
+  };
+
   const isProductIdInUse = products.some(p => p.product_id === formData.product_id && (!isEditing || p.id !== editingId));
   const isSkuInUse = formData.sku && products.some(p => p.sku === formData.sku && (!isEditing || p.id !== editingId));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let productId = editingId;
 
     if (isEditing && editingId) {
       const { error } = await supabase
@@ -225,10 +280,8 @@ const Products = () => {
         toast.error('Failed to update product');
         return;
       }
-
-      toast.success('Product updated');
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .insert({
           company_id: companyId!,
@@ -240,16 +293,43 @@ const Products = () => {
           category: formData.category || null,
           price: formData.price ? parseFloat(formData.price) : null,
           unit: formData.unit || null,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) {
+      if (error || !data) {
         toast.error('Failed to create product');
         return;
       }
 
-      toast.success('Product created');
+      productId = data.id;
     }
 
+    // Save UOMs
+    if (productId) {
+      // Delete existing UOMs and re-insert
+      await supabase.from('product_uoms').delete().eq('product_id', productId);
+      
+      if (uoms.length > 0) {
+        const uomInserts = uoms.map(u => ({
+          product_id: productId,
+          name: u.name,
+          abbreviation: u.abbreviation || null,
+          conversion_factor: parseFloat(u.conversion_factor) || 1,
+        }));
+
+        const { error: uomError } = await supabase
+          .from('product_uoms')
+          .insert(uomInserts);
+
+        if (uomError) {
+          console.error('Failed to save UOMs:', uomError);
+          toast.error('Product saved but failed to save some UOMs');
+        }
+      }
+    }
+
+    toast.success(isEditing ? 'Product updated' : 'Product created');
     setIsDialogOpen(false);
     fetchProducts();
     fetchNextProductId();
@@ -286,7 +366,7 @@ const Products = () => {
                   Add Product
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Product' : 'Add Product'}</DialogTitle>
@@ -294,139 +374,243 @@ const Products = () => {
                       {isEditing ? 'Update product details.' : 'Add a new product to your catalog.'}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="general">General</TabsTrigger>
+                      <TabsTrigger value="uom">Units of Measure</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="general" className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="product_id">Product ID</Label>
+                          <Input
+                            id="product_id"
+                            value={formData.product_id}
+                            onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
+                            disabled={isEditing}
+                            className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && isProductIdInUse ? 'border-destructive border-2' : ''}`}
+                            required
+                          />
+                          {!isEditing && isProductIdInUse && (
+                            <p className="text-sm text-destructive flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              This ID is already in use
+                            </p>
+                          )}
+                          {!isEditing && !isProductIdInUse && formData.product_id && (
+                            <p className="text-sm text-amber-600 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              ID cannot be changed after creation
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="sku">SKU</Label>
+                          <Input
+                            id="sku"
+                            value={formData.sku}
+                            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                            placeholder="ABC-12345"
+                            className={isSkuInUse ? 'border-destructive border-2' : ''}
+                          />
+                          {isSkuInUse && (
+                            <p className="text-sm text-destructive flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              This SKU is already in use
+                            </p>
+                          )}
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="product_id">Product ID</Label>
+                        <Label htmlFor="name">Product Name *</Label>
                         <Input
-                          id="product_id"
-                          value={formData.product_id}
-                          onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
-                          disabled={isEditing}
-                          className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && isProductIdInUse ? 'border-destructive border-2' : ''}`}
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="Widget Pro 3000"
                           required
                         />
-                        {!isEditing && isProductIdInUse && (
-                          <p className="text-sm text-destructive flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            This ID is already in use
-                          </p>
-                        )}
-                        {!isEditing && !isProductIdInUse && formData.product_id && (
-                          <p className="text-sm text-amber-600 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            ID cannot be changed after creation
-                          </p>
-                        )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="sku">SKU</Label>
+                        <Label htmlFor="vendor_id">Vendor (Supplier)</Label>
+                        <Select
+                          value={formData.vendor_id || "none"}
+                          onValueChange={(value) => setFormData({ ...formData, vendor_id: value === "none" ? "" : value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a vendor..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {vendors.map((vendor) => (
+                              <SelectItem key={vendor.id} value={vendor.id}>
+                                {vendor.name} ({vendor.vendor_id})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Select
+                            value={formData.category || "none"}
+                            onValueChange={(value) => setFormData({ ...formData, category: value === "none" ? "" : value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {PRODUCT_CATEGORIES.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                  {cat}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="unit">Base Unit of Measure</Label>
+                          <Select
+                            value={formData.unit}
+                            onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_UNITS.map((unit) => (
+                                <SelectItem key={unit} value={unit}>
+                                  {unit}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="price">Price (per {formData.unit})</Label>
                         <Input
-                          id="sku"
-                          value={formData.sku}
-                          onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                          placeholder="ABC-12345"
-                          className={isSkuInUse ? 'border-destructive border-2' : ''}
+                          id="price"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                          placeholder="0.00"
                         />
-                        {isSkuInUse && (
-                          <p className="text-sm text-destructive flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            This SKU is already in use
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Product Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Widget Pro 3000"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="vendor_id">Vendor (Supplier)</Label>
-                      <Select
-                        value={formData.vendor_id || "none"}
-                        onValueChange={(value) => setFormData({ ...formData, vendor_id: value === "none" ? "" : value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a vendor..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {vendors.map((vendor) => (
-                            <SelectItem key={vendor.id} value={vendor.id}>
-                              {vendor.name} ({vendor.vendor_id})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select
-                          value={formData.category}
-                          onValueChange={(value) => setFormData({ ...formData, category: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PRODUCT_CATEGORIES.map((cat) => (
-                              <SelectItem key={cat} value={cat}>
-                                {cat}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="unit">Unit</Label>
-                        <Select
-                          value={formData.unit}
-                          onValueChange={(value) => setFormData({ ...formData, unit: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PRODUCT_UNITS.map((unit) => (
-                              <SelectItem key={unit} value={unit}>
-                                {unit}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          placeholder="Product description..."
+                          rows={3}
+                        />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="price">Price</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Product description..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
+                    </TabsContent>
+                    
+                    <TabsContent value="uom" className="space-y-4 mt-4">
+                      <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Base Unit:</strong> {formData.unit}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Add additional units of measure and specify how many base units ({formData.unit}) are in each.
+                        </p>
+                      </div>
+                      
+                      {uoms.length > 0 && (
+                        <div className="border rounded-lg overflow-hidden mb-4">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Abbrev.</TableHead>
+                                <TableHead>Conversion</TableHead>
+                                <TableHead className="w-16"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {uoms.map((uom, index) => (
+                                <TableRow key={index}>
+                                  <TableCell className="font-medium">{uom.name}</TableCell>
+                                  <TableCell>{uom.abbreviation || '-'}</TableCell>
+                                  <TableCell>
+                                    1 {uom.name} = {uom.conversion_factor} {formData.unit}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemoveUom(index)}
+                                    >
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                      
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <h4 className="font-medium text-sm">Add Unit of Measure</h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="uom_name" className="text-xs">Name *</Label>
+                            <Input
+                              id="uom_name"
+                              value={newUom.name}
+                              onChange={(e) => setNewUom({ ...newUom, name: e.target.value })}
+                              placeholder="e.g., Pallet"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="uom_abbrev" className="text-xs">Abbreviation</Label>
+                            <Input
+                              id="uom_abbrev"
+                              value={newUom.abbreviation}
+                              onChange={(e) => setNewUom({ ...newUom, abbreviation: e.target.value })}
+                              placeholder="e.g., PLT"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="uom_factor" className="text-xs">Base units per UOM *</Label>
+                            <Input
+                              id="uom_factor"
+                              type="number"
+                              step="0.0001"
+                              min="0.0001"
+                              value={newUom.conversion_factor}
+                              onChange={(e) => setNewUom({ ...newUom, conversion_factor: e.target.value })}
+                              placeholder="e.g., 48"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {newUom.name && newUom.conversion_factor ? (
+                            <>1 {newUom.name} = {newUom.conversion_factor} {formData.unit}</>
+                          ) : (
+                            <>Example: 1 Pallet = 48 each</>
+                          )}
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={handleAddUom}>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add UOM
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <DialogFooter className="mt-6">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
