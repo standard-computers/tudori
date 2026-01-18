@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
+import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -135,11 +137,13 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Use vendor sources hook for combined vendors + DC/warehouse locations
+  const { vendorOptions, plainVendorOptions, parseVendorValue, getVendorDisplayName } = useVendorSources(companyId);
   
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -186,7 +190,6 @@ const Orders = () => {
     if (companyId) {
       fetchOrders();
       fetchLocations();
-      fetchVendors();
       fetchProducts();
       fetchTaxRates();
       fetchLedgers();
@@ -239,14 +242,23 @@ const Orders = () => {
     setLocations(data || []);
   };
 
-  const fetchVendors = async () => {
-    const { data } = await supabase
-      .from('vendors')
-      .select('id, name, vendor_id')
-      .eq('company_id', companyId)
-      .order('name');
-    setVendors(data || []);
-  };
+  // Create location options for SearchableSelect
+  const locationOptions: SearchableSelectOption[] = useMemo(() => {
+    return locations.map((loc) => ({
+      value: loc.id,
+      label: loc.name,
+      sublabel: loc.location_id,
+    }));
+  }, [locations]);
+
+  // Create product options for SearchableSelect
+  const productOptions: SearchableSelectOption[] = useMemo(() => {
+    return products.map((p) => ({
+      value: p.id,
+      label: p.name,
+      sublabel: `$${p.price?.toFixed(2) || '0.00'}`,
+    }));
+  }, [products]);
 
   const fetchProducts = async () => {
     const { data } = await supabase
@@ -705,10 +717,25 @@ const Orders = () => {
     fetchOrders();
   };
 
-  // Filter products by selected vendor
-  const filteredProducts = formData.vendor_id
-    ? products.filter(p => p.vendor_id === formData.vendor_id)
-    : products;
+  // Filter products by selected vendor (handle new vendor:id format)
+  const filteredProducts = useMemo(() => {
+    if (!formData.vendor_id) return products;
+    const parsed = parseVendorValue(formData.vendor_id);
+    if (parsed?.type === 'vendor') {
+      return products.filter(p => p.vendor_id === parsed.id);
+    }
+    // For location-based vendors (DC/warehouse), show all products
+    return products;
+  }, [formData.vendor_id, products, parseVendorValue]);
+
+  // Create filtered product options for SearchableSelect
+  const filteredProductOptions: SearchableSelectOption[] = useMemo(() => {
+    return filteredProducts.map((p) => ({
+      value: p.id,
+      label: p.name,
+      sublabel: `$${p.price?.toFixed(2) || '0.00'}`,
+    }));
+  }, [filteredProducts]);
 
   if (authLoading || loading) {
     return (
@@ -782,65 +809,40 @@ const Orders = () => {
           {/* Header Fields */}
           <div className="grid grid-cols-3 gap-4 pb-4 border-b">
             <div className="space-y-2">
-              <Label htmlFor="vendor">Vendor *</Label>
-              <Select
+              <Label htmlFor="vendor">Vendor / Source *</Label>
+              <SearchableSelect
+                options={vendorOptions}
                 value={formData.vendor_id}
                 onValueChange={(value) => {
                   setFormData({ ...formData, vendor_id: value });
                   setOrderItems([]);
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select vendor or source"
+              />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="location">Ship To</Label>
-              <Select
-                value={formData.location_id || "none"}
-                onValueChange={(value) => setFormData({ ...formData, location_id: value === "none" ? "" : value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No location</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={locationOptions}
+                value={formData.location_id}
+                onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                placeholder="Select location"
+                allowClear
+                clearLabel="No location"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="bill_to_location">Bill To</Label>
-              <Select
-                value={formData.bill_to_location_id || "none"}
-                onValueChange={(value) => setFormData({ ...formData, bill_to_location_id: value === "none" ? "" : value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No location (general ledger)</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={locationOptions}
+                value={formData.bill_to_location_id}
+                onValueChange={(value) => setFormData({ ...formData, bill_to_location_id: value })}
+                placeholder="Select location"
+                allowClear
+                clearLabel="No location (general ledger)"
+              />
             </div>
           </div>
 
@@ -870,21 +872,12 @@ const Orders = () => {
                   {orderItems.map((item, index) => (
                     <div key={index} className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <Select
+                        <SearchableSelect
+                          options={filteredProductOptions}
                           value={item.product_id}
                           onValueChange={(value) => updateOrderItem(index, 'product_id', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filteredProducts.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name} (${p.price?.toFixed(2) || '0.00'})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Select product"
+                        />
                       </div>
                       <div className="w-24">
                         <Input
