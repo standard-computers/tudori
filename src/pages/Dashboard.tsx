@@ -39,7 +39,7 @@ const apps = [
   { name: 'Inventory', icon: Warehouse, color: 'bg-blue-500', description: 'Stock management', path: null },
   { name: 'Locations', icon: MapPin, color: 'bg-green-500', description: 'Warehouses & stores', path: '/locations' },
   { name: 'Vendors', icon: Building, color: 'bg-red-500', description: 'Suppliers & partners', path: '/vendors' },
-  { name: 'Customers', icon: Users, color: 'bg-violet-500', description: 'CRM & contacts', path: null },
+  { name: 'Customers', icon: Users, color: 'bg-violet-500', description: 'CRM & contacts', path: '/customers' },
   { name: 'Products', icon: Package, color: 'bg-amber-500', description: 'Product catalog', path: '/products' },
   { name: 'Analytics', icon: BarChart3, color: 'bg-pink-500', description: 'Reports & insights', path: null },
   { name: 'Invoices', icon: FileText, color: 'bg-cyan-500', description: 'Billing & payments', path: null },

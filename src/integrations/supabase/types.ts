@@ -65,6 +65,77 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          company_id: string
+          contact_name: string | null
+          country: string | null
+          created_at: string
+          customer_id: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          type: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_id: string
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          customer_id: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          type?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_id?: string
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          customer_id?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          type?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -409,6 +480,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_next_customer_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
       get_next_vendor_id: { Args: { p_company_id: string }; Returns: string }
