@@ -1,0 +1,459 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Building2, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+const signupStep1Schema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+});
+
+const signupStep2Schema = z.object({
+  companyName: z.string().min(1, 'Company name is required'),
+  industry: z.string().optional(),
+  size: z.string().optional(),
+  addressLine1: z.string().min(1, 'Address is required'),
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(1, 'State is required'),
+  postalCode: z.string().min(1, 'Postal code is required'),
+  country: z.string().min(1, 'Country is required'),
+});
+
+const Auth = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
+  const [signupStep, setSignupStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Login form
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Signup step 1
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+
+  // Signup step 2 - Company info
+  const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [size, setSize] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('United States');
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Welcome back!');
+      navigate('/dashboard');
+    }
+    setLoading(false);
+  };
+
+  const handleSignupStep1 = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    
+    const result = signupStep1Schema.safeParse({ email, password, firstName, lastName });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setSignupStep(2);
+  };
+
+  const handleSignupStep2 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    
+    const result = signupStep2Schema.safeParse({
+      companyName,
+      industry,
+      size,
+      addressLine1,
+      city,
+      state,
+      postalCode,
+      country,
+    });
+    
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setLoading(true);
+    
+    // First, sign up the user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (authError) {
+      toast.error(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (authData.user) {
+      // Create company
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .insert({
+          name: companyName,
+          industry,
+          size,
+          address_line1: addressLine1,
+          address_line2: addressLine2 || null,
+          city,
+          state,
+          postal_code: postalCode,
+          country,
+        })
+        .select()
+        .single();
+
+      if (companyError) {
+        toast.error('Failed to create company: ' + companyError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: authData.user.id,
+          company_id: companyData.id,
+          first_name: firstName,
+          last_name: lastName,
+        });
+
+      if (profileError) {
+        toast.error('Failed to create profile: ' + profileError.message);
+        setLoading(false);
+        return;
+      }
+
+      toast.success('Account created successfully!');
+      navigate('/dashboard');
+    }
+    
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+      
+      <div className="w-full max-w-md relative animate-fade-in">
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+            <Building2 className="w-7 h-7 text-primary-foreground" />
+          </div>
+          <span className="text-2xl font-display font-bold text-foreground">EnterpriseHub</span>
+        </div>
+
+        <Card className="glass-card">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-display">
+              {isLogin ? 'Welcome Back' : signupStep === 1 ? 'Create Account' : 'Company Details'}
+            </CardTitle>
+            <CardDescription>
+              {isLogin 
+                ? 'Sign in to access your dashboard' 
+                : signupStep === 1 
+                  ? 'Enter your details to get started'
+                  : 'Tell us about your company'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLogin ? (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={errors.email ? 'border-destructive' : ''}
+                  />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={errors.password ? 'border-destructive' : ''}
+                  />
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Sign In
+                </Button>
+              </form>
+            ) : signupStep === 1 ? (
+              <form onSubmit={handleSignupStep1} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className={errors.firstName ? 'border-destructive' : ''}
+                    />
+                    {errors.firstName && <p className="text-sm text-destructive">{errors.firstName}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className={errors.lastName ? 'border-destructive' : ''}
+                    />
+                    {errors.lastName && <p className="text-sm text-destructive">{errors.lastName}</p>}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signupEmail">Email</Label>
+                  <Input
+                    id="signupEmail"
+                    type="email"
+                    placeholder="you@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={errors.email ? 'border-destructive' : ''}
+                  />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signupPassword">Password</Label>
+                  <Input
+                    id="signupPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={errors.password ? 'border-destructive' : ''}
+                  />
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                </div>
+                <Button type="submit" className="w-full">
+                  Continue <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleSignupStep2} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    placeholder="Acme Inc."
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className={errors.companyName ? 'border-destructive' : ''}
+                  />
+                  {errors.companyName && <p className="text-sm text-destructive">{errors.companyName}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="industry">Industry</Label>
+                    <Select value={industry} onValueChange={setIndustry}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="technology">Technology</SelectItem>
+                        <SelectItem value="healthcare">Healthcare</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="retail">Retail</SelectItem>
+                        <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="size">Company Size</Label>
+                    <Select value={size} onValueChange={setSize}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1-10">1-10</SelectItem>
+                        <SelectItem value="11-50">11-50</SelectItem>
+                        <SelectItem value="51-200">51-200</SelectItem>
+                        <SelectItem value="201-500">201-500</SelectItem>
+                        <SelectItem value="500+">500+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addressLine1">Address</Label>
+                  <Input
+                    id="addressLine1"
+                    placeholder="123 Main Street"
+                    value={addressLine1}
+                    onChange={(e) => setAddressLine1(e.target.value)}
+                    className={errors.addressLine1 ? 'border-destructive' : ''}
+                  />
+                  {errors.addressLine1 && <p className="text-sm text-destructive">{errors.addressLine1}</p>}
+                </div>
+                <Input
+                  placeholder="Suite, Unit, etc. (optional)"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      placeholder="San Francisco"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className={errors.city ? 'border-destructive' : ''}
+                    />
+                    {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      placeholder="CA"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      className={errors.state ? 'border-destructive' : ''}
+                    />
+                    {errors.state && <p className="text-sm text-destructive">{errors.state}</p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode">Postal Code</Label>
+                    <Input
+                      id="postalCode"
+                      placeholder="94105"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      className={errors.postalCode ? 'border-destructive' : ''}
+                    />
+                    {errors.postalCode && <p className="text-sm text-destructive">{errors.postalCode}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className={errors.country ? 'border-destructive' : ''}
+                    />
+                    {errors.country && <p className="text-sm text-destructive">{errors.country}</p>}
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSignupStep(1)}
+                    className="flex-1"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={loading}>
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Create Account
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setSignupStep(1);
+                  setErrors({});
+                }}
+              >
+                {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Auth;
