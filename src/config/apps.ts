@@ -31,7 +31,7 @@ export interface AppTile {
 
 export const defaultApps: AppTile[] = [
   { name: 'Cockpit', icon: Gauge, color: 'text-orange-500', description: 'Location dashboard', path: '/cockpit' },
-  { name: 'Sales', icon: DollarSign, color: 'text-emerald-500', description: 'Manage orders & revenue', path: null },
+  { name: 'Sales Orders', icon: DollarSign, color: 'text-emerald-500', description: 'Customer orders', path: '/sales-orders' },
   { name: 'Inventory', icon: Warehouse, color: 'text-blue-500', description: 'Stock management', path: null },
   { name: 'Locations', icon: MapPin, color: 'text-green-500', description: 'Warehouses & stores', path: '/locations' },
   { name: 'Vendors', icon: Building, color: 'text-red-500', description: 'Suppliers & partners', path: '/vendors' },

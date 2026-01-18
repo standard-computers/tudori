@@ -27,6 +27,7 @@ import UserSettings from "./pages/UserSettings";
 import Cockpit from "./pages/Cockpit";
 import Deliveries from "./pages/Deliveries";
 import Ledgers from "./pages/Ledgers";
+import SalesOrders from "./pages/SalesOrders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
                   <Route path="/cockpit" element={<Cockpit />} />
                   <Route path="/deliveries" element={<Deliveries />} />
                   <Route path="/ledgers" element={<Ledgers />} />
+                  <Route path="/sales-orders" element={<SalesOrders />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>

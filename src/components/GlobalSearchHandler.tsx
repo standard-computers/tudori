@@ -8,6 +8,7 @@ const LIST_VIEW_ROUTES = [
   '/customers',
   '/products',
   '/orders',
+  '/sales-orders',
   '/requisitions',
   '/deliveries',
   '/locations',
