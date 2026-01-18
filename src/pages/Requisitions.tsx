@@ -30,7 +30,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Requisition {
@@ -314,6 +320,22 @@ const Requisitions = () => {
     fetchRequisitions();
   };
 
+  const handleConvertToPO = async (requisition: Requisition) => {
+    // Update status to 'ordered' to indicate conversion to PO
+    const { error } = await supabase
+      .from('requisitions')
+      .update({ status: 'ordered' })
+      .eq('id', requisition.id);
+
+    if (error) {
+      toast.error('Failed to convert to purchase order');
+      return;
+    }
+
+    toast.success(`Requisition ${requisition.requisition_id} converted to Purchase Order`);
+    fetchRequisitions();
+  };
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     const { error } = await supabase
       .from('requisitions')
@@ -434,13 +456,29 @@ const Requisitions = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteRequisition(req.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleConvertToPO(req)}
+                              disabled={req.status === 'ordered' || req.status === 'completed'}
+                            >
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              Convert to PO
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteRequisition(req.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
