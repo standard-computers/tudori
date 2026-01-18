@@ -99,6 +99,7 @@ const statusColors: Record<string, string> = {
 const Requisitions = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -118,6 +119,19 @@ const Requisitions = () => {
   // View dialog state
   const [viewRequisition, setViewRequisition] = useState<Requisition | null>(null);
   const [viewItems, setViewItems] = useState<RequisitionItem[]>([]);
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction('req/new');
+    } else if (isViewDialogOpen) {
+      setTransaction('req/view');
+    } else if (isRunDialogOpen) {
+      setTransaction('req/run');
+    } else {
+      setTransaction('req');
+    }
+  }, [isDialogOpen, isViewDialogOpen, isRunDialogOpen, setTransaction]);
   
   // Run dialog form state
   const [runFormData, setRunFormData] = useState({

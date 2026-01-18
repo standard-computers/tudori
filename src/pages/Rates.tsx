@@ -49,6 +49,7 @@ interface TaxRate {
 const Rates = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -66,6 +67,15 @@ const Rates = () => {
     is_default: false,
     is_active: true,
   });
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(editingRate ? 'rate/edit' : 'rate/new');
+    } else {
+      setTransaction('rate');
+    }
+  }, [isDialogOpen, editingRate, setTransaction]);
 
   useEffect(() => {
     if (!authLoading && !user) {

@@ -1,8 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useTransaction } from "@/contexts/StatusBarContext";
 
 const NotFound = () => {
   const location = useLocation();
+  useTransaction('404');
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);

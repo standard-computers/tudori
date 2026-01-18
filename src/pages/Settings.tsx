@@ -66,6 +66,7 @@ type AppRole = Database['public']['Enums']['app_role'];
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -83,6 +84,11 @@ const Settings = () => {
     auto_mark_delivery_delivered: true,
   });
   const [savingPOSettings, setSavingPOSettings] = useState(false);
+
+  // Set transaction based on active tab
+  useEffect(() => {
+    setTransaction(`set/${activeTab}`);
+  }, [activeTab, setTransaction]);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
 

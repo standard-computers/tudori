@@ -217,6 +217,7 @@ const CustomerTable = ({
 const Customers = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -239,6 +240,15 @@ const Customers = () => {
     website: '',
     notes: '',
   });
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(isEditing ? 'cust/edit' : 'cust/new');
+    } else {
+      setTransaction('cust');
+    }
+  }, [isDialogOpen, isEditing, setTransaction]);
 
   useEffect(() => {
     if (!loading && !user) {
