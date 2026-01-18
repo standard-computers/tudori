@@ -382,7 +382,7 @@ const Ledgers = () => {
     
     setIsDeletingTx(true);
     try {
-      // Delete the transaction
+      // Delete the transaction - the database trigger will automatically update the ledger balance
       const { error: txError } = await supabase
         .from('ledger_transactions' as any)
         .delete()
@@ -390,16 +390,7 @@ const Ledgers = () => {
       
       if (txError) throw txError;
 
-      // Update ledger balance
-      const newBalance = currentBalance - txAmount;
-      const { error: ledgerError } = await supabase
-        .from('ledgers' as any)
-        .update({ balance: newBalance })
-        .eq('id', ledgerId);
-      
-      if (ledgerError) throw ledgerError;
-
-      // Refresh data FIRST before closing dialogs
+      // Refresh transactions list
       const { data: updatedTransactions } = await supabase
         .from('ledger_transactions' as any)
         .select('*')
@@ -408,11 +399,14 @@ const Ledgers = () => {
       
       setLedgerTransactions((updatedTransactions as any) || []);
       
-      // Update the viewing ledger with new balance
-      setViewingLedger(prev => prev ? { ...prev, balance: newBalance } : null);
-      
-      // Refresh main ledgers list
+      // Refresh main ledgers list to get updated balance from trigger
       await fetchLedgers(companyId!);
+      
+      // Update the viewing ledger with the new balance from the refreshed data
+      const updatedLedger = ledgers.find(l => l.id === ledgerId);
+      if (updatedLedger) {
+        setViewingLedger(updatedLedger);
+      }
 
       toast.success('Transaction deleted');
       
