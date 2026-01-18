@@ -301,20 +301,7 @@ const Products = () => {
     setProducts(data || []);
   };
 
-  const fetchVendors = async () => {
-    const { data, error } = await supabase
-      .from('vendors')
-      .select('id, vendor_id, name')
-      .eq('company_id', companyId!)
-      .order('name');
-
-    if (error) {
-      console.error('Failed to load vendors:', error);
-      return;
-    }
-
-    setVendors(data || []);
-  };
+  // fetchVendors removed - using useVendorSources hook instead
 
   const fetchNextProductId = async () => {
     const { data, error } = await supabase.rpc('get_next_product_id', {
@@ -606,22 +593,13 @@ const Products = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="vendor_id">Vendor (Supplier)</Label>
-                        <Select
-                          value={formData.vendor_id || "none"}
-                          onValueChange={(value) => setFormData({ ...formData, vendor_id: value === "none" ? "" : value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a vendor..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {vendors.map((vendor) => (
-                              <SelectItem key={vendor.id} value={vendor.id}>
-                                {vendor.name} ({vendor.vendor_id})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          options={plainVendorOptions}
+                          value={formData.vendor_id}
+                          onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                          placeholder="Select a vendor..."
+                          allowClear
+                        />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
