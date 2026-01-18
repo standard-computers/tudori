@@ -822,7 +822,7 @@ const Cockpit = () => {
               </Button>
               <Button type="submit">
                 {editingArea ? 'Save Changes' : 'Create'}
-                <Kbd>Ctrl</Kbd><Kbd>S</Kbd>
+                <Kbd className="ml-2">⌘S</Kbd>
               </Button>
             </DialogFooter>
           </form>
@@ -910,7 +910,7 @@ const Cockpit = () => {
               </Button>
               <Button type="submit">
                 {editingBin ? 'Save Changes' : 'Create'}
-                <Kbd>Ctrl</Kbd><Kbd>S</Kbd>
+                <Kbd className="ml-2">⌘S</Kbd>
               </Button>
             </DialogFooter>
           </form>
