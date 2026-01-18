@@ -19,6 +19,7 @@ import Orders from "./pages/Orders";
 import Rates from "./pages/Rates";
 import UserSettings from "./pages/UserSettings";
 import Cockpit from "./pages/Cockpit";
+import Deliveries from "./pages/Deliveries";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/rates" element={<Rates />} />
             <Route path="/user-settings" element={<UserSettings />} />
             <Route path="/cockpit" element={<Cockpit />} />
+            <Route path="/deliveries" element={<Deliveries />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

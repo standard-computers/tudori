@@ -1,0 +1,590 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Kbd } from '@/components/ui/kbd';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+
+interface Delivery {
+  id: string;
+  delivery_id: string;
+  purchase_order_id: string | null;
+  location_id: string | null;
+  vendor_id: string | null;
+  status: string;
+  expected_date: string | null;
+  delivered_date: string | null;
+  tracking_number: string | null;
+  carrier: string | null;
+  notes: string | null;
+  purchase_order?: { po_number: string } | null;
+  location?: { name: string } | null;
+  vendor?: { name: string } | null;
+}
+
+interface PurchaseOrder {
+  id: string;
+  po_number: string;
+}
+
+interface Location {
+  id: string;
+  name: string;
+  location_id: string;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  vendor_id: string;
+}
+
+const DELIVERY_STATUSES = ['pending', 'in_transit', 'delivered', 'cancelled'];
+const CARRIERS = ['UPS', 'FedEx', 'USPS', 'DHL', 'Freight', 'Local Pickup', 'Other'];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+    case 'in_transit': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+    case 'delivered': return 'bg-green-500/10 text-green-600 border-green-500/20';
+    case 'cancelled': return 'bg-red-500/10 text-red-600 border-red-500/20';
+    default: return 'bg-muted text-muted-foreground';
+  }
+};
+
+const Deliveries = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nextDeliveryId, setNextDeliveryId] = useState('DEL-0001');
+  const [formData, setFormData] = useState({
+    delivery_id: '',
+    purchase_order_id: '',
+    location_id: '',
+    vendor_id: '',
+    status: 'pending',
+    expected_date: '',
+    delivered_date: '',
+    tracking_number: '',
+    carrier: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchCompanyId();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (companyId) {
+      fetchDeliveries();
+      fetchNextDeliveryId();
+      fetchPurchaseOrders();
+      fetchLocations();
+      fetchVendors();
+    }
+  }, [companyId]);
+
+  const fetchCompanyId = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', user!.id)
+      .single();
+    
+    if (data?.company_id) {
+      setCompanyId(data.company_id);
+    }
+  };
+
+  const fetchDeliveries = async () => {
+    const { data, error } = await supabase
+      .from('deliveries')
+      .select(`
+        *,
+        purchase_order:purchase_orders(po_number),
+        location:locations(name),
+        vendor:vendors(name)
+      `)
+      .eq('company_id', companyId!)
+      .order('delivery_id', { ascending: false });
+
+    if (error) {
+      toast.error('Failed to load deliveries');
+      return;
+    }
+
+    setDeliveries(data || []);
+  };
+
+  const fetchNextDeliveryId = async () => {
+    const { data, error } = await supabase.rpc('get_next_delivery_id', {
+      p_company_id: companyId!,
+    });
+
+    if (!error && data) {
+      setNextDeliveryId(data);
+    }
+  };
+
+  const fetchPurchaseOrders = async () => {
+    const { data } = await supabase
+      .from('purchase_orders')
+      .select('id, po_number')
+      .eq('company_id', companyId!)
+      .order('po_number', { ascending: false });
+    
+    setPurchaseOrders(data || []);
+  };
+
+  const fetchLocations = async () => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name, location_id')
+      .eq('company_id', companyId!)
+      .order('name');
+    
+    setLocations(data || []);
+  };
+
+  const fetchVendors = async () => {
+    const { data } = await supabase
+      .from('vendors')
+      .select('id, name, vendor_id')
+      .eq('company_id', companyId!)
+      .order('name');
+    
+    setVendors(data || []);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      delivery_id: nextDeliveryId,
+      purchase_order_id: '',
+      location_id: '',
+      vendor_id: '',
+      status: 'pending',
+      expected_date: '',
+      delivered_date: '',
+      tracking_number: '',
+      carrier: '',
+      notes: '',
+    });
+    setIsEditing(false);
+    setEditingId(null);
+  };
+
+  const handleOpenDialog = () => {
+    resetForm();
+    setFormData(prev => ({ ...prev, delivery_id: nextDeliveryId }));
+    setIsDialogOpen(true);
+  };
+
+  useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleEdit = (delivery: Delivery) => {
+    setFormData({
+      delivery_id: delivery.delivery_id,
+      purchase_order_id: delivery.purchase_order_id || '',
+      location_id: delivery.location_id || '',
+      vendor_id: delivery.vendor_id || '',
+      status: delivery.status,
+      expected_date: delivery.expected_date || '',
+      delivered_date: delivery.delivered_date || '',
+      tracking_number: delivery.tracking_number || '',
+      carrier: delivery.carrier || '',
+      notes: delivery.notes || '',
+    });
+    setIsEditing(true);
+    setEditingId(delivery.id);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from('deliveries')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete delivery');
+      return;
+    }
+
+    toast.success('Delivery deleted');
+    fetchDeliveries();
+    fetchNextDeliveryId();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const payload = {
+      purchase_order_id: formData.purchase_order_id || null,
+      location_id: formData.location_id || null,
+      vendor_id: formData.vendor_id || null,
+      status: formData.status,
+      expected_date: formData.expected_date || null,
+      delivered_date: formData.delivered_date || null,
+      tracking_number: formData.tracking_number || null,
+      carrier: formData.carrier || null,
+      notes: formData.notes || null,
+    };
+
+    if (isEditing && editingId) {
+      const { error } = await supabase
+        .from('deliveries')
+        .update(payload)
+        .eq('id', editingId);
+
+      if (error) {
+        toast.error('Failed to update delivery');
+        return;
+      }
+
+      toast.success('Delivery updated');
+    } else {
+      const { error } = await supabase
+        .from('deliveries')
+        .insert({
+          ...payload,
+          company_id: companyId!,
+          delivery_id: formData.delivery_id,
+        });
+
+      if (error) {
+        toast.error('Failed to create delivery');
+        return;
+      }
+
+      toast.success('Delivery created');
+    }
+
+    setIsDialogOpen(false);
+    fetchDeliveries();
+    fetchNextDeliveryId();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center">
+                  <Truck className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-xl font-display font-bold text-foreground">Deliveries</h1>
+              </div>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleOpenDialog}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Delivery
+                  <Kbd>N</Kbd>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[550px]">
+                <form onSubmit={handleSubmit}>
+                  <DialogHeader>
+                    <DialogTitle>{isEditing ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>
+                    <DialogDescription>
+                      {isEditing ? 'Update delivery details.' : 'Track a new delivery.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="delivery_id">Delivery ID</Label>
+                        <Input
+                          id="delivery_id"
+                          value={formData.delivery_id}
+                          onChange={(e) => setFormData({ ...formData, delivery_id: e.target.value })}
+                          disabled={isEditing}
+                          className={isEditing ? 'bg-muted' : ''}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => setFormData({ ...formData, status: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DELIVERY_STATUSES.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="purchase_order_id">Purchase Order</Label>
+                      <Select
+                        value={formData.purchase_order_id}
+                        onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select PO (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {purchaseOrders.map((po) => (
+                            <SelectItem key={po.id} value={po.id}>
+                              {po.po_number}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="vendor_id">Vendor</Label>
+                        <Select
+                          value={formData.vendor_id}
+                          onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select vendor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vendors.map((vendor) => (
+                              <SelectItem key={vendor.id} value={vendor.id}>
+                                {vendor.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="location_id">Destination</Label>
+                        <Select
+                          value={formData.location_id}
+                          onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {locations.map((location) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="carrier">Carrier</Label>
+                        <Select
+                          value={formData.carrier}
+                          onValueChange={(value) => setFormData({ ...formData, carrier: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select carrier" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CARRIERS.map((carrier) => (
+                              <SelectItem key={carrier} value={carrier}>
+                                {carrier}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tracking_number">Tracking Number</Label>
+                        <Input
+                          id="tracking_number"
+                          value={formData.tracking_number}
+                          onChange={(e) => setFormData({ ...formData, tracking_number: e.target.value })}
+                          placeholder="1Z999AA10123456784"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="expected_date">Expected Date</Label>
+                        <Input
+                          id="expected_date"
+                          type="date"
+                          value={formData.expected_date}
+                          onChange={(e) => setFormData({ ...formData, expected_date: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="delivered_date">Delivered Date</Label>
+                        <Input
+                          id="delivered_date"
+                          type="date"
+                          value={formData.delivered_date}
+                          onChange={(e) => setFormData({ ...formData, delivered_date: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notes</Label>
+                      <Input
+                        id="notes"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="Additional notes..."
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">
+                      {isEditing ? 'Update' : 'Create'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {deliveries.length === 0 ? (
+          <div className="text-center py-12">
+            <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No deliveries yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Track your first delivery to get started.
+            </p>
+            <Button onClick={handleOpenDialog}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Delivery
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-28">ID</TableHead>
+                  <TableHead>PO</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Destination</TableHead>
+                  <TableHead>Carrier</TableHead>
+                  <TableHead>Expected</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-24">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deliveries.map((delivery) => (
+                  <TableRow key={delivery.id}>
+                    <TableCell className="font-mono text-sm">{delivery.delivery_id}</TableCell>
+                    <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
+                    <TableCell>{delivery.vendor?.name || '—'}</TableCell>
+                    <TableCell>{delivery.location?.name || '—'}</TableCell>
+                    <TableCell>{delivery.carrier || '—'}</TableCell>
+                    <TableCell>
+                      {delivery.expected_date 
+                        ? format(new Date(delivery.expected_date), 'MMM d, yyyy')
+                        : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getStatusColor(delivery.status)}>
+                        {delivery.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(delivery)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(delivery.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Deliveries;
