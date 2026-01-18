@@ -298,6 +298,104 @@ export type Database = {
           },
         ]
       }
+      ledger_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          ledger_id: string
+          reference_id: string | null
+          reference_number: string | null
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          ledger_id: string
+          reference_id?: string | null
+          reference_number?: string | null
+          transaction_date?: string
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          ledger_id?: string
+          reference_id?: string | null
+          reference_number?: string | null
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_transactions_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledgers: {
+        Row: {
+          balance: number
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          ledger_id: string
+          location_id: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          ledger_id: string
+          location_id?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          ledger_id?: string
+          location_id?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledgers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledgers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_users: {
         Row: {
           created_at: string
@@ -608,10 +706,12 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          bill_to_location_id: string | null
           company_id: string
           created_at: string
           expected_delivery_date: string | null
           id: string
+          ledger_id: string | null
           location_id: string | null
           notes: string | null
           order_date: string | null
@@ -626,10 +726,12 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          bill_to_location_id?: string | null
           company_id: string
           created_at?: string
           expected_delivery_date?: string | null
           id?: string
+          ledger_id?: string | null
           location_id?: string | null
           notes?: string | null
           order_date?: string | null
@@ -644,10 +746,12 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          bill_to_location_id?: string | null
           company_id?: string
           created_at?: string
           expected_delivery_date?: string | null
           id?: string
+          ledger_id?: string | null
           location_id?: string | null
           notes?: string | null
           order_date?: string | null
@@ -663,10 +767,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "purchase_orders_bill_to_location_id_fkey"
+            columns: ["bill_to_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_orders_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
             referencedColumns: ["id"]
           },
           {
@@ -983,6 +1101,7 @@ export type Database = {
     Functions: {
       get_next_customer_id: { Args: { p_company_id: string }; Returns: string }
       get_next_delivery_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_ledger_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_next_po_number: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
