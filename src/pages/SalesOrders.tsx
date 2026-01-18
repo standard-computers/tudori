@@ -142,8 +142,8 @@ const SalesOrders = () => {
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   
-  // Use vendor sources hook for ship from options (vendors + DC/warehouse locations)
-  const { vendorOptions: shipFromOptions } = useVendorSources(companyId);
+  // Use vendor sources hook for ship from options (vendors + all locations)
+  const { vendorOptions: shipFromOptions } = useVendorSources(companyId, { includeAllLocations: true });
   
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
