@@ -601,21 +601,90 @@ const Orders = () => {
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('purchase_orders')
-      .update({ status: newStatus })
-      .eq('id', id);
+    try {
+      // Get the order to check current status and get details
+      const order = orders.find(o => o.id === id);
+      if (!order) return;
 
-    if (error) {
+      // Fetch automation settings
+      const { data: settingsData } = await supabase
+        .from('company_settings')
+        .select('setting_value')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'po_automation')
+        .maybeSingle();
+
+      const settings = settingsData?.setting_value && typeof settingsData.setting_value === 'object' && !Array.isArray(settingsData.setting_value)
+        ? settingsData.setting_value as Record<string, unknown>
+        : null;
+
+      const autoCreateDelivery = settings?.auto_create_delivery_on_confirmed ?? true;
+      const autoMarkShipped = settings?.auto_mark_delivery_shipped ?? true;
+      const autoMarkDelivered = settings?.auto_mark_delivery_delivered ?? true;
+
+      // Update the PO status
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({ status: newStatus })
+        .eq('id', id);
+
+      if (error) {
+        toast.error('Failed to update status');
+        return;
+      }
+
+      // Auto-create delivery when status changes to 'confirmed'
+      if (newStatus === 'confirmed' && autoCreateDelivery) {
+        // Get next delivery ID
+        const { data: deliveryId } = await supabase.rpc('get_next_delivery_id', {
+          p_company_id: companyId,
+        });
+
+        // Create delivery
+        await supabase
+          .from('deliveries')
+          .insert({
+            company_id: companyId,
+            delivery_id: deliveryId,
+            purchase_order_id: id,
+            vendor_id: order.vendor_id,
+            location_id: order.location_id,
+            status: 'pending',
+            expected_date: order.expected_delivery_date,
+            notes: `Auto-created from PO ${order.po_number}`,
+          });
+
+        toast.success(`Delivery ${deliveryId} created automatically`);
+      }
+
+      // Auto-mark delivery as shipped when PO is marked shipped
+      if (newStatus === 'shipped' && autoMarkShipped) {
+        await supabase
+          .from('deliveries')
+          .update({ status: 'shipped' })
+          .eq('purchase_order_id', id);
+      }
+
+      // Auto-mark delivery as delivered when PO is marked delivered
+      if (newStatus === 'delivered' && autoMarkDelivered) {
+        await supabase
+          .from('deliveries')
+          .update({ 
+            status: 'delivered',
+            delivered_date: new Date().toISOString().split('T')[0]
+          })
+          .eq('purchase_order_id', id);
+      }
+
+      toast.success('Status updated');
+      fetchOrders();
+      
+      if (viewOrder?.id === id) {
+        setViewOrder({ ...viewOrder, status: newStatus });
+      }
+    } catch (error: any) {
+      console.error('Error updating status:', error);
       toast.error('Failed to update status');
-      return;
-    }
-
-    toast.success('Status updated');
-    fetchOrders();
-    
-    if (viewOrder?.id === id) {
-      setViewOrder({ ...viewOrder, status: newStatus });
     }
   };
 

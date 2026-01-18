@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle, ShieldAlert, Upload, X } from 'lucide-react';
+import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle, ShieldAlert, Upload, X, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
@@ -43,15 +44,21 @@ interface DocumentIdConfig {
 }
 
 const DOCUMENT_TYPES = [
-  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: '' },
-  { value: 'requisition', label: 'Requisition', prefix_placeholder: '' },
-  { value: 'delivery', label: 'Delivery', prefix_placeholder: '' },
-  { value: 'ledger', label: 'Ledger', prefix_placeholder: '' },
-  { value: 'vendor', label: 'Vendor', prefix_placeholder: '' },
-  { value: 'customer', label: 'Customer', prefix_placeholder: '' },
-  { value: 'product', label: 'Product', prefix_placeholder: '' },
-  { value: 'location', label: 'Location', prefix_placeholder: '' },
+  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: '', icon: ShoppingCart },
+  { value: 'requisition', label: 'Requisition', prefix_placeholder: '', icon: FileText },
+  { value: 'delivery', label: 'Delivery', prefix_placeholder: '', icon: Truck },
+  { value: 'ledger', label: 'Ledger', prefix_placeholder: '', icon: Book },
+  { value: 'vendor', label: 'Vendor', prefix_placeholder: '', icon: Users },
+  { value: 'customer', label: 'Customer', prefix_placeholder: '', icon: UserCheck },
+  { value: 'product', label: 'Product', prefix_placeholder: '', icon: Package },
+  { value: 'location', label: 'Location', prefix_placeholder: '', icon: MapPin },
 ];
+
+interface POAutomationSettings {
+  auto_create_delivery_on_confirmed: boolean;
+  auto_mark_delivery_shipped: boolean;
+  auto_mark_delivery_delivered: boolean;
+}
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -64,10 +71,17 @@ const Settings = () => {
   const [company, setCompany] = useState<Company | null>(null);
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
   const [activeTab, setActiveTab] = useState('company');
+  const [activeConfigTab, setActiveConfigTab] = useState('purchase_order');
   const [currentUserRole, setCurrentUserRole] = useState<AppRole | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [poSettings, setPOSettings] = useState<POAutomationSettings>({
+    auto_create_delivery_on_confirmed: true,
+    auto_mark_delivery_shipped: true,
+    auto_mark_delivery_delivered: true,
+  });
+  const [savingPOSettings, setSavingPOSettings] = useState(false);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
 
@@ -153,8 +167,9 @@ const Settings = () => {
             country: companyData.country || ''
           });
 
-          // Fetch document configs
+          // Fetch document configs and PO settings
           await fetchDocumentConfigs(profile.company_id);
+          await fetchPOSettings(profile.company_id);
         }
       }
     } catch (error) {
@@ -189,6 +204,72 @@ const Settings = () => {
       setDocumentConfigs(configs);
     } catch (error) {
       console.error('Error fetching document configs:', error);
+    }
+  };
+
+  const fetchPOSettings = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('setting_value')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'po_automation')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.setting_value && typeof data.setting_value === 'object' && !Array.isArray(data.setting_value)) {
+        const val = data.setting_value as Record<string, unknown>;
+        setPOSettings({
+          auto_create_delivery_on_confirmed: (val.auto_create_delivery_on_confirmed as boolean) ?? true,
+          auto_mark_delivery_shipped: (val.auto_mark_delivery_shipped as boolean) ?? true,
+          auto_mark_delivery_delivered: (val.auto_mark_delivery_delivered as boolean) ?? true,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching PO settings:', error);
+    }
+  };
+
+  const handleSavePOSettings = async () => {
+    if (!company) return;
+
+    setSavingPOSettings(true);
+    try {
+      const { data: existing } = await supabase
+        .from('company_settings')
+        .select('id')
+        .eq('company_id', company.id)
+        .eq('setting_key', 'po_automation')
+        .maybeSingle();
+
+      const settingValue = {
+        auto_create_delivery_on_confirmed: poSettings.auto_create_delivery_on_confirmed,
+        auto_mark_delivery_shipped: poSettings.auto_mark_delivery_shipped,
+        auto_mark_delivery_delivered: poSettings.auto_mark_delivery_delivered,
+      };
+
+      if (existing) {
+        await supabase
+          .from('company_settings')
+          .update({ setting_value: settingValue })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('company_settings')
+          .insert([{
+            company_id: company.id,
+            setting_key: 'po_automation',
+            setting_value: settingValue,
+          }]);
+      }
+
+      toast.success('PO automation settings saved');
+    } catch (error: any) {
+      console.error('Error saving PO settings:', error);
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setSavingPOSettings(false);
     }
   };
 
@@ -693,55 +774,62 @@ const Settings = () => {
               </AlertDescription>
             </Alert>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Settings2 className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <CardTitle>Document ID Configuration</CardTitle>
-                    <CardDescription>
-                      Configure how document IDs are generated for each document type
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Document Type</TableHead>
-                      <TableHead>Prefix</TableHead>
-                      <TableHead>Number of Digits</TableHead>
-                      <TableHead>Starting Number</TableHead>
-                      <TableHead>Preview</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {documentConfigs.map((config) => {
-                      const docTypeInfo = DOCUMENT_TYPES.find(d => d.value === config.document_type);
-                      return (
-                        <TableRow key={config.document_type}>
-                          <TableCell className="font-medium">
-                            {docTypeInfo?.label || config.document_type}
-                          </TableCell>
-                          <TableCell>
+            <Tabs value={activeConfigTab} onValueChange={setActiveConfigTab}>
+              <TabsList className="flex flex-wrap h-auto gap-1">
+                {DOCUMENT_TYPES.map((docType) => {
+                  const Icon = docType.icon;
+                  return (
+                    <TabsTrigger key={docType.value} value={docType.value} className="flex items-center gap-1.5">
+                      <Icon className="w-4 h-4" />
+                      {docType.label}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {DOCUMENT_TYPES.map((docType) => {
+                const config = documentConfigs.find(c => c.document_type === docType.value);
+                const Icon = docType.icon;
+                if (!config) return null;
+
+                return (
+                  <TabsContent key={docType.value} value={docType.value} className="space-y-6 mt-6">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Icon className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle>{docType.label} ID Configuration</CardTitle>
+                            <CardDescription>
+                              Configure how {docType.label.toLowerCase()} IDs are generated
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="space-y-2">
+                            <Label>Prefix</Label>
                             <Input
                               value={config.prefix}
                               onChange={(e) =>
                                 handleConfigChange(config.document_type, 'prefix', e.target.value)
                               }
                               placeholder="e.g., PO-"
-                              className="w-24"
                             />
-                          </TableCell>
-                          <TableCell>
+                            <p className="text-xs text-muted-foreground">Text that appears before the number</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Number of Digits</Label>
                             <Select
                               value={String(config.num_digits)}
                               onValueChange={(value) =>
                                 handleConfigChange(config.document_type, 'num_digits', parseInt(value))
                               }
                             >
-                              <SelectTrigger className="w-20">
+                              <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -754,8 +842,10 @@ const Settings = () => {
                                 <SelectItem value="9">9</SelectItem>
                               </SelectContent>
                             </Select>
-                          </TableCell>
-                          <TableCell>
+                            <p className="text-xs text-muted-foreground">How many digits to pad to</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Starting Number</Label>
                             <Input
                               type="number"
                               min={1}
@@ -767,21 +857,101 @@ const Settings = () => {
                                   parseInt(e.target.value) || 1
                                 )
                               }
-                              className="w-24"
                             />
-                          </TableCell>
-                          <TableCell>
-                            <code className="text-sm bg-muted px-2 py-1 rounded font-mono">
-                              {getPreviewId(config)}
-                            </code>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                            <p className="text-xs text-muted-foreground">First number in the sequence</p>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 bg-muted rounded-lg">
+                          <Label className="text-xs text-muted-foreground">Preview</Label>
+                          <code className="block text-lg font-mono mt-1">
+                            {getPreviewId(config)}
+                          </code>
+                        </div>
+
+                        {/* PO-specific automation settings */}
+                        {docType.value === 'purchase_order' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Automation Settings</h4>
+                              <p className="text-xs text-muted-foreground">Configure automatic actions when PO status changes</p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                <div className="space-y-0.5">
+                                  <Label className="font-medium">Auto-create delivery on Confirmed</Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Automatically create a delivery record when a PO status is changed to "Confirmed"
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={poSettings.auto_create_delivery_on_confirmed}
+                                  onCheckedChange={(checked) => 
+                                    setPOSettings(prev => ({ ...prev, auto_create_delivery_on_confirmed: checked }))
+                                  }
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                <div className="space-y-0.5">
+                                  <Label className="font-medium">Sync delivery to Shipped</Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Automatically mark associated delivery as "Shipped" when PO is marked as "Shipped"
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={poSettings.auto_mark_delivery_shipped}
+                                  onCheckedChange={(checked) => 
+                                    setPOSettings(prev => ({ ...prev, auto_mark_delivery_shipped: checked }))
+                                  }
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                <div className="space-y-0.5">
+                                  <Label className="font-medium">Sync delivery to Delivered</Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Automatically mark associated delivery as "Delivered" when PO is marked as "Delivered"
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={poSettings.auto_mark_delivery_delivered}
+                                  onCheckedChange={(checked) => 
+                                    setPOSettings(prev => ({ ...prev, auto_mark_delivery_delivered: checked }))
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                              <Button 
+                                onClick={handleSavePOSettings} 
+                                disabled={savingPOSettings}
+                                variant="outline"
+                                size="sm"
+                              >
+                                {savingPOSettings ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Save Automation Settings
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
 
             <div className="flex justify-end">
               <Button onClick={handleSaveConfigs} disabled={savingConfig}>
@@ -793,7 +963,7 @@ const Settings = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Save Configuration
+                    Save ID Configuration
                     <Kbd className="ml-2">⌘S</Kbd>
                   </>
                 )}
