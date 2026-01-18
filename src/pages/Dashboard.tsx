@@ -19,7 +19,8 @@ import {
   Warehouse,
   ClipboardList,
   MessageSquare,
-  UserCog
+  UserCog,
+  MapPin
 } from 'lucide-react';
 
 interface Profile {
@@ -35,6 +36,7 @@ interface Company {
 const apps = [
   { name: 'Sales', icon: DollarSign, color: 'bg-emerald-500', description: 'Manage orders & revenue', path: null },
   { name: 'Inventory', icon: Warehouse, color: 'bg-blue-500', description: 'Stock management', path: null },
+  { name: 'Locations', icon: MapPin, color: 'bg-green-500', description: 'Warehouses & stores', path: '/locations' },
   { name: 'Customers', icon: Users, color: 'bg-violet-500', description: 'CRM & contacts', path: null },
   { name: 'Products', icon: Package, color: 'bg-amber-500', description: 'Product catalog', path: null },
   { name: 'Analytics', icon: BarChart3, color: 'bg-pink-500', description: 'Reports & insights', path: null },
