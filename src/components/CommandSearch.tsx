@@ -5,12 +5,12 @@ import { useSearch } from '@/contexts/SearchContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { defaultApps } from '@/config/apps';
-import { Search, MapPin, Building, Users, Package, ShoppingCart, FileSpreadsheet, Truck, BookOpen, Percent, UserCog, Settings, Gauge } from 'lucide-react';
+import { Search, MapPin, Building, Users, Package, ShoppingCart, FileSpreadsheet, Truck, BookOpen, Percent, UserCog, Settings, Gauge, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SearchResult {
   id: string;
-  type: 'navigation' | 'vendor' | 'customer' | 'product' | 'order' | 'requisition' | 'delivery' | 'location' | 'ledger';
+  type: 'navigation' | 'vendor' | 'customer' | 'product' | 'order' | 'sales_order' | 'requisition' | 'delivery' | 'location' | 'ledger';
   label: string;
   sublabel?: string;
   path: string;
@@ -23,6 +23,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   customer: <Users className="w-4 h-4" />,
   product: <Package className="w-4 h-4" />,
   order: <ShoppingCart className="w-4 h-4" />,
+  sales_order: <DollarSign className="w-4 h-4" />,
   requisition: <FileSpreadsheet className="w-4 h-4" />,
   delivery: <Truck className="w-4 h-4" />,
   location: <MapPin className="w-4 h-4" />,
@@ -152,6 +153,25 @@ export function CommandSearch() {
           sublabel: o.status,
           path: '/orders',
           icon: typeIcons.order,
+        });
+      });
+
+      // Search sales orders
+      const { data: salesOrders } = await supabase
+        .from('sales_orders' as any)
+        .select('id, so_number, status')
+        .eq('company_id', companyId)
+        .ilike('so_number', searchTerm)
+        .limit(5);
+
+      (salesOrders as any)?.forEach((so: any) => {
+        searchResults.push({
+          id: `sales_order-${so.id}`,
+          type: 'sales_order',
+          label: so.so_number,
+          sublabel: so.status,
+          path: '/sales-orders',
+          icon: typeIcons.sales_order,
         });
       });
 

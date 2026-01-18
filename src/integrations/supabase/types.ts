@@ -1182,6 +1182,193 @@ export type Database = {
           },
         ]
       }
+      sales_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          sales_order_id: string
+          total_price: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+          sales_order_id: string
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          sales_order_id?: string
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_items_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_order_tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          sales_order_id: string
+          tax_amount: number
+          tax_rate_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sales_order_id: string
+          tax_amount?: number
+          tax_rate_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sales_order_id?: string
+          tax_amount?: number
+          tax_rate_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_tax_rates_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_tax_rates_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_orders: {
+        Row: {
+          bill_to_location_id: string | null
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          expected_delivery_date: string | null
+          id: string
+          ledger_id: string | null
+          location_id: string | null
+          notes: string | null
+          order_date: string
+          so_number: string
+          status: string
+          subtotal: number | null
+          tax_amount: number | null
+          tax_rate_id: string | null
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          bill_to_location_id?: string | null
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          expected_delivery_date?: string | null
+          id?: string
+          ledger_id?: string | null
+          location_id?: string | null
+          notes?: string | null
+          order_date?: string
+          so_number: string
+          status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate_id?: string | null
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bill_to_location_id?: string | null
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          expected_delivery_date?: string | null
+          id?: string
+          ledger_id?: string | null
+          location_id?: string | null
+          notes?: string | null
+          order_date?: string
+          so_number?: string
+          status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate_id?: string | null
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_bill_to_location_id_fkey"
+            columns: ["bill_to_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tax_rates: {
         Row: {
           company_id: string
@@ -1374,6 +1561,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
+      get_next_so_number: { Args: { p_company_id: string }; Returns: string }
       get_next_vendor_id: { Args: { p_company_id: string }; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
