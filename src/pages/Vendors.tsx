@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Vendor {
@@ -62,6 +62,7 @@ const Vendors = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState('0001');
+  const [isLookingUp, setIsLookingUp] = useState(false);
   const [formData, setFormData] = useState({
     vendor_id: '',
     name: '',
@@ -263,6 +264,51 @@ const Vendors = () => {
     fetchNextVendorId();
   };
 
+  const handleAILookup = async () => {
+    if (!formData.name || formData.name.trim().length < 2) {
+      toast.error('Enter a company name first');
+      return;
+    }
+
+    setIsLookingUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('lookup-vendor', {
+        body: { companyName: formData.name }
+      });
+
+      if (error) {
+        console.error('Lookup error:', error);
+        toast.error('Failed to look up company');
+        return;
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      // Update form with found data
+      setFormData(prev => ({
+        ...prev,
+        website: data.website || prev.website,
+        phone: data.phone || prev.phone,
+        email: data.email || prev.email,
+        address_line1: data.address_line1 || prev.address_line1,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+        postal_code: data.postal_code || prev.postal_code,
+        country: data.country || prev.country,
+      }));
+
+      toast.success('Company information found!');
+    } catch (err) {
+      console.error('Lookup error:', err);
+      toast.error('Failed to look up company');
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -348,13 +394,33 @@ const Vendors = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="name">Vendor Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Acme Supplies Inc."
-                        required
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="Acme Supplies Inc."
+                          required
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={handleAILookup}
+                          disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
+                          title="Look up company info with AI"
+                        >
+                          {isLookingUp ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Search className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Click the search icon to auto-fill contact info using AI
+                      </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">

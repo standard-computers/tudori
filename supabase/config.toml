@@ -1,1 +1,4 @@
 project_id = "yxkteyttwdezqbfspgwb"
+
+[functions.lookup-vendor]
+verify_jwt = false
