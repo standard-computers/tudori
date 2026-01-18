@@ -63,6 +63,18 @@ interface ProductUom {
   conversion_factor: string;
 }
 
+interface ProductComponent {
+  id?: string;
+  component_product_id: string;
+  quantity: string;
+  product?: {
+    product_id: string;
+    name: string;
+    price: number | null;
+    unit: string | null;
+  };
+}
+
 interface Vendor {
   id: string;
   vendor_id: string;
@@ -245,6 +257,9 @@ const Products = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [uoms, setUoms] = useState<ProductUom[]>([]);
   const [newUom, setNewUom] = useState<ProductUom>({ name: '', abbreviation: '', conversion_factor: '1' });
+  const [components, setComponents] = useState<ProductComponent[]>([]);
+  const [newComponent, setNewComponent] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
+  const [availableComponents, setAvailableComponents] = useState<SearchableSelectOption[]>([]);
   const [formData, setFormData] = useState({
     product_id: '',
     vendor_id: '',
@@ -353,6 +368,49 @@ const Products = () => {
     })) || []);
   };
 
+  const fetchProductComponents = async (productId: string) => {
+    const { data, error } = await supabase
+      .from('product_components')
+      .select('id, component_product_id, quantity, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)')
+      .eq('parent_product_id', productId);
+
+    if (error) {
+      console.error('Failed to load components:', error);
+      return;
+    }
+
+    setComponents(data?.map(c => ({
+      id: c.id,
+      component_product_id: c.component_product_id,
+      quantity: c.quantity?.toString() || '1',
+      product: c.component_product as ProductComponent['product'],
+    })) || []);
+  };
+
+  const fetchAvailableComponents = async (excludeProductId?: string) => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, product_id, name')
+      .eq('company_id', companyId!)
+      .neq('category', 'Finished Goods')
+      .order('name');
+
+    if (error) {
+      console.error('Failed to load available components:', error);
+      return;
+    }
+
+    const options = data
+      ?.filter(p => p.id !== excludeProductId)
+      .map(p => ({
+        value: p.id,
+        label: p.name,
+        sublabel: p.product_id,
+      })) || [];
+    
+    setAvailableComponents(options);
+  };
+
   const resetForm = () => {
     setFormData({
       product_id: nextProductId,
@@ -366,14 +424,17 @@ const Products = () => {
     });
     setUoms([]);
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
+    setComponents([]);
+    setNewComponent({ product_id: '', quantity: '1' });
     setActiveTab('general');
     setIsEditing(false);
     setEditingId(null);
   };
 
-  const handleOpenDialog = () => {
+  const handleOpenDialog = async () => {
     resetForm();
     setFormData(prev => ({ ...prev, product_id: nextProductId }));
+    await fetchAvailableComponents();
     setIsDialogOpen(true);
   };
 
@@ -394,7 +455,11 @@ const Products = () => {
     setIsEditing(true);
     setEditingId(product.id);
     setActiveTab('general');
-    await fetchProductUoms(product.id);
+    await Promise.all([
+      fetchProductUoms(product.id),
+      fetchProductComponents(product.id),
+      fetchAvailableComponents(product.id),
+    ]);
     setIsDialogOpen(true);
   };
 
@@ -429,6 +494,55 @@ const Products = () => {
 
   const handleRemoveUom = (index: number) => {
     setUoms(uoms.filter((_, i) => i !== index));
+  };
+
+  const handleAddComponent = async () => {
+    if (!newComponent.product_id) {
+      toast.error('Please select a component product');
+      return;
+    }
+    if (components.some(c => c.component_product_id === newComponent.product_id)) {
+      toast.error('This component is already added');
+      return;
+    }
+
+    // Fetch the product details
+    const { data: productData } = await supabase
+      .from('products')
+      .select('product_id, name, price, unit')
+      .eq('id', newComponent.product_id)
+      .single();
+
+    if (productData) {
+      setComponents([...components, {
+        component_product_id: newComponent.product_id,
+        quantity: newComponent.quantity || '1',
+        product: productData,
+      }]);
+    }
+    setNewComponent({ product_id: '', quantity: '1' });
+  };
+
+  const handleRemoveComponent = (index: number) => {
+    setComponents(components.filter((_, i) => i !== index));
+  };
+
+  const handleAdoptPrice = () => {
+    const total = components.reduce((sum, comp) => {
+      const qty = parseFloat(comp.quantity) || 0;
+      const price = comp.product?.price || 0;
+      return sum + (qty * price);
+    }, 0);
+    setFormData(prev => ({ ...prev, price: total.toFixed(2) }));
+    toast.success(`Price updated to $${total.toFixed(2)}`);
+  };
+
+  const calculateComponentsTotal = () => {
+    return components.reduce((sum, comp) => {
+      const qty = parseFloat(comp.quantity) || 0;
+      const price = comp.product?.price || 0;
+      return sum + (qty * price);
+    }, 0);
   };
 
   const isProductIdInUse = products.some(p => p.product_id === formData.product_id && (!isEditing || p.id !== editingId));
@@ -502,6 +616,28 @@ const Products = () => {
         if (uomError) {
           console.error('Failed to save UOMs:', uomError);
           toast.error('Product saved but failed to save some UOMs');
+        }
+      }
+
+      // Save Components (only for Finished Goods)
+      if (formData.category === 'Finished Goods') {
+        await supabase.from('product_components').delete().eq('parent_product_id', productId);
+        
+        if (components.length > 0) {
+          const componentInserts = components.map(c => ({
+            parent_product_id: productId,
+            component_product_id: c.component_product_id,
+            quantity: parseFloat(c.quantity) || 1,
+          }));
+
+          const { error: compError } = await supabase
+            .from('product_components')
+            .insert(componentInserts);
+
+          if (compError) {
+            console.error('Failed to save components:', compError);
+            toast.error('Product saved but failed to save some components');
+          }
         }
       }
     }
@@ -580,9 +716,12 @@ const Products = () => {
                   </DialogHeader>
                   
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="uom">Units of Measure</TabsTrigger>
+                      {formData.category === 'Finished Goods' && (
+                        <TabsTrigger value="components">Components</TabsTrigger>
+                      )}
                     </TabsList>
                     
                     <TabsContent value="general" className="space-y-4 mt-4">
@@ -803,6 +942,130 @@ const Products = () => {
                         </Button>
                       </div>
                     </TabsContent>
+                    
+                    {formData.category === 'Finished Goods' && (
+                      <TabsContent value="components" className="space-y-4 mt-4">
+                        <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                          <p className="text-sm text-muted-foreground">
+                            Add component products that make up this finished good.
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Use "Adopt Price" to calculate the total cost based on component quantities and prices.
+                          </p>
+                        </div>
+                        
+                        {components.length > 0 && (
+                          <div className="border rounded-lg overflow-hidden mb-4">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Product ID</TableHead>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead className="text-right">Qty</TableHead>
+                                  <TableHead className="text-right">Unit Price</TableHead>
+                                  <TableHead className="text-right">Total</TableHead>
+                                  <TableHead className="w-16"></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {components.map((comp, index) => {
+                                  const qty = parseFloat(comp.quantity) || 0;
+                                  const price = comp.product?.price || 0;
+                                  const lineTotal = qty * price;
+                                  return (
+                                    <TableRow key={index}>
+                                      <TableCell className="font-mono text-sm">{comp.product?.product_id || '-'}</TableCell>
+                                      <TableCell className="font-medium">{comp.product?.name || '-'}</TableCell>
+                                      <TableCell className="text-right">
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min="0.01"
+                                          value={comp.quantity}
+                                          onChange={(e) => {
+                                            const updated = [...components];
+                                            updated[index] = { ...updated[index], quantity: e.target.value };
+                                            setComponents(updated);
+                                          }}
+                                          className="w-20 text-right ml-auto"
+                                        />
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {price ? `$${price.toFixed(2)}` : '-'}
+                                      </TableCell>
+                                      <TableCell className="text-right font-medium">
+                                        ${lineTotal.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleRemoveComponent(index)}
+                                        >
+                                          <Trash2 className="w-4 h-4 text-destructive" />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                                <TableRow className="bg-muted/50">
+                                  <TableCell colSpan={4} className="text-right font-medium">
+                                    Total:
+                                  </TableCell>
+                                  <TableCell className="text-right font-bold">
+                                    ${calculateComponentsTotal().toFixed(2)}
+                                  </TableCell>
+                                  <TableCell></TableCell>
+                                </TableRow>
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                        
+                        <div className="border rounded-lg p-4 space-y-4">
+                          <h4 className="font-medium text-sm">Add Component</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label htmlFor="component_product" className="text-xs">Product *</Label>
+                              <SearchableSelect
+                                options={availableComponents.filter(
+                                  opt => !components.some(c => c.component_product_id === opt.value)
+                                )}
+                                value={newComponent.product_id}
+                                onValueChange={(value) => setNewComponent({ ...newComponent, product_id: value })}
+                                placeholder="Select component product..."
+                                allowClear
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="component_qty" className="text-xs">Quantity *</Label>
+                              <Input
+                                id="component_qty"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={newComponent.quantity}
+                                onChange={(e) => setNewComponent({ ...newComponent, quantity: e.target.value })}
+                                placeholder="e.g., 2"
+                              />
+                            </div>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" onClick={handleAddComponent}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add Component
+                          </Button>
+                        </div>
+                        
+                        {components.length > 0 && (
+                          <div className="flex justify-end">
+                            <Button type="button" variant="secondary" onClick={handleAdoptPrice}>
+                              Adopt Price (${calculateComponentsTotal().toFixed(2)})
+                            </Button>
+                          </div>
+                        )}
+                      </TabsContent>
+                    )}
                   </Tabs>
                   
                   <DialogFooter className="mt-6">
