@@ -1176,7 +1176,7 @@ const Cockpit = () => {
       </Dialog>
 
       {/* Receive Delivery Dialog */}
-      {selectedDelivery && (
+      {selectedDelivery && selectedLocationId && (
         <ReceiveDeliveryDialog
           open={isReceiveDialogOpen}
           onOpenChange={(open) => {
@@ -1186,8 +1186,10 @@ const Cockpit = () => {
           deliveryId={selectedDelivery.id}
           deliveryDisplayId={selectedDelivery.delivery_id}
           purchaseOrderId={selectedDelivery.purchase_order_id}
+          locationId={selectedLocationId}
           onReceived={() => {
             fetchPendingDeliveries();
+            fetchInventory();
             setSelectedDelivery(null);
           }}
         />

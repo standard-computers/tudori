@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
 import {
@@ -20,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, PackageCheck, AlertCircle } from 'lucide-react';
+import { Loader2, PackageCheck, AlertCircle, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DeliveryItem {
@@ -46,6 +47,7 @@ interface ReceiveDeliveryDialogProps {
   deliveryId: string;
   deliveryDisplayId: string;
   purchaseOrderId: string | null;
+  locationId: string;
   onReceived: () => void;
 }
 
@@ -55,15 +57,18 @@ export const ReceiveDeliveryDialog = ({
   deliveryId,
   deliveryDisplayId,
   purchaseOrderId,
+  locationId,
   onReceived,
 }: ReceiveDeliveryDialogProps) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [items, setItems] = useState<ReceivedItem[]>([]);
+  const [explodeDelivery, setExplodeDelivery] = useState(false);
 
   useEffect(() => {
     if (open && deliveryId) {
       fetchDeliveryItems();
+      setExplodeDelivery(false);
     }
   }, [open, deliveryId]);
 
@@ -107,6 +112,25 @@ export const ReceiveDeliveryDialog = ({
     ));
   };
 
+  // Get display items - exploded or normal
+  const getDisplayItems = (): ReceivedItem[] => {
+    if (!explodeDelivery) return items;
+    
+    // Explode each item into individual lines
+    const explodedItems: ReceivedItem[] = [];
+    items.forEach(item => {
+      for (let i = 0; i < item.received_quantity; i++) {
+        explodedItems.push({
+          ...item,
+          id: `${item.id}-${i}`,
+          expected_quantity: 1,
+          received_quantity: 1,
+        });
+      }
+    });
+    return explodedItems;
+  };
+
   const handleReceive = async () => {
     setSubmitting(true);
 
@@ -141,6 +165,41 @@ export const ReceiveDeliveryDialog = ({
         }
       }
 
+      // Add received items to inventory
+      for (const item of items) {
+        if (item.received_quantity > 0) {
+          // Check if inventory record exists for this product at this location (without bin)
+          const { data: existingInventory } = await supabase
+            .from('inventory')
+            .select('id, quantity')
+            .eq('location_id', locationId)
+            .eq('product_id', item.product_id)
+            .is('bin_id', null)
+            .maybeSingle();
+
+          if (existingInventory) {
+            // Update existing inventory
+            await supabase
+              .from('inventory')
+              .update({ 
+                quantity: existingInventory.quantity + item.received_quantity,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingInventory.id);
+          } else {
+            // Create new inventory record
+            await supabase
+              .from('inventory')
+              .insert({
+                location_id: locationId,
+                product_id: item.product_id,
+                quantity: item.received_quantity,
+                bin_id: null
+              });
+          }
+        }
+      }
+
       // If there's an associated PO, mark it as delivered
       if (purchaseOrderId) {
         const { error: poError } = await supabase
@@ -154,7 +213,7 @@ export const ReceiveDeliveryDialog = ({
         }
       }
 
-      toast.success('Delivery received successfully');
+      toast.success('Delivery received and inventory updated');
       onReceived();
       onOpenChange(false);
     } catch (error) {
@@ -164,6 +223,7 @@ export const ReceiveDeliveryDialog = ({
     }
   };
 
+  const displayItems = getDisplayItems();
   const hasDiscrepancy = items.some(item => item.received_quantity !== item.expected_quantity);
   const totalExpected = items.reduce((sum, item) => sum + item.expected_quantity, 0);
   const totalReceived = items.reduce((sum, item) => sum + item.received_quantity, 0);
@@ -202,38 +262,55 @@ export const ReceiveDeliveryDialog = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id} className={item.received_quantity !== item.expected_quantity ? 'bg-amber-500/5' : ''}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.product_name}</div>
-                        <div className="text-sm text-muted-foreground font-mono">
-                          {item.product_code}
+                {explodeDelivery ? (
+                  displayItems.map((item, index) => (
+                    <TableRow key={`${item.id}-${index}`}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{item.product_name}</div>
+                          <div className="text-sm text-muted-foreground font-mono">
+                            {item.product_code}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{item.expected_quantity}</TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.received_quantity}
-                        onChange={(e) =>
-                          handleQuantityChange(item.id, parseInt(e.target.value) || 0)
-                        }
-                        className={`w-20 text-right ml-auto ${
-                          item.received_quantity !== item.expected_quantity 
-                            ? 'border-amber-500 focus-visible:ring-amber-500' 
-                            : ''
-                        }`}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">1</TableCell>
+                      <TableCell className="text-right font-medium">1</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  items.map((item) => (
+                    <TableRow key={item.id} className={item.received_quantity !== item.expected_quantity ? 'bg-amber-500/5' : ''}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{item.product_name}</div>
+                          <div className="text-sm text-muted-foreground font-mono">
+                            {item.product_code}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{item.expected_quantity}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={item.received_quantity}
+                          onChange={(e) =>
+                            handleQuantityChange(item.id, parseInt(e.target.value) || 0)
+                          }
+                          className={`w-20 text-right ml-auto ${
+                            item.received_quantity !== item.expected_quantity 
+                              ? 'border-amber-500 focus-visible:ring-amber-500' 
+                              : ''
+                          }`}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
 
-            {hasDiscrepancy && (
+            {hasDiscrepancy && !explodeDelivery && (
               <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                 <div className="text-sm">
@@ -247,7 +324,22 @@ export const ReceiveDeliveryDialog = ({
           </div>
         )}
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-4 flex-wrap gap-2">
+          <div className="flex items-center gap-2 mr-auto">
+            <Checkbox
+              id="explode-delivery"
+              checked={explodeDelivery}
+              onCheckedChange={(checked) => setExplodeDelivery(checked === true)}
+              disabled={items.length === 0}
+            />
+            <Label 
+              htmlFor="explode-delivery" 
+              className="text-sm text-muted-foreground cursor-pointer flex items-center gap-1.5"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Explode Delivery
+            </Label>
+          </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
             <Kbd>Esc</Kbd>
