@@ -11,6 +11,7 @@ import Users from "./pages/Users";
 import CompleteProfile from "./pages/CompleteProfile";
 import Settings from "./pages/Settings";
 import Locations from "./pages/Locations";
+import Vendors from "./pages/Vendors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/complete-profile" element={<CompleteProfile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/locations" element={<Locations />} />
+            <Route path="/vendors" element={<Vendors />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
