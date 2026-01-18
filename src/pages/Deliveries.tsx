@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Truck, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -89,13 +91,32 @@ const Deliveries = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextDeliveryId, setNextDeliveryId] = useState('DEL-0001');
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Use vendor sources hook
+  const { vendorOptions } = useVendorSources(companyId);
+
+  // Location options for SearchableSelect
+  const locationOptions: SearchableSelectOption[] = useMemo(() => {
+    return locations.map((loc) => ({
+      value: loc.id,
+      label: loc.name,
+      sublabel: loc.location_id,
+    }));
+  }, [locations]);
+
+  // PO options for SearchableSelect
+  const poOptions: SearchableSelectOption[] = useMemo(() => {
+    return purchaseOrders.map((po) => ({
+      value: po.id,
+      label: po.po_number,
+    }));
+  }, [purchaseOrders]);
 
   // Ctrl+S to save
   useSaveShortcut(() => {
@@ -135,7 +156,6 @@ const Deliveries = () => {
       fetchNextDeliveryId();
       fetchPurchaseOrders();
       fetchLocations();
-      fetchVendors();
     }
   }, [companyId]);
 

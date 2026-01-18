@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -99,9 +101,11 @@ const Requisitions = () => {
   const [loading, setLoading] = useState(true);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Use vendor sources hook for combined vendors + DC/warehouse locations
+  const { vendorOptions, parseVendorValue } = useVendorSources(companyId);
   
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -121,6 +125,15 @@ const Requisitions = () => {
   });
   const [suggestedItems, setSuggestedItems] = useState<{ product: Product; quantity: number }[]>([]);
 
+  // Location options for SearchableSelect
+  const locationOptions: SearchableSelectOption[] = useMemo(() => {
+    return locations.map((loc) => ({
+      value: loc.id,
+      label: loc.name,
+      sublabel: loc.location_id,
+    }));
+  }, [locations]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -137,7 +150,6 @@ const Requisitions = () => {
     if (companyId) {
       fetchRequisitions();
       fetchLocations();
-      fetchVendors();
       fetchProducts();
     }
   }, [companyId]);
@@ -184,14 +196,6 @@ const Requisitions = () => {
     setLocations(data || []);
   };
 
-  const fetchVendors = async () => {
-    const { data } = await supabase
-      .from('vendors')
-      .select('id, name, vendor_id')
-      .eq('company_id', companyId)
-      .order('name');
-    setVendors(data || []);
-  };
 
   const fetchProducts = async () => {
     const { data } = await supabase
@@ -215,7 +219,10 @@ const Requisitions = () => {
     // Filter products by selected vendor if one is selected
     let eligibleProducts = products;
     if (runFormData.vendor_id) {
-      eligibleProducts = products.filter(p => p.vendor_id === runFormData.vendor_id);
+      const parsed = parseVendorValue(runFormData.vendor_id);
+      if (parsed?.type === 'vendor') {
+        eligibleProducts = products.filter(p => p.vendor_id === parsed.id);
+      }
     }
 
     // Generate suggested items (in a real app, this would be based on inventory levels, reorder points, etc.)
@@ -512,41 +519,24 @@ const Requisitions = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="run_location">Destination Location *</Label>
-                <Select
+                <SearchableSelect
+                  options={locationOptions}
                   value={runFormData.location_id}
                   onValueChange={(value) => setRunFormData({ ...runFormData, location_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name} ({loc.location_id})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select location"
+                />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="run_vendor">Filter by Vendor (optional)</Label>
-                <Select
-                  value={runFormData.vendor_id || "all"}
-                  onValueChange={(value) => setRunFormData({ ...runFormData, vendor_id: value === "all" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All vendors" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Vendors</SelectItem>
-                    {vendors.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={vendorOptions}
+                  value={runFormData.vendor_id}
+                  onValueChange={(value) => setRunFormData({ ...runFormData, vendor_id: value })}
+                  placeholder="All vendors"
+                  allowClear
+                  clearLabel="All Vendors"
+                />
               </div>
             </div>
 

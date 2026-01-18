@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
+import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
@@ -231,7 +233,6 @@ const Products = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -251,6 +252,9 @@ const Products = () => {
     unit: 'each',
   });
 
+  // Use vendor sources hook
+  const { plainVendorOptions } = useVendorSources(companyId);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
@@ -266,7 +270,6 @@ const Products = () => {
   useEffect(() => {
     if (companyId) {
       fetchProducts();
-      fetchVendors();
       fetchNextProductId();
     }
   }, [companyId]);
