@@ -221,15 +221,7 @@ const Deliveries = () => {
     setLocations(data || []);
   };
 
-  const fetchVendors = async () => {
-    const { data } = await supabase
-      .from('vendors')
-      .select('id, name, vendor_id')
-      .eq('company_id', companyId!)
-      .order('name');
-    
-    setVendors(data || []);
-  };
+  // fetchVendors removed - using useVendorSources hook instead
 
   const resetForm = () => {
     setFormData({
@@ -432,21 +424,13 @@ const Deliveries = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="vendor_id">Vendor</Label>
-                        <Select
+                        <SearchableSelect
+                          options={vendorOptions}
                           value={formData.vendor_id}
                           onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select vendor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vendors.map((vendor) => (
-                              <SelectItem key={vendor.id} value={vendor.id}>
-                                {vendor.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Select vendor..."
+                          allowClear
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="location_id">Destination</Label>
