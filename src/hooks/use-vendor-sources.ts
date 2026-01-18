@@ -15,12 +15,17 @@ interface Location {
   type: string;
 }
 
+interface UseVendorSourcesOptions {
+  includeAllLocations?: boolean;
+}
+
 /**
  * Hook to fetch vendor sources that combines:
  * 1. Regular vendors from the vendors table
- * 2. DC and warehouse locations that can act as vendors
+ * 2. DC and warehouse locations that can act as vendors (or all locations if includeAllLocations is true)
  */
-export function useVendorSources(companyId: string | null) {
+export function useVendorSources(companyId: string | null, options?: UseVendorSourcesOptions) {
+  const { includeAllLocations = false } = options || {};
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [dcWarehouses, setDcWarehouses] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,19 +39,24 @@ export function useVendorSources(companyId: string | null) {
     const fetchVendorSources = async () => {
       setLoading(true);
       
-      // Fetch regular vendors and DC/warehouse locations in parallel
+      // Build locations query - either all locations or just DC/warehouse
+      let locationsQuery = supabase
+        .from('locations')
+        .select('id, name, location_id, type')
+        .eq('company_id', companyId);
+      
+      if (!includeAllLocations) {
+        locationsQuery = locationsQuery.in('type', ['dc', 'warehouse']);
+      }
+      
+      // Fetch regular vendors and locations in parallel
       const [vendorsResult, locationsResult] = await Promise.all([
         supabase
           .from('vendors')
           .select('id, name, vendor_id')
           .eq('company_id', companyId)
           .order('name'),
-        supabase
-          .from('locations')
-          .select('id, name, location_id, type')
-          .eq('company_id', companyId)
-          .in('type', ['dc', 'warehouse'])
-          .order('name'),
+        locationsQuery.order('name'),
       ]);
 
       setVendors(vendorsResult.data || []);
@@ -55,7 +65,7 @@ export function useVendorSources(companyId: string | null) {
     };
 
     fetchVendorSources();
-  }, [companyId]);
+  }, [companyId, includeAllLocations]);
 
   // Combine vendors and DC/warehouse locations into searchable options
   const vendorOptions: SearchableSelectOption[] = useMemo(() => {
