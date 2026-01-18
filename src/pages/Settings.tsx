@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle, ShieldAlert, Upload, X } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -29,6 +30,7 @@ interface Company {
   state: string;
   postal_code: string;
   country: string;
+  logo_url: string | null;
 }
 
 interface DocumentIdConfig {
@@ -63,6 +65,9 @@ const Settings = () => {
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
   const [activeTab, setActiveTab] = useState('company');
   const [currentUserRole, setCurrentUserRole] = useState<AppRole | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
 
@@ -133,6 +138,7 @@ const Settings = () => {
 
         if (companyData) {
           setCompany(companyData);
+          setLogoPreview(companyData.logo_url || null);
           setFormData({
             name: companyData.name || '',
             industry: companyData.industry || '',
@@ -205,11 +211,87 @@ const Settings = () => {
     );
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Logo must be less than 5MB');
+        return;
+      }
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!company) return;
+    
+    setUploadingLogo(true);
+    try {
+      // Delete from storage if exists
+      if (company.logo_url) {
+        const fileName = company.logo_url.split('/').pop();
+        if (fileName) {
+          await supabase.storage.from('company-logos').remove([`${company.id}/${fileName}`]);
+        }
+      }
+      
+      // Update company
+      await supabase
+        .from('companies')
+        .update({ logo_url: null })
+        .eq('id', company.id);
+      
+      setLogoFile(null);
+      setLogoPreview(null);
+      setCompany({ ...company, logo_url: null });
+      toast.success('Logo removed');
+    } catch (error) {
+      toast.error('Failed to remove logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const uploadLogo = async (): Promise<string | null> => {
+    if (!logoFile || !company) return company?.logo_url || null;
+    
+    const fileExt = logoFile.name.split('.').pop();
+    const fileName = `logo-${Date.now()}.${fileExt}`;
+    const filePath = `${company.id}/${fileName}`;
+    
+    // Delete old logo if exists
+    if (company.logo_url) {
+      const oldFileName = company.logo_url.split('/').pop();
+      if (oldFileName) {
+        await supabase.storage.from('company-logos').remove([`${company.id}/${oldFileName}`]);
+      }
+    }
+    
+    const { error } = await supabase.storage
+      .from('company-logos')
+      .upload(filePath, logoFile);
+    
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('company-logos')
+      .getPublicUrl(filePath);
+    
+    return publicUrl;
+  };
+
   const handleSaveCompany = async () => {
     if (!company) return;
     
     setSaving(true);
     try {
+      // Upload logo if changed
+      let logoUrl = company.logo_url;
+      if (logoFile) {
+        logoUrl = await uploadLogo();
+      }
+
       const { error } = await supabase
         .from('companies')
         .update({
@@ -223,12 +305,15 @@ const Settings = () => {
           city: formData.city,
           state: formData.state,
           postal_code: formData.postal_code,
-          country: formData.country
+          country: formData.country,
+          logo_url: logoUrl
         })
         .eq('id', company.id);
 
       if (error) throw error;
 
+      setCompany({ ...company, logo_url: logoUrl });
+      setLogoFile(null);
       toast.success('Company information updated');
     } catch (error: any) {
       console.error('Error updating company:', error);
@@ -395,7 +480,60 @@ const Settings = () => {
                       Update your company's basic information
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
+                    {/* Logo Upload */}
+                    <div className="space-y-2">
+                      <Label>Company Logo</Label>
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-20 w-20 rounded-xl border-2 border-border">
+                          {logoPreview ? (
+                            <AvatarImage src={logoPreview} alt="Company logo" className="object-cover" />
+                          ) : (
+                            <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-2xl font-bold">
+                              {formData.name ? formData.name[0].toUpperCase() : 'C'}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => document.getElementById('logo-upload')?.click()}
+                              disabled={uploadingLogo}
+                            >
+                              <Upload className="w-4 h-4 mr-2" />
+                              {logoPreview ? 'Change' : 'Upload'}
+                            </Button>
+                            {logoPreview && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleRemoveLogo}
+                                disabled={uploadingLogo}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            JPG, PNG, WebP or SVG. Max 5MB.
+                          </p>
+                        </div>
+                        <input
+                          id="logo-upload"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Company Name *</Label>

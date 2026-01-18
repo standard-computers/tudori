@@ -23,6 +23,7 @@ export type Database = {
           created_at: string
           id: string
           industry: string | null
+          logo_url: string | null
           name: string
           phone: string | null
           postal_code: string
@@ -39,6 +40,7 @@ export type Database = {
           created_at?: string
           id?: string
           industry?: string | null
+          logo_url?: string | null
           name: string
           phone?: string | null
           postal_code: string
@@ -55,6 +57,7 @@ export type Database = {
           created_at?: string
           id?: string
           industry?: string | null
+          logo_url?: string | null
           name?: string
           phone?: string | null
           postal_code?: string

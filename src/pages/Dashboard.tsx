@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Building2, LogOut, Settings as SettingsIcon, User } from 'lucide-react';
 import {
   DropdownMenu,
@@ -39,6 +39,7 @@ interface Profile {
 
 interface Company {
   name: string;
+  logo_url: string | null;
 }
 
 const Dashboard = () => {
@@ -86,7 +87,7 @@ const Dashboard = () => {
       if (profileData.company_id) {
         const { data: companyData } = await supabase
           .from('companies')
-          .select('name')
+          .select('name, logo_url')
           .eq('id', profileData.company_id)
           .single();
         
@@ -187,15 +188,25 @@ const Dashboard = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <span className="text-lg font-display font-bold text-foreground">EnterpriseHub</span>
-                {company && (
-                  <p className="text-xs text-muted-foreground">{company.name}</p>
-                )}
-              </div>
+              {company?.logo_url ? (
+                <img 
+                  src={company.logo_url} 
+                  alt={company.name} 
+                  className="h-10 w-auto max-w-[160px] object-contain"
+                />
+              ) : (
+                <>
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <span className="text-lg font-display font-bold text-foreground">EnterpriseHub</span>
+                    {company && (
+                      <p className="text-xs text-muted-foreground">{company.name}</p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* User menu */}
