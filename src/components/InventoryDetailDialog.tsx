@@ -19,8 +19,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface InventoryItem {
   id: string;
@@ -60,6 +71,7 @@ export const InventoryDetailDialog = ({
   const [selectedBinId, setSelectedBinId] = useState<string>('');
   const [putAwayQuantity, setPutAwayQuantity] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (open && item) {
@@ -162,6 +174,29 @@ export const InventoryDetailDialog = ({
       toast.error('Failed to put away inventory');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!item) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      toast.success('Inventory deleted successfully');
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete inventory');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -283,9 +318,32 @@ export const InventoryDetailDialog = ({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
           {!isPutAwayMode ? (
             <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={isDeleting}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Inventory</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete {item.quantity} units of {item.product?.name}? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <div className="flex-1" />
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Close
                 <Kbd>Esc</Kbd>
