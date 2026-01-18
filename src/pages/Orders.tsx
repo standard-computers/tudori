@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -764,128 +765,80 @@ const Orders = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="vendor">Vendor *</Label>
-                <Select
-                  value={formData.vendor_id}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, vendor_id: value });
-                    // Clear items when vendor changes
-                    setOrderItems([]);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select vendor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="location">Ship To Location</Label>
-                <Select
-                  value={formData.location_id || "none"}
-                  onValueChange={(value) => setFormData({ ...formData, location_id: value === "none" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No location</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bill_to_location">Bill To Location</Label>
-                <Select
-                  value={formData.bill_to_location_id || "none"}
-                  onValueChange={(value) => setFormData({ ...formData, bill_to_location_id: value === "none" ? "" : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No location (use general ledger)</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  The ledger for this location will record the transaction
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Order notes..."
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            {/* Tax Rates Section */}
+          {/* Header Fields */}
+          <div className="grid grid-cols-3 gap-4 pb-4 border-b">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Tax Rates</Label>
-                {availableTaxRates.length > 0 && (
-                  <Select onValueChange={addTaxRate}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Add tax rate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTaxRates.map((rate) => (
-                        <SelectItem key={rate.id} value={rate.id}>
-                          {rate.name} ({rate.rate}%)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-              
-              {selectedTaxRates.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">No tax rates applied</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {selectedTaxRates.map((sr) => (
-                    <Badge key={sr.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
-                      {sr.name} ({sr.rate}%)
-                      <button
-                        type="button"
-                        onClick={() => removeTaxRate(sr.tax_rate_id)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </Badge>
+              <Label htmlFor="vendor">Vendor *</Label>
+              <Select
+                value={formData.vendor_id}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, vendor_id: value });
+                  setOrderItems([]);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
                   ))}
-                </div>
-              )}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="location">Ship To</Label>
+              <Select
+                value={formData.location_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, location_id: value === "none" ? "" : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No location</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Order Items */}
             <div className="space-y-2">
+              <Label htmlFor="bill_to_location">Bill To</Label>
+              <Select
+                value={formData.bill_to_location_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, bill_to_location_id: value === "none" ? "" : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No location (general ledger)</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <Tabs defaultValue="items" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="items">Items</TabsTrigger>
+              <TabsTrigger value="rates">Rates</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="items" className="space-y-4 mt-4">
               <div className="flex items-center justify-between">
                 <Label>Order Items</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addOrderItem}>
@@ -950,33 +903,91 @@ const Orders = () => {
                       </Button>
                     </div>
                   ))}
-                  
-                  <div className="border-t pt-2 mt-4">
-                    <div className="flex justify-end gap-8 text-sm">
-                      <span className="text-muted-foreground">Subtotal:</span>
-                      <span className="font-mono">${calculateTotal().toFixed(2)}</span>
-                    </div>
-                    {selectedTaxRates.map((sr) => (
-                      <div key={sr.tax_rate_id} className="flex justify-end gap-8 text-sm">
-                        <span className="text-muted-foreground">{sr.name} ({sr.rate}%):</span>
-                        <span className="font-mono">${(calculateTotal() * sr.rate / 100).toFixed(2)}</span>
-                      </div>
-                    ))}
-                    {selectedTaxRates.length === 0 && (
-                      <div className="flex justify-end gap-8 text-sm">
-                        <span className="text-muted-foreground">Tax:</span>
-                        <span className="font-mono">$0.00</span>
-                      </div>
-                    )}
-                    <div className="flex justify-end gap-8 text-base font-semibold">
-                      <span>Total:</span>
-                      <span className="font-mono">${calculateGrandTotal().toFixed(2)}</span>
-                    </div>
-                  </div>
                 </div>
               )}
-            </div>
-          </div>
+
+              {/* Totals */}
+              <div className="border-t pt-4">
+                <div className="flex justify-end gap-8 text-sm">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span className="font-mono">${calculateTotal().toFixed(2)}</span>
+                </div>
+                {selectedTaxRates.map((sr) => (
+                  <div key={sr.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                    <span className="text-muted-foreground">{sr.name} ({sr.rate}%):</span>
+                    <span className="font-mono">${(calculateTotal() * sr.rate / 100).toFixed(2)}</span>
+                  </div>
+                ))}
+                {selectedTaxRates.length === 0 && (
+                  <div className="flex justify-end gap-8 text-sm">
+                    <span className="text-muted-foreground">Tax:</span>
+                    <span className="font-mono">$0.00</span>
+                  </div>
+                )}
+                <div className="flex justify-end gap-8 text-base font-semibold">
+                  <span>Total:</span>
+                  <span className="font-mono">${calculateGrandTotal().toFixed(2)}</span>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="rates" className="space-y-4 mt-4">
+              <div className="flex items-center justify-between">
+                <Label>Tax Rates</Label>
+                {availableTaxRates.length > 0 && (
+                  <Select onValueChange={addTaxRate}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Add tax rate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTaxRates.map((rate) => (
+                        <SelectItem key={rate.id} value={rate.id}>
+                          {rate.name} ({rate.rate}%)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              
+              {selectedTaxRates.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  No tax rates applied
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {selectedTaxRates.map((sr) => (
+                    <Badge key={sr.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
+                      {sr.name} ({sr.rate}%)
+                      <button
+                        type="button"
+                        onClick={() => removeTaxRate(sr.tax_rate_id)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <div className="text-sm text-muted-foreground">
+                Combined tax rate: {calculateTotalTaxRate().toFixed(2)}%
+              </div>
+            </TabsContent>
+
+            <TabsContent value="notes" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Order Notes</Label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Add any notes or special instructions for this order..."
+                  rows={6}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -1003,7 +1014,8 @@ const Orders = () => {
           
           {viewOrder && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Header Fields */}
+              <div className="grid grid-cols-4 gap-4 pb-4 border-b">
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
                   <div className="mt-1">
@@ -1027,161 +1039,181 @@ const Orders = () => {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Order Date</Label>
-                  <p className="mt-1">{new Date(viewOrder.order_date).toLocaleDateString()}</p>
-                </div>
-                <div>
                   <Label className="text-muted-foreground">Vendor</Label>
-                  <p className="mt-1">{viewOrder.vendor?.name || '-'}</p>
+                  <p className="mt-1 font-medium">{viewOrder.vendor?.name || '-'}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Ship To</Label>
                   <p className="mt-1">{viewOrder.location?.name || '-'}</p>
                 </div>
-                {viewOrder.requisition && (
-                  <div>
-                    <Label className="text-muted-foreground">From Requisition</Label>
-                    <p className="mt-1">{viewOrder.requisition.requisition_id}</p>
-                  </div>
-                )}
-              </div>
-
-              {viewOrder.notes && (
                 <div>
-                  <Label className="text-muted-foreground">Notes</Label>
-                  <p className="mt-1 text-sm">{viewOrder.notes}</p>
-                </div>
-              )}
-
-              <div>
-                <Label className="text-muted-foreground">Items</Label>
-                <div className="mt-2 rounded-lg border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Qty</TableHead>
-                        <TableHead className="text-right">Unit Price</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {viewItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.product?.name || 'Unknown'}</TableCell>
-                          <TableCell className="text-right">{item.quantity}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            ${Number(item.unit_price || 0).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            ${Number(item.total_price || 0).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <Label className="text-muted-foreground">Bill To</Label>
+                  <p className="mt-1">{viewOrder.bill_to_location?.name || '-'}</p>
                 </div>
               </div>
 
-              {/* Tax Rates Section */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted-foreground">Tax Rates</Label>
-                  {!isEditingTaxRates && (
-                    <Button variant="ghost" size="sm" onClick={handleEditTaxRates}>
-                      <Pencil className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
+              {/* Tabs */}
+              <Tabs defaultValue="items" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="items">Items</TabsTrigger>
+                  <TabsTrigger value="rates">Rates</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
 
-                {isEditingTaxRates ? (
-                  <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Edit Tax Rates</span>
-                      {availableEditTaxRates.length > 0 && (
-                        <Select onValueChange={addEditTaxRate}>
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Add tax rate" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableEditTaxRates.map((rate) => (
-                              <SelectItem key={rate.id} value={rate.id}>
-                                {rate.name} ({rate.rate}%)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                <TabsContent value="items" className="space-y-4 mt-4">
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.product?.name || 'Unknown'}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${Number(item.unit_price || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${Number(item.total_price || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="border-t pt-4">
+                    <div className="flex justify-end gap-8 text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-mono">${Number(viewOrder.subtotal || 0).toFixed(2)}</span>
                     </div>
-                    
-                    {editTaxRates.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No tax rates</p>
-                    ) : (
+                    {viewTaxRates.map((vt) => (
+                      <div key={vt.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                        <span className="text-muted-foreground">{vt.tax_rate.name} ({vt.tax_rate.rate}%):</span>
+                        <span className="font-mono">${Number(vt.tax_amount || 0).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    {viewTaxRates.length === 0 && (
+                      <div className="flex justify-end gap-8 text-sm">
+                        <span className="text-muted-foreground">Tax:</span>
+                        <span className="font-mono">$0.00</span>
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-8 text-base font-semibold">
+                      <span>Total:</span>
+                      <span className="font-mono">${Number(viewOrder.total_amount || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="rates" className="space-y-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Tax Rates</Label>
+                    {!isEditingTaxRates && (
+                      <Button variant="ghost" size="sm" onClick={handleEditTaxRates}>
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditingTaxRates ? (
+                    <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Edit Tax Rates</span>
+                        {availableEditTaxRates.length > 0 && (
+                          <Select onValueChange={addEditTaxRate}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue placeholder="Add tax rate" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableEditTaxRates.map((rate) => (
+                                <SelectItem key={rate.id} value={rate.id}>
+                                  {rate.name} ({rate.rate}%)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                      
+                      {editTaxRates.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No tax rates</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {editTaxRates.map((er) => (
+                            <Badge key={er.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
+                              {er.name} ({er.rate}%)
+                              <button
+                                type="button"
+                                onClick={() => removeEditTaxRate(er.tax_rate_id)}
+                                className="ml-1 hover:text-destructive"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="ghost" size="sm" onClick={() => setIsEditingTaxRates(false)}>
+                          <X className="w-4 h-4 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleSaveTaxRates} disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    viewTaxRates.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {editTaxRates.map((er) => (
-                          <Badge key={er.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
-                            {er.name} ({er.rate}%)
-                            <button
-                              type="button"
-                              onClick={() => removeEditTaxRate(er.tax_rate_id)}
-                              className="ml-1 hover:text-destructive"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
+                        {viewTaxRates.map((vt) => (
+                          <Badge key={vt.tax_rate_id} variant="outline">
+                            {vt.tax_rate.name} ({vt.tax_rate.rate}%)
                           </Badge>
                         ))}
                       </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                        No tax rates applied
+                      </p>
+                    )
+                  )}
+                </TabsContent>
+
+                <TabsContent value="notes" className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>Order Notes</Label>
+                    {viewOrder.notes ? (
+                      <p className="text-sm p-3 bg-muted rounded-lg">{viewOrder.notes}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                        No notes for this order
+                      </p>
                     )}
-
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => setIsEditingTaxRates(false)}>
-                        <X className="w-4 h-4 mr-1" />
-                        Cancel
-                      </Button>
-                      <Button size="sm" onClick={handleSaveTaxRates} disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-                        Save
-                      </Button>
+                  </div>
+                  {viewOrder.requisition && (
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">From Requisition</Label>
+                      <p className="text-sm">{viewOrder.requisition.requisition_id}</p>
                     </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Order Date</Label>
+                    <p className="text-sm">{new Date(viewOrder.order_date).toLocaleDateString()}</p>
                   </div>
-                ) : (
-                  viewTaxRates.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {viewTaxRates.map((vt) => (
-                        <Badge key={vt.tax_rate_id} variant="outline">
-                          {vt.tax_rate.name} ({vt.tax_rate.rate}%)
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No tax rates applied</p>
-                  )
-                )}
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="flex justify-end gap-8 text-sm">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span className="font-mono">${Number(viewOrder.subtotal || 0).toFixed(2)}</span>
-                </div>
-                {viewTaxRates.map((vt) => (
-                  <div key={vt.tax_rate_id} className="flex justify-end gap-8 text-sm">
-                    <span className="text-muted-foreground">{vt.tax_rate.name} ({vt.tax_rate.rate}%):</span>
-                    <span className="font-mono">${Number(vt.tax_amount || 0).toFixed(2)}</span>
-                  </div>
-                ))}
-                {viewTaxRates.length === 0 && (
-                  <div className="flex justify-end gap-8 text-sm">
-                    <span className="text-muted-foreground">Tax:</span>
-                    <span className="font-mono">$0.00</span>
-                  </div>
-                )}
-                <div className="flex justify-end gap-8 text-base font-semibold">
-                  <span>Total:</span>
-                  <span className="font-mono">${Number(viewOrder.total_amount || 0).toFixed(2)}</span>
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
 
