@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
 interface Vendor {
@@ -162,6 +164,9 @@ const Vendors = () => {
     setFormData(prev => ({ ...prev, vendor_id: nextVendorId }));
     setIsDialogOpen(true);
   };
+
+  // Keyboard shortcut for adding new vendor
+  useKeyboardShortcut('n', handleOpenDialog);
 
   const handleEdit = (vendor: Vendor) => {
     setFormData({
@@ -338,6 +343,7 @@ const Vendors = () => {
                 <Button onClick={handleOpenDialog}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Vendor
+                  <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">

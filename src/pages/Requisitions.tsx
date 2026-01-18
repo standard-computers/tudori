@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
 interface Requisition {
@@ -203,6 +205,9 @@ const Requisitions = () => {
     setSuggestedItems([]);
     setIsRunDialogOpen(true);
   };
+
+  // Keyboard shortcut for running requisition
+  useKeyboardShortcut('n', handleRunClick);
 
   const generateSuggestions = () => {
     // Filter products by selected vendor if one is selected
@@ -460,6 +465,7 @@ const Requisitions = () => {
               <Button onClick={handleRunClick} variant="default">
                 <Play className="w-4 h-4 mr-2" />
                 Run
+                <Kbd>N</Kbd>
               </Button>
             </div>
           </div>
