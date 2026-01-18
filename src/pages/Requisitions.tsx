@@ -489,19 +489,7 @@ const Requisitions = () => {
           console.error('Error creating ledger transaction:', txError);
           // Don't throw, the PO was created successfully
         }
-
-        // Update ledger balance
-        const selectedLedger = ledgers.find((l: any) => l.id === selectedLedgerId);
-        if (selectedLedger) {
-          const { error: balanceError } = await supabase
-            .from('ledgers' as any)
-            .update({ balance: (selectedLedger.balance || 0) - totalAmount })
-            .eq('id', selectedLedgerId);
-
-          if (balanceError) {
-            console.error('Error updating ledger balance:', balanceError);
-          }
-        }
+        // Balance is computed from transactions, no need to update manually
       }
 
       // Update requisition status to 'ordered'

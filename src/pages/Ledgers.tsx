@@ -64,11 +64,11 @@ interface Ledger {
   ledger_id: string;
   name: string;
   location_id: string | null;
-  balance: number;
   description: string | null;
   is_active: boolean;
   created_at: string;
   location?: { name: string } | null;
+  computed_balance?: number; // Computed from transactions
 }
 
 interface LedgerTransaction {
@@ -206,7 +206,18 @@ const Ledgers = () => {
       return;
     }
 
-    setLedgers((data as any) || []);
+    // Fetch transactions to compute balances
+    const { data: allTransactions } = await supabase
+      .from('ledger_transactions' as any)
+      .select('ledger_id, amount');
+
+    const ledgersWithBalance = ((data as any) || []).map((ledger: any) => {
+      const transactions = (allTransactions || []).filter((t: any) => t.ledger_id === ledger.id);
+      const computed_balance = transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+      return { ...ledger, computed_balance };
+    });
+
+    setLedgers(ledgersWithBalance);
   };
 
   const fetchLocations = async (cId: string) => {
@@ -376,13 +387,11 @@ const Ledgers = () => {
     
     // Capture values before any state changes
     const txId = viewingTransaction.id;
-    const txAmount = viewingTransaction.amount;
     const ledgerId = viewingLedger.id;
-    const currentBalance = viewingLedger.balance;
     
     setIsDeletingTx(true);
     try {
-      // Delete the transaction - the database trigger will automatically update the ledger balance
+      // Delete the transaction
       const { error: txError } = await supabase
         .from('ledger_transactions' as any)
         .delete()
@@ -399,14 +408,14 @@ const Ledgers = () => {
       
       setLedgerTransactions((updatedTransactions as any) || []);
       
-      // Refresh main ledgers list to get updated balance from trigger
-      await fetchLedgers(companyId!);
+      // Compute new balance from remaining transactions
+      const newBalance = (updatedTransactions || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
       
-      // Update the viewing ledger with the new balance from the refreshed data
-      const updatedLedger = ledgers.find(l => l.id === ledgerId);
-      if (updatedLedger) {
-        setViewingLedger(updatedLedger);
-      }
+      // Update the viewing ledger with the new computed balance
+      setViewingLedger(prev => prev ? { ...prev, computed_balance: newBalance } : null);
+      
+      // Refresh main ledgers list
+      await fetchLedgers(companyId!);
 
       toast.success('Transaction deleted');
       
@@ -441,23 +450,20 @@ const Ledgers = () => {
       
       if (txError) throw txError;
 
-      // Update ledger balance
-      const newBalance = viewingLedger.balance + adjustmentAmount;
-      const { error: ledgerError } = await supabase
-        .from('ledgers' as any)
-        .update({ balance: newBalance })
-        .eq('id', viewingLedger.id);
-      
-      if (ledgerError) throw ledgerError;
-
       toast.success('Adjustment transaction created');
       setViewingTransaction(null);
       
-      // Refresh data
+      // Refresh data and recompute balance
       await fetchLedgerTransactions(viewingLedger.id);
       await fetchLedgers(companyId!);
-      // Update the viewing ledger with new balance
-      setViewingLedger(prev => prev ? { ...prev, balance: newBalance } : null);
+      
+      // Compute new balance from updated transactions
+      const { data: updatedTxs } = await supabase
+        .from('ledger_transactions' as any)
+        .select('amount')
+        .eq('ledger_id', viewingLedger.id);
+      const newBalance = (updatedTxs || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+      setViewingLedger(prev => prev ? { ...prev, computed_balance: newBalance } : null);
     } catch (error: any) {
       console.error('Error creating adjustment:', error);
       toast.error(error.message || 'Failed to create adjustment');
@@ -536,8 +542,8 @@ const Ledgers = () => {
                     <TableCell className="font-medium">{ledger.name}</TableCell>
                     <TableCell>{ledger.location?.name || '—'}</TableCell>
                     <TableCell className="text-right">
-                      <span className={ledger.balance < 0 ? 'text-destructive' : 'text-green-600'}>
-                        {formatCurrency(ledger.balance)}
+                      <span className={(ledger.computed_balance || 0) < 0 ? 'text-destructive' : 'text-green-600'}>
+                        {formatCurrency(ledger.computed_balance || 0)}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -716,8 +722,8 @@ const Ledgers = () => {
               {viewingLedger?.name} - Transactions
             </DialogTitle>
             <DialogDescription>
-              Balance: <span className={viewingLedger && viewingLedger.balance < 0 ? 'text-destructive' : 'text-green-600'}>
-                {viewingLedger && formatCurrency(viewingLedger.balance)}
+              Balance: <span className={viewingLedger && (viewingLedger.computed_balance || 0) < 0 ? 'text-destructive' : 'text-green-600'}>
+                {viewingLedger && formatCurrency(viewingLedger.computed_balance || 0)}
               </span>
             </DialogDescription>
           </DialogHeader>
