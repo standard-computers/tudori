@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Building2, Save, Loader2, Settings2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
 
 interface Company {
   id: string;
@@ -49,6 +50,8 @@ const DOCUMENT_TYPES = [
   { value: 'location', label: 'Location', prefix_placeholder: '' },
 ];
 
+type AppRole = Database['public']['Enums']['app_role'];
+
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -58,15 +61,19 @@ const Settings = () => {
   const [company, setCompany] = useState<Company | null>(null);
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
   const [activeTab, setActiveTab] = useState('company');
+  const [currentUserRole, setCurrentUserRole] = useState<AppRole | null>(null);
 
-  // Ctrl+S to save based on active tab
+  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  // Ctrl+S to save based on active tab (only for admins)
   useSaveShortcut(() => {
+    if (!isAdmin) return;
     if (activeTab === 'company' && company && !saving) {
       handleSaveCompany();
     } else if (activeTab === 'config' && !savingConfig) {
       handleSaveConfigs();
     }
-  }, true);
+  }, isAdmin);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -105,6 +112,16 @@ const Settings = () => {
         .maybeSingle();
 
       if (profile?.company_id) {
+        // Fetch user's role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user!.id)
+          .eq('company_id', profile.company_id)
+          .single();
+
+        setCurrentUserRole(roleData?.role || null);
+
         const { data: companyData, error } = await supabase
           .from('companies')
           .select('*')
@@ -275,6 +292,51 @@ const Settings = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Access denied view for non-admins
+  if (!isAdmin && !loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center h-16 gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-500 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-xl font-display font-bold text-foreground">Settings</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Access Denied */}
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                  <ShieldAlert className="w-8 h-8 text-destructive" />
+                </div>
+                <h2 className="text-xl font-semibold text-foreground mb-2">Access Denied</h2>
+                <p className="text-muted-foreground max-w-md">
+                  Only administrators and owners can view and edit company settings. 
+                  Please contact your administrator if you need access.
+                </p>
+                <Button className="mt-6" onClick={() => navigate('/dashboard')}>
+                  Return to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
