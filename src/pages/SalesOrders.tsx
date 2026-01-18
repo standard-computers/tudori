@@ -143,7 +143,7 @@ const SalesOrders = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   
   // Use vendor sources hook for ship from options (vendors + all locations)
-  const { vendorOptions: shipFromOptions } = useVendorSources(companyId, { includeAllLocations: true });
+  const { vendorOptions: shipFromOptions, parseVendorValue } = useVendorSources(companyId, { includeAllLocations: true });
   
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -451,6 +451,11 @@ const SalesOrders = () => {
       const taxAmount = calculateTax();
       const totalAmount = calculateGrandTotal();
 
+      // Parse ship from value to extract actual ID
+      const shipFromParsed = formData.location_id ? parseVendorValue(formData.location_id) : null;
+      const shipFromLocationId = shipFromParsed?.type === 'location' ? shipFromParsed.id : null;
+      const shipFromVendorId = shipFromParsed?.type === 'vendor' ? shipFromParsed.id : null;
+
       // Create sales order
       const { data: order, error: orderError } = await supabase
         .from('sales_orders' as any)
@@ -459,7 +464,7 @@ const SalesOrders = () => {
           so_number: soNumber,
           status: 'draft',
           customer_id: formData.customer_id || null,
-          location_id: formData.location_id || null,
+          location_id: shipFromLocationId,
           bill_to_location_id: formData.bill_to_location_id || null,
           ledger_id: selectedLedgerId,
           tax_rate_id: selectedTaxRates.length === 1 ? selectedTaxRates[0].tax_rate_id : null,
