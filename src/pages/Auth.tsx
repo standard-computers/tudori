@@ -191,6 +191,21 @@ const Auth = () => {
         return;
       }
 
+      // Assign owner role to the user who created the company
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          company_id: companyData.id,
+          role: 'owner',
+        });
+
+      if (roleError) {
+        toast.error('Failed to assign role: ' + roleError.message);
+        setLoading(false);
+        return;
+      }
+
       toast.success('Account created successfully!');
       navigate('/dashboard');
     }
