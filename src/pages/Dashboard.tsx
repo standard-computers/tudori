@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearch } from "@/contexts/SearchContext";
+import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, LogOut, Settings as SettingsIcon, User } from "lucide-react";
+import { Building2, LogOut, Settings as SettingsIcon, User, Search } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +42,8 @@ interface Company {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
+  const { openSearch } = useSearch();
+  useTransaction('dash');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [apps, setApps] = useState<AppTile[]>([]);
@@ -193,6 +198,19 @@ const Dashboard = () => {
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Search bar - center */}
+            <div className="flex-1 flex justify-center px-4 max-w-md mx-auto">
+              <Button
+                variant="outline"
+                onClick={openSearch}
+                className="w-full justify-start text-muted-foreground gap-2 h-9"
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden sm:inline">Search...</span>
+                <Kbd className="ml-auto">⌘K</Kbd>
+              </Button>
             </div>
 
             {/* User menu */}
