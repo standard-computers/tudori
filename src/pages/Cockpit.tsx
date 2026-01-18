@@ -88,6 +88,9 @@ const Cockpit = () => {
   const areaFormRef = useRef<HTMLFormElement>(null);
   const binFormRef = useRef<HTMLFormElement>(null);
 
+  // Stats state
+  const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
+
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
@@ -134,6 +137,14 @@ const Cockpit = () => {
       setBins([]);
     }
   }, [selectedLocationId, selectedLocation]);
+
+  useEffect(() => {
+    if (selectedLocationId) {
+      fetchPendingDeliveries();
+    } else {
+      setPendingDeliveriesCount(0);
+    }
+  }, [selectedLocationId]);
 
   const fetchCompanyId = async () => {
     const { data } = await supabase
@@ -198,6 +209,21 @@ const Cockpit = () => {
     } else {
       setBins([]);
     }
+  };
+
+  const fetchPendingDeliveries = async () => {
+    if (!selectedLocationId) return;
+    const { count, error } = await supabase
+      .from('deliveries')
+      .select('*', { count: 'exact', head: true })
+      .eq('location_id', selectedLocationId)
+      .neq('status', 'delivered');
+    
+    if (error) {
+      console.error('Failed to fetch pending deliveries:', error);
+      return;
+    }
+    setPendingDeliveriesCount(count || 0);
   };
 
   const getNextAreaId = () => {
@@ -496,8 +522,8 @@ const Cockpit = () => {
                   <Truck className="w-6 h-6 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Shipments</p>
-                  <p className="text-2xl font-bold">—</p>
+                  <p className="text-sm text-muted-foreground">Inbound Shipments</p>
+                  <p className="text-2xl font-bold">{pendingDeliveriesCount}</p>
                 </div>
               </div>
             </CardContent>
