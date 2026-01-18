@@ -405,12 +405,11 @@ const Requisitions = () => {
 
       if (poNumError) throw poNumError;
 
-      // Calculate totals
+      // Calculate totals - no tax for PR to PO conversion (tax can be added manually later)
       const subtotal = reqItems.reduce((sum, item) => {
         return sum + (item.unit_price || item.product?.price || 0) * item.quantity;
       }, 0);
-      const taxAmount = subtotal * 0.1;
-      const totalAmount = subtotal + taxAmount;
+      const totalAmount = subtotal; // Net value only, no tax
 
       // Parse vendor_id from requisition (handles 'vendor:uuid' format)
       const parsedVendor = requisition.vendor_id ? parseVendorValue(requisition.vendor_id) : null;
@@ -449,7 +448,7 @@ const Requisitions = () => {
           ledger_id: selectedLedgerId,
           requisition_id: requisition.id,
           subtotal,
-          tax_amount: taxAmount,
+          tax_amount: 0,
           total_amount: totalAmount,
           notes: `Converted from requisition ${requisition.requisition_id}`,
         })
