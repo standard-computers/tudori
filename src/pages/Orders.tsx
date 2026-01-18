@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -242,6 +244,9 @@ const Orders = () => {
     setIsCreateDialogOpen(true);
   };
 
+  // Keyboard shortcut for creating new PO
+  useKeyboardShortcut('n', handleCreateClick);
+
   const addOrderItem = () => {
     setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0 }]);
   };
@@ -441,6 +446,7 @@ const Orders = () => {
               <Button onClick={handleCreateClick} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
                 Create PO
+                <Kbd>N</Kbd>
               </Button>
             </div>
           </div>

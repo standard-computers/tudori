@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
 interface Product {
@@ -203,6 +205,9 @@ const Products = () => {
     setIsDialogOpen(true);
   };
 
+  // Keyboard shortcut for adding new product
+  useKeyboardShortcut('n', handleOpenDialog);
+
   const handleEdit = async (product: Product) => {
     setFormData({
       product_id: product.product_id,
@@ -364,6 +369,7 @@ const Products = () => {
                 <Button onClick={handleOpenDialog}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Product
+                  <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">

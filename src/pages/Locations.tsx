@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
 interface Location {
@@ -146,6 +148,9 @@ const Locations = () => {
     setIsDialogOpen(true);
   };
 
+  // Keyboard shortcut for adding new location
+  useKeyboardShortcut('n', handleOpenDialog);
+
   const handleEdit = (location: Location) => {
     setFormData({
       location_id: location.location_id,
@@ -261,6 +266,7 @@ const Locations = () => {
                 <Button onClick={handleOpenDialog}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Location
+                  <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">

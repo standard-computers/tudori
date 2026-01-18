@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -122,6 +124,9 @@ const Rates = () => {
     });
     setIsDialogOpen(true);
   };
+
+  // Keyboard shortcut for adding new rate
+  useKeyboardShortcut('n', handleAddClick);
 
   const handleEditClick = (rate: TaxRate) => {
     setEditingRate(rate);
@@ -261,6 +266,7 @@ const Rates = () => {
               <Button onClick={handleAddClick} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Rate
+                <Kbd>N</Kbd>
               </Button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
+import { Kbd } from '@/components/ui/kbd';
 import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock } from 'lucide-react';
 import { z } from 'zod';
 
@@ -161,6 +163,14 @@ const Users = () => {
   };
 
   const canManageUsers = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  const openInviteDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
+  // Keyboard shortcut for adding new user (only if can manage)
+  useKeyboardShortcut('n', openInviteDialog, canManageUsers);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -391,6 +401,7 @@ const Users = () => {
                   <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add User
+                    <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
