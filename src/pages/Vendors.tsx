@@ -509,9 +509,7 @@ const Vendors = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center">
-                  <Building className="w-6 h-6 text-white" />
-                </div>
+                <Building className="w-7 h-7 text-red-500" />
                 <h1 className="text-xl font-display font-bold text-foreground">Vendors</h1>
               </div>
             </div>

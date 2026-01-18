@@ -361,9 +361,7 @@ const Deliveries = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center">
-                  <Truck className="w-6 h-6 text-white" />
-                </div>
+                <Truck className="w-7 h-7 text-teal-500" />
                 <h1 className="text-xl font-display font-bold text-foreground">Deliveries</h1>
               </div>
             </div>

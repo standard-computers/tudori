@@ -376,9 +376,7 @@ const Cockpit = () => {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                    <Gauge className="w-6 h-6 text-white" />
-                  </div>
+                  <Gauge className="w-7 h-7 text-orange-500" />
                   <h1 className="text-xl font-display font-bold text-foreground">Cockpit</h1>
                 </div>
               </div>
@@ -389,9 +387,7 @@ const Cockpit = () => {
         <main className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <Card>
             <CardHeader className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mx-auto mb-4">
-                <MapPin className="w-8 h-8 text-white" />
-              </div>
+              <MapPin className="w-10 h-10 text-orange-500 mx-auto mb-4" />
               <CardTitle className="text-2xl">Select Location</CardTitle>
               <CardDescription>
                 Choose a location to view its dashboard and key metrics.

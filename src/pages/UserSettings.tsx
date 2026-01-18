@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2 } from 'lucide-react';
+import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import {
   DndContext,
@@ -80,8 +81,8 @@ const SortableAppItem = ({ app, onToggleVisibility }: SortableAppItemProps) => {
       >
         <GripVertical className="w-5 h-5" />
       </button>
-      <div className={`w-10 h-10 rounded-lg ${app.color} flex items-center justify-center`}>
-        <Icon className="w-5 h-5 text-white" />
+      <div className="w-10 h-10 flex items-center justify-center">
+        <Icon className={`w-6 h-6 ${app.color}`} />
       </div>
       <div className="flex-1">
         <p className="font-medium text-foreground">{app.name}</p>
@@ -106,6 +107,7 @@ const UserSettings = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { setTransaction } = useStatusBar();
+  const { theme, setTheme } = useTheme();
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
   const [openInNewTab, setOpenInNewTab] = useState(false);
@@ -320,7 +322,7 @@ const UserSettings = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general">
+          <TabsContent value="general" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
@@ -360,6 +362,35 @@ const UserSettings = () => {
                     Save Changes
                     <Kbd className="ml-2">⌘S</Kbd>
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>
+                  Customize how the application looks
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {theme === 'dark' ? (
+                      <Moon className="w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <Sun className="w-5 h-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <Label htmlFor="dark-mode" className="text-base font-medium">Dark Mode</Label>
+                      <p className="text-sm text-muted-foreground">Use dark theme for the interface</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="dark-mode"
+                    checked={theme === 'dark'}
+                    onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                  />
                 </div>
               </CardContent>
             </Card>
