@@ -113,6 +113,7 @@ interface Ledger {
   name: string;
   location_id: string | null;
   is_active: boolean;
+  balance: number;
 }
 
 interface Product {
@@ -307,7 +308,7 @@ const Orders = () => {
   const fetchLedgers = async () => {
     const { data } = await supabase
       .from('ledgers' as any)
-      .select('id, name, location_id, is_active')
+      .select('id, name, location_id, is_active, balance')
       .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name');
@@ -497,6 +498,19 @@ const Orders = () => {
         if (txError) {
           console.error('Error creating ledger transaction:', txError);
           // Don't throw, the PO was created successfully
+        }
+
+        // Update ledger balance
+        const selectedLedger = ledgers.find(l => l.id === selectedLedgerId);
+        if (selectedLedger) {
+          const { error: balanceError } = await supabase
+            .from('ledgers' as any)
+            .update({ balance: ((selectedLedger as any).balance || 0) - totalAmount })
+            .eq('id', selectedLedgerId);
+
+          if (balanceError) {
+            console.error('Error updating ledger balance:', balanceError);
+          }
         }
       }
 
