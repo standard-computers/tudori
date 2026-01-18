@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
@@ -88,6 +89,7 @@ const getStatusColor = (status: string) => {
 const Deliveries = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { setTransaction } = useStatusBar();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -97,6 +99,15 @@ const Deliveries = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextDeliveryId, setNextDeliveryId] = useState('DEL-0001');
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(isEditing ? 'del/edit' : 'del/new');
+    } else {
+      setTransaction('del');
+    }
+  }, [isDialogOpen, isEditing, setTransaction]);
 
   // Use vendor sources hook
   const { vendorOptions } = useVendorSources(companyId);

@@ -3,6 +3,7 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +36,6 @@ import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 
 interface Vendor {
   id: string;
@@ -216,6 +216,7 @@ const VendorTable = ({
 const Vendors = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { addMessage, setTransaction } = useStatusBar();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -239,6 +240,15 @@ const Vendors = () => {
     website: '',
     notes: '',
   });
+
+  // Set transaction based on dialog state
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(isEditing ? 'vend/edit' : 'vend/new');
+    } else {
+      setTransaction('vend');
+    }
+  }, [isDialogOpen, isEditing, setTransaction]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -279,7 +289,7 @@ const Vendors = () => {
       .order('vendor_id');
 
     if (error) {
-      toast.error('Failed to load vendors');
+      addMessage('Failed to load vendors', 'error');
       return;
     }
 
@@ -355,11 +365,11 @@ const Vendors = () => {
       .eq('id', id);
 
     if (error) {
-      toast.error('Failed to delete vendor');
+      addMessage('Failed to delete vendor', 'error');
       return;
     }
 
-    toast.success('Vendor deleted');
+    addMessage('Vendor deleted', 'success');
     fetchVendors();
     fetchNextVendorId();
   };
@@ -388,11 +398,11 @@ const Vendors = () => {
         .eq('id', editingId);
 
       if (error) {
-        toast.error('Failed to update vendor');
+        addMessage('Failed to update vendor', 'error');
         return;
       }
 
-      toast.success('Vendor updated');
+      addMessage('Vendor updated', 'success');
     } else {
       const { error } = await supabase
         .from('vendors')
@@ -415,11 +425,11 @@ const Vendors = () => {
         });
 
       if (error) {
-        toast.error('Failed to create vendor');
+        addMessage('Failed to create vendor', 'error');
         return;
       }
 
-      toast.success('Vendor created');
+      addMessage('Vendor created', 'success');
     }
 
     setIsDialogOpen(false);
@@ -429,7 +439,7 @@ const Vendors = () => {
 
   const handleAILookup = async () => {
     if (!formData.name || formData.name.trim().length < 2) {
-      toast.error('Enter a company name first');
+      addMessage('Enter a company name first', 'error');
       return;
     }
 
@@ -441,12 +451,12 @@ const Vendors = () => {
 
       if (error) {
         console.error('Lookup error:', error);
-        toast.error('Failed to look up company');
+        addMessage('Failed to look up company', 'error');
         return;
       }
 
       if (data.error) {
-        toast.error(data.error);
+        addMessage(data.error, 'error');
         return;
       }
 
@@ -463,10 +473,10 @@ const Vendors = () => {
         country: data.country || prev.country,
       }));
 
-      toast.success('Company information found!');
+      addMessage('Company information found!', 'success');
     } catch (err) {
       console.error('Lookup error:', err);
-      toast.error('Failed to look up company');
+      addMessage('Failed to look up company', 'error');
     } finally {
       setIsLookingUp(false);
     }
