@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
+import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import {
   Select,
   SelectContent,
@@ -127,6 +128,8 @@ const Cockpit = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
   const [activeTab, setActiveTab] = useState('actions');
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
+  const [isInventoryDetailOpen, setIsInventoryDetailOpen] = useState(false);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -917,13 +920,23 @@ const Cockpit = () => {
                           const isLow = item.min_quantity && item.quantity <= item.min_quantity;
                           const isHigh = item.max_quantity && item.quantity >= item.max_quantity;
                           return (
-                            <TableRow key={item.id} className={isLow ? 'bg-amber-500/5' : isHigh ? 'bg-blue-500/5' : ''}>
+                            <TableRow 
+                              key={item.id} 
+                              className={`cursor-pointer hover:bg-muted/50 ${isLow ? 'bg-amber-500/5' : isHigh ? 'bg-blue-500/5' : ''}`}
+                              onClick={() => {
+                                setSelectedInventoryItem(item);
+                                setIsInventoryDetailOpen(true);
+                              }}
+                            >
                               <TableCell className="font-mono">{item.product?.product_id || '—'}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   {item.product?.name || 'Unknown'}
                                   {isLow && (
                                     <span className="text-xs bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded">Low</span>
+                                  )}
+                                  {!item.bin_id && (
+                                    <span className="text-xs bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded">Put Away</span>
                                   )}
                                 </div>
                               </TableCell>
@@ -1192,6 +1205,20 @@ const Cockpit = () => {
             fetchInventory();
             setSelectedDelivery(null);
           }}
+        />
+      )}
+
+      {/* Inventory Detail Dialog */}
+      {selectedLocationId && (
+        <InventoryDetailDialog
+          open={isInventoryDetailOpen}
+          onOpenChange={(open) => {
+            setIsInventoryDetailOpen(open);
+            if (!open) setSelectedInventoryItem(null);
+          }}
+          item={selectedInventoryItem}
+          locationId={selectedLocationId}
+          onUpdated={fetchInventory}
         />
       )}
     </div>
