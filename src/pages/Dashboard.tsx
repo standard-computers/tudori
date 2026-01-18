@@ -1,13 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearch } from "@/contexts/SearchContext";
-import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, LogOut, Settings as SettingsIcon, User, Search } from "lucide-react";
-import { Kbd } from "@/components/ui/kbd";
+import { Building2, LogOut, Settings as SettingsIcon, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,8 +39,6 @@ interface Company {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
-  const { openSearch } = useSearch();
-  useTransaction('dash');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [apps, setApps] = useState<AppTile[]>([]);
@@ -180,7 +175,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -198,19 +193,6 @@ const Dashboard = () => {
                   </div>
                 </>
               )}
-            </div>
-
-            {/* Search bar - center */}
-            <div className="flex-1 flex justify-center px-4 max-w-md mx-auto">
-              <Button
-                variant="outline"
-                onClick={openSearch}
-                className="w-full justify-start text-muted-foreground gap-2 h-9"
-              >
-                <Search className="w-4 h-4" />
-                <span className="hidden sm:inline">Search...</span>
-                <Kbd className="ml-auto">⌘K</Kbd>
-              </Button>
             </div>
 
             {/* User menu */}
@@ -266,9 +248,7 @@ const Dashboard = () => {
           <h1 className="text-3xl font-display font-bold text-foreground">
             Good {getTimeOfDay()}, {profile?.first_name || "there"}!
           </h1>
-          <p className="text-muted-foreground mt-1">
-            What would you like to work on today? <span className="text-xs">(Drag tiles to reorganize)</span>
-          </p>
+          <p className="text-muted-foreground mt-1">What would you like to work on today?</p>
         </div>
 
         {/* Apps grid with drag and drop */}
