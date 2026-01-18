@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import {
   Select,
   SelectContent,
@@ -74,6 +75,7 @@ interface Delivery {
   delivery_id: string;
   status: string;
   expected_date: string | null;
+  purchase_order_id: string | null;
   vendor?: { name: string } | null;
   purchase_order?: { po_number: string } | null;
 }
@@ -103,6 +105,10 @@ const Cockpit = () => {
   const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
   const [pendingDeliveries, setPendingDeliveries] = useState<Delivery[]>([]);
   const [isDeliveriesDialogOpen, setIsDeliveriesDialogOpen] = useState(false);
+  
+  // Receive delivery state
+  const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -228,7 +234,7 @@ const Cockpit = () => {
     if (!selectedLocationId) return;
     const { data, count, error } = await supabase
       .from('deliveries')
-      .select('id, delivery_id, status, expected_date, vendor:vendors(name), purchase_order:purchase_orders(po_number)', { count: 'exact' })
+      .select('id, delivery_id, status, expected_date, purchase_order_id, vendor:vendors(name), purchase_order:purchase_orders(po_number)', { count: 'exact' })
       .eq('location_id', selectedLocationId)
       .neq('status', 'delivered')
       .order('expected_date', { ascending: true });
@@ -944,6 +950,7 @@ const Cockpit = () => {
                     <TableHead>Vendor</TableHead>
                     <TableHead>Expected Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -968,6 +975,18 @@ const Cockpit = () => {
                           {delivery.status.replace('_', ' ')}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedDelivery(delivery);
+                            setIsReceiveDialogOpen(true);
+                          }}
+                        >
+                          Receive
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -984,6 +1003,24 @@ const Cockpit = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Receive Delivery Dialog */}
+      {selectedDelivery && (
+        <ReceiveDeliveryDialog
+          open={isReceiveDialogOpen}
+          onOpenChange={(open) => {
+            setIsReceiveDialogOpen(open);
+            if (!open) setSelectedDelivery(null);
+          }}
+          deliveryId={selectedDelivery.id}
+          deliveryDisplayId={selectedDelivery.delivery_id}
+          purchaseOrderId={selectedDelivery.purchase_order_id}
+          onReceived={() => {
+            fetchPendingDeliveries();
+            setSelectedDelivery(null);
+          }}
+        />
+      )}
     </div>
   );
 };
