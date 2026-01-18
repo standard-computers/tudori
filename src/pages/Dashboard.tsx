@@ -23,7 +23,8 @@ import {
   MapPin,
   Building,
   LucideIcon,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Percent
 } from 'lucide-react';
 import {
   DndContext,
@@ -69,6 +70,7 @@ const defaultApps: AppTile[] = [
   { name: 'Products', icon: Package, color: 'bg-amber-500', description: 'Product catalog', path: '/products' },
   { name: 'Analytics', icon: BarChart3, color: 'bg-pink-500', description: 'Reports & insights', path: null },
   { name: 'Invoices', icon: FileText, color: 'bg-cyan-500', description: 'Billing & payments', path: null },
+  { name: 'Rates', icon: Percent, color: 'bg-yellow-500', description: 'Tax rates', path: '/rates' },
   { name: 'Orders', icon: ShoppingCart, color: 'bg-orange-500', description: 'Vendor orders', path: '/orders' },
   { name: 'Requisitions', icon: FileSpreadsheet, color: 'bg-sky-500', description: 'Purchase requests', path: '/requisitions' },
   { name: 'Shipping', icon: Truck, color: 'bg-teal-500', description: 'Logistics & delivery', path: null },

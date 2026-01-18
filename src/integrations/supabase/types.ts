@@ -431,6 +431,7 @@ export type Database = {
           status: string
           subtotal: number | null
           tax_amount: number | null
+          tax_rate_id: string | null
           total_amount: number | null
           updated_at: string
           vendor_id: string | null
@@ -448,6 +449,7 @@ export type Database = {
           status?: string
           subtotal?: number | null
           tax_amount?: number | null
+          tax_rate_id?: string | null
           total_amount?: number | null
           updated_at?: string
           vendor_id?: string | null
@@ -465,6 +467,7 @@ export type Database = {
           status?: string
           subtotal?: number | null
           tax_amount?: number | null
+          tax_rate_id?: string | null
           total_amount?: number | null
           updated_at?: string
           vendor_id?: string | null
@@ -489,6 +492,13 @@ export type Database = {
             columns: ["requisition_id"]
             isOneToOne: false
             referencedRelation: "requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
             referencedColumns: ["id"]
           },
           {
@@ -599,6 +609,50 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_rates: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          rate?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
