@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -35,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package } from 'lucide-react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -74,6 +75,21 @@ interface Vendor {
   vendor_id: string;
 }
 
+interface DeliveryItem {
+  id: string;
+  delivery_id: string;
+  product_id: string;
+  quantity: number;
+  notes: string | null;
+  product?: { name: string; product_id: string };
+}
+
+interface Product {
+  id: string;
+  name: string;
+  product_id: string;
+}
+
 const DELIVERY_STATUSES = ['pending', 'in_transit', 'delivered', 'cancelled'];
 const CARRIERS = ['UPS', 'FedEx', 'USPS', 'DHL', 'Freight', 'Local Pickup', 'Other'];
 
@@ -94,11 +110,16 @@ const Deliveries = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextDeliveryId, setNextDeliveryId] = useState('DEL-0001');
+  const [activeTab, setActiveTab] = useState('details');
+  const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
+  const [newItemProductId, setNewItemProductId] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Set transaction based on dialog state
@@ -168,6 +189,7 @@ const Deliveries = () => {
       fetchNextDeliveryId();
       fetchPurchaseOrders();
       fetchLocations();
+      fetchProducts();
     }
   }, [companyId]);
 
@@ -233,7 +255,85 @@ const Deliveries = () => {
     setLocations(data || []);
   };
 
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, product_id')
+      .eq('company_id', companyId!)
+      .order('name');
+    
+    setProducts(data || []);
+  };
+
+  const fetchDeliveryItems = async (deliveryId: string) => {
+    const { data } = await supabase
+      .from('delivery_items')
+      .select(`
+        *,
+        product:products(name, product_id)
+      `)
+      .eq('delivery_id', deliveryId);
+    
+    setDeliveryItems(data || []);
+  };
+
+  const handleAddItem = async () => {
+    if (!editingId || !newItemProductId) return;
+
+    const { error } = await supabase
+      .from('delivery_items')
+      .insert({
+        delivery_id: editingId,
+        product_id: newItemProductId,
+        quantity: newItemQuantity,
+      });
+
+    if (error) {
+      toast.error('Failed to add item');
+      return;
+    }
+
+    toast.success('Item added');
+    setNewItemProductId('');
+    setNewItemQuantity(1);
+    fetchDeliveryItems(editingId);
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    if (!editingId) return;
+
+    const { error } = await supabase
+      .from('delivery_items')
+      .delete()
+      .eq('id', itemId);
+
+    if (error) {
+      toast.error('Failed to remove item');
+      return;
+    }
+
+    toast.success('Item removed');
+    fetchDeliveryItems(editingId);
+  };
+
+  const handleUpdateItemQuantity = async (itemId: string, quantity: number) => {
+    if (!editingId) return;
+
+    const { error } = await supabase
+      .from('delivery_items')
+      .update({ quantity })
+      .eq('id', itemId);
+
+    if (error) {
+      toast.error('Failed to update quantity');
+      return;
+    }
+
+    fetchDeliveryItems(editingId);
+  };
+
   // fetchVendors removed - using useVendorSources hook instead
+
 
   const resetForm = () => {
     setFormData({
@@ -250,6 +350,8 @@ const Deliveries = () => {
     });
     setIsEditing(false);
     setEditingId(null);
+    setDeliveryItems([]);
+    setActiveTab('details');
   };
 
   const handleOpenDialog = () => {
@@ -275,6 +377,8 @@ const Deliveries = () => {
     });
     setIsEditing(true);
     setEditingId(delivery.id);
+    setActiveTab('details');
+    fetchDeliveryItems(delivery.id);
     setIsDialogOpen(true);
   };
 
@@ -406,149 +510,253 @@ const Deliveries = () => {
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>
                     <DialogDescription>
-                      {isEditing ? 'Update delivery details.' : 'Track a new delivery.'}
+                      {isEditing ? 'Update delivery details and items.' : 'Track a new delivery.'}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="delivery_id">Delivery ID</Label>
-                        <Input
-                          id="delivery_id"
-                          value={formData.delivery_id}
-                          onChange={(e) => setFormData({ ...formData, delivery_id: e.target.value })}
-                          disabled={isEditing}
-                          className={isEditing ? 'bg-muted' : ''}
-                          required
-                        />
+                  
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="details">Details</TabsTrigger>
+                      <TabsTrigger value="items" disabled={!isEditing}>
+                        Items {isEditing && deliveryItems.length > 0 && `(${deliveryItems.length})`}
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="details" className="mt-4">
+                      <div className="grid gap-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="delivery_id">Delivery ID</Label>
+                            <Input
+                              id="delivery_id"
+                              value={formData.delivery_id}
+                              onChange={(e) => setFormData({ ...formData, delivery_id: e.target.value })}
+                              disabled={isEditing}
+                              className={isEditing ? 'bg-muted' : ''}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <Select
+                              value={formData.status}
+                              onValueChange={(value) => setFormData({ ...formData, status: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DELIVERY_STATUSES.map((status) => (
+                                  <SelectItem key={status} value={status}>
+                                    {status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="purchase_order_id">Purchase Order</Label>
+                          <Select
+                            value={formData.purchase_order_id}
+                            onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select PO (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {purchaseOrders.map((po) => (
+                                <SelectItem key={po.id} value={po.id}>
+                                  {po.po_number}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor_id">Vendor</Label>
+                            <SearchableSelect
+                              options={vendorOptions}
+                              value={formData.vendor_id}
+                              onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                              placeholder="Select vendor..."
+                              allowClear
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="location_id">Destination</Label>
+                            <Select
+                              value={formData.location_id}
+                              onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations.map((location) => (
+                                  <SelectItem key={location.id} value={location.id}>
+                                    {location.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="carrier">Carrier</Label>
+                            <Select
+                              value={formData.carrier}
+                              onValueChange={(value) => setFormData({ ...formData, carrier: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select carrier" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CARRIERS.map((carrier) => (
+                                  <SelectItem key={carrier} value={carrier}>
+                                    {carrier}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tracking_number">Tracking Number</Label>
+                            <Input
+                              id="tracking_number"
+                              value={formData.tracking_number}
+                              onChange={(e) => setFormData({ ...formData, tracking_number: e.target.value })}
+                              placeholder="1Z999AA10123456784"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="expected_date">Expected Date</Label>
+                            <Input
+                              id="expected_date"
+                              type="date"
+                              value={formData.expected_date}
+                              onChange={(e) => setFormData({ ...formData, expected_date: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="delivered_date">Delivered Date</Label>
+                            <Input
+                              id="delivered_date"
+                              type="date"
+                              value={formData.delivered_date}
+                              onChange={(e) => setFormData({ ...formData, delivered_date: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="notes">Notes</Label>
+                          <Input
+                            id="notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Additional notes..."
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
-                        <Select
-                          value={formData.status}
-                          onValueChange={(value) => setFormData({ ...formData, status: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DELIVERY_STATUSES.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    </TabsContent>
+                    
+                    <TabsContent value="items" className="mt-4">
+                      <div className="space-y-4">
+                        {/* Add Item Form */}
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1 space-y-2">
+                            <Label>Product</Label>
+                            <Select
+                              value={newItemProductId}
+                              onValueChange={setNewItemProductId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products
+                                  .filter(p => !deliveryItems.some(di => di.product_id === p.id))
+                                  .map((product) => (
+                                    <SelectItem key={product.id} value={product.id}>
+                                      {product.product_id} - {product.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-24 space-y-2">
+                            <Label>Qty</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={newItemQuantity}
+                              onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <Button type="button" onClick={handleAddItem} disabled={!newItemProductId}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Items List */}
+                        {deliveryItems.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                            <p>No items in this delivery</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Product</TableHead>
+                                <TableHead className="w-24 text-right">Qty</TableHead>
+                                <TableHead className="w-16"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {deliveryItems.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <div>
+                                      <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                                      <div className="text-sm text-muted-foreground font-mono">
+                                        {item.product?.product_id}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={item.quantity}
+                                      onChange={(e) => handleUpdateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                      className="w-20 text-right ml-auto"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemoveItem(item.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="purchase_order_id">Purchase Order</Label>
-                      <Select
-                        value={formData.purchase_order_id}
-                        onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select PO (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {purchaseOrders.map((po) => (
-                            <SelectItem key={po.id} value={po.id}>
-                              {po.po_number}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="vendor_id">Vendor</Label>
-                        <SearchableSelect
-                          options={vendorOptions}
-                          value={formData.vendor_id}
-                          onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
-                          placeholder="Select vendor..."
-                          allowClear
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="location_id">Destination</Label>
-                        <Select
-                          value={formData.location_id}
-                          onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {locations.map((location) => (
-                              <SelectItem key={location.id} value={location.id}>
-                                {location.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="carrier">Carrier</Label>
-                        <Select
-                          value={formData.carrier}
-                          onValueChange={(value) => setFormData({ ...formData, carrier: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select carrier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CARRIERS.map((carrier) => (
-                              <SelectItem key={carrier} value={carrier}>
-                                {carrier}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="tracking_number">Tracking Number</Label>
-                        <Input
-                          id="tracking_number"
-                          value={formData.tracking_number}
-                          onChange={(e) => setFormData({ ...formData, tracking_number: e.target.value })}
-                          placeholder="1Z999AA10123456784"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="expected_date">Expected Date</Label>
-                        <Input
-                          id="expected_date"
-                          type="date"
-                          value={formData.expected_date}
-                          onChange={(e) => setFormData({ ...formData, expected_date: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="delivered_date">Delivered Date</Label>
-                        <Input
-                          id="delivered_date"
-                          type="date"
-                          value={formData.delivered_date}
-                          onChange={(e) => setFormData({ ...formData, delivered_date: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Notes</Label>
-                      <Input
-                        id="notes"
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="Additional notes..."
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <DialogFooter className="mt-6">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>

@@ -46,6 +46,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
 
 interface TaxRate {
   id: string;
@@ -151,6 +152,10 @@ const Orders = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Delivery items selection dialog state
+  const [isDeliveryItemsDialogOpen, setIsDeliveryItemsDialogOpen] = useState(false);
+  const [pendingConfirmOrderId, setPendingConfirmOrderId] = useState<string | null>(null);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -644,72 +649,121 @@ const Orders = () => {
         : null;
 
       const autoCreateDelivery = settings?.auto_create_delivery_on_confirmed ?? true;
-      const autoMarkShipped = settings?.auto_mark_delivery_shipped ?? true;
-      const autoMarkDelivered = settings?.auto_mark_delivery_delivered ?? true;
 
-      // Update the PO status
-      const { error } = await supabase
-        .from('purchase_orders')
-        .update({ status: newStatus })
-        .eq('id', id);
-
-      if (error) {
-        toast.error('Failed to update status');
+      // If changing to confirmed and auto-create is enabled, show item selection dialog
+      if (newStatus === 'confirmed' && autoCreateDelivery) {
+        setPendingConfirmOrderId(id);
+        setIsDeliveryItemsDialogOpen(true);
         return;
       }
 
-      // Auto-create delivery when status changes to 'confirmed'
-      if (newStatus === 'confirmed' && autoCreateDelivery) {
-        // Get next delivery ID
-        const { data: deliveryId } = await supabase.rpc('get_next_delivery_id', {
-          p_company_id: companyId,
-        });
-
-        // Create delivery
-        await supabase
-          .from('deliveries')
-          .insert({
-            company_id: companyId,
-            delivery_id: deliveryId,
-            purchase_order_id: id,
-            vendor_id: order.vendor_id,
-            location_id: order.location_id,
-            status: 'pending',
-            expected_date: order.expected_delivery_date,
-            notes: `Auto-created from PO ${order.po_number}`,
-          });
-
-        toast.success(`Delivery ${deliveryId} created automatically`);
-      }
-
-      // Auto-mark delivery as shipped when PO is marked shipped
-      if (newStatus === 'shipped' && autoMarkShipped) {
-        await supabase
-          .from('deliveries')
-          .update({ status: 'shipped' })
-          .eq('purchase_order_id', id);
-      }
-
-      // Auto-mark delivery as delivered when PO is marked delivered
-      if (newStatus === 'delivered' && autoMarkDelivered) {
-        await supabase
-          .from('deliveries')
-          .update({ 
-            status: 'delivered',
-            delivered_date: new Date().toISOString().split('T')[0]
-          })
-          .eq('purchase_order_id', id);
-      }
-
-      toast.success('Status updated');
-      fetchOrders();
-      
-      if (viewOrder?.id === id) {
-        setViewOrder({ ...viewOrder, status: newStatus });
-      }
+      // For other status changes, proceed normally
+      await executeStatusUpdate(id, newStatus);
     } catch (error: any) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const executeStatusUpdate = async (id: string, newStatus: string, deliveryItems?: { product_id: string; quantity: number }[]) => {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+
+    // Fetch automation settings
+    const { data: settingsData } = await supabase
+      .from('company_settings')
+      .select('setting_value')
+      .eq('company_id', companyId)
+      .eq('setting_key', 'po_automation')
+      .maybeSingle();
+
+    const settings = settingsData?.setting_value && typeof settingsData.setting_value === 'object' && !Array.isArray(settingsData.setting_value)
+      ? settingsData.setting_value as Record<string, unknown>
+      : null;
+
+    const autoCreateDelivery = settings?.auto_create_delivery_on_confirmed ?? true;
+    const autoMarkShipped = settings?.auto_mark_delivery_shipped ?? true;
+    const autoMarkDelivered = settings?.auto_mark_delivery_delivered ?? true;
+
+    // Update the PO status
+    const { error } = await supabase
+      .from('purchase_orders')
+      .update({ status: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to update status');
+      return;
+    }
+
+    // Auto-create delivery when status changes to 'confirmed'
+    if (newStatus === 'confirmed' && autoCreateDelivery) {
+      // Get next delivery ID
+      const { data: deliveryId } = await supabase.rpc('get_next_delivery_id', {
+        p_company_id: companyId,
+      });
+
+      // Create delivery
+      const { data: deliveryData, error: deliveryError } = await supabase
+        .from('deliveries')
+        .insert({
+          company_id: companyId,
+          delivery_id: deliveryId,
+          purchase_order_id: id,
+          vendor_id: order.vendor_id,
+          location_id: order.location_id,
+          status: 'pending',
+          expected_date: order.expected_delivery_date,
+          notes: `Auto-created from PO ${order.po_number}`,
+        })
+        .select('id')
+        .single();
+
+      if (!deliveryError && deliveryData && deliveryItems && deliveryItems.length > 0) {
+        // Insert delivery items
+        const itemsToInsert = deliveryItems.map(item => ({
+          delivery_id: deliveryData.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+        }));
+
+        await supabase.from('delivery_items').insert(itemsToInsert);
+      }
+
+      toast.success(`Delivery ${deliveryId} created with ${deliveryItems?.length || 0} items`);
+    }
+
+    // Auto-mark delivery as shipped when PO is marked shipped
+    if (newStatus === 'shipped' && autoMarkShipped) {
+      await supabase
+        .from('deliveries')
+        .update({ status: 'shipped' })
+        .eq('purchase_order_id', id);
+    }
+
+    // Auto-mark delivery as delivered when PO is marked delivered
+    if (newStatus === 'delivered' && autoMarkDelivered) {
+      await supabase
+        .from('deliveries')
+        .update({ 
+          status: 'delivered',
+          delivered_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('purchase_order_id', id);
+    }
+
+    toast.success('Status updated');
+    fetchOrders();
+    
+    if (viewOrder?.id === id) {
+      setViewOrder({ ...viewOrder, status: newStatus });
+    }
+  };
+
+  const handleDeliveryItemsConfirm = async (items: { product_id: string; quantity: number }[]) => {
+    if (pendingConfirmOrderId) {
+      await executeStatusUpdate(pendingConfirmOrderId, 'confirmed', items);
+      setPendingConfirmOrderId(null);
     }
   };
 
@@ -1045,6 +1099,22 @@ const Orders = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delivery Items Selection Dialog */}
+      {pendingConfirmOrderId && companyId && (
+        <DeliveryItemsDialog
+          open={isDeliveryItemsDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeliveryItemsDialogOpen(open);
+            if (!open) setPendingConfirmOrderId(null);
+          }}
+          purchaseOrderId={pendingConfirmOrderId}
+          companyId={companyId}
+          onConfirm={handleDeliveryItemsConfirm}
+          title="Select Items for Delivery"
+          description="Choose which items to include in this delivery. You can select all or partial quantities."
+        />
+      )}
 
       {/* View Order Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
