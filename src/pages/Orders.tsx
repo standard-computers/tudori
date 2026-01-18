@@ -44,7 +44,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
 
@@ -184,6 +184,7 @@ const Orders = () => {
     vendor_id: '',
     location_id: '',
     bill_to_location_id: '',
+    ledger_id: '',
     notes: '',
   });
   const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number }[]>([]);
@@ -315,7 +316,7 @@ const Orders = () => {
 
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
-    setFormData({ vendor_id: '', location_id: '', bill_to_location_id: '', notes: '' });
+    setFormData({ vendor_id: '', location_id: '', bill_to_location_id: '', ledger_id: '', notes: '' });
     setOrderItems([]);
     setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }] : []);
     setIsCreateDialogOpen(true);
@@ -398,34 +399,36 @@ const Orders = () => {
       return;
     }
 
-    // Determine which ledger to use
-    let selectedLedgerId: string | null = null;
+    // Determine which ledger to use - prioritize explicit selection
+    let selectedLedgerId: string | null = formData.ledger_id || null;
     
-    if (ledgers.length === 1) {
-      // If only one ledger, use it automatically
-      selectedLedgerId = ledgers[0].id;
-    } else if (formData.bill_to_location_id) {
-      // Find ledger for the bill-to location
-      const locationLedger = ledgers.find(l => l.location_id === formData.bill_to_location_id);
-      if (locationLedger) {
-        selectedLedgerId = locationLedger.id;
+    if (!selectedLedgerId) {
+      if (ledgers.length === 1) {
+        // If only one ledger, use it automatically
+        selectedLedgerId = ledgers[0].id;
+      } else if (formData.bill_to_location_id) {
+        // Find ledger for the bill-to location
+        const locationLedger = ledgers.find(l => l.location_id === formData.bill_to_location_id);
+        if (locationLedger) {
+          selectedLedgerId = locationLedger.id;
+        } else {
+          // Find a general ledger (no location)
+          const generalLedger = ledgers.find(l => !l.location_id);
+          if (generalLedger) {
+            selectedLedgerId = generalLedger.id;
+          } else {
+            toast.error('No ledger found for the selected bill-to location. Please create a ledger for this location or select a different location.');
+            return;
+          }
+        }
       } else {
-        // Find a general ledger (no location)
+        // No bill-to location, use general ledger
         const generalLedger = ledgers.find(l => !l.location_id);
         if (generalLedger) {
           selectedLedgerId = generalLedger.id;
         } else {
-          toast.error('No ledger found for the selected bill-to location. Please create a ledger for this location or select a different location.');
-          return;
+          selectedLedgerId = ledgers[0].id; // Fall back to first ledger
         }
-      }
-    } else {
-      // No bill-to location, use general ledger
-      const generalLedger = ledgers.find(l => !l.location_id);
-      if (generalLedger) {
-        selectedLedgerId = generalLedger.id;
-      } else {
-        selectedLedgerId = ledgers[0].id; // Fall back to first ledger
       }
     }
 
@@ -939,9 +942,10 @@ const Orders = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="items" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="items">Items</TabsTrigger>
               <TabsTrigger value="rates">Rates</TabsTrigger>
+              <TabsTrigger value="assignment">Assignment</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
 
@@ -1074,6 +1078,42 @@ const Orders = () => {
               </div>
             </TabsContent>
 
+            <TabsContent value="assignment" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-muted-foreground" />
+                  <Label>Ledger Assignment</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Select the ledger to record this purchase order transaction. The transaction will be recorded as a negative amount (expense).
+                </p>
+                <SearchableSelect
+                  options={ledgers.map(l => ({
+                    value: l.id,
+                    label: l.name,
+                    sublabel: l.location_id ? locations.find(loc => loc.id === l.location_id)?.name : 'General',
+                  }))}
+                  value={formData.ledger_id}
+                  onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                  placeholder="Auto-select based on Bill To location"
+                  allowClear
+                  clearLabel="Auto-select"
+                />
+                {formData.ledger_id && (
+                  <div className="p-3 bg-muted rounded-lg text-sm">
+                    <span className="text-muted-foreground">Transaction amount: </span>
+                    <span className="font-mono text-destructive">-${calculateGrandTotal().toFixed(2)}</span>
+                  </div>
+                )}
+                {!formData.ledger_id && formData.bill_to_location_id && (
+                  <div className="p-3 bg-muted rounded-lg text-sm">
+                    <span className="text-muted-foreground">Will use ledger for: </span>
+                    <span>{locations.find(l => l.id === formData.bill_to_location_id)?.name || 'Bill To location'}</span>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
             <TabsContent value="notes" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label>Order Notes</Label>
@@ -1168,9 +1208,10 @@ const Orders = () => {
 
               {/* Tabs */}
               <Tabs defaultValue="items" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="items">Items</TabsTrigger>
                   <TabsTrigger value="rates">Rates</TabsTrigger>
+                  <TabsTrigger value="assignment">Assignment</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                 </TabsList>
 
@@ -1303,6 +1344,25 @@ const Orders = () => {
                       </p>
                     )
                   )}
+                </TabsContent>
+
+                <TabsContent value="assignment" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-muted-foreground" />
+                      <Label>Ledger Assignment</Label>
+                    </div>
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Assigned Ledger</Label>
+                        <p className="font-medium">{viewOrder.ledger?.name || 'Not assigned'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Transaction Amount</Label>
+                        <p className="font-mono text-destructive">-${Number(viewOrder.total_amount || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="notes" className="space-y-4 mt-4">
