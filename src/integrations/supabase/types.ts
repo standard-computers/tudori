@@ -216,6 +216,47 @@ export type Database = {
           },
         ]
       }
+      document_id_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_type: string
+          id: string
+          num_digits: number
+          prefix: string | null
+          starting_number: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_type: string
+          id?: string
+          num_digits?: number
+          prefix?: string | null
+          starting_number?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_type?: string
+          id?: string
+          num_digits?: number
+          prefix?: string | null
+          starting_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_id_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
