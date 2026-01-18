@@ -67,6 +67,15 @@ interface Bin {
   area_id: string;
 }
 
+interface Delivery {
+  id: string;
+  delivery_id: string;
+  status: string;
+  expected_date: string | null;
+  vendor?: { name: string } | null;
+  purchase_order?: { po_number: string } | null;
+}
+
 const Cockpit = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -90,6 +99,8 @@ const Cockpit = () => {
 
   // Stats state
   const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
+  const [pendingDeliveries, setPendingDeliveries] = useState<Delivery[]>([]);
+  const [isDeliveriesDialogOpen, setIsDeliveriesDialogOpen] = useState(false);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -213,17 +224,19 @@ const Cockpit = () => {
 
   const fetchPendingDeliveries = async () => {
     if (!selectedLocationId) return;
-    const { count, error } = await supabase
+    const { data, count, error } = await supabase
       .from('deliveries')
-      .select('*', { count: 'exact', head: true })
+      .select('id, delivery_id, status, expected_date, vendor:vendors(name), purchase_order:purchase_orders(po_number)', { count: 'exact' })
       .eq('location_id', selectedLocationId)
-      .neq('status', 'delivered');
+      .neq('status', 'delivered')
+      .order('expected_date', { ascending: true });
     
     if (error) {
       console.error('Failed to fetch pending deliveries:', error);
       return;
     }
     setPendingDeliveriesCount(count || 0);
+    setPendingDeliveries(data || []);
   };
 
   const getNextAreaId = () => {
@@ -515,7 +528,7 @@ const Cockpit = () => {
               </div>
             </CardContent>
           </Card>
-          <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate('/deliveries')}>
+          <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setIsDeliveriesDialogOpen(true)}>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
@@ -831,6 +844,74 @@ const Cockpit = () => {
               <Button type="submit">{editingBin ? 'Update' : 'Create'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Inbound Deliveries Dialog */}
+      <Dialog open={isDeliveriesDialogOpen} onOpenChange={setIsDeliveriesDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="w-5 h-5 text-amber-500" />
+              Inbound Shipments - {selectedLocation?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Deliveries pending arrival at this location
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {pendingDeliveries.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No pending deliveries</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Delivery ID</TableHead>
+                    <TableHead>PO #</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Expected Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingDeliveries.map((delivery) => (
+                    <TableRow key={delivery.id}>
+                      <TableCell className="font-mono">{delivery.delivery_id}</TableCell>
+                      <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
+                      <TableCell>{delivery.vendor?.name || '—'}</TableCell>
+                      <TableCell>
+                        {delivery.expected_date 
+                          ? new Date(delivery.expected_date).toLocaleDateString() 
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          delivery.status === 'in_transit' 
+                            ? 'bg-blue-500/10 text-blue-500' 
+                            : delivery.status === 'pending'
+                            ? 'bg-amber-500/10 text-amber-500'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {delivery.status.replace('_', ' ')}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeliveriesDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setIsDeliveriesDialogOpen(false); navigate('/deliveries'); }}>
+              Go to Deliveries
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
