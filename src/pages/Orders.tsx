@@ -692,68 +692,11 @@ const Orders = () => {
             </Button>
           </div>
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>PO #</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Order Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-mono">{order.po_number}</TableCell>
-                    <TableCell>
-                      <Badge className={`${statusColors[order.status]} text-white`}>
-                        {order.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{order.vendor?.name || '-'}</TableCell>
-                    <TableCell>{order.location?.name || '-'}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${Number(order.total_amount || 0).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(order.order_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewOrder(order)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteOrder(order.id)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <OrdersTable 
+            orders={orders} 
+            onViewOrder={handleViewOrder} 
+            onDeleteOrder={handleDeleteOrder} 
+          />
         )}
       </main>
 
@@ -1229,5 +1172,156 @@ const Orders = () => {
     </div>
   );
 };
+
+// Separate table component for sorting/filtering
+function OrdersTable({
+  orders,
+  onViewOrder,
+  onDeleteOrder,
+}: {
+  orders: PurchaseOrder[];
+  onViewOrder: (order: PurchaseOrder) => void;
+  onDeleteOrder: (id: string) => void;
+}) {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(orders, 'po_number', 'desc');
+
+  const hasFilters = Object.values(filters).some((v) => v);
+
+  return (
+    <div className="space-y-4">
+      {hasFilters && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground">Active filters:</span>
+          {Object.entries(filters).map(([key, value]) =>
+            value ? (
+              <Badge key={key} variant="secondary">
+                {key}: {value}
+              </Badge>
+            ) : null
+          )}
+          <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+            Clear all
+          </Button>
+        </div>
+      )}
+      <div className="rounded-lg border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="PO #"
+                sortKey="po_number"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['po_number']}
+                onFilter={(v) => setFilter('po_number', v)}
+              />
+              <SortableTableHead
+                label="Status"
+                sortKey="status"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['status']}
+                onFilter={(v) => setFilter('status', v)}
+              />
+              <SortableTableHead
+                label="Vendor"
+                sortKey="vendor.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['vendor.name']}
+                onFilter={(v) => setFilter('vendor.name', v)}
+              />
+              <SortableTableHead
+                label="Location"
+                sortKey="location.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['location.name']}
+                onFilter={(v) => setFilter('location.name', v)}
+              />
+              <SortableTableHead
+                label="Total"
+                sortKey="total_amount"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                className="text-right"
+                filterable={false}
+              />
+              <SortableTableHead
+                label="Order Date"
+                sortKey="order_date"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedAndFilteredData.map((order) => (
+              <TableRow key={order.id}>
+                <TableCell className="font-mono">{order.po_number}</TableCell>
+                <TableCell>
+                  <Badge className={`${statusColors[order.status]} text-white`}>
+                    {order.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{order.vendor?.name || '-'}</TableCell>
+                <TableCell>{order.location?.name || '-'}</TableCell>
+                <TableCell className="text-right font-mono">
+                  ${Number(order.total_amount || 0).toFixed(2)}
+                </TableCell>
+                <TableCell>
+                  {new Date(order.order_date).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onViewOrder(order)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onDeleteOrder(order.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 export default Orders;
