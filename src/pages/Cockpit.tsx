@@ -818,8 +818,12 @@ const Cockpit = () => {
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setIsAreaDialogOpen(false)}>
                 Cancel
+                <Kbd>Esc</Kbd>
               </Button>
-              <Button type="submit">{editingArea ? 'Update' : 'Create'}</Button>
+              <Button type="submit">
+                {editingArea ? 'Save Changes' : 'Create'}
+                <Kbd>Ctrl</Kbd><Kbd>S</Kbd>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -902,8 +906,12 @@ const Cockpit = () => {
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setIsBinDialogOpen(false)}>
                 Cancel
+                <Kbd>Esc</Kbd>
               </Button>
-              <Button type="submit">{editingBin ? 'Update' : 'Create'}</Button>
+              <Button type="submit">
+                {editingBin ? 'Save Changes' : 'Create'}
+                <Kbd>Ctrl</Kbd><Kbd>S</Kbd>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
