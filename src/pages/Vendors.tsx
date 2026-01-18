@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Building, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Vendor {
@@ -309,9 +309,23 @@ const Vendors = () => {
                         <Input
                           id="vendor_id"
                           value={formData.vendor_id}
-                          disabled
-                          className="bg-muted"
+                          onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
+                          disabled={isEditing}
+                          className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id) ? 'border-destructive border-2' : ''}`}
+                          required
                         />
+                        {!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id) && (
+                          <p className="text-sm text-destructive flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            This ID is already in use
+                          </p>
+                        )}
+                        {!isEditing && !vendors.some(v => v.vendor_id === formData.vendor_id) && formData.vendor_id && (
+                          <p className="text-sm text-amber-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            ID cannot be changed after creation
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="type">Type</Label>
@@ -452,7 +466,12 @@ const Vendors = () => {
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit">{isEditing ? 'Update' : 'Create'}</Button>
+                    <Button 
+                      type="submit" 
+                      disabled={!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id)}
+                    >
+                      {isEditing ? 'Update' : 'Create'}
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
