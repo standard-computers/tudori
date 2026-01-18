@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
@@ -476,6 +477,29 @@ const Ledgers = () => {
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+          {!isEditing && (
+            <CopyFromIdDialog<Ledger>
+              idLabel="Ledger ID"
+              onFetch={async (id) => {
+                const { data } = await supabase
+                  .from('ledgers')
+                  .select('*')
+                  .eq('company_id', companyId!)
+                  .eq('ledger_id', id)
+                  .maybeSingle();
+                return data;
+              }}
+              onApply={(ledger) => {
+                setFormData(prev => ({
+                  ...prev,
+                  name: ledger.name,
+                  description: ledger.description || '',
+                  location_id: ledger.location_id || '',
+                  is_active: ledger.is_active,
+                }));
+              }}
+            />
+          )}
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Ledger' : 'Create Ledger'}</DialogTitle>
             <DialogDescription>

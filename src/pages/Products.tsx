@@ -40,6 +40,7 @@ import { SearchableSelect, SearchableSelectOption } from '@/components/Searchabl
 import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 
 interface Product {
@@ -544,6 +545,32 @@ const Products = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+                {!isEditing && (
+                  <CopyFromIdDialog<Product>
+                    idLabel="Product ID"
+                    onFetch={async (id) => {
+                      const { data } = await supabase
+                        .from('products')
+                        .select('*, vendors(name)')
+                        .eq('company_id', companyId!)
+                        .eq('product_id', id)
+                        .maybeSingle();
+                      return data;
+                    }}
+                    onApply={(product) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        vendor_id: product.vendor_id || '',
+                        sku: '', // Don't copy SKU as it should be unique
+                        name: product.name,
+                        description: product.description || '',
+                        category: product.category || '',
+                        price: product.price?.toString() || '',
+                        unit: product.unit || 'each',
+                      }));
+                    }}
+                  />
+                )}
                 <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Product' : 'Add Product'}</DialogTitle>

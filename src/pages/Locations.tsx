@@ -37,6 +37,7 @@ import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 
 interface Location {
@@ -563,6 +564,33 @@ const Locations = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                {!isEditing && (
+                  <CopyFromIdDialog<Location>
+                    idLabel="Location ID"
+                    onFetch={async (id) => {
+                      const { data } = await supabase
+                        .from('locations')
+                        .select('*')
+                        .eq('company_id', companyId!)
+                        .eq('location_id', id)
+                        .maybeSingle();
+                      return data;
+                    }}
+                    onApply={(location) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        name: location.name,
+                        type: location.type,
+                        address_line1: location.address_line1,
+                        address_line2: location.address_line2 || '',
+                        city: location.city,
+                        state: location.state,
+                        postal_code: location.postal_code,
+                        country: location.country,
+                      }));
+                    }}
+                  />
+                )}
                 <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Location' : 'Add Location'}</DialogTitle>

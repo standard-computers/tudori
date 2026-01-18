@@ -36,6 +36,7 @@ import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Plus, Users, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 
 interface Customer {
@@ -480,6 +481,38 @@ const Customers = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                {!isEditing && (
+                  <CopyFromIdDialog<Customer>
+                    idLabel="Customer ID"
+                    onFetch={async (id) => {
+                      const { data } = await supabase
+                        .from('customers')
+                        .select('*')
+                        .eq('company_id', companyId!)
+                        .eq('customer_id', id)
+                        .maybeSingle();
+                      return data;
+                    }}
+                    onApply={(customer) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        name: customer.name,
+                        type: customer.type,
+                        contact_name: customer.contact_name || '',
+                        email: customer.email || '',
+                        phone: customer.phone || '',
+                        address_line1: customer.address_line1 || '',
+                        address_line2: customer.address_line2 || '',
+                        city: customer.city || '',
+                        state: customer.state || '',
+                        postal_code: customer.postal_code || '',
+                        country: customer.country || 'United States',
+                        website: customer.website || '',
+                        notes: customer.notes || '',
+                      }));
+                    }}
+                  />
+                )}
                 <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
