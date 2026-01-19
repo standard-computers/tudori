@@ -31,6 +31,8 @@ import SalesOrders from "./pages/SalesOrders";
 import Accounts from "./pages/Accounts";
 import AccountDetail from "./pages/AccountDetail";
 import Invoices from "./pages/Invoices";
+import CreditMemos from "./pages/CreditMemos";
+import DebitMemos from "./pages/DebitMemos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +72,8 @@ const App = () => (
                   <Route path="/accounts" element={<Accounts />} />
                   <Route path="/accounts/:id" element={<AccountDetail />} />
                   <Route path="/invoices" element={<Invoices />} />
+                  <Route path="/credit-memos" element={<CreditMemos />} />
+                  <Route path="/debit-memos" element={<DebitMemos />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>

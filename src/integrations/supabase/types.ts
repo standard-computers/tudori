@@ -246,6 +246,80 @@ export type Database = {
           },
         ]
       }
+      credit_memos: {
+        Row: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at: string
+          id: string
+          invoice_id: string | null
+          ledger_id: string | null
+          memo_date: string
+          memo_number: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          ledger_id?: string | null
+          memo_date?: string
+          memo_number: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          ledger_id?: string | null
+          memo_date?: string
+          memo_number?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_memos_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_memos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_memos_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_memos_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address_line1: string | null
@@ -313,6 +387,80 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debit_memos: {
+        Row: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at: string
+          id: string
+          invoice_id: string | null
+          ledger_id: string | null
+          memo_date: string
+          memo_number: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          ledger_id?: string | null
+          memo_date?: string
+          memo_number: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          ledger_id?: string | null
+          memo_date?: string
+          memo_number?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debit_memos_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_memos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_memos_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_memos_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
             referencedColumns: ["id"]
           },
         ]
@@ -1700,7 +1848,15 @@ export type Database = {
     }
     Functions: {
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_credit_memo_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_customer_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_debit_memo_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_delivery_id: { Args: { p_company_id: string }; Returns: string }
       get_next_invoice_number: {
         Args: { p_company_id: string }

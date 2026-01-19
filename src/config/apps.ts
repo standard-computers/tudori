@@ -19,6 +19,8 @@ import {
   Gauge,
   BookOpen,
   CreditCard,
+  Minus,
+  Plus,
   LucideIcon
 } from 'lucide-react';
 
@@ -40,6 +42,8 @@ export const defaultApps: AppTile[] = [
   { name: 'Products', icon: Package, color: 'text-amber-500', description: 'Product catalog', path: '/products' },
   { name: 'Analytics', icon: BarChart3, color: 'text-pink-500', description: 'Reports & insights', path: null },
   { name: 'Invoices', icon: FileText, color: 'text-cyan-500', description: 'Billing & payments', path: '/invoices' },
+  { name: 'Credit Memos', icon: Minus, color: 'text-green-500', description: 'Account credits', path: '/credit-memos' },
+  { name: 'Debit Memos', icon: Plus, color: 'text-red-500', description: 'Account debits', path: '/debit-memos' },
   { name: 'Accounts', icon: CreditCard, color: 'text-indigo-500', description: 'Customer & vendor accounts', path: '/accounts' },
   { name: 'Ledgers', icon: BookOpen, color: 'text-stone-500', description: 'Financial ledgers', path: '/ledgers' },
   { name: 'Rates', icon: Percent, color: 'text-yellow-500', description: 'Tax rates', path: '/rates' },
