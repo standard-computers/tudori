@@ -29,6 +29,7 @@ import Deliveries from "./pages/Deliveries";
 import Ledgers from "./pages/Ledgers";
 import SalesOrders from "./pages/SalesOrders";
 import Accounts from "./pages/Accounts";
+import AccountDetail from "./pages/AccountDetail";
 import Invoices from "./pages/Invoices";
 import NotFound from "./pages/NotFound";
 
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/ledgers" element={<Ledgers />} />
                   <Route path="/sales-orders" element={<SalesOrders />} />
                   <Route path="/accounts" element={<Accounts />} />
+                  <Route path="/accounts/:id" element={<AccountDetail />} />
                   <Route path="/invoices" element={<Invoices />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
