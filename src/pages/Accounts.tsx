@@ -42,7 +42,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Account {
@@ -447,6 +447,10 @@ const Accounts = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-popover">
+                          <DropdownMenuItem onClick={() => navigate(`/accounts/${account.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEditClick(account)}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
