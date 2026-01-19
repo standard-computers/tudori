@@ -14,6 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          account_id: string
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          account_id: string
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       areas: {
         Row: {
           area_id: string
@@ -517,6 +581,93 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          ledger_id: string | null
+          notes: string | null
+          purchase_order_id: string | null
+          sales_order_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          company_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number: string
+          ledger_id?: string | null
+          notes?: string | null
+          purchase_order_id?: string | null
+          sales_order_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          company_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          ledger_id?: string | null
+          notes?: string | null
+          purchase_order_id?: string | null
+          sales_order_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1548,8 +1699,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_next_account_id: { Args: { p_company_id: string }; Returns: string }
       get_next_customer_id: { Args: { p_company_id: string }; Returns: string }
       get_next_delivery_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_invoice_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_ledger_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_next_po_number: { Args: { p_company_id: string }; Returns: string }

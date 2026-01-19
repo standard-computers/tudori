@@ -28,6 +28,8 @@ import Cockpit from "./pages/Cockpit";
 import Deliveries from "./pages/Deliveries";
 import Ledgers from "./pages/Ledgers";
 import SalesOrders from "./pages/SalesOrders";
+import Accounts from "./pages/Accounts";
+import Invoices from "./pages/Invoices";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +66,8 @@ const App = () => (
                   <Route path="/deliveries" element={<Deliveries />} />
                   <Route path="/ledgers" element={<Ledgers />} />
                   <Route path="/sales-orders" element={<SalesOrders />} />
+                  <Route path="/accounts" element={<Accounts />} />
+                  <Route path="/invoices" element={<Invoices />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>

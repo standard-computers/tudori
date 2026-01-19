@@ -18,6 +18,7 @@ import {
   Percent,
   Gauge,
   BookOpen,
+  CreditCard,
   LucideIcon
 } from 'lucide-react';
 
@@ -38,7 +39,8 @@ export const defaultApps: AppTile[] = [
   { name: 'Customers', icon: Users, color: 'text-violet-500', description: 'CRM & contacts', path: '/customers' },
   { name: 'Products', icon: Package, color: 'text-amber-500', description: 'Product catalog', path: '/products' },
   { name: 'Analytics', icon: BarChart3, color: 'text-pink-500', description: 'Reports & insights', path: null },
-  { name: 'Invoices', icon: FileText, color: 'text-cyan-500', description: 'Billing & payments', path: null },
+  { name: 'Invoices', icon: FileText, color: 'text-cyan-500', description: 'Billing & payments', path: '/invoices' },
+  { name: 'Accounts', icon: CreditCard, color: 'text-indigo-500', description: 'Customer & vendor accounts', path: '/accounts' },
   { name: 'Ledgers', icon: BookOpen, color: 'text-stone-500', description: 'Financial ledgers', path: '/ledgers' },
   { name: 'Rates', icon: Percent, color: 'text-yellow-500', description: 'Tax rates', path: '/rates' },
   { name: 'Orders', icon: ShoppingCart, color: 'text-orange-500', description: 'Vendor orders', path: '/orders' },
