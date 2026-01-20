@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,16 +12,47 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check - require valid JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create Supabase client with auth header
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log("Authenticated user:", userId);
+
     const { companyName } = await req.json();
     
-    if (!companyName || companyName.trim().length < 2) {
+    if (!companyName || typeof companyName !== 'string' || companyName.trim().length < 2) {
       return new Response(
-        JSON.stringify({ error: "Company name is required" }),
+        JSON.stringify({ error: "Company name is required and must be at least 2 characters" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Looking up company:", companyName);
+    // Sanitize input - limit length and remove potentially dangerous characters
+    const sanitizedCompanyName = companyName.trim().slice(0, 200);
+    console.log("Looking up company:", sanitizedCompanyName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -42,7 +74,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `Look up business contact information for: "${companyName}". Find their official website, main phone number, headquarters address, and any general contact email if publicly available.`
+            content: `Look up business contact information for: "${sanitizedCompanyName}". Find their official website, main phone number, headquarters address, and any general contact email if publicly available.`
           }
         ],
         tools: [
@@ -120,7 +152,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log("AI response:", JSON.stringify(data));
+    console.log("AI response received");
 
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "provide_company_info") {
@@ -131,7 +163,6 @@ serve(async (req) => {
     }
 
     const companyInfo = JSON.parse(toolCall.function.arguments);
-    console.log("Parsed company info:", companyInfo);
 
     if (!companyInfo.found) {
       return new Response(
@@ -148,7 +179,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Lookup error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred during lookup" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
