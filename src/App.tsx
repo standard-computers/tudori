@@ -33,6 +33,8 @@ import AccountDetail from "./pages/AccountDetail";
 import Invoices from "./pages/Invoices";
 import CreditMemos from "./pages/CreditMemos";
 import DebitMemos from "./pages/DebitMemos";
+import GoodsReceipts from "./pages/GoodsReceipts";
+import GoodsIssues from "./pages/GoodsIssues";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +76,8 @@ const App = () => (
                   <Route path="/invoices" element={<Invoices />} />
                   <Route path="/credit-memos" element={<CreditMemos />} />
                   <Route path="/debit-memos" element={<DebitMemos />} />
+                  <Route path="/goods-receipts" element={<GoodsReceipts />} />
+                  <Route path="/goods-issues" element={<GoodsIssues />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>

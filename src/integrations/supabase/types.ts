@@ -628,6 +628,262 @@ export type Database = {
           },
         ]
       }
+      goods_issue_items: {
+        Row: {
+          bin_id: string | null
+          created_at: string
+          goods_issue_id: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          bin_id?: string | null
+          created_at?: string
+          goods_issue_id: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          bin_id?: string | null
+          created_at?: string
+          goods_issue_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_issue_items_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issue_items_goods_issue_id_fkey"
+            columns: ["goods_issue_id"]
+            isOneToOne: false
+            referencedRelation: "goods_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issue_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goods_issues: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          issue_date: string
+          issue_number: string
+          location_id: string
+          notes: string | null
+          sales_order_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          issue_date?: string
+          issue_number: string
+          location_id: string
+          notes?: string | null
+          sales_order_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          issue_date?: string
+          issue_number?: string
+          location_id?: string
+          notes?: string | null
+          sales_order_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_issues_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issues_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issues_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issues_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goods_receipt_items: {
+        Row: {
+          bin_id: string | null
+          created_at: string
+          goods_receipt_id: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          bin_id?: string | null
+          created_at?: string
+          goods_receipt_id: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          bin_id?: string | null
+          created_at?: string
+          goods_receipt_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_receipt_items_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_goods_receipt_id_fkey"
+            columns: ["goods_receipt_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goods_receipts: {
+        Row: {
+          company_id: string
+          created_at: string
+          delivery_id: string | null
+          id: string
+          location_id: string
+          notes: string | null
+          purchase_order_id: string | null
+          receipt_date: string
+          receipt_number: string
+          status: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+          location_id: string
+          notes?: string | null
+          purchase_order_id?: string | null
+          receipt_date?: string
+          receipt_number: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+          location_id?: string
+          notes?: string | null
+          purchase_order_id?: string | null
+          receipt_date?: string
+          receipt_number?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipts_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipts_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           bin_id: string | null
@@ -1858,6 +2114,14 @@ export type Database = {
         Returns: string
       }
       get_next_delivery_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_goods_issue_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
+      get_next_goods_receipt_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_invoice_number: {
         Args: { p_company_id: string }
         Returns: string
