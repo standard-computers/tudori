@@ -246,8 +246,8 @@ const Auth = () => {
         return;
       }
 
-      // Assign owner role to the user who created the company
-      const { error: roleError } = await supabase
+      // Assign owner and IT roles to the user who created the company
+      const { error: ownerRoleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: authData.user.id,
@@ -255,8 +255,23 @@ const Auth = () => {
           role: 'owner',
         });
 
-      if (roleError) {
-        toast.error('Failed to assign role: ' + roleError.message);
+      if (ownerRoleError) {
+        toast.error('Failed to assign owner role: ' + ownerRoleError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Also assign IT role for full system access
+      const { error: itRoleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          company_id: companyData.id,
+          role: 'it',
+        });
+
+      if (itRoleError) {
+        toast.error('Failed to assign IT role: ' + itRoleError.message);
         setLoading(false);
         return;
       }
