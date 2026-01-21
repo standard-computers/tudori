@@ -441,27 +441,40 @@ const Configuration = () => {
               </AlertDescription>
             </Alert>
 
-            <Tabs value={activeConfigTab} onValueChange={setActiveConfigTab}>
-              <TabsList className="flex flex-wrap h-auto gap-1">
+            <div className="flex gap-6">
+              {/* Vertical Sidebar */}
+              <div className="w-48 shrink-0">
+                <nav className="flex flex-col gap-1">
+                  {DOCUMENT_TYPES.map((docType) => {
+                    const Icon = docType.icon;
+                    const isActive = activeConfigTab === docType.value;
+                    return (
+                      <button
+                        key={docType.value}
+                        onClick={() => setActiveConfigTab(docType.value)}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left ${
+                          isActive 
+                            ? 'bg-primary text-primary-foreground font-medium' 
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{docType.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 min-w-0">
                 {DOCUMENT_TYPES.map((docType) => {
+                  const config = documentConfigs.find(c => c.document_type === docType.value);
                   const Icon = docType.icon;
+                  if (!config || activeConfigTab !== docType.value) return null;
+
                   return (
-                    <TabsTrigger key={docType.value} value={docType.value} className="flex items-center gap-1.5">
-                      <Icon className="w-4 h-4" />
-                      {docType.label}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-
-              {DOCUMENT_TYPES.map((docType) => {
-                const config = documentConfigs.find(c => c.document_type === docType.value);
-                const Icon = docType.icon;
-                if (!config) return null;
-
-                return (
-                  <TabsContent key={docType.value} value={docType.value} className="space-y-6 mt-6">
-                    <Card>
+                    <Card key={docType.value}>
                       <CardHeader>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -614,10 +627,10 @@ const Configuration = () => {
                         )}
                       </CardContent>
                     </Card>
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="flex justify-end">
               <Button onClick={handleSaveConfigs} disabled={savingConfig}>
