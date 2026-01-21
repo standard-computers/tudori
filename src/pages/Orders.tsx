@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -147,6 +149,9 @@ const Orders = () => {
   
   // Use vendor sources hook for combined vendors + DC/warehouse locations
   const { vendorOptions, plainVendorOptions, parseVendorValue, getVendorDisplayName } = useVendorSources(companyId);
+  
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
   
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -858,6 +863,11 @@ const Orders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('purchase_order')}
+                exportEnabled={isExportEnabled('purchase_order')}
+                entityName="Purchase Orders"
+              />
               <Button onClick={handleCreateClick} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
                 Create PO

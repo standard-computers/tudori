@@ -54,6 +54,32 @@ interface ProcessControlSettings {
   require_gr_on_delivery: boolean;
 }
 
+interface ImportExportSettings {
+  [documentType: string]: {
+    import_enabled: boolean;
+    export_enabled: boolean;
+  };
+}
+
+const DEFAULT_IMPORT_EXPORT_SETTINGS: ImportExportSettings = {
+  purchase_order: { import_enabled: false, export_enabled: true },
+  sales_order: { import_enabled: false, export_enabled: true },
+  requisition: { import_enabled: false, export_enabled: true },
+  delivery: { import_enabled: false, export_enabled: true },
+  goods_receipt: { import_enabled: false, export_enabled: true },
+  goods_issue: { import_enabled: false, export_enabled: true },
+  invoice: { import_enabled: false, export_enabled: true },
+  credit_memo: { import_enabled: false, export_enabled: true },
+  debit_memo: { import_enabled: false, export_enabled: true },
+  account: { import_enabled: false, export_enabled: true },
+  ledger: { import_enabled: false, export_enabled: true },
+  vendor: { import_enabled: false, export_enabled: true },
+  customer: { import_enabled: false, export_enabled: true },
+  product: { import_enabled: false, export_enabled: true },
+  location: { import_enabled: false, export_enabled: true },
+  tax_rate: { import_enabled: false, export_enabled: true },
+};
+
 type AppRole = Database['public']['Enums']['app_role'];
 type UserRoleEntry = { role: AppRole };
 
@@ -78,6 +104,8 @@ const Configuration = () => {
   const [processControls, setProcessControls] = useState<ProcessControlSettings>({
     require_gr_on_delivery: true,
   });
+  const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
+  const [savingImportExport, setSavingImportExport] = useState(false);
 
   useEffect(() => {
     setTransaction(`config/${activeTab}`);
@@ -130,6 +158,7 @@ const Configuration = () => {
           fetchDocumentConfigs(profile.company_id),
           fetchPOSettings(profile.company_id),
           fetchProcessControls(profile.company_id),
+          fetchImportExportSettings(profile.company_id),
         ]);
       }
     } catch (error) {
@@ -209,6 +238,36 @@ const Configuration = () => {
       }
     } catch (error) {
       console.error('Error fetching process controls:', error);
+    }
+  };
+
+  const fetchImportExportSettings = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('setting_value')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'import_export_settings')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.setting_value && typeof data.setting_value === 'object' && !Array.isArray(data.setting_value)) {
+        const val = data.setting_value as Record<string, unknown>;
+        const merged = { ...DEFAULT_IMPORT_EXPORT_SETTINGS };
+        Object.keys(val).forEach(key => {
+          if (merged[key] && typeof val[key] === 'object') {
+            const docSettings = val[key] as Record<string, unknown>;
+            merged[key] = {
+              import_enabled: typeof docSettings.import_enabled === 'boolean' ? docSettings.import_enabled : false,
+              export_enabled: typeof docSettings.export_enabled === 'boolean' ? docSettings.export_enabled : true,
+            };
+          }
+        });
+        setImportExportSettings(merged);
+      }
+    } catch (error) {
+      console.error('Error fetching import/export settings:', error);
     }
   };
 
@@ -347,6 +406,56 @@ const Configuration = () => {
       toast.error(error.message || 'Failed to save controls');
     } finally {
       setSavingControls(false);
+    }
+  };
+
+  const handleImportExportChange = (
+    docType: string,
+    field: 'import_enabled' | 'export_enabled',
+    value: boolean
+  ) => {
+    setImportExportSettings(prev => ({
+      ...prev,
+      [docType]: {
+        ...prev[docType],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveImportExportSettings = async () => {
+    if (!companyId) return;
+
+    setSavingImportExport(true);
+    try {
+      const { data: existing } = await supabase
+        .from('company_settings')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'import_export_settings')
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from('company_settings')
+          .update({ setting_value: importExportSettings })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('company_settings')
+          .insert([{
+            company_id: companyId,
+            setting_key: 'import_export_settings',
+            setting_value: importExportSettings,
+          }]);
+      }
+
+      toast.success('Import/Export settings saved');
+    } catch (error: any) {
+      console.error('Error saving import/export settings:', error);
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setSavingImportExport(false);
     }
   };
 
@@ -549,6 +658,46 @@ const Configuration = () => {
                           </code>
                         </div>
 
+                        {/* Import/Export Settings */}
+                        <div className="space-y-4 pt-4 border-t">
+                          <div>
+                            <h4 className="text-sm font-medium mb-1">Import / Export</h4>
+                            <p className="text-xs text-muted-foreground">Enable import and export buttons (XLSX format) in the {docType.label} view</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Enable Import</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Show import button in the header
+                                </p>
+                              </div>
+                              <Switch
+                                checked={importExportSettings[docType.value]?.import_enabled ?? false}
+                                onCheckedChange={(checked) => 
+                                  handleImportExportChange(docType.value, 'import_enabled', checked)
+                                }
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Enable Export</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Show export button in the header
+                                </p>
+                              </div>
+                              <Switch
+                                checked={importExportSettings[docType.value]?.export_enabled ?? true}
+                                onCheckedChange={(checked) => 
+                                  handleImportExportChange(docType.value, 'export_enabled', checked)
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                         {docType.value === 'purchase_order' && (
                           <div className="space-y-4 pt-4 border-t">
                             <div>
@@ -632,7 +781,20 @@ const Configuration = () => {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <Button onClick={handleSaveImportExportSettings} disabled={savingImportExport} variant="outline">
+                {savingImportExport ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Import/Export Settings
+                  </>
+                )}
+              </Button>
               <Button onClick={handleSaveConfigs} disabled={savingConfig}>
                 {savingConfig ? (
                   <>

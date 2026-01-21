@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +55,9 @@ const Rates = () => {
   const [loading, setLoading] = useState(true);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
   
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -279,6 +284,11 @@ const Rates = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('tax_rate')}
+                exportEnabled={isExportEnabled('tax_rate')}
+                entityName="Tax Rates"
+              />
               <Button onClick={handleAddClick} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Rate

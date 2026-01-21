@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -226,6 +228,9 @@ const Vendors = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState('0001');
   const [isLookingUp, setIsLookingUp] = useState(false);
+  
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
   const [formData, setFormData] = useState({
     vendor_id: '',
     name: '',
@@ -513,15 +518,21 @@ const Vendors = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Vendors</h1>
               </div>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Vendor
-                  <Kbd>N</Kbd>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('vendor')}
+                exportEnabled={isExportEnabled('vendor')}
+                entityName="Vendors"
+              />
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleOpenDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Vendor
+                    <Kbd>N</Kbd>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 {!isEditing && (
                   <CopyFromIdDialog<Vendor>
                     idLabel="Vendor ID"
@@ -754,8 +765,9 @@ const Vendors = () => {
                     </Button>
                   </DialogFooter>
                 </form>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </div>
       </header>
