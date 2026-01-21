@@ -79,6 +79,15 @@ interface Product {
   product_id: string;
 }
 
+interface Delivery {
+  id: string;
+  delivery_id: string;
+  vendor_id: string | null;
+  location_id: string | null;
+  vendor?: { name: string } | null;
+  location?: { name: string } | null;
+}
+
 const RECEIPT_STATUSES = ['pending', 'posted', 'cancelled'];
 
 const getStatusColor = (status: string) => {
@@ -97,6 +106,7 @@ const GoodsReceipts = () => {
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -106,6 +116,7 @@ const GoodsReceipts = () => {
   const [receiptItems, setReceiptItems] = useState<GoodsReceiptItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
   const { vendorOptions } = useVendorSources(companyId);
@@ -125,6 +136,14 @@ const GoodsReceipts = () => {
       sublabel: p.product_id,
     }));
   }, [products]);
+
+  const deliveryOptions: SearchableSelectOption[] = useMemo(() => {
+    return deliveries.map((d) => ({
+      value: d.id,
+      label: d.delivery_id,
+      sublabel: d.vendor?.name || 'No vendor',
+    }));
+  }, [deliveries]);
 
   useEffect(() => {
     if (isDialogOpen) {
@@ -167,6 +186,7 @@ const GoodsReceipts = () => {
       fetchNextReceiptNumber();
       fetchLocations();
       fetchProducts();
+      fetchDeliveries();
     }
   }, [companyId]);
 
@@ -231,6 +251,60 @@ const GoodsReceipts = () => {
       .order('name');
     
     setProducts(data || []);
+  };
+
+  const fetchDeliveries = async () => {
+    // Fetch deliveries that don't have a goods receipt yet (or are pending)
+    const { data } = await supabase
+      .from('deliveries')
+      .select(`
+        id, 
+        delivery_id, 
+        vendor_id, 
+        location_id,
+        vendor:vendors(name),
+        location:locations(name)
+      `)
+      .eq('company_id', companyId!)
+      .in('status', ['pending', 'in_transit', 'delivered'])
+      .order('delivery_id', { ascending: false });
+    
+    setDeliveries((data as any) || []);
+  };
+
+  const handleDeliverySelect = async (deliveryId: string) => {
+    setSelectedDeliveryId(deliveryId);
+    
+    const delivery = deliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      setFormData(prev => ({
+        ...prev,
+        location_id: delivery.location_id || '',
+        vendor_id: delivery.vendor_id || '',
+      }));
+    }
+  };
+
+  const copyDeliveryItems = async (deliveryId: string, receiptId: string) => {
+    // Fetch delivery items
+    const { data: deliveryItems } = await supabase
+      .from('delivery_items')
+      .select('product_id, quantity, notes')
+      .eq('delivery_id', deliveryId);
+
+    if (deliveryItems && deliveryItems.length > 0) {
+      // Insert as goods receipt items
+      const receiptItems = deliveryItems.map(item => ({
+        goods_receipt_id: receiptId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        notes: item.notes,
+      }));
+
+      await supabase
+        .from('goods_receipt_items' as any)
+        .insert(receiptItems);
+    }
   };
 
   const fetchReceiptItems = async (receiptId: string) => {
@@ -345,6 +419,7 @@ const GoodsReceipts = () => {
       status: 'pending',
       notes: '',
     });
+    setSelectedDeliveryId('');
     setIsEditing(false);
     setEditingId(null);
     setReceiptItems([]);
@@ -368,6 +443,7 @@ const GoodsReceipts = () => {
       status: receipt.status,
       notes: receipt.notes || '',
     });
+    setSelectedDeliveryId(receipt.delivery_id || '');
     setIsEditing(true);
     setEditingId(receipt.id);
     setActiveTab('details');
@@ -400,6 +476,11 @@ const GoodsReceipts = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isEditing && !selectedDeliveryId) {
+      toast.error('Please select an inbound delivery');
+      return;
+    }
+
     if (!formData.location_id) {
       toast.error('Please select a location');
       return;
@@ -408,6 +489,7 @@ const GoodsReceipts = () => {
     const payload = {
       location_id: formData.location_id,
       vendor_id: formData.vendor_id || null,
+      delivery_id: selectedDeliveryId || null,
       receipt_date: formData.receipt_date,
       status: formData.status,
       notes: formData.notes || null,
@@ -441,13 +523,22 @@ const GoodsReceipts = () => {
         return;
       }
 
-      // Switch to editing mode to add items
-      setEditingId((data as any).id);
+      const newReceiptId = (data as any).id;
+
+      // Copy items from delivery
+      if (selectedDeliveryId) {
+        await copyDeliveryItems(selectedDeliveryId, newReceiptId);
+      }
+
+      // Switch to editing mode to view/edit items
+      setEditingId(newReceiptId);
       setIsEditing(true);
+      fetchReceiptItems(newReceiptId);
       setActiveTab('items');
-      toast.success('Goods receipt created - add items');
+      toast.success('Goods receipt created from delivery');
       fetchReceipts();
       fetchNextReceiptNumber();
+      fetchDeliveries();
       return;
     }
 
@@ -519,6 +610,32 @@ const GoodsReceipts = () => {
                           />
                         </div>
                       </div>
+                      {!isEditing && (
+                        <div className="space-y-2">
+                          <Label htmlFor="delivery_id">Inbound Delivery *</Label>
+                          <SearchableSelect
+                            options={deliveryOptions}
+                            value={selectedDeliveryId}
+                            onValueChange={handleDeliverySelect}
+                            placeholder="Select delivery"
+                          />
+                          {deliveries.length === 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              No pending deliveries available. Create a delivery first.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div className="space-y-2">
+                          <Label>Delivery</Label>
+                          <Input
+                            value={deliveries.find(d => d.id === selectedDeliveryId)?.delivery_id || '-'}
+                            disabled
+                            className="bg-muted"
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label htmlFor="location_id">Location *</Label>
                         <SearchableSelect
@@ -526,6 +643,7 @@ const GoodsReceipts = () => {
                           value={formData.location_id}
                           onValueChange={(value) => setFormData(prev => ({ ...prev, location_id: value }))}
                           placeholder="Select location"
+                          disabled={!isEditing && !!selectedDeliveryId}
                         />
                       </div>
                       <div className="space-y-2">
@@ -535,6 +653,7 @@ const GoodsReceipts = () => {
                           value={formData.vendor_id}
                           onValueChange={(value) => setFormData(prev => ({ ...prev, vendor_id: value }))}
                           placeholder="Select vendor (optional)"
+                          disabled={!isEditing && !!selectedDeliveryId}
                         />
                       </div>
                       <div className="space-y-2">
@@ -650,6 +769,7 @@ const GoodsReceipts = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Receipt #</TableHead>
+                <TableHead>Delivery</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Vendor</TableHead>
@@ -661,6 +781,7 @@ const GoodsReceipts = () => {
               {receipts.map((receipt) => (
                 <TableRow key={receipt.id}>
                   <TableCell className="font-mono">{receipt.receipt_number}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
                   <TableCell>{format(new Date(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
                   <TableCell>{receipt.location?.name || '-'}</TableCell>
                   <TableCell>{receipt.vendor?.name || '-'}</TableCell>
@@ -698,7 +819,7 @@ const GoodsReceipts = () => {
               ))}
               {receipts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No goods receipts found. Create one to start receiving inventory.
                   </TableCell>
                 </TableRow>
