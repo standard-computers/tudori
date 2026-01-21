@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -80,6 +82,10 @@ const Accounts = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dialog states
@@ -366,13 +372,19 @@ const Accounts = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-sm"
           />
-          <Button onClick={handleCreateClick}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Account
-            <Kbd className="ml-2">N</Kbd>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportExportButtons
+              importEnabled={isImportEnabled('account')}
+              exportEnabled={isExportEnabled('account')}
+              entityName="Accounts"
+            />
+            <Button onClick={handleCreateClick}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Account
+              <Kbd className="ml-2">N</Kbd>
+            </Button>
+          </div>
         </div>
-
         <div className="border rounded-lg">
           <Table>
             <TableHeader>

@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -230,6 +232,10 @@ const Locations = () => {
   const { setTransaction } = useStatusBar();
   const [locations, setLocations] = useState<Location[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -553,14 +559,20 @@ const Locations = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Locations</h1>
               </div>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Location
-                  <Kbd>N</Kbd>
-                </Button>
-              </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('location')}
+                exportEnabled={isExportEnabled('location')}
+                entityName="Locations"
+              />
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleOpenDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Location
+                    <Kbd>N</Kbd>
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
                 {!isEditing && (
                   <CopyFromIdDialog<Location>

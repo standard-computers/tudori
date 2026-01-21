@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -274,6 +276,8 @@ const Products = () => {
   // Use vendor sources hook
   const { plainVendorOptions } = useVendorSources(companyId);
 
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
@@ -670,14 +674,20 @@ const Products = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Products</h1>
               </div>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Product
-                  <Kbd>N</Kbd>
-                </Button>
-              </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('product')}
+                exportEnabled={isExportEnabled('product')}
+                entityName="Products"
+              />
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleOpenDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Product
+                    <Kbd>N</Kbd>
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
                 {!isEditing && (
                   <CopyFromIdDialog<Product>

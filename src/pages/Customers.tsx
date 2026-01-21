@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -222,6 +224,10 @@ const Customers = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -470,14 +476,20 @@ const Customers = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Customers</h1>
               </div>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Customer
-                  <Kbd>N</Kbd>
-                </Button>
-              </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('customer')}
+                exportEnabled={isExportEnabled('customer')}
+                entityName="Customers"
+              />
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleOpenDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Customer
+                    <Kbd>N</Kbd>
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 {!isEditing && (
                   <CopyFromIdDialog<Customer>
