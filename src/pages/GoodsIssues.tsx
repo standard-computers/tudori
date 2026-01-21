@@ -320,38 +320,60 @@ const GoodsIssues = () => {
 
     // Deduct each item from inventory
     for (const item of items as any[]) {
-      const { data: existingInventory } = await supabase
+      // If item has a specific bin_id, use it; otherwise find any available inventory
+      let inventoryQuery = supabase
         .from('inventory')
-        .select('id, quantity')
+        .select('id, quantity, bin_id')
         .eq('location_id', locationId)
-        .eq('product_id', item.product_id)
-        .is('bin_id', item.bin_id || null)
-        .maybeSingle();
+        .eq('product_id', item.product_id);
+      
+      if (item.bin_id) {
+        // Specific bin requested
+        inventoryQuery = inventoryQuery.eq('bin_id', item.bin_id);
+      }
+      
+      const { data: inventoryRecords } = await inventoryQuery.order('quantity', { ascending: false });
 
-      if (!existingInventory) {
-        toast.error(`No inventory found for product at this location`);
+      if (!inventoryRecords || inventoryRecords.length === 0) {
+        const { data: productData } = await supabase
+          .from('products')
+          .select('name')
+          .eq('id', item.product_id)
+          .single();
+        toast.error(`No inventory found for ${productData?.name || 'product'} at this location`);
         return;
       }
 
-      if (existingInventory.quantity < item.quantity) {
-        toast.error(`Insufficient inventory for one or more items`);
+      // Calculate total available
+      const totalAvailable = inventoryRecords.reduce((sum, inv) => sum + inv.quantity, 0);
+      if (totalAvailable < item.quantity) {
+        const { data: productData } = await supabase
+          .from('products')
+          .select('name')
+          .eq('id', item.product_id)
+          .single();
+        toast.error(`Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
         return;
       }
 
-      const newQuantity = existingInventory.quantity - item.quantity;
-      if (newQuantity === 0) {
-        await supabase
-          .from('inventory')
-          .delete()
-          .eq('id', existingInventory.id);
-      } else {
-        await supabase
-          .from('inventory')
-          .update({ 
-            quantity: newQuantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingInventory.id);
+      // Deduct from inventory records (FIFO - start with largest quantities)
+      let remainingToDeduct = item.quantity;
+      for (const inv of inventoryRecords) {
+        if (remainingToDeduct <= 0) break;
+        
+        const deductAmount = Math.min(inv.quantity, remainingToDeduct);
+        const newQuantity = inv.quantity - deductAmount;
+        
+        if (newQuantity === 0) {
+          await supabase.from('inventory').delete().eq('id', inv.id);
+        } else {
+          await supabase
+            .from('inventory')
+            .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+            .eq('id', inv.id);
+        }
+        
+        remainingToDeduct -= deductAmount;
       }
     }
 
