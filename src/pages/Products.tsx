@@ -1110,6 +1110,7 @@ const Products = () => {
             </Dialog>
           </div>
         </div>
+        </div>
       </header>
 
       <main className="flex-1">

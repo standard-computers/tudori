@@ -707,6 +707,7 @@ const Customers = () => {
             </Dialog>
           </div>
         </div>
+        </div>
       </header>
 
       <main className="flex-1">
