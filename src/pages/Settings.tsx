@@ -62,6 +62,7 @@ interface POAutomationSettings {
 }
 
 type AppRole = Database['public']['Enums']['app_role'];
+type UserRoleEntry = { role: AppRole };
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -74,7 +75,7 @@ const Settings = () => {
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
   const [activeTab, setActiveTab] = useState('company');
   const [activeConfigTab, setActiveConfigTab] = useState('purchase_order');
-  const [currentUserRole, setCurrentUserRole] = useState<AppRole | null>(null);
+  const [currentUserRoles, setCurrentUserRoles] = useState<AppRole[]>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -90,7 +91,8 @@ const Settings = () => {
     setTransaction(`set/${activeTab}`);
   }, [activeTab, setTransaction]);
 
-  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+  const isAdmin = currentUserRoles.includes('owner') || currentUserRoles.includes('admin');
+  const isIT = currentUserRoles.includes('it');
 
   // Ctrl+S to save based on active tab (only for admins)
   useSaveShortcut(() => {
@@ -139,15 +141,15 @@ const Settings = () => {
         .maybeSingle();
 
       if (profile?.company_id) {
-        // Fetch user's role
+        // Fetch user's roles (user can have multiple roles like owner + it)
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user!.id)
-          .eq('company_id', profile.company_id)
-          .single();
+          .eq('company_id', profile.company_id);
 
-        setCurrentUserRole(roleData?.role || null);
+        const roles = (roleData as UserRoleEntry[] | null)?.map(r => r.role) || [];
+        setCurrentUserRoles(roles);
 
         const { data: companyData, error } = await supabase
           .from('companies')
@@ -769,13 +771,30 @@ const Settings = () => {
           </TabsContent>
 
           <TabsContent value="config" className="space-y-6">
-            <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Warning</AlertTitle>
-              <AlertDescription>
-                Changing the prefix, number of digits, or starting number after documents have already been created may result in duplicate IDs or gaps in your numbering sequence. Proceed with caution.
-              </AlertDescription>
-            </Alert>
+            {!isIT ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                      <ShieldAlert className="w-8 h-8 text-destructive" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-foreground mb-2">IT Access Required</h2>
+                    <p className="text-muted-foreground max-w-md">
+                      Only users with the IT role can modify document ID configuration and company settings.
+                      Please contact your IT administrator if you need access.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Warning</AlertTitle>
+                  <AlertDescription>
+                    Changing the prefix, number of digits, or starting number after documents have already been created may result in duplicate IDs or gaps in your numbering sequence. Proceed with caution.
+                  </AlertDescription>
+                </Alert>
 
             <Tabs value={activeConfigTab} onValueChange={setActiveConfigTab}>
               <TabsList className="flex flex-wrap h-auto gap-1">
@@ -972,6 +991,8 @@ const Settings = () => {
                 )}
               </Button>
             </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="preferences">

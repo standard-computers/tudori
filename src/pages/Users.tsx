@@ -24,28 +24,29 @@ interface TeamMember {
   first_name: string;
   last_name: string;
   email?: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
 }
 
 interface Invitation {
   id: string;
   email: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
   created_at: string;
   expires_at: string;
 }
 
 interface UserRole {
   user_id: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
 }
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  role: z.enum(['admin', 'member', 'viewer']),
+  role: z.enum(['admin', 'member', 'viewer', 'it']),
 });
 
 const roleColors: Record<string, string> = {
+  it: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
   owner: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
   admin: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
   member: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
@@ -53,6 +54,7 @@ const roleColors: Record<string, string> = {
 };
 
 const roleDescriptions: Record<string, string> = {
+  it: 'Full system access including company and ID configuration',
   owner: 'Full access to all features and settings',
   admin: 'Can manage users and most settings',
   member: 'Can access and edit business data',
@@ -81,7 +83,7 @@ const Users = () => {
 
   // Invite form
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'admin' | 'member' | 'viewer'>('member');
+  const [role, setRole] = useState<'admin' | 'member' | 'viewer' | 'it'>('member');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -159,9 +161,9 @@ const Users = () => {
         role: rolesMap.get(p.user_id) || 'member',
       }));
 
-      // Sort: owner first, then admin, member, viewer
-      const roleOrder = { owner: 0, admin: 1, member: 2, viewer: 3 };
-      members.sort((a, b) => roleOrder[a.role] - roleOrder[b.role]);
+      // Sort: IT first, then owner, admin, member, viewer
+      const roleOrder: Record<string, number> = { it: 0, owner: 1, admin: 2, member: 3, viewer: 4 };
+      members.sort((a, b) => (roleOrder[a.role] ?? 5) - (roleOrder[b.role] ?? 5));
 
       setTeamMembers(members);
     }
@@ -268,12 +270,16 @@ const Users = () => {
     fetchTeamData();
   };
 
-  const handleUpdateRole = async (member: TeamMember, newRole: 'admin' | 'member' | 'viewer') => {
+  const handleUpdateRole = async (member: TeamMember, newRole: 'admin' | 'member' | 'viewer' | 'it') => {
     if (!companyId) return;
     
-    // Prevent changing owner role
+    // Prevent changing owner or IT role (IT is special)
     if (member.role === 'owner') {
       toast.error('Cannot change owner role');
+      return;
+    }
+    if (member.role === 'it') {
+      toast.error('Cannot change IT role - contact system administrator');
       return;
     }
 
@@ -429,11 +435,12 @@ const Users = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="role">Access Level</Label>
-                      <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'member' | 'viewer')}>
+                      <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'member' | 'viewer' | 'it')}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="it">IT</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="member">Member</SelectItem>
                           <SelectItem value="viewer">Viewer</SelectItem>
@@ -461,8 +468,8 @@ const Users = () => {
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Role cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          {(['owner', 'admin', 'member', 'viewer'] as const).map((r) => {
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          {(['it', 'owner', 'admin', 'member', 'viewer'] as const).map((r) => {
             const count = teamMembers.filter((m) => m.role === r).length;
             return (
               <Card key={r} className="glass-card">
@@ -578,12 +585,13 @@ const Users = () => {
                       {editingMember?.id === member.id ? (
                         <Select 
                           value={member.role} 
-                          onValueChange={(v) => handleUpdateRole(member, v as 'admin' | 'member' | 'viewer')}
+                          onValueChange={(v) => handleUpdateRole(member, v as 'admin' | 'member' | 'viewer' | 'it')}
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="it">IT</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="member">Member</SelectItem>
                             <SelectItem value="viewer">Viewer</SelectItem>
