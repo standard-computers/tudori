@@ -361,10 +361,17 @@ const GoodsReceipts = () => {
   };
 
   const handlePostReceipt = async (receiptId: string, locationId: string) => {
+    // Get receipt with PO info to access ledger
+    const { data: receipt } = await supabase
+      .from('goods_receipts' as any)
+      .select('*, purchase_order:purchase_orders(id, po_number, ledger_id)')
+      .eq('id', receiptId)
+      .single();
+
     // Get items for this receipt
     const { data: items } = await supabase
       .from('goods_receipt_items' as any)
-      .select('*')
+      .select('*, product:products(name, price)')
       .eq('goods_receipt_id', receiptId);
 
     if (!items || items.length === 0) {
@@ -399,6 +406,28 @@ const GoodsReceipts = () => {
             quantity: item.quantity,
             bin_id: item.bin_id || null
           });
+      }
+    }
+
+    // Create positive ledger transaction if PO has a ledger
+    const po = (receipt as any)?.purchase_order;
+    if (po?.ledger_id) {
+      // Calculate total value of received goods
+      const totalValue = (items as any[]).reduce((sum, item) => {
+        const price = item.product?.price || 0;
+        return sum + (price * item.quantity);
+      }, 0);
+
+      if (totalValue > 0) {
+        await supabase.from('ledger_transactions' as any).insert({
+          ledger_id: po.ledger_id,
+          transaction_type: 'goods_receipt',
+          reference_id: receiptId,
+          reference_number: (receipt as any).receipt_number,
+          amount: totalValue, // Positive for goods received
+          description: `Goods Receipt ${(receipt as any).receipt_number} for PO ${po.po_number}`,
+          transaction_date: new Date().toISOString().split('T')[0],
+        });
       }
     }
 

@@ -307,10 +307,17 @@ const GoodsIssues = () => {
   };
 
   const handlePostIssue = async (issueId: string, locationId: string) => {
-    // Get items for this issue
+    // Get issue with SO info to access ledger
+    const { data: issue } = await supabase
+      .from('goods_issues' as any)
+      .select('*, sales_order:sales_orders(id, so_number, ledger_id)')
+      .eq('id', issueId)
+      .single();
+
+    // Get items for this issue with product prices
     const { data: items } = await supabase
       .from('goods_issue_items' as any)
-      .select('*')
+      .select('*, product:products(name, price)')
       .eq('goods_issue_id', issueId);
 
     if (!items || items.length === 0) {
@@ -374,6 +381,28 @@ const GoodsIssues = () => {
         }
         
         remainingToDeduct -= deductAmount;
+      }
+    }
+
+    // Create negative ledger transaction if SO has a ledger
+    const so = (issue as any)?.sales_order;
+    if (so?.ledger_id) {
+      // Calculate total value of issued goods
+      const totalValue = (items as any[]).reduce((sum, item) => {
+        const price = item.product?.price || 0;
+        return sum + (price * item.quantity);
+      }, 0);
+
+      if (totalValue > 0) {
+        await supabase.from('ledger_transactions' as any).insert({
+          ledger_id: so.ledger_id,
+          transaction_type: 'goods_issue',
+          reference_id: issueId,
+          reference_number: (issue as any).issue_number,
+          amount: -totalValue, // Negative for goods issued
+          description: `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`,
+          transaction_date: new Date().toISOString().split('T')[0],
+        });
       }
     }
 
