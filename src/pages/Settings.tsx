@@ -93,16 +93,17 @@ const Settings = () => {
 
   const isAdmin = currentUserRoles.includes('owner') || currentUserRoles.includes('admin');
   const isIT = currentUserRoles.includes('it');
+  const hasSettingsAccess = isAdmin || isIT;
 
-  // Ctrl+S to save based on active tab (only for admins)
+  // Ctrl+S to save based on active tab (only for users with settings access)
   useSaveShortcut(() => {
-    if (!isAdmin) return;
+    if (!hasSettingsAccess) return;
     if (activeTab === 'company' && company && !saving) {
       handleSaveCompany();
-    } else if (activeTab === 'config' && !savingConfig) {
+    } else if (activeTab === 'config' && !savingConfig && isIT) {
       handleSaveConfigs();
     }
-  }, isAdmin);
+  }, hasSettingsAccess);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -472,8 +473,8 @@ const Settings = () => {
     );
   }
 
-  // Access denied view for non-admins
-  if (!isAdmin && !loading) {
+  // Access denied view for users without settings access
+  if (!hasSettingsAccess && !loading) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
