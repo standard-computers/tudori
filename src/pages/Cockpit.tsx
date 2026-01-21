@@ -394,14 +394,13 @@ const Cockpit = () => {
         return;
       }
 
-      // 2. Check inventory availability
+      // 2. Check inventory availability (include all inventory at location, regardless of bin)
       for (const item of items as any[]) {
         const { data: invData } = await supabase
           .from('inventory')
           .select('id, quantity')
           .eq('location_id', selectedLocationId)
-          .eq('product_id', item.product_id)
-          .is('bin_id', null);
+          .eq('product_id', item.product_id);
         
         const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
         if (totalAvailable < item.quantity) {
@@ -410,7 +409,7 @@ const Cockpit = () => {
             .select('name')
             .eq('id', item.product_id)
             .single();
-          toast.error(`Insufficient inventory for ${productData?.name || 'product'}`);
+          toast.error(`Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
           setIsFulfilling(false);
           return;
         }
