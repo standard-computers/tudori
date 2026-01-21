@@ -36,6 +36,7 @@ import DebitMemos from "./pages/DebitMemos";
 import GoodsReceipts from "./pages/GoodsReceipts";
 import GoodsIssues from "./pages/GoodsIssues";
 import Inventory from "./pages/Inventory";
+import Configuration from "./pages/Configuration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
                   <Route path="/goods-receipts" element={<GoodsReceipts />} />
                   <Route path="/goods-issues" element={<GoodsIssues />} />
                   <Route path="/inventory" element={<Inventory />} />
+                  <Route path="/configuration" element={<Configuration />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
