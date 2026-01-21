@@ -23,6 +23,7 @@ import {
   Plus,
   PackagePlus,
   PackageMinus,
+  Cog,
   LucideIcon
 } from 'lucide-react';
 
@@ -58,5 +59,6 @@ export const defaultApps: AppTile[] = [
   { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: null },
   { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: null },
   { name: 'Users', icon: UserCog, color: 'text-purple-500', description: 'Team & access control', path: '/users' },
-  { name: 'Settings', icon: Settings, color: 'text-slate-500', description: 'Configuration', path: '/settings' },
+  { name: 'Configuration', icon: Cog, color: 'text-emerald-500', description: 'System configuration', path: '/configuration' },
+  { name: 'Settings', icon: Settings, color: 'text-slate-500', description: 'Company settings', path: '/settings' },
 ];
