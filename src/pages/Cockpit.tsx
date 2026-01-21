@@ -42,8 +42,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, DollarSign, TrendingUp, AlertCircle, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, DollarSign, TrendingUp, AlertCircle, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 interface Location {
   id: string;
@@ -94,6 +95,34 @@ interface InventoryItem {
   bin?: { bin_id: string; name: string } | null;
 }
 
+interface SalesOrder {
+  id: string;
+  so_number: string;
+  status: string;
+  customer_id: string | null;
+  location_id: string | null;
+  total_amount: number;
+  order_date: string;
+  customer?: { name: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; country: string | null } | null;
+}
+
+interface SalesOrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  product?: { name: string; product_id: string };
+}
+
+const statusColors: Record<string, string> = {
+  draft: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
+  pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+  confirmed: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+  processing: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  shipped: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+  delivered: 'bg-green-500/10 text-green-600 border-green-500/20',
+  cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
+};
+
 const Cockpit = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -130,6 +159,15 @@ const Cockpit = () => {
   const [activeTab, setActiveTab] = useState('actions');
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [isInventoryDetailOpen, setIsInventoryDetailOpen] = useState(false);
+
+  // Sales orders state
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [salesOrdersCount, setSalesOrdersCount] = useState<number>(0);
+  const [isSalesOrdersDialogOpen, setIsSalesOrdersDialogOpen] = useState(false);
+  const [selectedSalesOrder, setSelectedSalesOrder] = useState<SalesOrder | null>(null);
+  const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
+  const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
+  const [isFulfilling, setIsFulfilling] = useState(false);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -182,9 +220,12 @@ const Cockpit = () => {
     if (selectedLocationId) {
       fetchPendingDeliveries();
       fetchInventory();
+      fetchOutstandingSalesOrders();
     } else {
       setPendingDeliveriesCount(0);
       setInventory([]);
+      setSalesOrders([]);
+      setSalesOrdersCount(0);
     }
   }, [selectedLocationId]);
 
@@ -293,6 +334,188 @@ const Cockpit = () => {
       return;
     }
     setInventory(data || []);
+  };
+
+  const fetchOutstandingSalesOrders = async () => {
+    if (!selectedLocationId) return;
+    const { data, count, error } = await supabase
+      .from('sales_orders' as any)
+      .select(`
+        id,
+        so_number,
+        status,
+        customer_id,
+        location_id,
+        total_amount,
+        order_date,
+        customer:customers(name, address_line1, city, state, postal_code, country)
+      `, { count: 'exact' })
+      .eq('location_id', selectedLocationId)
+      .in('status', ['confirmed', 'processing'])
+      .order('order_date', { ascending: true });
+    
+    if (error) {
+      console.error('Failed to fetch sales orders:', error);
+      return;
+    }
+    setSalesOrders((data as any) || []);
+    setSalesOrdersCount(count || 0);
+  };
+
+  const fetchSalesOrderItems = async (orderId: string) => {
+    const { data } = await supabase
+      .from('sales_order_items' as any)
+      .select(`
+        id,
+        product_id,
+        quantity,
+        product:products(name, product_id)
+      `)
+      .eq('sales_order_id', orderId);
+    
+    setSalesOrderItems((data as any) || []);
+  };
+
+  const handleFulfillOrder = async () => {
+    if (!selectedSalesOrder || !selectedLocationId || !companyId) return;
+    
+    setIsFulfilling(true);
+    
+    try {
+      // 1. Get sales order items
+      const { data: items } = await supabase
+        .from('sales_order_items' as any)
+        .select('product_id, quantity')
+        .eq('sales_order_id', selectedSalesOrder.id);
+      
+      if (!items || items.length === 0) {
+        toast.error('No items to fulfill');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // 2. Check inventory availability
+      for (const item of items as any[]) {
+        const { data: invData } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('location_id', selectedLocationId)
+          .eq('product_id', item.product_id)
+          .is('bin_id', null);
+        
+        const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
+        if (totalAvailable < item.quantity) {
+          const { data: productData } = await supabase
+            .from('products')
+            .select('name')
+            .eq('id', item.product_id)
+            .single();
+          toast.error(`Insufficient inventory for ${productData?.name || 'product'}`);
+          setIsFulfilling(false);
+          return;
+        }
+      }
+
+      // 3. Get next outbound delivery number
+      const { data: deliveryNumber } = await supabase.rpc('get_next_outbound_delivery_number', {
+        p_company_id: companyId,
+      });
+
+      // 4. Create outbound delivery
+      const customer = selectedSalesOrder.customer;
+      const { data: outboundDelivery, error: odError } = await supabase
+        .from('outbound_deliveries' as any)
+        .insert({
+          company_id: companyId,
+          delivery_number: deliveryNumber,
+          sales_order_id: selectedSalesOrder.id,
+          from_location_id: selectedLocationId,
+          customer_id: selectedSalesOrder.customer_id,
+          ship_to_address_line1: customer?.address_line1 || null,
+          ship_to_city: customer?.city || null,
+          ship_to_state: customer?.state || null,
+          ship_to_postal_code: customer?.postal_code || null,
+          ship_to_country: customer?.country || 'United States',
+          status: 'pending',
+          notes: `Created from SO ${selectedSalesOrder.so_number}`,
+        })
+        .select()
+        .single();
+
+      if (odError) {
+        console.error('Failed to create outbound delivery:', odError);
+        toast.error('Failed to create outbound delivery');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // 5. Get next goods issue number
+      const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', {
+        p_company_id: companyId,
+      });
+
+      // 6. Create goods issue with reference to outbound delivery
+      const { data: goodsIssue, error: giError } = await supabase
+        .from('goods_issues' as any)
+        .insert({
+          company_id: companyId,
+          issue_number: issueNumber,
+          location_id: selectedLocationId,
+          customer_id: selectedSalesOrder.customer_id,
+          sales_order_id: selectedSalesOrder.id,
+          outbound_delivery_id: (outboundDelivery as any).id,
+          status: 'pending',
+          notes: `Fulfillment for SO ${selectedSalesOrder.so_number}, OD ${deliveryNumber}`,
+        })
+        .select()
+        .single();
+
+      if (giError) {
+        console.error('Failed to create goods issue:', giError);
+        toast.error('Failed to create goods issue');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // 7. Create goods issue items
+      const giItems = (items as any[]).map(item => ({
+        goods_issue_id: (goodsIssue as any).id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('goods_issue_items' as any)
+        .insert(giItems);
+
+      if (itemsError) {
+        console.error('Failed to create goods issue items:', itemsError);
+      }
+
+      // 8. Update outbound delivery with goods_issue_id
+      await supabase
+        .from('outbound_deliveries' as any)
+        .update({ goods_issue_id: (goodsIssue as any).id })
+        .eq('id', (outboundDelivery as any).id);
+
+      // 9. Update sales order status to 'shipped'
+      await supabase
+        .from('sales_orders' as any)
+        .update({ status: 'shipped' })
+        .eq('id', selectedSalesOrder.id);
+
+      toast.success(`Outbound Delivery ${deliveryNumber} and Goods Issue ${issueNumber} created. Post GI to update inventory.`);
+      
+      setIsFulfillDialogOpen(false);
+      setSelectedSalesOrder(null);
+      setSalesOrderItems([]);
+      fetchOutstandingSalesOrders();
+    } catch (error) {
+      console.error('Fulfillment error:', error);
+      toast.error('Failed to fulfill order');
+    } finally {
+      setIsFulfilling(false);
+    }
   };
 
   const getNextAreaId = () => {
@@ -616,15 +839,15 @@ const Cockpit = () => {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setIsSalesOrdersDialogOpen(true)}>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center">
                   <ShoppingCart className="w-6 h-6 text-violet-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Orders</p>
-                  <p className="text-2xl font-bold">—</p>
+                  <p className="text-sm text-muted-foreground">Orders to Fulfill</p>
+                  <p className="text-2xl font-bold">{salesOrdersCount}</p>
                 </div>
               </div>
             </CardContent>
@@ -1221,6 +1444,172 @@ const Cockpit = () => {
           onUpdated={fetchInventory}
         />
       )}
+
+      {/* Sales Orders Dialog */}
+      <Dialog open={isSalesOrdersDialogOpen} onOpenChange={setIsSalesOrdersDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-violet-500" />
+              Orders to Fulfill - {selectedLocation?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Confirmed sales orders ready for fulfillment from this location
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {salesOrders.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No orders to fulfill</p>
+                <p className="text-xs mt-1">Confirmed sales orders shipping from this location will appear here</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SO #</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Order Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {salesOrders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-mono">{order.so_number}</TableCell>
+                      <TableCell>{order.customer?.name || '—'}</TableCell>
+                      <TableCell>
+                        {order.order_date 
+                          ? new Date(order.order_date).toLocaleDateString() 
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusColors[order.status] || ''}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ${order.total_amount?.toFixed(2) || '0.00'}
+                      </TableCell>
+                      <TableCell>
+                        <Button 
+                          size="sm" 
+                          onClick={() => {
+                            setSelectedSalesOrder(order);
+                            fetchSalesOrderItems(order.id);
+                            setIsFulfillDialogOpen(true);
+                          }}
+                        >
+                          Fulfill
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSalesOrdersDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setIsSalesOrdersDialogOpen(false); navigate('/sales-orders'); }}>
+              Go to Sales Orders
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fulfill Order Dialog */}
+      <Dialog open={isFulfillDialogOpen} onOpenChange={(open) => {
+        setIsFulfillDialogOpen(open);
+        if (!open) {
+          setSelectedSalesOrder(null);
+          setSalesOrderItems([]);
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Fulfill Order</DialogTitle>
+            <DialogDescription>
+              Create an outbound delivery and goods issue for {selectedSalesOrder?.so_number}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedSalesOrder && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Customer</p>
+                  <p className="font-medium">{selectedSalesOrder.customer?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Total</p>
+                  <p className="font-medium">${selectedSalesOrder.total_amount?.toFixed(2) || '0.00'}</p>
+                </div>
+              </div>
+              
+              {selectedSalesOrder.customer && (
+                <div className="text-sm">
+                  <p className="text-muted-foreground mb-1">Ship To</p>
+                  <p>{selectedSalesOrder.customer.address_line1 || 'No address'}</p>
+                  {selectedSalesOrder.customer.city && (
+                    <p>{selectedSalesOrder.customer.city}, {selectedSalesOrder.customer.state} {selectedSalesOrder.customer.postal_code}</p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <p className="text-muted-foreground text-sm mb-2">Items to fulfill</p>
+                <div className="border rounded-md max-h-48 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {salesOrderItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.product?.name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">{item.product?.product_id}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <div className="bg-muted/50 p-3 rounded-md text-sm">
+                <p className="font-medium mb-1">This will:</p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                  <li>Create an Outbound Delivery to the customer</li>
+                  <li>Create a Goods Issue referencing the delivery</li>
+                  <li>Update the sales order status to "Shipped"</li>
+                </ul>
+                <p className="mt-2 text-xs">Post the Goods Issue to deduct inventory</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFulfillDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleFulfillOrder} disabled={isFulfilling || salesOrderItems.length === 0}>
+              {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Fulfill Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
