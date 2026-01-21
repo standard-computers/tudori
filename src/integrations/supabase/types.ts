@@ -690,6 +690,7 @@ export type Database = {
           issue_number: string
           location_id: string
           notes: string | null
+          outbound_delivery_id: string | null
           sales_order_id: string | null
           status: string
           updated_at: string
@@ -703,6 +704,7 @@ export type Database = {
           issue_number: string
           location_id: string
           notes?: string | null
+          outbound_delivery_id?: string | null
           sales_order_id?: string | null
           status?: string
           updated_at?: string
@@ -716,6 +718,7 @@ export type Database = {
           issue_number?: string
           location_id?: string
           notes?: string | null
+          outbound_delivery_id?: string | null
           sales_order_id?: string | null
           status?: string
           updated_at?: string
@@ -740,6 +743,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issues_outbound_delivery_id_fkey"
+            columns: ["outbound_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_deliveries"
             referencedColumns: ["id"]
           },
           {
@@ -1252,6 +1262,114 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outbound_deliveries: {
+        Row: {
+          carrier: string | null
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          delivered_date: string | null
+          delivery_number: string
+          from_location_id: string | null
+          goods_issue_id: string | null
+          id: string
+          notes: string | null
+          sales_order_id: string | null
+          ship_to_address_line1: string | null
+          ship_to_address_line2: string | null
+          ship_to_city: string | null
+          ship_to_country: string | null
+          ship_to_postal_code: string | null
+          ship_to_state: string | null
+          shipped_date: string | null
+          status: string
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          carrier?: string | null
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          delivered_date?: string | null
+          delivery_number: string
+          from_location_id?: string | null
+          goods_issue_id?: string | null
+          id?: string
+          notes?: string | null
+          sales_order_id?: string | null
+          ship_to_address_line1?: string | null
+          ship_to_address_line2?: string | null
+          ship_to_city?: string | null
+          ship_to_country?: string | null
+          ship_to_postal_code?: string | null
+          ship_to_state?: string | null
+          shipped_date?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string | null
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          delivered_date?: string | null
+          delivery_number?: string
+          from_location_id?: string | null
+          goods_issue_id?: string | null
+          id?: string
+          notes?: string | null
+          sales_order_id?: string | null
+          ship_to_address_line1?: string | null
+          ship_to_address_line2?: string | null
+          ship_to_city?: string | null
+          ship_to_country?: string | null
+          ship_to_postal_code?: string | null
+          ship_to_state?: string | null
+          shipped_date?: string | null
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_deliveries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_deliveries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_deliveries_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_deliveries_goods_issue_id_fkey"
+            columns: ["goods_issue_id"]
+            isOneToOne: false
+            referencedRelation: "goods_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_deliveries_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2128,6 +2246,10 @@ export type Database = {
       }
       get_next_ledger_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_outbound_delivery_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_po_number: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
       get_next_requisition_id: {
