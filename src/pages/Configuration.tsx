@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders } from 'lucide-react';
+import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -27,14 +27,21 @@ interface DocumentIdConfig {
 }
 
 const DOCUMENT_TYPES = [
-  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: '', icon: ShoppingCart },
-  { value: 'requisition', label: 'Requisition', prefix_placeholder: '', icon: FileText },
-  { value: 'delivery', label: 'Delivery', prefix_placeholder: '', icon: Truck },
-  { value: 'ledger', label: 'Ledger', prefix_placeholder: '', icon: Book },
-  { value: 'vendor', label: 'Vendor', prefix_placeholder: '', icon: Users },
-  { value: 'customer', label: 'Customer', prefix_placeholder: '', icon: UserCheck },
-  { value: 'product', label: 'Product', prefix_placeholder: '', icon: Package },
-  { value: 'location', label: 'Location', prefix_placeholder: '', icon: MapPin },
+  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-', icon: ShoppingCart },
+  { value: 'sales_order', label: 'Sales Order', prefix_placeholder: 'SO-', icon: ClipboardList },
+  { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-', icon: FileText },
+  { value: 'delivery', label: 'Delivery', prefix_placeholder: 'DEL-', icon: Truck },
+  { value: 'goods_receipt', label: 'Goods Receipt', prefix_placeholder: 'GR-', icon: PackageCheck },
+  { value: 'goods_issue', label: 'Goods Issue', prefix_placeholder: 'GI-', icon: PackageMinus },
+  { value: 'invoice', label: 'Invoice', prefix_placeholder: 'INV-', icon: FileSpreadsheet },
+  { value: 'credit_memo', label: 'Credit Memo', prefix_placeholder: 'CM-', icon: CreditCard },
+  { value: 'debit_memo', label: 'Debit Memo', prefix_placeholder: 'DM-', icon: Wallet },
+  { value: 'account', label: 'Account', prefix_placeholder: 'ACC-', icon: Receipt },
+  { value: 'ledger', label: 'Ledger', prefix_placeholder: 'LED-', icon: Book },
+  { value: 'vendor', label: 'Vendor', prefix_placeholder: 'VND-', icon: Users },
+  { value: 'customer', label: 'Customer', prefix_placeholder: 'CUS-', icon: UserCheck },
+  { value: 'product', label: 'Product', prefix_placeholder: 'PRD-', icon: Package },
+  { value: 'location', label: 'Location', prefix_placeholder: 'LOC-', icon: MapPin },
 ];
 
 interface POAutomationSettings {
