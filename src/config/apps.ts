@@ -56,7 +56,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Requisitions', icon: FileSpreadsheet, color: 'text-sky-500', description: 'Purchase requests', path: '/requisitions' },
   { name: 'Shipping', icon: Truck, color: 'text-teal-500', description: 'Logistics & delivery', path: '/deliveries' },
   { name: 'Calendar', icon: Calendar, color: 'text-indigo-500', description: 'Events & scheduling', path: null },
-  { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: null },
+  { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: '/tasks' },
   { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: null },
   { name: 'Users', icon: UserCog, color: 'text-purple-500', description: 'Team & access control', path: '/users' },
   { name: 'Configuration', icon: Cog, color: 'text-emerald-500', description: 'System configuration', path: '/configuration' },

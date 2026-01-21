@@ -25,6 +25,7 @@ const TRANSACTION_ROUTES: Record<string, string> = {
   'gi': '/goods-issues',
   'cm': '/credit-memos',
   'dm': '/debit-memos',
+  'task': '/tasks',
   'rate': '/rates',
   'user': '/users',
   
