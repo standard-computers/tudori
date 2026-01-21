@@ -435,7 +435,8 @@ const Cockpit = () => {
           ship_to_state: customer?.state || null,
           ship_to_postal_code: customer?.postal_code || null,
           ship_to_country: customer?.country || 'United States',
-          status: 'pending',
+          status: 'in_transit',
+          shipped_date: new Date().toISOString().split('T')[0],
           notes: `Created from SO ${selectedSalesOrder.so_number}`,
         })
         .select()
