@@ -351,7 +351,7 @@ const Cockpit = () => {
         customer:customers(name, address_line1, city, state, postal_code, country)
       `, { count: 'exact' })
       .eq('location_id', selectedLocationId)
-      .in('status', ['confirmed', 'processing'])
+      .in('status', ['draft', 'confirmed', 'processing'])
       .order('order_date', { ascending: true });
     
     if (error) {
