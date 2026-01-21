@@ -35,7 +35,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Minus, Plus, Loader2, MoreHorizontal, Trash2, Eye, Check } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Loader2, MoreHorizontal, Trash2, Eye, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -107,7 +107,7 @@ const CreditMemos = () => {
     notes: '',
   });
 
-  const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<CreditMemo>(memos);
+  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter, clearAllFilters } = useTableSort<CreditMemo>(memos, 'memo_number', 'desc');
 
   useEffect(() => {
     if (isCreateDialogOpen) {
@@ -372,7 +372,7 @@ const CreditMemos = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b">
-        <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
               <ArrowLeft className="h-5 w-5" />
@@ -380,115 +380,151 @@ const CreditMemos = () => {
             <Minus className="h-6 w-6 text-green-500" />
             <h1 className="text-2xl font-bold">Credit Memos</h1>
           </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <Input
-            placeholder="Search credit memos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
           <Button onClick={handleCreateClick}>
             <Plus className="h-4 w-4 mr-2" />
             New Credit Memo
             <Kbd className="ml-2">N</Kbd>
           </Button>
         </div>
+      </div>
 
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
+      <div className="space-y-2">
+        {Object.values(filters).filter(Boolean).length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2">
+            <span className="text-sm text-muted-foreground">
+              Showing {filteredMemos.length} of {memos.length} memos
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+              <X className="w-3 h-3 mr-1" />
+              Clear filters
+            </Button>
+            {Object.entries(filters).map(([key, value]) => value && (
+              <Badge key={key} variant="secondary" className="text-xs">
+                {key}: {value}
+                <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="Memo #"
+                sortKey="memo_number"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['memo_number']}
+                onFilter={(value) => setFilter('memo_number', value)}
+              />
+              <SortableTableHead
+                label="Date"
+                sortKey="memo_date"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
+                label="Account"
+                sortKey="account.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['account.name']}
+                onFilter={(value) => setFilter('account.name', value)}
+              />
+              <SortableTableHead
+                label="Invoice"
+                sortKey="invoice.invoice_number"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['invoice.invoice_number']}
+                onFilter={(value) => setFilter('invoice.invoice_number', value)}
+              />
+              <SortableTableHead
+                label="Amount"
+                sortKey="amount"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
+                label="Ledger"
+                sortKey="ledger.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['ledger.name']}
+                onFilter={(value) => setFilter('ledger.name', value)}
+              />
+              <SortableTableHead
+                label="Status"
+                sortKey="status"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['status']}
+                onFilter={(value) => setFilter('status', value)}
+              />
+              <TableHead className="w-[50px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredMemos.length === 0 ? (
               <TableRow>
-                <SortableTableHead
-                  label="Memo #"
-                  sortKey="memo_number"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <SortableTableHead
-                  label="Date"
-                  sortKey="memo_date"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <TableHead>Account</TableHead>
-                <TableHead>Invoice</TableHead>
-                <SortableTableHead
-                  label="Amount"
-                  sortKey="amount"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <TableHead>Ledger</TableHead>
-                <SortableTableHead
-                  label="Status"
-                  sortKey="status"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <TableHead className="w-[50px]"></TableHead>
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  {memos.length === 0 
+                    ? 'No credit memos found. Create your first credit memo to get started.'
+                    : 'No memos match your filters'}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMemos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    No credit memos found. Create your first credit memo to get started.
+            ) : (
+              filteredMemos.map((memo) => (
+                <TableRow key={memo.id}>
+                  <TableCell className="font-mono">{memo.memo_number}</TableCell>
+                  <TableCell>{format(new Date(memo.memo_date), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>{memo.account?.name || '-'}</TableCell>
+                  <TableCell>{memo.invoice?.invoice_number || '-'}</TableCell>
+                  <TableCell className="font-medium text-green-600">-${memo.amount.toFixed(2)}</TableCell>
+                  <TableCell>{memo.ledger?.name || '-'}</TableCell>
+                  <TableCell>
+                    <Badge className={`${statusColors[memo.status]} text-white`}>
+                      {memo.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover">
+                        <DropdownMenuItem onClick={() => handleView(memo)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(memo)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredMemos.map((memo) => (
-                  <TableRow key={memo.id}>
-                    <TableCell className="font-mono">{memo.memo_number}</TableCell>
-                    <TableCell>{format(new Date(memo.memo_date), 'MMM d, yyyy')}</TableCell>
-                    <TableCell>{memo.account?.name || '-'}</TableCell>
-                    <TableCell>{memo.invoice?.invoice_number || '-'}</TableCell>
-                    <TableCell className="font-medium text-green-600">-${memo.amount.toFixed(2)}</TableCell>
-                    <TableCell>{memo.ledger?.name || '-'}</TableCell>
-                    <TableCell>
-                      <Badge className={`${statusColors[memo.status]} text-white`}>
-                        {memo.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover">
-                          <DropdownMenuItem onClick={() => handleView(memo)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(memo)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {/* Create Dialog */}

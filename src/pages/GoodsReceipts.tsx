@@ -5,6 +5,7 @@ import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,8 +36,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check } from 'lucide-react';
+import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -763,71 +765,167 @@ const GoodsReceipts = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-card rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Receipt #</TableHead>
-                <TableHead>Delivery</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {receipts.map((receipt) => (
-                <TableRow key={receipt.id}>
-                  <TableCell className="font-mono">{receipt.receipt_number}</TableCell>
-                  <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
-                  <TableCell>{format(new Date(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>{receipt.location?.name || '-'}</TableCell>
-                  <TableCell>{receipt.vendor?.name || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={getStatusColor(receipt.status)}>
-                      {receipt.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {receipt.status === 'pending' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handlePostReceipt(receipt.id, receipt.location_id)}
-                          title="Post to inventory"
-                        >
-                          <Check className="w-4 h-4 text-green-600" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(receipt)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
+      <GoodsReceiptsTable
+        receipts={receipts}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onPost={handlePostReceipt}
+      />
+    </div>
+  );
+};
+
+interface GoodsReceiptsTableProps {
+  receipts: GoodsReceipt[];
+  onEdit: (receipt: GoodsReceipt) => void;
+  onDelete: (id: string) => void;
+  onPost: (id: string, locationId: string) => void;
+}
+
+const GoodsReceiptsTable = ({ receipts, onEdit, onDelete, onPost }: GoodsReceiptsTableProps) => {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(receipts, 'receipt_number', 'desc');
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  return (
+    <div className="space-y-2">
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2">
+          <span className="text-sm text-muted-foreground">
+            Showing {sortedAndFilteredData.length} of {receipts.length} receipts
+          </span>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+            <X className="w-3 h-3 mr-1" />
+            Clear filters
+          </Button>
+          {Object.entries(filters).map(([key, value]) => value && (
+            <Badge key={key} variant="secondary" className="text-xs">
+              {key}: {value}
+              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <SortableTableHead
+              label="Receipt #"
+              sortKey="receipt_number"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['receipt_number']}
+              onFilter={(value) => setFilter('receipt_number', value)}
+            />
+            <SortableTableHead
+              label="Delivery"
+              sortKey="delivery.delivery_id"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['delivery.delivery_id']}
+              onFilter={(value) => setFilter('delivery.delivery_id', value)}
+            />
+            <SortableTableHead
+              label="Date"
+              sortKey="receipt_date"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterable={false}
+            />
+            <SortableTableHead
+              label="Location"
+              sortKey="location.name"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['location.name']}
+              onFilter={(value) => setFilter('location.name', value)}
+            />
+            <SortableTableHead
+              label="Vendor"
+              sortKey="vendor.name"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['vendor.name']}
+              onFilter={(value) => setFilter('vendor.name', value)}
+            />
+            <SortableTableHead
+              label="Status"
+              sortKey="status"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['status']}
+              onFilter={(value) => setFilter('status', value)}
+            />
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedAndFilteredData.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                {receipts.length === 0
+                  ? 'No goods receipts found. Create one to start receiving inventory.'
+                  : 'No receipts match your filters'}
+              </TableCell>
+            </TableRow>
+          ) : (
+            sortedAndFilteredData.map((receipt) => (
+              <TableRow key={receipt.id}>
+                <TableCell className="font-mono">{receipt.receipt_number}</TableCell>
+                <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
+                <TableCell>{format(new Date(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
+                <TableCell>{receipt.location?.name || '-'}</TableCell>
+                <TableCell>{receipt.vendor?.name || '-'}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={getStatusColor(receipt.status)}>
+                    {receipt.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    {receipt.status === 'pending' && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(receipt.id)}
-                        disabled={receipt.status === 'posted'}
+                        onClick={() => onPost(receipt.id, receipt.location_id)}
+                        title="Post to inventory"
                       >
-                        <Trash2 className="w-4 h-4 text-destructive" />
+                        <Check className="w-4 h-4 text-green-600" />
                       </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {receipts.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    No goods receipts found. Create one to start receiving inventory.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </main>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => onEdit(receipt)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(receipt.id)}
+                      disabled={receipt.status === 'posted'}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 };
