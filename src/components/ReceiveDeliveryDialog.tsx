@@ -135,6 +135,31 @@ export const ReceiveDeliveryDialog = ({
     setSubmitting(true);
 
     try {
+      // Get user's company_id for creating goods receipt
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (!profile?.company_id) {
+        toast.error('Could not determine company');
+        setSubmitting(false);
+        return;
+      }
+
+      // Get next goods receipt number
+      const { data: receiptNumber, error: receiptNumError } = await supabase.rpc(
+        'get_next_goods_receipt_number',
+        { p_company_id: profile.company_id }
+      );
+
+      if (receiptNumError || !receiptNumber) {
+        toast.error('Failed to generate receipt number');
+        setSubmitting(false);
+        return;
+      }
+
       // Update delivery status to delivered
       const { error: deliveryError } = await supabase
         .from('deliveries')
@@ -165,38 +190,47 @@ export const ReceiveDeliveryDialog = ({
         }
       }
 
-      // Add received items to inventory
-      for (const item of items) {
-        if (item.received_quantity > 0) {
-          // Check if inventory record exists for this product at this location (without bin)
-          const { data: existingInventory } = await supabase
-            .from('inventory')
-            .select('id, quantity')
-            .eq('location_id', locationId)
-            .eq('product_id', item.product_id)
-            .is('bin_id', null)
-            .maybeSingle();
+      // Create goods receipt referencing the delivery and PO
+      const { data: goodsReceipt, error: grError } = await supabase
+        .from('goods_receipts')
+        .insert({
+          company_id: profile.company_id,
+          receipt_number: receiptNumber,
+          location_id: locationId,
+          delivery_id: deliveryId,
+          purchase_order_id: purchaseOrderId || null,
+          receipt_date: new Date().toISOString().split('T')[0],
+          status: 'pending',
+          notes: `Auto-created from delivery ${deliveryDisplayId}`,
+        })
+        .select()
+        .single();
 
-          if (existingInventory) {
-            // Update existing inventory
-            await supabase
-              .from('inventory')
-              .update({ 
-                quantity: existingInventory.quantity + item.received_quantity,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', existingInventory.id);
-          } else {
-            // Create new inventory record
-            await supabase
-              .from('inventory')
-              .insert({
-                location_id: locationId,
-                product_id: item.product_id,
-                quantity: item.received_quantity,
-                bin_id: null
-              });
-          }
+      if (grError || !goodsReceipt) {
+        toast.error('Failed to create goods receipt');
+        setSubmitting(false);
+        return;
+      }
+
+      // Create goods receipt items from received quantities
+      const grItems = items
+        .filter(item => item.received_quantity > 0)
+        .map(item => ({
+          goods_receipt_id: goodsReceipt.id,
+          product_id: item.product_id,
+          quantity: item.received_quantity,
+          notes: item.received_quantity !== item.expected_quantity 
+            ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
+            : null,
+        }));
+
+      if (grItems.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('goods_receipt_items')
+          .insert(grItems);
+
+        if (itemsError) {
+          console.error('Failed to create goods receipt items:', itemsError);
         }
       }
 
@@ -209,11 +243,10 @@ export const ReceiveDeliveryDialog = ({
 
         if (poError) {
           console.error('Failed to update PO status:', poError);
-          // Don't fail the whole operation, delivery is already marked
         }
       }
 
-      toast.success('Delivery received and inventory updated');
+      toast.success(`Goods Receipt ${receiptNumber} created. Post to update inventory.`);
       onReceived();
       onOpenChange(false);
     } catch (error) {
