@@ -87,6 +87,35 @@ interface Product {
   vendor_id: string | null;
 }
 
+interface PurchaseOrder {
+  id: string;
+  po_number: string;
+  status: string;
+  vendor_id: string | null;
+  location_id: string | null;
+  bill_to_location_id: string | null;
+  ledger_id: string | null;
+  requisition_id: string | null;
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  notes: string | null;
+  order_date: string;
+  vendor?: { name: string } | null;
+  location?: { name: string } | null;
+  bill_to_location?: { name: string } | null;
+  ledger?: { name: string } | null;
+}
+
+interface PurchaseOrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number | null;
+  total_price: number | null;
+  product?: { name: string; price: number | null };
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500',
   pending: 'bg-yellow-500',
@@ -120,6 +149,11 @@ const Requisitions = () => {
   // View dialog state
   const [viewRequisition, setViewRequisition] = useState<Requisition | null>(null);
   const [viewItems, setViewItems] = useState<RequisitionItem[]>([]);
+  
+  // PO View dialog state (for viewing created PO after conversion)
+  const [isPOViewDialogOpen, setIsPOViewDialogOpen] = useState(false);
+  const [viewPO, setViewPO] = useState<PurchaseOrder | null>(null);
+  const [viewPOItems, setViewPOItems] = useState<PurchaseOrderItem[]>([]);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -129,10 +163,12 @@ const Requisitions = () => {
       setTransaction('req/view');
     } else if (isRunDialogOpen) {
       setTransaction('req/run');
+    } else if (isPOViewDialogOpen) {
+      setTransaction('ord/view');
     } else {
       setTransaction('req');
     }
-  }, [isDialogOpen, isViewDialogOpen, isRunDialogOpen, setTransaction]);
+  }, [isDialogOpen, isViewDialogOpen, isRunDialogOpen, isPOViewDialogOpen, setTransaction]);
 
   // Ctrl+S to save in run dialog
   useSaveShortcut(() => {
@@ -502,6 +538,35 @@ const Requisitions = () => {
 
       toast.success(`Requisition ${requisition.requisition_id} converted to ${poNumber}`);
       fetchRequisitions();
+      
+      // Fetch the created PO with related data and open view dialog
+      const { data: fullPO } = await supabase
+        .from('purchase_orders')
+        .select(`
+          *,
+          vendor:vendors(name),
+          location:locations!purchase_orders_location_id_fkey(name),
+          bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name),
+          ledger:ledgers(name)
+        `)
+        .eq('id', newPO.id)
+        .single();
+      
+      if (fullPO) {
+        setViewPO(fullPO as PurchaseOrder);
+        
+        // Fetch the PO items
+        const { data: poItemsData } = await supabase
+          .from('purchase_order_items')
+          .select(`
+            *,
+            product:products(name, price)
+          `)
+          .eq('purchase_order_id', newPO.id);
+        
+        setViewPOItems(poItemsData || []);
+        setIsPOViewDialogOpen(true);
+      }
     } catch (error: any) {
       console.error('Error converting to PO:', error);
       toast.error(error.message || 'Failed to convert to purchase order');
@@ -798,6 +863,119 @@ const Requisitions = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PO View Dialog (shown after converting requisition to PO) */}
+      <Dialog open={isPOViewDialogOpen} onOpenChange={setIsPOViewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Purchase Order {viewPO?.po_number}</DialogTitle>
+            <DialogDescription>
+              Purchase order created from requisition
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewPO && (
+            <div className="space-y-4">
+              {/* Header Fields */}
+              <div className="grid grid-cols-4 gap-4 pb-4 border-b">
+                <div>
+                  <Label className="text-muted-foreground">Status</Label>
+                  <div className="mt-1">
+                    <Badge className="bg-slate-500 text-white capitalize">{viewPO.status}</Badge>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Vendor</Label>
+                  <p className="mt-1 font-medium">{viewPO.vendor?.name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Ship To</Label>
+                  <p className="mt-1">{viewPO.location?.name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Bill To</Label>
+                  <p className="mt-1">{viewPO.bill_to_location?.name || '-'}</p>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div>
+                <Label className="text-muted-foreground mb-2 block">Items</Label>
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewPOItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.product?.name || 'Unknown'}</TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            ${Number(item.unit_price || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ${Number(item.total_price || 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="border-t pt-4">
+                <div className="flex justify-end gap-8 text-sm">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span className="font-mono">${Number(viewPO.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-end gap-8 text-sm">
+                  <span className="text-muted-foreground">Tax:</span>
+                  <span className="font-mono">${Number(viewPO.tax_amount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-end gap-8 text-base font-semibold">
+                  <span>Total:</span>
+                  <span className="font-mono">${Number(viewPO.total_amount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {viewPO.notes && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Notes</Label>
+                  <p className="text-sm p-3 bg-muted rounded-lg">{viewPO.notes}</p>
+                </div>
+              )}
+
+              {/* Ledger info */}
+              {viewPO.ledger && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Ledger</Label>
+                  <p className="text-sm">{viewPO.ledger.name}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPOViewDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              setIsPOViewDialogOpen(false);
+              navigate('/orders');
+            }}>
+              Go to Purchase Orders
             </Button>
           </DialogFooter>
         </DialogContent>
