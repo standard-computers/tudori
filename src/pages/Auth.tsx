@@ -9,8 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Building2, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Building2, ArrowRight, ArrowLeft, Loader2, Users, Briefcase } from 'lucide-react';
 import { z } from 'zod';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -35,14 +38,23 @@ const signupStep2Schema = z.object({
   country: z.string().min(1, 'Country is required'),
 });
 
+interface PendingInvitation {
+  id: string;
+  company_id: string;
+  role: AppRole;
+  company_name?: string;
+}
+
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   useTransaction('auth');
   const [isLogin, setIsLogin] = useState(true);
-  const [signupStep, setSignupStep] = useState(1);
+  const [signupStep, setSignupStep] = useState(1); // 1 = user details, 1.5 = invitation choice, 2 = company details
   const [loading, setLoading] = useState(false);
+  const [checkingInvitation, setCheckingInvitation] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null);
 
   // Login form
   const [email, setEmail] = useState('');
@@ -95,7 +107,7 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const handleSignupStep1 = (e: React.FormEvent) => {
+  const handleSignupStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
     
@@ -109,6 +121,111 @@ const Auth = () => {
       return;
     }
 
+    // Check for pending invitation
+    setCheckingInvitation(true);
+    const { data: invitation } = await supabase
+      .from('invitations')
+      .select('id, company_id, role')
+      .eq('email', email.toLowerCase())
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (invitation) {
+      // Fetch company name for display
+      const { data: company } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', invitation.company_id)
+        .single();
+
+      setPendingInvitation({
+        ...invitation,
+        company_name: company?.name || 'Unknown Company',
+      });
+      setSignupStep(1.5); // Go to invitation choice step
+    } else {
+      setPendingInvitation(null);
+      setSignupStep(2); // Go directly to company setup
+    }
+    setCheckingInvitation(false);
+  };
+
+  const handleJoinExistingCompany = async () => {
+    if (!pendingInvitation) return;
+
+    setLoading(true);
+    
+    // Sign up the user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (authError) {
+      toast.error(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (authData.user) {
+      // Create profile with invited company
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: authData.user.id,
+          company_id: pendingInvitation.company_id,
+          first_name: firstName,
+          last_name: lastName,
+        });
+
+      if (profileError) {
+        toast.error('Failed to create profile: ' + profileError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Assign the invited role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          company_id: pendingInvitation.company_id,
+          role: pendingInvitation.role,
+        });
+
+      if (roleError) {
+        toast.error('Failed to assign role: ' + roleError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Mark invitation as accepted
+      await supabase
+        .from('invitations')
+        .update({ accepted_at: new Date().toISOString() })
+        .eq('id', pendingInvitation.id);
+
+      toast.success(`Welcome! You have joined ${pendingInvitation.company_name}.`);
+      navigate('/dashboard');
+    }
+    
+    setLoading(false);
+  };
+
+  const handleSetupNewCompany = async () => {
+    if (pendingInvitation) {
+      // Delete the invitation since user is setting up their own company
+      await supabase
+        .from('invitations')
+        .delete()
+        .eq('id', pendingInvitation.id);
+      
+      setPendingInvitation(null);
+    }
     setSignupStep(2);
   };
 
@@ -138,7 +255,7 @@ const Auth = () => {
 
     setLoading(true);
     
-    // First, sign up the user
+    // Sign up the user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -154,60 +271,7 @@ const Auth = () => {
     }
 
     if (authData.user) {
-      // Check if user has a pending invitation
-      const { data: invitation } = await supabase
-        .from('invitations')
-        .select('id, company_id, role')
-        .eq('email', email.toLowerCase())
-        .is('accepted_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
-
-      if (invitation) {
-        // User was invited - join existing company
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: authData.user.id,
-            company_id: invitation.company_id,
-            first_name: firstName,
-            last_name: lastName,
-          });
-
-        if (profileError) {
-          toast.error('Failed to create profile: ' + profileError.message);
-          setLoading(false);
-          return;
-        }
-
-        // Assign the invited role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            company_id: invitation.company_id,
-            role: invitation.role,
-          });
-
-        if (roleError) {
-          toast.error('Failed to assign role: ' + roleError.message);
-          setLoading(false);
-          return;
-        }
-
-        // Mark invitation as accepted
-        await supabase
-          .from('invitations')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('id', invitation.id);
-
-        toast.success('Welcome! You have joined the company.');
-        navigate('/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      // No invitation - create new company
+      // Create new company
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .insert({
@@ -283,6 +347,20 @@ const Auth = () => {
     setLoading(false);
   };
 
+  const getStepTitle = () => {
+    if (isLogin) return 'Welcome Back';
+    if (signupStep === 1) return 'Create Account';
+    if (signupStep === 1.5) return 'Join or Create?';
+    return 'Company Details';
+  };
+
+  const getStepDescription = () => {
+    if (isLogin) return 'Sign in to access your dashboard';
+    if (signupStep === 1) return 'Enter your details to get started';
+    if (signupStep === 1.5) return 'You have a pending invitation';
+    return 'Tell us about your company';
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
@@ -299,14 +377,10 @@ const Auth = () => {
         <Card className="glass-card">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-display">
-              {isLogin ? 'Welcome Back' : signupStep === 1 ? 'Create Account' : 'Company Details'}
+              {getStepTitle()}
             </CardTitle>
             <CardDescription>
-              {isLogin 
-                ? 'Sign in to access your dashboard' 
-                : signupStep === 1 
-                  ? 'Enter your details to get started'
-                  : 'Tell us about your company'}
+              {getStepDescription()}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -391,10 +465,57 @@ const Auth = () => {
                   />
                   {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={checkingInvitation}>
+                  {checkingInvitation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Continue <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </form>
+            ) : signupStep === 1.5 ? (
+              <div className="space-y-6">
+                <div className="p-4 bg-muted rounded-lg text-center">
+                  <p className="text-sm text-muted-foreground mb-1">You've been invited to join</p>
+                  <p className="font-semibold text-foreground">{pendingInvitation?.company_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    as {pendingInvitation?.role}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleJoinExistingCompany} 
+                    className="w-full" 
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Users className="w-4 h-4 mr-2" />}
+                    Join {pendingInvitation?.company_name}
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleSetupNewCompany} 
+                    variant="outline" 
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Set Up My Own Company
+                  </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Choosing to set up your own company will decline the invitation.
+                </p>
+
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setSignupStep(1);
+                    setPendingInvitation(null);
+                  }}
+                  className="w-full"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                </Button>
+              </div>
             ) : (
               <form onSubmit={handleSignupStep2} className="space-y-4">
                 <div className="space-y-2">
@@ -529,6 +650,7 @@ const Auth = () => {
                   setIsLogin(!isLogin);
                   setSignupStep(1);
                   setErrors({});
+                  setPendingInvitation(null);
                 }}
               >
                 {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
