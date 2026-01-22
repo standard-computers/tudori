@@ -171,7 +171,7 @@ const Users = () => {
     setLoading(false);
   };
 
-  const canManageUsers = currentUserRole === 'owner' || currentUserRole === 'admin';
+  const canManageUsers = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
 
   const openInviteDialog = () => {
     resetForm();
