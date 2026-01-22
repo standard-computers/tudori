@@ -203,10 +203,10 @@ const Auth = () => {
         return;
       }
 
-      // Mark invitation as accepted
+      // Delete the invitation since user has joined
       await supabase
         .from('invitations')
-        .update({ accepted_at: new Date().toISOString() })
+        .delete()
         .eq('id', pendingInvitation.id);
 
       toast.success(`Welcome! You have joined ${pendingInvitation.company_name}.`);
