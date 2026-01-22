@@ -393,6 +393,11 @@ const SalesOrders = () => {
     return availability;
   }, [locationInventory, orderItems]);
 
+  // Check if any order item has stock issues
+  const hasStockIssue = useMemo(() => {
+    return Object.values(itemAvailability).some(a => !a.sufficient);
+  }, [itemAvailability]);
+
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
     setFormData({ customer_id: '', location_id: '', bill_to_location_id: '', ledger_id: '', notes: '' });
@@ -862,7 +867,14 @@ const SalesOrders = () => {
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="items">Items</TabsTrigger>
               <TabsTrigger value="rates">Rates</TabsTrigger>
-              <TabsTrigger value="availability">Availability</TabsTrigger>
+              <TabsTrigger value="availability" className="relative">
+                Availability
+                {hasStockIssue && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                    !
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="assignment">Assignment</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
@@ -1010,87 +1022,50 @@ const SalesOrders = () => {
                   Add items to see their availability
                 </p>
               ) : (
-                <div className="space-y-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Required</TableHead>
-                        <TableHead className="text-right">Available</TableHead>
-                        <TableHead className="text-right">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(itemAvailability).map(([productId, availability]) => {
-                        const product = products.find(p => p.id === productId);
-                        return (
-                          <TableRow key={productId}>
-                            <TableCell>
-                              <div>
-                                <span className="font-medium">{product?.name}</span>
-                                <span className="text-xs text-muted-foreground ml-2">{product?.product_id}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right font-mono">{availability.required}</TableCell>
-                            <TableCell className="text-right font-mono">{availability.available}</TableCell>
-                            <TableCell className="text-right">
-                              {availability.sufficient ? (
-                                <Badge variant="default" className="bg-primary text-primary-foreground">
-                                  <Check className="w-3 h-3 mr-1" />
-                                  In Stock
-                                </Badge>
-                              ) : availability.available > 0 ? (
-                                <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                                  Partial ({availability.available})
-                                </Badge>
-                              ) : (
-                                <Badge variant="destructive">
-                                  <X className="w-3 h-3 mr-1" />
-                                  Out of Stock
-                                </Badge>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  
-                  {/* Show full location inventory breakdown */}
-                  <div className="border-t pt-4">
-                    <Label className="text-sm text-muted-foreground mb-2 block">Full Location Inventory</Label>
-                    <div className="max-h-48 overflow-y-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Product</TableHead>
-                            <TableHead>Bin</TableHead>
-                            <TableHead className="text-right">Qty</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {locationInventory.map((inv) => (
-                            <TableRow key={inv.id} className="text-sm">
-                              <TableCell>
-                                <span className="text-muted-foreground">{inv.product?.product_id}</span>
-                                <span className="ml-2">{inv.product?.name}</span>
-                              </TableCell>
-                              <TableCell>{inv.bin?.name || '—'}</TableCell>
-                              <TableCell className="text-right font-mono">{inv.quantity}</TableCell>
-                            </TableRow>
-                          ))}
-                          {locationInventory.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={3} className="text-center text-muted-foreground">
-                                No inventory at this location
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="text-right">Required</TableHead>
+                      <TableHead className="text-right">Available</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(itemAvailability).map(([productId, availability]) => {
+                      const product = products.find(p => p.id === productId);
+                      return (
+                        <TableRow key={productId}>
+                          <TableCell>
+                            <div>
+                              <span className="font-medium">{product?.name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">{product?.product_id}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">{availability.required}</TableCell>
+                          <TableCell className="text-right font-mono">{availability.available}</TableCell>
+                          <TableCell className="text-right">
+                            {availability.sufficient ? (
+                              <Badge variant="default" className="bg-primary text-primary-foreground">
+                                <Check className="w-3 h-3 mr-1" />
+                                In Stock
+                              </Badge>
+                            ) : availability.available > 0 ? (
+                              <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                                Partial ({availability.available})
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive">
+                                <X className="w-3 h-3 mr-1" />
+                                Out of Stock
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               )}
             </TabsContent>
 
