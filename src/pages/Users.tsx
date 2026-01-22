@@ -117,13 +117,17 @@ const Users = () => {
     setCompanyId(profileData.company_id);
 
     // Get current user's role
-    const { data: roleData } = await supabase
+    const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user!.id)
       .eq('company_id', profileData.company_id)
-      .single();
+      .maybeSingle();
 
+    if (roleError) {
+      console.error('Error fetching role:', roleError);
+    }
+    
     setCurrentUserRole(roleData?.role || null);
 
     // Get all team members
