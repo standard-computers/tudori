@@ -565,7 +565,15 @@ const Users = () => {
               </TableHeader>
               <TableBody>
                 {teamMembers.map((member) => (
-                  <TableRow key={member.id}>
+                  <TableRow 
+                    key={member.id} 
+                    className={canManageUsers && member.role !== 'owner' && member.user_id !== user?.id ? 'cursor-pointer hover:bg-muted/50' : ''}
+                    onClick={() => {
+                      if (canManageUsers && member.role !== 'owner' && member.user_id !== user?.id) {
+                        setEditingMember(member);
+                      }
+                    }}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -582,46 +590,23 @@ const Users = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {editingMember?.id === member.id ? (
-                        <Select 
-                          value={member.role} 
-                          onValueChange={(v) => handleUpdateRole(member, v as 'admin' | 'member' | 'viewer' | 'it')}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="it">IT</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="viewer">Viewer</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant="outline" className={roleColors[member.role]}>
-                          {member.role}
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className={roleColors[member.role]}>
+                        {member.role}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       {canManageUsers && member.role !== 'owner' && member.user_id !== user?.id && (
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingMember(editingMember?.id === member.id ? null : member)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveUser(member)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveUser(member);
+                          }}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
@@ -630,6 +615,60 @@ const Users = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Update {editingMember?.first_name} {editingMember?.last_name}'s access level
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {editingMember?.first_name[0]}{editingMember?.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{editingMember?.first_name} {editingMember?.last_name}</p>
+                  <p className="text-sm text-muted-foreground">Current role: {editingMember?.role}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Access Level</Label>
+                <Select 
+                  value={editingMember?.role} 
+                  onValueChange={(v) => {
+                    if (editingMember) {
+                      handleUpdateRole(editingMember, v as 'admin' | 'member' | 'viewer' | 'it');
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="it">IT</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {editingMember && roleDescriptions[editingMember.role]}
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setEditingMember(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
