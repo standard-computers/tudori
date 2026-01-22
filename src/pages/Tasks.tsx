@@ -533,7 +533,7 @@ const Tasks = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-4">
               <NavLink to="/dashboard">Dashboard</NavLink>
