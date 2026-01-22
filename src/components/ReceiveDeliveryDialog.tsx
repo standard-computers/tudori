@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { postGoodsReceipt } from '@/lib/inventory-posting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -193,7 +194,7 @@ export const ReceiveDeliveryDialog = ({
       }
 
       if (requireGR) {
-        // Create goods receipt - user must post it to update inventory
+        // Create goods receipt
         const { data: receiptNumber, error: receiptNumError } = await supabase.rpc(
           'get_next_goods_receipt_number',
           { p_company_id: profile.company_id }
@@ -248,7 +249,13 @@ export const ReceiveDeliveryDialog = ({
           }
         }
 
-        toast.success(`Goods Receipt ${receiptNumber} created. Post to update inventory.`);
+        // Auto-post the goods receipt to update inventory
+        const postResult = await postGoodsReceipt(goodsReceipt.id, locationId);
+        if (postResult.success) {
+          toast.success(`Goods Receipt ${receiptNumber} created and posted - inventory updated.`);
+        } else {
+          toast.error(postResult.error || 'Failed to auto-post goods receipt');
+        }
       } else {
         // Directly post inventory without creating a GR
         for (const item of items) {

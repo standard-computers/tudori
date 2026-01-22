@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { postGoodsReceipt } from '@/lib/inventory-posting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -361,84 +362,13 @@ const GoodsReceipts = () => {
   };
 
   const handlePostReceipt = async (receiptId: string, locationId: string) => {
-    // Get receipt with PO info to access ledger
-    const { data: receipt } = await supabase
-      .from('goods_receipts' as any)
-      .select('*, purchase_order:purchase_orders(id, po_number, ledger_id)')
-      .eq('id', receiptId)
-      .single();
-
-    // Get items for this receipt
-    const { data: items } = await supabase
-      .from('goods_receipt_items' as any)
-      .select('*, product:products(name, price)')
-      .eq('goods_receipt_id', receiptId);
-
-    if (!items || items.length === 0) {
-      toast.error('Cannot post receipt with no items');
-      return;
+    const result = await postGoodsReceipt(receiptId, locationId);
+    if (result.success) {
+      toast.success('Receipt posted - inventory updated');
+      fetchReceipts();
+    } else {
+      toast.error(result.error || 'Failed to post receipt');
     }
-
-    // Add each item to inventory
-    for (const item of items as any[]) {
-      const { data: existingInventory } = await supabase
-        .from('inventory')
-        .select('id, quantity')
-        .eq('location_id', locationId)
-        .eq('product_id', item.product_id)
-        .is('bin_id', item.bin_id || null)
-        .maybeSingle();
-
-      if (existingInventory) {
-        await supabase
-          .from('inventory')
-          .update({ 
-            quantity: existingInventory.quantity + item.quantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingInventory.id);
-      } else {
-        await supabase
-          .from('inventory')
-          .insert({
-            location_id: locationId,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            bin_id: item.bin_id || null
-          });
-      }
-    }
-
-    // Create positive ledger transaction if PO has a ledger
-    const po = (receipt as any)?.purchase_order;
-    if (po?.ledger_id) {
-      // Calculate total value of received goods
-      const totalValue = (items as any[]).reduce((sum, item) => {
-        const price = item.product?.price || 0;
-        return sum + (price * item.quantity);
-      }, 0);
-
-      if (totalValue > 0) {
-        await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: po.ledger_id,
-          transaction_type: 'goods_receipt',
-          reference_id: receiptId,
-          reference_number: (receipt as any).receipt_number,
-          amount: totalValue, // Positive for goods received
-          description: `Goods Receipt ${(receipt as any).receipt_number} for PO ${po.po_number}`,
-          transaction_date: new Date().toISOString().split('T')[0],
-        });
-      }
-    }
-
-    // Update receipt status to posted
-    await supabase
-      .from('goods_receipts' as any)
-      .update({ status: 'posted' })
-      .eq('id', receiptId);
-
-    toast.success('Receipt posted - inventory updated');
-    fetchReceipts();
   };
 
   const resetForm = () => {
@@ -559,14 +489,17 @@ const GoodsReceipts = () => {
       // Copy items from delivery
       if (selectedDeliveryId) {
         await copyDeliveryItems(selectedDeliveryId, newReceiptId);
+        
+        // Auto-post the receipt
+        const postResult = await postGoodsReceipt(newReceiptId, formData.location_id);
+        if (postResult.success) {
+          toast.success('Goods receipt created and posted - inventory updated');
+        } else {
+          toast.error(postResult.error || 'Failed to auto-post receipt');
+        }
       }
 
-      // Switch to editing mode to view/edit items
-      setEditingId(newReceiptId);
-      setIsEditing(true);
-      fetchReceiptItems(newReceiptId);
-      setActiveTab('items');
-      toast.success('Goods receipt created from delivery');
+      setIsDialogOpen(false);
       fetchReceipts();
       fetchNextReceiptNumber();
       fetchDeliveries();

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut, useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
+import { postGoodsIssue } from '@/lib/inventory-posting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -498,13 +499,21 @@ const Cockpit = () => {
         .update({ goods_issue_id: (goodsIssue as any).id })
         .eq('id', (outboundDelivery as any).id);
 
-      // 9. Update sales order status to 'shipped'
+      // 9. Auto-post the Goods Issue to update inventory
+      const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
+      if (!postResult.success) {
+        toast.error(postResult.error || 'Failed to auto-post goods issue');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // 10. Update sales order status to 'shipped'
       await supabase
         .from('sales_orders' as any)
         .update({ status: 'shipped' })
         .eq('id', selectedSalesOrder.id);
 
-      toast.success(`Outbound Delivery ${deliveryNumber} and Goods Issue ${issueNumber} created. Post GI to update inventory.`);
+      toast.success(`Order fulfilled - Outbound Delivery ${deliveryNumber} created, inventory updated.`);
       
       setIsFulfillDialogOpen(false);
       setSelectedSalesOrder(null);
