@@ -119,6 +119,15 @@ interface Product {
   price: number | null;
 }
 
+interface InventoryRecord {
+  id: string;
+  product_id: string;
+  quantity: number;
+  bin_id: string | null;
+  product?: { name: string; product_id: string };
+  bin?: { name: string; bin_id: string } | null;
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500',
   pending: 'bg-yellow-500',
@@ -185,6 +194,7 @@ const SalesOrders = () => {
   const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
+  const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -324,6 +334,64 @@ const SalesOrders = () => {
       .order('name');
     setLedgers((data as any) || []);
   };
+
+  // Fetch inventory for selected ship from location
+  const fetchLocationInventory = async (locationId: string) => {
+    const { data } = await supabase
+      .from('inventory')
+      .select(`
+        id,
+        product_id,
+        quantity,
+        bin_id,
+        product:products(name, product_id),
+        bin:bins(name, bin_id)
+      `)
+      .eq('location_id', locationId)
+      .gt('quantity', 0)
+      .order('product_id');
+    setLocationInventory((data as any) || []);
+  };
+
+  // Effect to fetch inventory when ship from location changes
+  useEffect(() => {
+    if (isCreateDialogOpen && formData.location_id) {
+      const parsed = parseVendorValue(formData.location_id);
+      if (parsed?.type === 'location') {
+        fetchLocationInventory(parsed.id);
+      } else {
+        setLocationInventory([]);
+      }
+    } else {
+      setLocationInventory([]);
+    }
+  }, [isCreateDialogOpen, formData.location_id, parseVendorValue]);
+
+  // Calculate availability for order items
+  const itemAvailability = useMemo(() => {
+    const availability: Record<string, { available: number; required: number; sufficient: boolean }> = {};
+    
+    // Aggregate inventory by product
+    const inventoryByProduct: Record<string, number> = {};
+    locationInventory.forEach(inv => {
+      inventoryByProduct[inv.product_id] = (inventoryByProduct[inv.product_id] || 0) + inv.quantity;
+    });
+    
+    // Check each order item
+    orderItems.forEach(item => {
+      if (item.product_id) {
+        const available = inventoryByProduct[item.product_id] || 0;
+        const existingRequired = availability[item.product_id]?.required || 0;
+        availability[item.product_id] = {
+          available,
+          required: existingRequired + item.quantity,
+          sufficient: available >= (existingRequired + item.quantity),
+        };
+      }
+    });
+    
+    return availability;
+  }, [locationInventory, orderItems]);
 
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
@@ -791,9 +859,10 @@ const SalesOrders = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="items" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="items">Items</TabsTrigger>
               <TabsTrigger value="rates">Rates</TabsTrigger>
+              <TabsTrigger value="availability">Availability</TabsTrigger>
               <TabsTrigger value="assignment">Assignment</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
@@ -925,6 +994,104 @@ const SalesOrders = () => {
               <div className="text-sm text-muted-foreground">
                 Combined tax rate: {calculateTotalTaxRate().toFixed(2)}%
               </div>
+            </TabsContent>
+
+            <TabsContent value="availability" className="space-y-4 mt-4">
+              {!formData.location_id ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  Select a "Ship From" location to view inventory availability
+                </p>
+              ) : parseVendorValue(formData.location_id)?.type !== 'location' ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  Inventory availability is only shown for location sources
+                </p>
+              ) : orderItems.length === 0 || orderItems.every(i => !i.product_id) ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  Add items to see their availability
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Required</TableHead>
+                        <TableHead className="text-right">Available</TableHead>
+                        <TableHead className="text-right">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(itemAvailability).map(([productId, availability]) => {
+                        const product = products.find(p => p.id === productId);
+                        return (
+                          <TableRow key={productId}>
+                            <TableCell>
+                              <div>
+                                <span className="font-medium">{product?.name}</span>
+                                <span className="text-xs text-muted-foreground ml-2">{product?.product_id}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">{availability.required}</TableCell>
+                            <TableCell className="text-right font-mono">{availability.available}</TableCell>
+                            <TableCell className="text-right">
+                              {availability.sufficient ? (
+                                <Badge variant="default" className="bg-primary text-primary-foreground">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  In Stock
+                                </Badge>
+                              ) : availability.available > 0 ? (
+                                <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                                  Partial ({availability.available})
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive">
+                                  <X className="w-3 h-3 mr-1" />
+                                  Out of Stock
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Show full location inventory breakdown */}
+                  <div className="border-t pt-4">
+                    <Label className="text-sm text-muted-foreground mb-2 block">Full Location Inventory</Label>
+                    <div className="max-h-48 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Bin</TableHead>
+                            <TableHead className="text-right">Qty</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {locationInventory.map((inv) => (
+                            <TableRow key={inv.id} className="text-sm">
+                              <TableCell>
+                                <span className="text-muted-foreground">{inv.product?.product_id}</span>
+                                <span className="ml-2">{inv.product?.name}</span>
+                              </TableCell>
+                              <TableCell>{inv.bin?.name || '—'}</TableCell>
+                              <TableCell className="text-right font-mono">{inv.quantity}</TableCell>
+                            </TableRow>
+                          ))}
+                          {locationInventory.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                No inventory at this location
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="assignment" className="space-y-4 mt-4">
