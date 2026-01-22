@@ -404,6 +404,10 @@ const Orders = () => {
       return;
     }
 
+    // Parse vendor value to extract actual UUID (handles 'vendor:uuid' or 'location:uuid' format)
+    const parsedVendor = parseVendorValue(formData.vendor_id);
+    const actualVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+
     // Determine which ledger to use - prioritize explicit selection
     let selectedLedgerId: string | null = formData.ledger_id || null;
     
@@ -440,23 +444,25 @@ const Orders = () => {
     setIsSubmitting(true);
 
     try {
-      // Get next PO number
-      const { data: poNumber } = await supabase.rpc('get_next_po_number', {
+      // Get next PO number (uses document_id_config for prefix/formatting)
+      const { data: poNumber, error: poNumError } = await supabase.rpc('get_next_po_number', {
         p_company_id: companyId,
       });
+
+      if (poNumError) throw poNumError;
 
       const subtotal = calculateTotal();
       const taxAmount = calculateTax();
       const totalAmount = calculateGrandTotal();
 
-      // Create purchase order
+      // Create purchase order - ensure empty strings become null for UUID fields
       const { data: order, error: orderError } = await supabase
         .from('purchase_orders')
         .insert({
           company_id: companyId,
           po_number: poNumber,
           status: 'draft',
-          vendor_id: formData.vendor_id || null,
+          vendor_id: actualVendorId || null,
           location_id: formData.location_id || null,
           bill_to_location_id: formData.bill_to_location_id || null,
           ledger_id: selectedLedgerId,
