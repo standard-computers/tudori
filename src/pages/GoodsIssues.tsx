@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { postGoodsIssue } from '@/lib/inventory-posting';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -307,113 +308,13 @@ const GoodsIssues = () => {
   };
 
   const handlePostIssue = async (issueId: string, locationId: string) => {
-    // Get issue with SO info to access ledger
-    const { data: issue } = await supabase
-      .from('goods_issues' as any)
-      .select('*, sales_order:sales_orders(id, so_number, ledger_id)')
-      .eq('id', issueId)
-      .single();
-
-    // Get items for this issue with product prices
-    const { data: items } = await supabase
-      .from('goods_issue_items' as any)
-      .select('*, product:products(name, price)')
-      .eq('goods_issue_id', issueId);
-
-    if (!items || items.length === 0) {
-      toast.error('Cannot post issue with no items');
-      return;
+    const result = await postGoodsIssue(issueId, locationId);
+    if (result.success) {
+      toast.success('Issue posted - inventory updated');
+      fetchIssues();
+    } else {
+      toast.error(result.error || 'Failed to post issue');
     }
-
-    // Deduct each item from inventory
-    for (const item of items as any[]) {
-      // If item has a specific bin_id, use it; otherwise find any available inventory
-      let inventoryQuery = supabase
-        .from('inventory')
-        .select('id, quantity, bin_id')
-        .eq('location_id', locationId)
-        .eq('product_id', item.product_id);
-      
-      if (item.bin_id) {
-        // Specific bin requested
-        inventoryQuery = inventoryQuery.eq('bin_id', item.bin_id);
-      }
-      
-      const { data: inventoryRecords } = await inventoryQuery.order('quantity', { ascending: false });
-
-      if (!inventoryRecords || inventoryRecords.length === 0) {
-        const { data: productData } = await supabase
-          .from('products')
-          .select('name')
-          .eq('id', item.product_id)
-          .single();
-        toast.error(`No inventory found for ${productData?.name || 'product'} at this location`);
-        return;
-      }
-
-      // Calculate total available
-      const totalAvailable = inventoryRecords.reduce((sum, inv) => sum + inv.quantity, 0);
-      if (totalAvailable < item.quantity) {
-        const { data: productData } = await supabase
-          .from('products')
-          .select('name')
-          .eq('id', item.product_id)
-          .single();
-        toast.error(`Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
-        return;
-      }
-
-      // Deduct from inventory records (FIFO - start with largest quantities)
-      let remainingToDeduct = item.quantity;
-      for (const inv of inventoryRecords) {
-        if (remainingToDeduct <= 0) break;
-        
-        const deductAmount = Math.min(inv.quantity, remainingToDeduct);
-        const newQuantity = inv.quantity - deductAmount;
-        
-        if (newQuantity === 0) {
-          await supabase.from('inventory').delete().eq('id', inv.id);
-        } else {
-          await supabase
-            .from('inventory')
-            .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
-            .eq('id', inv.id);
-        }
-        
-        remainingToDeduct -= deductAmount;
-      }
-    }
-
-    // Create negative ledger transaction if SO has a ledger
-    const so = (issue as any)?.sales_order;
-    if (so?.ledger_id) {
-      // Calculate total value of issued goods
-      const totalValue = (items as any[]).reduce((sum, item) => {
-        const price = item.product?.price || 0;
-        return sum + (price * item.quantity);
-      }, 0);
-
-      if (totalValue > 0) {
-        await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: so.ledger_id,
-          transaction_type: 'goods_issue',
-          reference_id: issueId,
-          reference_number: (issue as any).issue_number,
-          amount: -totalValue, // Negative for goods issued
-          description: `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`,
-          transaction_date: new Date().toISOString().split('T')[0],
-        });
-      }
-    }
-
-    // Update issue status to posted
-    await supabase
-      .from('goods_issues' as any)
-      .update({ status: 'posted' })
-      .eq('id', issueId);
-
-    toast.success('Issue posted - inventory updated');
-    fetchIssues();
   };
 
   const resetForm = () => {
