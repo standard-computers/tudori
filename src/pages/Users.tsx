@@ -564,12 +564,14 @@ const Users = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teamMembers.map((member) => (
+                {teamMembers.map((member) => {
+                  const canEditMember = canManageUsers && member.role !== 'owner' && member.role !== 'it' && member.user_id !== user?.id;
+                  return (
                   <TableRow 
                     key={member.id} 
-                    className={canManageUsers && member.role !== 'owner' && member.user_id !== user?.id ? 'cursor-pointer hover:bg-muted/50' : ''}
+                    className={canEditMember ? 'cursor-pointer hover:bg-muted/50' : ''}
                     onClick={() => {
-                      if (canManageUsers && member.role !== 'owner' && member.user_id !== user?.id) {
+                      if (canEditMember) {
                         setEditingMember(member);
                       }
                     }}
@@ -610,7 +612,8 @@ const Users = () => {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
