@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
@@ -48,6 +48,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 interface Product {
   id: string;
@@ -102,10 +103,12 @@ const ProductTable = ({
   products,
   onEdit,
   onDelete,
+  onFilteredDataChange,
 }: {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
+  onFilteredDataChange?: (data: Product[]) => void;
 }) => {
   const {
     sortConfig,
@@ -115,6 +118,11 @@ const ProductTable = ({
     clearAllFilters,
     sortedAndFilteredData,
   } = useTableSort(products, 'product_id', 'asc');
+
+  // Notify parent of filtered data changes
+  useEffect(() => {
+    onFilteredDataChange?.(sortedAndFilteredData);
+  }, [sortedAndFilteredData, onFilteredDataChange]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
@@ -293,11 +301,158 @@ const Products = () => {
   const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
   const { plainVendorOptions } = useVendorSources(companyId);
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+
+  // Handle filtered data from table
+  const handleFilteredDataChange = useCallback((data: Product[]) => {
+    setFilteredProducts(data);
+  }, []);
+
+  // Export columns definition
+  const EXPORT_COLUMNS = [
+    'product_id', 'name', 'sku', 'description', 'category', 'price', 'unit',
+    'vendor_name', 'is_batched', 'min_shelf_life_days', 'keep_inventory',
+    'width', 'length', 'height', 'weight'
+  ];
+
+  // Export products to XLSX
+  const handleExport = useCallback(() => {
+    const dataToExport = filteredProducts.length > 0 ? filteredProducts : products;
+    
+    if (dataToExport.length === 0) {
+      toast.error('No products to export');
+      return;
+    }
+
+    const exportData = dataToExport.map(p => ({
+      product_id: p.product_id,
+      name: p.name,
+      sku: p.sku || '',
+      description: p.description || '',
+      category: p.category || '',
+      price: p.price ?? '',
+      unit: p.unit || '',
+      vendor_name: p.vendors?.name || '',
+      is_batched: p.is_batched ? 'Yes' : 'No',
+      min_shelf_life_days: p.min_shelf_life_days ?? '',
+      keep_inventory: p.keep_inventory ? 'Yes' : 'No',
+      width: p.width ?? '',
+      length: p.length ?? '',
+      height: p.height ?? '',
+      weight: p.weight ?? '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, `products_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success(`Exported ${exportData.length} products`);
+  }, [products, filteredProducts]);
+
+  // Download import template
+  const handleDownloadTemplate = useCallback(() => {
+    const templateData = [{
+      product_id: 'PROD-001',
+      name: 'Example Product',
+      sku: 'SKU-001',
+      description: 'Product description here',
+      category: 'Raw Materials',
+      price: 19.99,
+      unit: 'each',
+      vendor_id: '',
+      is_batched: 'No',
+      min_shelf_life_days: '',
+      keep_inventory: 'Yes',
+      width: '',
+      length: '',
+      height: '',
+      weight: '',
+    }];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products Template');
+    XLSX.writeFile(wb, 'products_import_template.xlsx');
+    toast.success('Template downloaded');
+  }, []);
+
+  // Handle file import
+  const handleImport = useCallback(async (file: File) => {
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+
+      if (jsonData.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const row of jsonData) {
+        try {
+          const productData = {
+            company_id: companyId!,
+            product_id: row.product_id?.toString() || '',
+            name: row.name?.toString() || '',
+            sku: row.sku?.toString() || null,
+            description: row.description?.toString() || null,
+            category: row.category?.toString() || null,
+            price: row.price ? parseFloat(row.price) : null,
+            unit: row.unit?.toString() || 'each',
+            vendor_id: row.vendor_id?.toString() || null,
+            is_batched: row.is_batched?.toString().toLowerCase() === 'yes',
+            min_shelf_life_days: row.min_shelf_life_days ? parseInt(row.min_shelf_life_days) : null,
+            keep_inventory: row.keep_inventory?.toString().toLowerCase() !== 'no',
+            width: row.width ? parseFloat(row.width) : null,
+            length: row.length ? parseFloat(row.length) : null,
+            height: row.height ? parseFloat(row.height) : null,
+            weight: row.weight ? parseFloat(row.weight) : null,
+          };
+
+          if (!productData.product_id || !productData.name) {
+            errorCount++;
+            continue;
+          }
+
+          // Check if product exists
+          const existing = products.find(p => p.product_id === productData.product_id);
+          
+          if (existing) {
+            await supabase.from('products').update(productData).eq('id', existing.id);
+          } else {
+            await supabase.from('products').insert(productData);
+          }
+          successCount++;
+        } catch (err) {
+          console.error('Error importing row:', err);
+          errorCount++;
+        }
+      }
+
+      toast.success(`Imported ${successCount} products${errorCount > 0 ? `, ${errorCount} errors` : ''}`);
+      
+      // Refetch products
+      const { data: refreshedData } = await supabase
+        .from('products')
+        .select('*, vendors(name)')
+        .eq('company_id', companyId!)
+        .order('product_id');
+      setProducts(refreshedData || []);
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error('Failed to import file');
+    }
+  }, [companyId, products]);
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
@@ -770,6 +925,9 @@ const Products = () => {
                 importEnabled={isImportEnabled('product')}
                 exportEnabled={isExportEnabled('product')}
                 entityName="Products"
+                onExport={handleExport}
+                onImport={handleImport}
+                onDownloadTemplate={handleDownloadTemplate}
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -1478,6 +1636,7 @@ const Products = () => {
             products={products}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onFilteredDataChange={handleFilteredDataChange}
           />
         )}
       </main>
