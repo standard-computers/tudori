@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -290,8 +290,10 @@ const Products = () => {
     height: '',
     weight: '',
   });
+  const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
-  // Use vendor sources hook
   const { plainVendorOptions } = useVendorSources(companyId);
 
   // Import/Export settings
@@ -581,6 +583,49 @@ const Products = () => {
     }, 0);
   };
 
+  const handleAiAutofill = async () => {
+    if (!aiDescription.trim()) {
+      toast.error('Please enter a product description');
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-product-description', {
+        body: { description: aiDescription },
+      });
+
+      if (error) throw error;
+
+      if (data?.product) {
+        const product = data.product;
+        setFormData(prev => ({
+          ...prev,
+          name: product.name || prev.name,
+          description: product.description || prev.description,
+          category: product.category || prev.category,
+          price: product.price?.toString() || prev.price,
+          unit: product.unit || prev.unit,
+          sku: product.sku || prev.sku,
+          width: product.width?.toString() || prev.width,
+          length: product.length?.toString() || prev.length,
+          height: product.height?.toString() || prev.height,
+          weight: product.weight?.toString() || prev.weight,
+          is_batched: product.is_batched ?? prev.is_batched,
+          min_shelf_life_days: product.min_shelf_life_days?.toString() || prev.min_shelf_life_days,
+        }));
+        toast.success('Product details populated from description');
+        setAiPopoverOpen(false);
+        setAiDescription('');
+      }
+    } catch (error) {
+      console.error('AI autofill error:', error);
+      toast.error('Failed to parse product description');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const isProductIdInUse = products.some(p => p.product_id === formData.product_id && (!isEditing || p.id !== editingId));
   const isSkuInUse = formData.sku && products.some(p => p.sku === formData.sku && (!isEditing || p.id !== editingId));
 
@@ -736,50 +781,92 @@ const Products = () => {
                 </DialogTrigger>
               <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
                 {!isEditing && (
-                  <CopyFromIdDialog<Product>
-                    idLabel="Product ID"
-                    onFetch={async (id) => {
-                      const { data } = await supabase
-                        .from('products')
-                        .select('*, vendors(name)')
-                        .eq('company_id', companyId!)
-                        .eq('product_id', id)
-                        .maybeSingle();
-                      return data;
-                    }}
-                    onApply={async (product) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        vendor_id: product.vendor_id || '',
-                        sku: '', // Don't copy SKU as it should be unique
-                        name: product.name,
-                        description: product.description || '',
-                        category: product.category || '',
-                        price: product.price?.toString() || '',
-                        unit: product.unit || 'each',
-                        is_batched: product.is_batched || false,
-                        min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
-                        keep_inventory: product.keep_inventory ?? true,
-                      }));
-                      
-                      // Also copy components if this is a Finished Goods product
-                      if (product.category === 'Finished Goods') {
-                        const { data: componentData } = await supabase
-                          .from('product_components')
-                          .select('component_product_id, quantity, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)')
-                          .eq('parent_product_id', product.id);
+                  <div className="flex gap-1 absolute top-4 right-12">
+                    <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" title="AI Autofill">
+                          <Wand2 className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80" align="end">
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <h4 className="font-medium text-sm">AI Autofill</h4>
+                            <p className="text-xs text-muted-foreground">
+                              Describe the product and AI will populate the form fields.
+                            </p>
+                          </div>
+                          <Textarea
+                            placeholder="e.g., Industrial steel bolts, M10 x 50mm, sold in boxes of 100, weight 2kg per box..."
+                            value={aiDescription}
+                            onChange={(e) => setAiDescription(e.target.value)}
+                            rows={4}
+                          />
+                          <Button 
+                            onClick={handleAiAutofill} 
+                            disabled={aiLoading || !aiDescription.trim()}
+                            className="w-full"
+                          >
+                            {aiLoading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 className="w-4 h-4 mr-2" />
+                                Generate
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <CopyFromIdDialog<Product>
+                      idLabel="Product ID"
+                      onFetch={async (id) => {
+                        const { data } = await supabase
+                          .from('products')
+                          .select('*, vendors(name)')
+                          .eq('company_id', companyId!)
+                          .eq('product_id', id)
+                          .maybeSingle();
+                        return data;
+                      }}
+                      onApply={async (product) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          vendor_id: product.vendor_id || '',
+                          sku: '', // Don't copy SKU as it should be unique
+                          name: product.name,
+                          description: product.description || '',
+                          category: product.category || '',
+                          price: product.price?.toString() || '',
+                          unit: product.unit || 'each',
+                          is_batched: product.is_batched || false,
+                          min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
+                          keep_inventory: product.keep_inventory ?? true,
+                        }));
                         
-                        if (componentData && componentData.length > 0) {
-                          setComponents(componentData.map(c => ({
-                            component_product_id: c.component_product_id,
-                            quantity: c.quantity?.toString() || '1',
-                            product: c.component_product as ProductComponent['product'],
-                          })));
-                          toast.success(`Copied ${componentData.length} component(s)`);
+                        // Also copy components if this is a Finished Goods product
+                        if (product.category === 'Finished Goods') {
+                          const { data: componentData } = await supabase
+                            .from('product_components')
+                            .select('component_product_id, quantity, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)')
+                            .eq('parent_product_id', product.id);
+                          
+                          if (componentData && componentData.length > 0) {
+                            setComponents(componentData.map(c => ({
+                              component_product_id: c.component_product_id,
+                              quantity: c.quantity?.toString() || '1',
+                              product: c.component_product as ProductComponent['product'],
+                            })));
+                            toast.success(`Copied ${componentData.length} component(s)`);
+                          }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
                 )}
                 <form ref={formRef} onSubmit={handleSubmit}>
                   <DialogHeader>
