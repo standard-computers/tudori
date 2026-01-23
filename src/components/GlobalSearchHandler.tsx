@@ -27,6 +27,8 @@ const LIST_VIEW_ROUTES = [
   '/goods-issues',
   '/credit-memos',
   '/debit-memos',
+  '/employees',
+  '/teams',
 ];
 
 /**
