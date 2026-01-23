@@ -9,12 +9,14 @@ import {
 } from '@/components/ui/popover';
 import { Copy, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface CopyFromIdDialogProps<T> {
   onFetch: (id: string) => Promise<T | null>;
   onApply: (data: T) => void;
   idLabel?: string;
   disabled?: boolean;
+  className?: string;
 }
 
 export function CopyFromIdDialog<T>({
@@ -22,6 +24,7 @@ export function CopyFromIdDialog<T>({
   onApply,
   idLabel = 'ID',
   disabled = false,
+  className,
 }: CopyFromIdDialogProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [copyId, setCopyId] = useState('');
@@ -66,7 +69,10 @@ export function CopyFromIdDialog<T>({
           variant="ghost"
           size="icon"
           disabled={disabled}
-          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          className={cn(
+            "rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none",
+            className
+          )}
           title="Copy from existing"
         >
           <Copy className="h-4 w-4" />

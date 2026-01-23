@@ -781,10 +781,10 @@ const Products = () => {
                 </DialogTrigger>
               <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
                 {!isEditing && (
-                  <div className="flex gap-1 absolute top-4 right-12">
+                  <div className="flex items-start gap-1 absolute top-4 right-12">
                     <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
                       <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" title="AI Autofill">
+                        <Button variant="ghost" size="icon" className="opacity-70 hover:opacity-100" title="AI Autofill">
                           <Wand2 className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
