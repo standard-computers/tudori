@@ -95,7 +95,20 @@ interface PurchaseOrderItem {
   quantity: number;
   unit_price: number | null;
   total_price: number | null;
-  product?: { name: string; price: number | null };
+  product?: { name: string; product_id: string; price: number | null; sku: string | null; description: string | null; category: string | null; unit: string | null; vendor_id: string | null };
+}
+
+interface DetailProduct {
+  id: string;
+  product_id: string;
+  name: string;
+  sku: string | null;
+  description: string | null;
+  category: string | null;
+  price: number | null;
+  unit: string | null;
+  vendor_id: string | null;
+  vendor?: { name: string } | null;
 }
 
 interface Location {
@@ -198,6 +211,10 @@ const Orders = () => {
   const [detailLocation, setDetailLocation] = useState<Location | null>(null);
   const [detailLocationLabel, setDetailLocationLabel] = useState<string>('');
   const [allVendors, setAllVendors] = useState<Vendor[]>([]);
+  
+  // Product detail dialog state
+  const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
+  const [detailProduct, setDetailProduct] = useState<DetailProduct | null>(null);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -453,6 +470,32 @@ const Orders = () => {
     }
   };
 
+  // Helper to open product detail dialog
+  const openProductDetail = async (item: PurchaseOrderItem) => {
+    if (!item.product) return;
+    
+    // Fetch vendor name if vendor_id exists
+    let vendorData: { name: string } | null = null;
+    if (item.product.vendor_id) {
+      const vendor = allVendors.find(v => v.id === item.product?.vendor_id);
+      vendorData = vendor ? { name: vendor.name } : null;
+    }
+    
+    setDetailProduct({
+      id: item.product_id,
+      product_id: item.product.product_id,
+      name: item.product.name,
+      sku: item.product.sku,
+      description: item.product.description,
+      category: item.product.category,
+      price: item.product.price,
+      unit: item.product.unit,
+      vendor_id: item.product.vendor_id,
+      vendor: vendorData,
+    });
+    setIsProductDetailOpen(true);
+  };
+
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
     setFormData({ vendor_id: '', location_id: '', bill_to_location_id: '', ledger_id: '', notes: '' });
@@ -680,7 +723,7 @@ const Orders = () => {
       .from('purchase_order_items')
       .select(`
         *,
-        product:products(name, price)
+        product:products(name, product_id, price, sku, description, category, unit, vendor_id)
       `)
       .eq('purchase_order_id', order.id);
 
@@ -1467,6 +1510,8 @@ const Orders = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-12">#</TableHead>
+                          <TableHead>Item ID</TableHead>
                           <TableHead>Product</TableHead>
                           <TableHead className="text-right">Qty</TableHead>
                           <TableHead className="text-right">Unit Price</TableHead>
@@ -1474,8 +1519,18 @@ const Orders = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {viewItems.map((item) => (
+                        {viewItems.map((item, index) => (
                           <TableRow key={item.id}>
+                            <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                            <TableCell>
+                              <button
+                                type="button"
+                                onClick={() => openProductDetail(item)}
+                                className="text-primary hover:underline cursor-pointer text-left"
+                              >
+                                {item.product?.product_id || '-'}
+                              </button>
+                            </TableCell>
                             <TableCell>{item.product?.name || 'Unknown'}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
                             <TableCell className="text-right font-mono">
@@ -1752,6 +1807,63 @@ const Orders = () => {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsLocationDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Detail Dialog */}
+      <Dialog open={isProductDetailOpen} onOpenChange={setIsProductDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Product Details</DialogTitle>
+            <DialogDescription>
+              {detailProduct?.product_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailProduct && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailProduct.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">SKU</Label>
+                  <p>{detailProduct.sku || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Category</Label>
+                  <p>{detailProduct.category || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Unit</Label>
+                  <p>{detailProduct.unit || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Price</Label>
+                  <p className="font-mono">{detailProduct.price != null ? `$${Number(detailProduct.price).toFixed(2)}` : '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Vendor</Label>
+                  <p>{detailProduct.vendor?.name || '-'}</p>
+                </div>
+              </div>
+              {detailProduct.description && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Description</Label>
+                  <p className="text-sm text-muted-foreground">{detailProduct.description}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsProductDetailOpen(false)}>
               Close
             </Button>
           </DialogFooter>
