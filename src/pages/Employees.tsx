@@ -564,6 +564,11 @@ const Employees = () => {
                     onChange={(e) => setFormData({ ...formData, wage: e.target.value })}
                     placeholder="0.00"
                   />
+                  {formData.is_hourly && formData.wage && (
+                    <p className="text-xs text-muted-foreground">
+                      ≈ ${(parseFloat(formData.wage) * 40 * 52).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year (40h/week)
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-6 pt-6">
                   <div className="flex items-center gap-2">
