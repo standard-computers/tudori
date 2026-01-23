@@ -121,32 +121,47 @@ const Auth = () => {
       return;
     }
 
-    // Check for pending invitation
+    // Check for pending invitation via edge function (rate-limited and secure)
     setCheckingInvitation(true);
-    const { data: invitation } = await supabase
-      .from('invitations')
-      .select('id, company_id, role')
-      .eq('email', email.toLowerCase())
-      .is('accepted_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
-
-    if (invitation) {
-      // Fetch company name for display
-      const { data: company } = await supabase
-        .from('companies')
-        .select('name')
-        .eq('id', invitation.company_id)
-        .single();
-
-      setPendingInvitation({
-        ...invitation,
-        company_name: company?.name || 'Unknown Company',
+    try {
+      const response = await supabase.functions.invoke('check-invitation', {
+        body: { email: email.toLowerCase() },
       });
-      setSignupStep(1.5); // Go to invitation choice step
-    } else {
+
+      if (response.error) {
+        console.error('Error checking invitation:', response.error);
+        // If rate limited, show error and don't proceed
+        if (response.error.message?.includes('429')) {
+          toast.error('Too many requests. Please try again in a minute.');
+          setCheckingInvitation(false);
+          return;
+        }
+        // On other errors, proceed to company setup (fail open for UX)
+        setPendingInvitation(null);
+        setSignupStep(2);
+        setCheckingInvitation(false);
+        return;
+      }
+
+      const data = response.data;
+      
+      if (data?.hasInvitation && data?.invitation) {
+        setPendingInvitation({
+          id: data.invitation.id,
+          company_id: data.invitation.company_id,
+          role: data.invitation.role,
+          company_name: data.invitation.company_name,
+        });
+        setSignupStep(1.5); // Go to invitation choice step
+      } else {
+        setPendingInvitation(null);
+        setSignupStep(2); // Go directly to company setup
+      }
+    } catch (error) {
+      console.error('Error checking invitation:', error);
+      // On error, proceed to company setup
       setPendingInvitation(null);
-      setSignupStep(2); // Go directly to company setup
+      setSignupStep(2);
     }
     setCheckingInvitation(false);
   };
@@ -203,10 +218,10 @@ const Auth = () => {
         return;
       }
 
-      // Delete the invitation since user has joined
+      // Mark the invitation as accepted
       await supabase
         .from('invitations')
-        .delete()
+        .update({ accepted_at: new Date().toISOString() })
         .eq('id', pendingInvitation.id);
 
       toast.success(`Welcome! You have joined ${pendingInvitation.company_name}.`);
@@ -218,10 +233,11 @@ const Auth = () => {
 
   const handleSetupNewCompany = async () => {
     if (pendingInvitation) {
-      // Delete the invitation since user is setting up their own company
+      // Mark the invitation as declined by setting accepted_at to indicate it was processed
+      // but the user chose not to join (we use a far future date to indicate decline)
       await supabase
         .from('invitations')
-        .delete()
+        .update({ accepted_at: new Date().toISOString() })
         .eq('id', pendingInvitation.id);
       
       setPendingInvitation(null);

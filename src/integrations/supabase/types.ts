@@ -980,6 +980,7 @@ export type Database = {
           email: string
           expires_at: string
           id: string
+          invite_token: string | null
           invited_by: string
           role: Database["public"]["Enums"]["app_role"]
         }
@@ -990,6 +991,7 @@ export type Database = {
           email: string
           expires_at?: string
           id?: string
+          invite_token?: string | null
           invited_by: string
           role?: Database["public"]["Enums"]["app_role"]
         }
@@ -1000,6 +1002,7 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
+          invite_token?: string | null
           invited_by?: string
           role?: Database["public"]["Enums"]["app_role"]
         }
