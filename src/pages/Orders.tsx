@@ -83,8 +83,8 @@ interface PurchaseOrder {
   order_date: string;
   expected_delivery_date: string | null;
   created_at: string;
-  vendor?: { name: string } | null;
-  location?: { name: string } | null;
+  vendor?: { name: string; vendor_id: string } | null;
+  location?: { name: string; location_id: string } | null;
   bill_to_location?: { name: string } | null;
   ledger?: { name: string } | null;
   requisition?: { requisition_id: string } | null;
@@ -331,8 +331,8 @@ const Orders = () => {
       .from('purchase_orders')
       .select(`
         *,
-        vendor:vendors(name),
-        location:locations!purchase_orders_location_id_fkey(name),
+        vendor:vendors(name, vendor_id),
+        location:locations!purchase_orders_location_id_fkey(name, location_id),
         bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name),
         ledger:ledgers(name),
         requisition:requisitions(requisition_id),
@@ -1460,7 +1460,9 @@ const Orders = () => {
             selectedOrderIds={selectedOrderIds}
             onSelectionChange={setSelectedOrderIds}
             onViewOrder={handleViewOrder} 
-            onDeleteOrder={handleDeleteOrder} 
+            onDeleteOrder={handleDeleteOrder}
+            onVendorClick={openVendorDetail}
+            onLocationClick={(locationId) => openLocationDetail(locationId, 'Ship To')}
           />
         )}
       </main>
@@ -2288,12 +2290,16 @@ function OrdersTable({
   onSelectionChange,
   onViewOrder,
   onDeleteOrder,
+  onVendorClick,
+  onLocationClick,
 }: {
   orders: PurchaseOrder[];
   selectedOrderIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   onViewOrder: (order: PurchaseOrder) => void;
   onDeleteOrder: (id: string) => void;
+  onVendorClick: (vendorId: string) => void;
+  onLocationClick: (locationId: string) => void;
 }) {
   const {
     sortConfig,
@@ -2382,7 +2388,16 @@ function OrdersTable({
                 onFilter={(v) => setFilter('status', v)}
               />
               <SortableTableHead
-                label="Vendor"
+                label="Vendor ID"
+                sortKey="vendor.vendor_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['vendor.vendor_id']}
+                onFilter={(v) => setFilter('vendor.vendor_id', v)}
+              />
+              <SortableTableHead
+                label="Vendor Name"
                 sortKey="vendor.name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -2391,7 +2406,16 @@ function OrdersTable({
                 onFilter={(v) => setFilter('vendor.name', v)}
               />
               <SortableTableHead
-                label="Location"
+                label="Location ID"
+                sortKey="location.location_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['location.location_id']}
+                onFilter={(v) => setFilter('location.location_id', v)}
+              />
+              <SortableTableHead
+                label="Location Name"
                 sortKey="location.name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -2434,7 +2458,29 @@ function OrdersTable({
                     {order.status}
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  {order.vendor?.vendor_id ? (
+                    <button
+                      type="button"
+                      onClick={() => onVendorClick(order.vendor_id!)}
+                      className="text-primary hover:underline font-mono"
+                    >
+                      {order.vendor.vendor_id}
+                    </button>
+                  ) : '-'}
+                </TableCell>
                 <TableCell>{order.vendor?.name || '-'}</TableCell>
+                <TableCell>
+                  {order.location?.location_id ? (
+                    <button
+                      type="button"
+                      onClick={() => onLocationClick(order.location_id!)}
+                      className="text-primary hover:underline font-mono"
+                    >
+                      {order.location.location_id}
+                    </button>
+                  ) : '-'}
+                </TableCell>
                 <TableCell>{order.location?.name || '-'}</TableCell>
                 <TableCell className="text-right font-mono">
                   ${Number(order.total_amount || 0).toFixed(2)}
