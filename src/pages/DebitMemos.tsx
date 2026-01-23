@@ -537,7 +537,7 @@ const DebitMemos = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             <div>
               <Label>Account *</Label>
               <SearchableSelect
@@ -621,7 +621,7 @@ const DebitMemos = () => {
           </DialogHeader>
 
           {viewMemo && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Date</p>

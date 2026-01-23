@@ -557,7 +557,7 @@ const AccountDetail = () => {
           </DialogHeader>
 
           {selectedInvoice && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6">
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Invoice Amount</span>
@@ -592,7 +592,7 @@ const AccountDetail = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             {selectedInvoice && (
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between">
@@ -647,7 +647,7 @@ const AccountDetail = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             {selectedInvoice && (
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between">

@@ -514,7 +514,7 @@ const Deliveries = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="details">Details</TabsTrigger>
                       <TabsTrigger value="items" disabled={!isEditing}>

@@ -596,7 +596,7 @@ const Invoices = () => {
             <DialogDescription>Create a new invoice linked to a PO or SO.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             <div>
               <Label>Account *</Label>
               <SearchableSelect
@@ -716,7 +716,7 @@ const Invoices = () => {
           </DialogHeader>
 
           {viewingInvoice && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Account</Label>
