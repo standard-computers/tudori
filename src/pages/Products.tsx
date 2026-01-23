@@ -62,6 +62,10 @@ interface Product {
   is_batched: boolean;
   min_shelf_life_days: number | null;
   keep_inventory: boolean;
+  width: number | null;
+  length: number | null;
+  height: number | null;
+  weight: number | null;
   vendors?: { name: string } | null;
 }
 
@@ -281,6 +285,10 @@ const Products = () => {
     is_batched: false,
     min_shelf_life_days: '',
     keep_inventory: true,
+    width: '',
+    length: '',
+    height: '',
+    weight: '',
   });
 
   // Use vendor sources hook
@@ -438,6 +446,10 @@ const Products = () => {
       is_batched: false,
       min_shelf_life_days: '',
       keep_inventory: true,
+      width: '',
+      length: '',
+      height: '',
+      weight: '',
     });
     setUoms([]);
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
@@ -471,6 +483,10 @@ const Products = () => {
       is_batched: product.is_batched || false,
       min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
       keep_inventory: product.keep_inventory ?? true,
+      width: product.width?.toString() || '',
+      length: product.length?.toString() || '',
+      height: product.height?.toString() || '',
+      weight: product.weight?.toString() || '',
     });
     setIsEditing(true);
     setEditingId(product.id);
@@ -587,6 +603,10 @@ const Products = () => {
           is_batched: formData.is_batched,
           min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
           keep_inventory: formData.keep_inventory,
+          width: formData.width ? parseFloat(formData.width) : null,
+          length: formData.length ? parseFloat(formData.length) : null,
+          height: formData.height ? parseFloat(formData.height) : null,
+          weight: formData.weight ? parseFloat(formData.weight) : null,
         })
         .eq('id', editingId);
 
@@ -610,6 +630,10 @@ const Products = () => {
           is_batched: formData.is_batched,
           min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
           keep_inventory: formData.keep_inventory,
+          width: formData.width ? parseFloat(formData.width) : null,
+          length: formData.length ? parseFloat(formData.length) : null,
+          height: formData.height ? parseFloat(formData.height) : null,
+          weight: formData.weight ? parseFloat(formData.weight) : null,
         })
         .select('id')
         .single();
@@ -766,8 +790,9 @@ const Products = () => {
                   </DialogHeader>
                   
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-5' : 'grid-cols-4'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
+                      <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
                       <TabsTrigger value="uom">Units of Measure</TabsTrigger>
                       {formData.category === 'Finished Goods' && (
                         <TabsTrigger value="components">Components</TabsTrigger>
@@ -898,6 +923,89 @@ const Products = () => {
                           rows={3}
                         />
                       </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="dimensions" className="space-y-4 mt-4">
+                      <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-muted-foreground">
+                          Enter product dimensions and weight. Volume and surface area are calculated automatically.
+                        </p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="width">Width</Label>
+                          <Input
+                            id="width"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.width}
+                            onChange={(e) => setFormData({ ...formData, width: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="length">Length</Label>
+                          <Input
+                            id="length"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.length}
+                            onChange={(e) => setFormData({ ...formData, length: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="height">Height</Label>
+                          <Input
+                            id="height"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.height}
+                            onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="weight">Weight</Label>
+                          <Input
+                            id="weight"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.weight}
+                            onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                      
+                      {(formData.width && formData.length && formData.height) && (
+                        <div className="border rounded-lg p-4 space-y-3">
+                          <h4 className="font-medium text-sm">Calculated Values</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">Volume</p>
+                              <p className="text-lg font-semibold">
+                                {(parseFloat(formData.width) * parseFloat(formData.length) * parseFloat(formData.height)).toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">Surface Area</p>
+                              <p className="text-lg font-semibold">
+                                {(2 * (
+                                  parseFloat(formData.width) * parseFloat(formData.length) +
+                                  parseFloat(formData.length) * parseFloat(formData.height) +
+                                  parseFloat(formData.height) * parseFloat(formData.width)
+                                )).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </TabsContent>
                     
                     <TabsContent value="uom" className="space-y-4 mt-4">
