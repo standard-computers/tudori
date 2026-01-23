@@ -146,15 +146,15 @@ export const DeliveryItemsDialog = ({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8 px-6">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 px-6 text-muted-foreground">
             No items found in this purchase order.
           </div>
         ) : (
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto px-6">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b">
               <Checkbox
                 id="select-all"
