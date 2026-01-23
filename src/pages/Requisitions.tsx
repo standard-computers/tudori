@@ -845,7 +845,7 @@ const Requisitions = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="overflow-y-auto px-1">
+          <div className="overflow-y-auto px-6">
             {viewRequisition && (
               <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
