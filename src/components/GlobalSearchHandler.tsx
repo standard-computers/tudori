@@ -18,6 +18,15 @@ const LIST_VIEW_ROUTES = [
   '/cockpit',
   '/settings',
   '/user-settings',
+  '/configuration',
+  '/inventory',
+  '/invoices',
+  '/tasks',
+  '/accounts',
+  '/goods-receipts',
+  '/goods-issues',
+  '/credit-memos',
+  '/debit-memos',
 ];
 
 /**
