@@ -42,10 +42,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
-
 interface Requisition {
   id: string;
   requisition_id: string;
@@ -155,6 +155,29 @@ const Requisitions = () => {
   const [viewPO, setViewPO] = useState<PurchaseOrder | null>(null);
   const [viewPOItems, setViewPOItems] = useState<PurchaseOrderItem[]>([]);
 
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Clear selection when requisitions change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [requisitions]);
+
+  // Check if selected requisitions can be converted
+  const selectedConvertibleReqs = useMemo(() => {
+    return requisitions.filter(
+      (r) => selectedIds.has(r.id) && r.status !== 'ordered' && r.status !== 'completed' && r.status !== 'cancelled'
+    );
+  }, [requisitions, selectedIds]);
+
+  const handleBulkConvert = async () => {
+    if (selectedConvertibleReqs.length === 0) return;
+
+    for (const req of selectedConvertibleReqs) {
+      await handleConvertToPO(req);
+    }
+    setSelectedIds(new Set());
+  };
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
@@ -646,6 +669,12 @@ const Requisitions = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {selectedConvertibleReqs.length > 0 && (
+                <Button onClick={handleBulkConvert} variant="secondary">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Convert ({selectedConvertibleReqs.length})
+                </Button>
+              )}
               <Button onClick={handleRunClick} variant="default">
                 <Play className="w-4 h-4 mr-2" />
                 Run
@@ -655,7 +684,6 @@ const Requisitions = () => {
           </div>
         </div>
       </header>
-
       {/* Main content */}
       <main className="flex-1">
         {requisitions.length === 0 ? (
@@ -675,7 +703,9 @@ const Requisitions = () => {
             requisitions={requisitions} 
             onViewRequisition={handleViewRequisition} 
             onConvertToPO={handleConvertToPO}
-            onDeleteRequisition={handleDeleteRequisition} 
+            onDeleteRequisition={handleDeleteRequisition}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
         )}
       </main>
@@ -1008,11 +1038,15 @@ function RequisitionsTable({
   onViewRequisition,
   onConvertToPO,
   onDeleteRequisition,
+  selectedIds,
+  onSelectionChange,
 }: {
   requisitions: Requisition[];
   onViewRequisition: (requisition: Requisition) => void;
   onConvertToPO: (requisition: Requisition) => void;
   onDeleteRequisition: (id: string) => void;
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
 }) {
   const {
     sortConfig,
@@ -1022,6 +1056,32 @@ function RequisitionsTable({
     clearAllFilters,
     sortedAndFilteredData,
   } = useTableSort(requisitions, 'requisition_id', 'desc');
+
+  const allVisibleSelected = sortedAndFilteredData.length > 0 && 
+    sortedAndFilteredData.every((r) => selectedIds.has(r.id));
+  const someVisibleSelected = sortedAndFilteredData.some((r) => selectedIds.has(r.id));
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const newIds = new Set(selectedIds);
+      sortedAndFilteredData.forEach((r) => newIds.add(r.id));
+      onSelectionChange(newIds);
+    } else {
+      const newIds = new Set(selectedIds);
+      sortedAndFilteredData.forEach((r) => newIds.delete(r.id));
+      onSelectionChange(newIds);
+    }
+  };
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    const newIds = new Set(selectedIds);
+    if (checked) {
+      newIds.add(id);
+    } else {
+      newIds.delete(id);
+    }
+    onSelectionChange(newIds);
+  };
 
   const hasFilters = Object.values(filters).some((v) => v);
 
@@ -1046,6 +1106,14 @@ function RequisitionsTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all"
+                  {...(someVisibleSelected && !allVisibleSelected ? { 'data-state': 'indeterminate' } : {})}
+                />
+              </TableHead>
               <SortableTableHead
                 label="ID"
                 sortKey="requisition_id"
@@ -1104,7 +1172,14 @@ function RequisitionsTable({
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.map((req) => (
-              <TableRow key={req.id}>
+              <TableRow key={req.id} data-state={selectedIds.has(req.id) ? 'selected' : undefined}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.has(req.id)}
+                    onCheckedChange={(checked) => handleSelectRow(req.id, !!checked)}
+                    aria-label={`Select ${req.requisition_id}`}
+                  />
+                </TableCell>
                 <TableCell className="font-mono">{req.requisition_id}</TableCell>
                 <TableCell>
                   <Badge className={`${statusColors[req.status]} text-white`}>
