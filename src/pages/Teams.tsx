@@ -512,7 +512,7 @@ const Teams = () => {
               {isEditing ? 'Update team information' : 'Create a new team'}
             </DialogDescription>
           </DialogHeader>
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+          <form id="team-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="team_id">Team ID</Label>
               <Input
@@ -540,17 +540,17 @@ const Teams = () => {
                 rows={3}
               />
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {isEditing ? 'Update' : 'Create'}
-                <Kbd className="ml-2">⌘S</Kbd>
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="team-form" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {isEditing ? 'Update' : 'Create'}
+              <Kbd className="ml-2">⌘S</Kbd>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -438,7 +438,7 @@ const Employees = () => {
               {isEditing ? 'Update employee information' : 'Add a new employee to your team'}
             </DialogDescription>
           </DialogHeader>
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+          <form id="employee-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employee_id">Employee ID</Label>
@@ -543,17 +543,17 @@ const Employees = () => {
                 rows={3}
               />
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {isEditing ? 'Update' : 'Create'}
-                <Kbd className="ml-2">⌘S</Kbd>
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="employee-form" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {isEditing ? 'Update' : 'Create'}
+              <Kbd className="ml-2">⌘S</Kbd>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
