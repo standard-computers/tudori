@@ -635,6 +635,65 @@ export type Database = {
           },
         ]
       }
+      employees: {
+        Row: {
+          company_id: string
+          created_at: string
+          department: string | null
+          email: string | null
+          employee_id: string
+          first_name: string
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          last_name: string
+          notes: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          employee_id: string
+          first_name: string
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          employee_id?: string
+          first_name?: string
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goods_issue_items: {
         Row: {
           bin_id: string | null
@@ -2186,6 +2245,83 @@ export type Database = {
           },
         ]
       }
+      team_members: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          role: string | null
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          role?: string | null
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          role?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string
@@ -2405,6 +2541,7 @@ export type Database = {
         Returns: string
       }
       get_next_delivery_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_employee_id: { Args: { p_company_id: string }; Returns: string }
       get_next_goods_issue_number: {
         Args: { p_company_id: string }
         Returns: string
@@ -2430,6 +2567,7 @@ export type Database = {
         Returns: string
       }
       get_next_so_number: { Args: { p_company_id: string }; Returns: string }
+      get_next_team_id: { Args: { p_company_id: string }; Returns: string }
       get_next_vendor_id: { Args: { p_company_id: string }; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {

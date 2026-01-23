@@ -1,6 +1,8 @@
 import { 
   Building, 
   Users, 
+  Users2,
+  User,
   Package, 
   BarChart3, 
   FileText, 
@@ -55,6 +57,8 @@ export const defaultApps: AppTile[] = [
   { name: 'Orders', icon: ShoppingCart, color: 'text-orange-500', description: 'Vendor orders', path: '/orders' },
   { name: 'Requisitions', icon: FileSpreadsheet, color: 'text-sky-500', description: 'Purchase requests', path: '/requisitions' },
   { name: 'Shipping', icon: Truck, color: 'text-teal-500', description: 'Logistics & delivery', path: '/deliveries' },
+  { name: 'Employees', icon: User, color: 'text-blue-500', description: 'Staff directory', path: '/employees' },
+  { name: 'Teams', icon: Users2, color: 'text-teal-500', description: 'Team management', path: '/teams' },
   { name: 'Calendar', icon: Calendar, color: 'text-indigo-500', description: 'Events & scheduling', path: null },
   { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: '/tasks' },
   { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: null },

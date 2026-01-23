@@ -1,0 +1,563 @@
+import { useEffect, useState, useRef } from 'react';
+import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTableSort } from '@/hooks/use-table-sort';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { SortableTableHead } from '@/components/SortableTableHead';
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+
+interface Employee {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  job_title: string | null;
+  department: string | null;
+  hire_date: string | null;
+  status: string;
+  notes: string | null;
+}
+
+const DEPARTMENTS = ['Engineering', 'Sales', 'Marketing', 'Finance', 'Operations', 'HR', 'Customer Support', 'Product'];
+const STATUSES = ['active', 'inactive', 'on_leave'];
+
+const EmployeeTable = ({
+  employees,
+  onEdit,
+  onDelete,
+}: {
+  employees: Employee[];
+  onEdit: (employee: Employee) => void;
+  onDelete: (id: string) => void;
+}) => {
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    clearAllFilters,
+    sortedAndFilteredData,
+  } = useTableSort(employees, 'employee_id', 'asc');
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  return (
+    <div className="space-y-2">
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-sm text-muted-foreground">
+            Showing {sortedAndFilteredData.length} of {employees.length} employees
+          </span>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-7 text-xs">
+            <X className="w-3 h-3 mr-1" />
+            Clear filters
+          </Button>
+          {Object.entries(filters).map(([key, value]) => value && (
+            <Badge key={key} variant="secondary" className="text-xs">
+              {key}: {value}
+              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead
+                label="ID"
+                sortKey="employee_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['employee_id']}
+                onFilter={(value) => setFilter('employee_id', value)}
+                className="w-24"
+              />
+              <SortableTableHead
+                label="Name"
+                sortKey="last_name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['last_name']}
+                onFilter={(value) => setFilter('last_name', value)}
+              />
+              <SortableTableHead
+                label="Email"
+                sortKey="email"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['email']}
+                onFilter={(value) => setFilter('email', value)}
+              />
+              <SortableTableHead
+                label="Job Title"
+                sortKey="job_title"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['job_title']}
+                onFilter={(value) => setFilter('job_title', value)}
+              />
+              <SortableTableHead
+                label="Department"
+                sortKey="department"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['department']}
+                onFilter={(value) => setFilter('department', value)}
+              />
+              <SortableTableHead
+                label="Status"
+                sortKey="status"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['status']}
+                onFilter={(value) => setFilter('status', value)}
+                className="w-24"
+              />
+              <SortableTableHead
+                label="Actions"
+                sortKey=""
+                currentSortKey=""
+                currentSortDirection="asc"
+                onSort={() => {}}
+                className="w-24 text-right"
+              />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedAndFilteredData.map((employee) => (
+              <TableRow key={employee.id}>
+                <TableCell className="font-mono text-xs">{employee.employee_id}</TableCell>
+                <TableCell className="font-medium">{employee.first_name} {employee.last_name}</TableCell>
+                <TableCell>{employee.email || '-'}</TableCell>
+                <TableCell>{employee.job_title || '-'}</TableCell>
+                <TableCell>{employee.department || '-'}</TableCell>
+                <TableCell>
+                  <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                    {employee.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(employee)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(employee.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {sortedAndFilteredData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  No employees found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
+const Employees = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nextEmployeeId, setNextEmployeeId] = useState('0001');
+
+  const [formData, setFormData] = useState({
+    employee_id: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    job_title: '',
+    department: '',
+    hire_date: '',
+    status: 'active',
+    notes: '',
+  });
+
+  useEffect(() => {
+    if (isDialogOpen) {
+      setTransaction(isEditing ? 'emp/edit' : 'emp/new');
+    } else {
+      setTransaction('emp');
+    }
+  }, [isDialogOpen, isEditing, setTransaction]);
+
+  useSaveShortcut(() => {
+    if (isDialogOpen && formRef.current) {
+      formRef.current.requestSubmit();
+    }
+  }, isDialogOpen);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchCompanyId();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (companyId) {
+      fetchEmployees();
+      fetchNextEmployeeId();
+    }
+  }, [companyId]);
+
+  const fetchCompanyId = async () => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', user!.id)
+      .single();
+
+    if (profile?.company_id) {
+      setCompanyId(profile.company_id);
+    }
+    setLoading(false);
+  };
+
+  const fetchEmployees = async () => {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('employee_id');
+
+    if (error) {
+      console.error('Error fetching employees:', error);
+      toast.error('Failed to load employees');
+      return;
+    }
+
+    setEmployees(data || []);
+  };
+
+  const fetchNextEmployeeId = async () => {
+    const { data } = await supabase.rpc('get_next_employee_id', {
+      p_company_id: companyId,
+    });
+    if (data) {
+      setNextEmployeeId(data);
+    }
+  };
+
+  const handleOpenDialog = () => {
+    setFormData({
+      employee_id: nextEmployeeId,
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      job_title: '',
+      department: '',
+      hire_date: '',
+      status: 'active',
+      notes: '',
+    });
+    setIsEditing(false);
+    setEditingId(null);
+    setIsDialogOpen(true);
+  };
+
+  useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleEdit = (employee: Employee) => {
+    setFormData({
+      employee_id: employee.employee_id,
+      first_name: employee.first_name,
+      last_name: employee.last_name,
+      email: employee.email || '',
+      phone: employee.phone || '',
+      job_title: employee.job_title || '',
+      department: employee.department || '',
+      hire_date: employee.hire_date || '',
+      status: employee.status,
+      notes: employee.notes || '',
+    });
+    setIsEditing(true);
+    setEditingId(employee.id);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete employee');
+      return;
+    }
+    toast.success('Employee deleted');
+    fetchEmployees();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.first_name || !formData.last_name) {
+      toast.error('First and last name are required');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const employeeData = {
+        company_id: companyId!,
+        employee_id: formData.employee_id,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        job_title: formData.job_title || null,
+        department: formData.department || null,
+        hire_date: formData.hire_date || null,
+        status: formData.status,
+        notes: formData.notes || null,
+      };
+
+      if (isEditing && editingId) {
+        const { error } = await supabase
+          .from('employees')
+          .update(employeeData)
+          .eq('id', editingId);
+        if (error) throw error;
+        toast.success('Employee updated');
+      } else {
+        const { error } = await supabase.from('employees').insert(employeeData);
+        if (error) throw error;
+        toast.success('Employee created');
+      }
+
+      setIsDialogOpen(false);
+      fetchEmployees();
+      fetchNextEmployeeId();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save employee');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card/50 sticky top-0 z-50">
+        <div className="flex items-center justify-between h-16 px-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <User className="h-6 w-6 text-blue-500" />
+              <h1 className="text-xl font-semibold">Employees</h1>
+            </div>
+          </div>
+          <Button onClick={handleOpenDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Employee
+            <Kbd className="ml-2">N</Kbd>
+          </Button>
+        </div>
+      </header>
+
+      <main className="p-0">
+        <EmployeeTable employees={employees} onEdit={handleEdit} onDelete={handleDelete} />
+      </main>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{isEditing ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
+            <DialogDescription>
+              {isEditing ? 'Update employee information' : 'Add a new employee to your team'}
+            </DialogDescription>
+          </DialogHeader>
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="employee_id">Employee ID</Label>
+                <Input
+                  id="employee_id"
+                  value={formData.employee_id}
+                  onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                  disabled={isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">First Name *</Label>
+                <Input
+                  id="first_name"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Last Name *</Label>
+                <Input
+                  id="last_name"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="job_title">Job Title</Label>
+                <Input
+                  id="job_title"
+                  value={formData.job_title}
+                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hire_date">Hire Date</Label>
+              <Input
+                id="hire_date"
+                type="date"
+                value={formData.hire_date}
+                onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {isEditing ? 'Update' : 'Create'}
+                <Kbd className="ml-2">⌘S</Kbd>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Employees;
