@@ -637,6 +637,7 @@ export type Database = {
       }
       employees: {
         Row: {
+          bonus_eligible: boolean | null
           company_id: string
           created_at: string
           department: string | null
@@ -645,14 +646,17 @@ export type Database = {
           first_name: string
           hire_date: string | null
           id: string
+          is_hourly: boolean | null
           job_title: string | null
           last_name: string
           notes: string | null
           phone: string | null
           status: string
           updated_at: string
+          wage: number | null
         }
         Insert: {
+          bonus_eligible?: boolean | null
           company_id: string
           created_at?: string
           department?: string | null
@@ -661,14 +665,17 @@ export type Database = {
           first_name: string
           hire_date?: string | null
           id?: string
+          is_hourly?: boolean | null
           job_title?: string | null
           last_name: string
           notes?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
+          wage?: number | null
         }
         Update: {
+          bonus_eligible?: boolean | null
           company_id?: string
           created_at?: string
           department?: string | null
@@ -677,12 +684,14 @@ export type Database = {
           first_name?: string
           hire_date?: string | null
           id?: string
+          is_hourly?: boolean | null
           job_title?: string | null
           last_name?: string
           notes?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
+          wage?: number | null
         }
         Relationships: [
           {
