@@ -125,6 +125,16 @@ interface Product {
   vendor_id: string | null;
 }
 
+interface InventoryRecord {
+  id: string;
+  product_id: string;
+  location_id: string;
+  quantity: number;
+  bin_id: string | null;
+  product?: { name: string; product_id: string };
+  bin?: { name: string } | null;
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500',
   pending: 'bg-yellow-500',
@@ -197,6 +207,9 @@ const Orders = () => {
   const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
+  
+  // Availability tab state
+  const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -319,10 +332,74 @@ const Orders = () => {
     setLedgers((data as any) || []);
   };
 
+  // Fetch inventory for Ship To location (for Availability tab)
+  const fetchLocationInventory = async (locationId: string) => {
+    if (!locationId) {
+      setLocationInventory([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('inventory')
+      .select(`
+        id,
+        product_id,
+        location_id,
+        quantity,
+        bin_id,
+        product:products(name, product_id),
+        bin:bins(name)
+      `)
+      .eq('location_id', locationId);
+
+    setLocationInventory((data as InventoryRecord[]) || []);
+  };
+
+  // Fetch inventory when Ship To location changes
+  useEffect(() => {
+    if (isCreateDialogOpen && formData.location_id) {
+      fetchLocationInventory(formData.location_id);
+    } else {
+      setLocationInventory([]);
+    }
+  }, [isCreateDialogOpen, formData.location_id]);
+
+  // Calculate item availability for Availability tab
+  const itemAvailability = useMemo(() => {
+    const availability: Record<string, { available: number; required: number; sufficient: boolean }> = {};
+    
+    // Aggregate inventory by product
+    const inventoryByProduct: Record<string, number> = {};
+    locationInventory.forEach(inv => {
+      inventoryByProduct[inv.product_id] = (inventoryByProduct[inv.product_id] || 0) + inv.quantity;
+    });
+    
+    // Calculate for each order item
+    orderItems.forEach(item => {
+      if (item.product_id) {
+        const available = inventoryByProduct[item.product_id] || 0;
+        const existingRequired = availability[item.product_id]?.required || 0;
+        availability[item.product_id] = {
+          available,
+          required: existingRequired + item.quantity,
+          sufficient: available >= (existingRequired + item.quantity),
+        };
+      }
+    });
+    
+    return availability;
+  }, [locationInventory, orderItems]);
+
+  // Check if any item has stock issues
+  const hasStockIssue = useMemo(() => {
+    return Object.values(itemAvailability).some(a => !a.sufficient);
+  }, [itemAvailability]);
+
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
     setFormData({ vendor_id: '', location_id: '', bill_to_location_id: '', ledger_id: '', notes: '' });
     setOrderItems([]);
+    setLocationInventory([]);
     setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }] : []);
     setIsCreateDialogOpen(true);
   };
@@ -959,9 +1036,17 @@ const Orders = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="items" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="items">Items</TabsTrigger>
               <TabsTrigger value="rates">Rates</TabsTrigger>
+              <TabsTrigger value="availability" className="relative">
+                Availability
+                {hasStockIssue && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                    !
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="assignment">Assignment</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
@@ -1093,6 +1178,63 @@ const Orders = () => {
               <div className="text-sm text-muted-foreground">
                 Combined tax rate: {calculateTotalTaxRate().toFixed(2)}%
               </div>
+            </TabsContent>
+
+            <TabsContent value="availability" className="space-y-4 mt-4">
+              {!formData.location_id ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  Select a "Ship To" location to check inventory availability
+                </p>
+              ) : orderItems.filter(item => item.product_id).length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                  Add items to the order to check availability
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Checking stock at: <span className="font-medium text-foreground">{locations.find(l => l.id === formData.location_id)?.name}</span>
+                    </span>
+                    <Badge variant={hasStockIssue ? "destructive" : "default"}>
+                      {hasStockIssue ? "Stock Issues" : "All Available"}
+                    </Badge>
+                  </div>
+                  
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Required</TableHead>
+                          <TableHead className="text-right">Available</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orderItems.filter(item => item.product_id).map((item, index) => {
+                          const product = products.find(p => p.id === item.product_id);
+                          const availability = itemAvailability[item.product_id];
+                          const status = availability?.sufficient ? 'In Stock' : 
+                            (availability?.available > 0 ? 'Partial' : 'Out of Stock');
+                          
+                          return (
+                            <TableRow key={index}>
+                              <TableCell>{product?.name || 'Unknown'}</TableCell>
+                              <TableCell className="text-right">{item.quantity}</TableCell>
+                              <TableCell className="text-right">{availability?.available || 0}</TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant={availability?.sufficient ? "default" : "destructive"}>
+                                  {status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="assignment" className="space-y-4 mt-4">
