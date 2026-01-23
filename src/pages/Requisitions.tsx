@@ -308,59 +308,77 @@ const Requisitions = () => {
     setIsRunning(true);
 
     try {
-      // Get next requisition ID
-      const { data: nextId } = await supabase.rpc('get_next_requisition_id', {
-        p_company_id: companyId,
-      });
-
-      // Calculate total amount
-      const totalAmount = suggestedItems.reduce((sum, item) => {
-        return sum + (item.product.price || 0) * item.quantity;
-      }, 0);
-
-      // Determine vendor_id: if "all vendors" but single item, use item's vendor
-      // Parse the prefixed format to get the raw UUID for database storage
-      let effectiveVendorId: string | null = null;
-      if (runFormData.vendor_id) {
-        const parsed = parseVendorValue(runFormData.vendor_id);
-        effectiveVendorId = parsed?.type === 'vendor' ? parsed.id : null;
-      } else if (suggestedItems.length === 1 && suggestedItems[0].product.vendor_id) {
-        // Single item with no vendor selected - use the item's vendor
-        effectiveVendorId = suggestedItems[0].product.vendor_id;
+      // Group items by vendor_id
+      const itemsByVendor = new Map<string | null, { product: Product; quantity: number }[]>();
+      
+      for (const item of suggestedItems) {
+        const vendorId = item.product.vendor_id;
+        if (!itemsByVendor.has(vendorId)) {
+          itemsByVendor.set(vendorId, []);
+        }
+        itemsByVendor.get(vendorId)!.push(item);
       }
 
-      // Create requisition
-      const { data: requisition, error: reqError } = await supabase
-        .from('requisitions')
-        .insert({
-          company_id: companyId,
-          requisition_id: nextId,
-          status: 'draft',
-          location_id: runFormData.location_id || null,
-          vendor_id: effectiveVendorId,
-          total_amount: totalAmount,
-          notes: `Auto-generated requisition for ${locations.find(l => l.id === runFormData.location_id)?.name || 'location'}`,
-        })
-        .select()
-        .single();
+      const locationName = locations.find(l => l.id === runFormData.location_id)?.name || 'location';
+      const createdReqIds: string[] = [];
+      let totalItemsCreated = 0;
 
-      if (reqError) throw reqError;
+      // Create separate requisition for each vendor group
+      for (const [vendorId, vendorItems] of itemsByVendor) {
+        // Get next requisition ID for each requisition
+        const { data: nextId, error: idError } = await supabase.rpc('get_next_requisition_id', {
+          p_company_id: companyId,
+        });
 
-      // Create requisition items
-      const itemsToInsert = suggestedItems.map(item => ({
-        requisition_id: requisition.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        unit_price: item.product.price,
-      }));
+        if (idError) throw idError;
 
-      const { error: itemsError } = await supabase
-        .from('requisition_items')
-        .insert(itemsToInsert);
+        // Calculate total amount for this vendor's items
+        const totalAmount = vendorItems.reduce((sum, item) => {
+          return sum + (item.product.price || 0) * item.quantity;
+        }, 0);
 
-      if (itemsError) throw itemsError;
+        // Create requisition for this vendor
+        const { data: requisition, error: reqError } = await supabase
+          .from('requisitions')
+          .insert({
+            company_id: companyId,
+            requisition_id: nextId,
+            status: 'draft',
+            location_id: runFormData.location_id || null,
+            vendor_id: vendorId,
+            total_amount: totalAmount,
+            notes: `Auto-generated requisition for ${locationName}`,
+          })
+          .select()
+          .single();
 
-      toast.success(`Requisition ${nextId} created with ${suggestedItems.length} items`);
+        if (reqError) throw reqError;
+
+        // Create requisition items for this vendor
+        const itemsToInsert = vendorItems.map(item => ({
+          requisition_id: requisition.id,
+          product_id: item.product.id,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('requisition_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+
+        createdReqIds.push(nextId);
+        totalItemsCreated += vendorItems.length;
+      }
+
+      // Show appropriate success message
+      if (createdReqIds.length === 1) {
+        toast.success(`Requisition ${createdReqIds[0]} created with ${totalItemsCreated} items`);
+      } else {
+        toast.success(`Created ${createdReqIds.length} requisitions (${createdReqIds.join(', ')}) with ${totalItemsCreated} total items`);
+      }
+      
       setIsRunDialogOpen(false);
       fetchRequisitions();
     } catch (error: any) {
