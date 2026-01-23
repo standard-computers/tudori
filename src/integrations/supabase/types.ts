@@ -1456,6 +1456,7 @@ export type Database = {
           description: string | null
           id: string
           is_batched: boolean
+          keep_inventory: boolean
           min_shelf_life_days: number | null
           name: string
           price: number | null
@@ -1472,6 +1473,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_batched?: boolean
+          keep_inventory?: boolean
           min_shelf_life_days?: number | null
           name: string
           price?: number | null
@@ -1488,6 +1490,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_batched?: boolean
+          keep_inventory?: boolean
           min_shelf_life_days?: number | null
           name?: string
           price?: number | null

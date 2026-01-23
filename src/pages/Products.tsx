@@ -58,6 +58,7 @@ interface Product {
   unit: string | null;
   is_batched: boolean;
   min_shelf_life_days: number | null;
+  keep_inventory: boolean;
   vendors?: { name: string } | null;
 }
 
@@ -276,6 +277,7 @@ const Products = () => {
     unit: 'each',
     is_batched: false,
     min_shelf_life_days: '',
+    keep_inventory: true,
   });
 
   // Use vendor sources hook
@@ -432,6 +434,7 @@ const Products = () => {
       unit: 'each',
       is_batched: false,
       min_shelf_life_days: '',
+      keep_inventory: true,
     });
     setUoms([]);
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
@@ -464,6 +467,7 @@ const Products = () => {
       unit: product.unit || 'each',
       is_batched: product.is_batched || false,
       min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
+      keep_inventory: product.keep_inventory ?? true,
     });
     setIsEditing(true);
     setEditingId(product.id);
@@ -579,6 +583,7 @@ const Products = () => {
           unit: formData.unit || null,
           is_batched: formData.is_batched,
           min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
+          keep_inventory: formData.keep_inventory,
         })
         .eq('id', editingId);
 
@@ -601,6 +606,7 @@ const Products = () => {
           unit: formData.unit || null,
           is_batched: formData.is_batched,
           min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
+          keep_inventory: formData.keep_inventory,
         })
         .select('id')
         .single();
@@ -726,6 +732,7 @@ const Products = () => {
                         unit: product.unit || 'each',
                         is_batched: product.is_batched || false,
                         min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
+                        keep_inventory: product.keep_inventory ?? true,
                       }));
                       
                       // Also copy components if this is a Finished Goods product
@@ -1113,6 +1120,28 @@ const Products = () => {
                         <p className="text-sm text-muted-foreground">
                           Configure batch management and shelf life tracking for this product.
                         </p>
+                      </div>
+                      
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="keep_inventory" className="text-base">Keep Inventory</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Track this product in inventory when received
+                            </p>
+                          </div>
+                          <Switch
+                            id="keep_inventory"
+                            checked={formData.keep_inventory}
+                            onCheckedChange={(checked) => setFormData({ ...formData, keep_inventory: checked })}
+                          />
+                        </div>
+                        
+                        {!formData.keep_inventory && (
+                          <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                            When disabled, receiving this product will not create a Goods Receipt or add to inventory. The delivery/PO will simply be marked as delivered.
+                          </p>
+                        )}
                       </div>
                       
                       <div className="border rounded-lg p-4 space-y-4">
