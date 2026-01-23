@@ -400,9 +400,25 @@ const Products = () => {
 
       for (const row of jsonData) {
         try {
+          let productId = row.product_id?.toString() || '';
+          
+          // Auto-generate product_id if not provided
+          if (!productId && companyId) {
+            const { data: nextId, error: idError } = await supabase.rpc('get_next_product_id', {
+              p_company_id: companyId,
+            });
+            
+            if (idError || !nextId) {
+              console.error('Error generating product ID:', idError);
+              errorCount++;
+              continue;
+            }
+            productId = nextId;
+          }
+
           const productData = {
             company_id: companyId!,
-            product_id: row.product_id?.toString() || '',
+            product_id: productId,
             name: row.name?.toString() || '',
             sku: row.sku?.toString() || null,
             description: row.description?.toString() || null,
@@ -419,7 +435,7 @@ const Products = () => {
             weight: row.weight ? parseFloat(row.weight) : null,
           };
 
-          if (!productData.product_id || !productData.name) {
+          if (!productData.name) {
             errorCount++;
             continue;
           }
