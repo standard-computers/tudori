@@ -1,12 +1,20 @@
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Download, Upload, FileDown, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImportExportButtonsProps {
   importEnabled: boolean;
   exportEnabled: boolean;
-  onImport?: () => void;
+  onImport?: (file: File) => void;
   onExport?: () => void;
+  onDownloadTemplate?: () => void;
   entityName: string;
 }
 
@@ -15,13 +23,35 @@ export const ImportExportButtons = ({
   exportEnabled,
   onImport,
   onExport,
+  onDownloadTemplate,
   entityName,
 }: ImportExportButtonsProps) => {
-  const handleImport = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImport) {
+      onImport(file);
+    }
+    // Reset the input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUploadClick = () => {
     if (onImport) {
-      onImport();
+      fileInputRef.current?.click();
     } else {
       toast.info(`Import ${entityName} from XLSX - Coming soon`);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    if (onDownloadTemplate) {
+      onDownloadTemplate();
+    } else {
+      toast.info(`Download ${entityName} template - Coming soon`);
     }
   };
 
@@ -39,11 +69,32 @@ export const ImportExportButtons = ({
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+      />
       {importEnabled && (
-        <Button variant="outline" onClick={handleImport}>
-          <Upload className="w-4 h-4 mr-2" />
-          Import
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleDownloadTemplate}>
+              <FileDown className="w-4 h-4 mr-2" />
+              Download Template
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleUploadClick}>
+              <FileUp className="w-4 h-4 mr-2" />
+              Upload File
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
       {exportEnabled && (
         <Button variant="outline" onClick={handleExport}>
