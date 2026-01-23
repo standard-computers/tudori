@@ -34,7 +34,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -61,10 +61,12 @@ const STATUSES = ['active', 'inactive', 'on_leave'];
 
 const EmployeeTable = ({
   employees,
+  onView,
   onEdit,
   onDelete,
 }: {
   employees: Employee[];
+  onView: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
   onDelete: (id: string) => void;
 }) => {
@@ -185,6 +187,9 @@ const EmployeeTable = ({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onView(employee)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(employee)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -222,6 +227,7 @@ const Employees = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nextEmployeeId, setNextEmployeeId] = useState('0001');
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -444,7 +450,7 @@ const Employees = () => {
       </header>
 
       <main className="p-0">
-        <EmployeeTable employees={employees} onEdit={handleEdit} onDelete={handleDelete} />
+        <EmployeeTable employees={employees} onView={setViewingEmployee} onEdit={handleEdit} onDelete={handleDelete} />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -608,6 +614,105 @@ const Employees = () => {
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {isEditing ? 'Update' : 'Create'}
               <Kbd className="ml-2">⌘S</Kbd>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Employee Dialog */}
+      <Dialog open={!!viewingEmployee} onOpenChange={() => setViewingEmployee(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              {viewingEmployee?.first_name} {viewingEmployee?.last_name}
+            </DialogTitle>
+            <DialogDescription>
+              Employee ID: {viewingEmployee?.employee_id}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {viewingEmployee && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'secondary'}>
+                      {viewingEmployee.status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Department</p>
+                    <p className="font-medium">{viewingEmployee.department || '-'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Job Title</p>
+                    <p className="font-medium">{viewingEmployee.job_title || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Hire Date</p>
+                    <p className="font-medium">{viewingEmployee.hire_date || '-'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-medium">{viewingEmployee.email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Phone</p>
+                    <p className="font-medium">{viewingEmployee.phone || '-'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Wage</p>
+                    <p className="font-medium">
+                      {viewingEmployee.wage 
+                        ? `$${viewingEmployee.wage.toLocaleString('en-US', { minimumFractionDigits: 2 })}${viewingEmployee.is_hourly ? '/hr' : ''}`
+                        : '-'}
+                    </p>
+                    {viewingEmployee.is_hourly && viewingEmployee.wage && (
+                      <p className="text-xs text-muted-foreground">
+                        ≈ ${(viewingEmployee.wage * 40 * 52).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Compensation</p>
+                    <div className="flex gap-2 mt-1">
+                      <Badge variant={viewingEmployee.is_hourly ? 'default' : 'secondary'}>
+                        {viewingEmployee.is_hourly ? 'Hourly' : 'Salary'}
+                      </Badge>
+                      {viewingEmployee.bonus_eligible && (
+                        <Badge variant="outline">Bonus Eligible</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {viewingEmployee.notes && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Notes</p>
+                    <p className="text-sm whitespace-pre-wrap">{viewingEmployee.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingEmployee(null)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              if (viewingEmployee) {
+                handleEdit(viewingEmployee);
+                setViewingEmployee(null);
+              }
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
             </Button>
           </DialogFooter>
         </DialogContent>
