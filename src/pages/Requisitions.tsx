@@ -429,6 +429,18 @@ const Requisitions = () => {
   };
 
   const handleDeleteRequisition = async (id: string) => {
+    // Check if a PO exists for this requisition
+    const { data: linkedPO } = await supabase
+      .from('purchase_orders')
+      .select('id, po_number')
+      .eq('requisition_id', id)
+      .maybeSingle();
+
+    if (linkedPO) {
+      toast.error(`Cannot delete: Requisition has been converted to PO ${linkedPO.po_number}`);
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this requisition?')) return;
 
     const { error } = await supabase
@@ -825,7 +837,7 @@ const Requisitions = () => {
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>Requisition {viewRequisition?.requisition_id}</DialogTitle>
             <DialogDescription>
@@ -833,8 +845,9 @@ const Requisitions = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {viewRequisition && (
-            <div className="space-y-4">
+          <div className="overflow-y-auto px-1">
+            {viewRequisition && (
+              <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
@@ -905,10 +918,11 @@ const Requisitions = () => {
                   </Table>
                 </div>
               </div>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
             </Button>
