@@ -1455,6 +1455,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_batched: boolean
+          min_shelf_life_days: number | null
           name: string
           price: number | null
           product_id: string
@@ -1469,6 +1471,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_batched?: boolean
+          min_shelf_life_days?: number | null
           name: string
           price?: number | null
           product_id: string
@@ -1483,6 +1487,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_batched?: boolean
+          min_shelf_life_days?: number | null
           name?: string
           price?: number | null
           product_id?: string

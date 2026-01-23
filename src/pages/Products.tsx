@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,6 +56,8 @@ interface Product {
   category: string | null;
   price: number | null;
   unit: string | null;
+  is_batched: boolean;
+  min_shelf_life_days: number | null;
   vendors?: { name: string } | null;
 }
 
@@ -271,6 +274,8 @@ const Products = () => {
     category: '',
     price: '',
     unit: 'each',
+    is_batched: false,
+    min_shelf_life_days: '',
   });
 
   // Use vendor sources hook
@@ -425,6 +430,8 @@ const Products = () => {
       category: '',
       price: '',
       unit: 'each',
+      is_batched: false,
+      min_shelf_life_days: '',
     });
     setUoms([]);
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
@@ -455,6 +462,8 @@ const Products = () => {
       category: product.category || '',
       price: product.price?.toString() || '',
       unit: product.unit || 'each',
+      is_batched: product.is_batched || false,
+      min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
     });
     setIsEditing(true);
     setEditingId(product.id);
@@ -568,6 +577,8 @@ const Products = () => {
           category: formData.category || null,
           price: formData.price ? parseFloat(formData.price) : null,
           unit: formData.unit || null,
+          is_batched: formData.is_batched,
+          min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
         })
         .eq('id', editingId);
 
@@ -588,6 +599,8 @@ const Products = () => {
           category: formData.category || null,
           price: formData.price ? parseFloat(formData.price) : null,
           unit: formData.unit || null,
+          is_batched: formData.is_batched,
+          min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
         })
         .select('id')
         .single();
@@ -711,6 +724,8 @@ const Products = () => {
                         category: product.category || '',
                         price: product.price?.toString() || '',
                         unit: product.unit || 'each',
+                        is_batched: product.is_batched || false,
+                        min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
                       }));
                       
                       // Also copy components if this is a Finished Goods product
@@ -741,12 +756,13 @@ const Products = () => {
                   </DialogHeader>
                   
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-4' : 'grid-cols-3'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="uom">Units of Measure</TabsTrigger>
                       {formData.category === 'Finished Goods' && (
                         <TabsTrigger value="components">Components</TabsTrigger>
                       )}
+                      <TabsTrigger value="controls">Controls</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="general" className="space-y-4 mt-4">
@@ -1091,6 +1107,49 @@ const Products = () => {
                         )}
                       </TabsContent>
                     )}
+                    
+                    <TabsContent value="controls" className="space-y-4 mt-4">
+                      <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-muted-foreground">
+                          Configure batch management and shelf life tracking for this product.
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="is_batched" className="text-base">Batched</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Enable batch tracking for this product
+                            </p>
+                          </div>
+                          <Switch
+                            id="is_batched"
+                            checked={formData.is_batched}
+                            onCheckedChange={(checked) => setFormData({ ...formData, is_batched: checked })}
+                          />
+                        </div>
+                        
+                        {formData.is_batched && (
+                          <div className="pt-4 border-t space-y-2">
+                            <Label htmlFor="min_shelf_life_days">Minimum Shelf Life (days)</Label>
+                            <Input
+                              id="min_shelf_life_days"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={formData.min_shelf_life_days}
+                              onChange={(e) => setFormData({ ...formData, min_shelf_life_days: e.target.value })}
+                              placeholder="e.g., 30"
+                              className="w-40"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              The minimum number of days of remaining shelf life required for this product.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
                   </Tabs>
                   
                   <DialogFooter className="mt-6">
