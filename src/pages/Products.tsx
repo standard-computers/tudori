@@ -40,7 +40,10 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
@@ -957,12 +960,73 @@ const Products = () => {
                           </div>
                           <div className="space-y-1">
                             <Label htmlFor="uom_abbrev" className="text-xs">Abbreviation</Label>
-                            <Input
-                              id="uom_abbrev"
-                              value={newUom.abbreviation}
-                              onChange={(e) => setNewUom({ ...newUom, abbreviation: e.target.value })}
-                              placeholder="e.g., PLT"
-                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className="w-full justify-between font-normal"
+                                >
+                                  {newUom.abbreviation || "Select..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[200px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Search UOM..." />
+                                  <CommandList>
+                                    <CommandEmpty>No UOM found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {[
+                                        { value: 'EA', label: 'EA - Each' },
+                                        { value: 'PC', label: 'PC - Piece' },
+                                        { value: 'CS', label: 'CS - Case' },
+                                        { value: 'CTN', label: 'CTN - Carton' },
+                                        { value: 'BX', label: 'BX - Box' },
+                                        { value: 'PK', label: 'PK - Pack' },
+                                        { value: 'PLT', label: 'PLT - Pallet' },
+                                        { value: 'DZ', label: 'DZ - Dozen' },
+                                        { value: 'KG', label: 'KG - Kilogram' },
+                                        { value: 'LB', label: 'LB - Pound' },
+                                        { value: 'OZ', label: 'OZ - Ounce' },
+                                        { value: 'G', label: 'G - Gram' },
+                                        { value: 'L', label: 'L - Liter' },
+                                        { value: 'ML', label: 'ML - Milliliter' },
+                                        { value: 'GAL', label: 'GAL - Gallon' },
+                                        { value: 'QT', label: 'QT - Quart' },
+                                        { value: 'FT', label: 'FT - Foot' },
+                                        { value: 'IN', label: 'IN - Inch' },
+                                        { value: 'M', label: 'M - Meter' },
+                                        { value: 'CM', label: 'CM - Centimeter' },
+                                        { value: 'RL', label: 'RL - Roll' },
+                                        { value: 'SET', label: 'SET - Set' },
+                                        { value: 'BAG', label: 'BAG - Bag' },
+                                        { value: 'BTL', label: 'BTL - Bottle' },
+                                        { value: 'CAN', label: 'CAN - Can' },
+                                        { value: 'JAR', label: 'JAR - Jar' },
+                                        { value: 'TUB', label: 'TUB - Tub' },
+                                        { value: 'BDL', label: 'BDL - Bundle' },
+                                        { value: 'PR', label: 'PR - Pair' },
+                                      ].map((uom) => (
+                                        <CommandItem
+                                          key={uom.value}
+                                          value={uom.label}
+                                          onSelect={() => setNewUom({ ...newUom, abbreviation: uom.value })}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              newUom.abbreviation === uom.value ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          {uom.label}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                           <div className="space-y-1">
                             <Label htmlFor="uom_factor" className="text-xs">Base units per UOM *</Label>
