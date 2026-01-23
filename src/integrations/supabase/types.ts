@@ -1454,9 +1454,11 @@ export type Database = {
           company_id: string
           created_at: string
           description: string | null
+          height: number | null
           id: string
           is_batched: boolean
           keep_inventory: boolean
+          length: number | null
           min_shelf_life_days: number | null
           name: string
           price: number | null
@@ -1465,15 +1467,19 @@ export type Database = {
           unit: string | null
           updated_at: string
           vendor_id: string | null
+          weight: number | null
+          width: number | null
         }
         Insert: {
           category?: string | null
           company_id: string
           created_at?: string
           description?: string | null
+          height?: number | null
           id?: string
           is_batched?: boolean
           keep_inventory?: boolean
+          length?: number | null
           min_shelf_life_days?: number | null
           name: string
           price?: number | null
@@ -1482,15 +1488,19 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null
+          weight?: number | null
+          width?: number | null
         }
         Update: {
           category?: string | null
           company_id?: string
           created_at?: string
           description?: string | null
+          height?: number | null
           id?: string
           is_batched?: boolean
           keep_inventory?: boolean
+          length?: number | null
           min_shelf_life_days?: number | null
           name?: string
           price?: number | null
@@ -1499,6 +1509,8 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null
+          weight?: number | null
+          width?: number | null
         }
         Relationships: [
           {
