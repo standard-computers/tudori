@@ -547,7 +547,7 @@ const GoodsReceipts = () => {
                     {isEditing ? 'Update the goods receipt details.' : 'Create a new goods receipt to add inventory.'}
                   </DialogDescription>
                 </DialogHeader>
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="px-6">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="details">Details</TabsTrigger>
                     <TabsTrigger value="items" disabled={!isEditing}>Items</TabsTrigger>

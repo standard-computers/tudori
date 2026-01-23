@@ -389,7 +389,7 @@ const Rates = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
               <Input

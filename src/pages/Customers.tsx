@@ -530,7 +530,7 @@ const Customers = () => {
                       {isEditing ? 'Update customer details.' : 'Add a new customer to your company.'}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
+                  <div className="grid gap-4 py-4 px-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="customer_id">Customer ID</Label>

@@ -1045,7 +1045,7 @@ const Products = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
                     <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-5' : 'grid-cols-4'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="dimensions">Dimensions</TabsTrigger>

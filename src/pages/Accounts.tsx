@@ -493,7 +493,7 @@ const Accounts = () => {
             <DialogDescription>Add a new account to track invoices.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             <div>
               <Label>Name *</Label>
               <Input
@@ -576,7 +576,7 @@ const Accounts = () => {
             <DialogDescription>Update account details.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6">
             <div>
               <Label>Name *</Label>
               <Input

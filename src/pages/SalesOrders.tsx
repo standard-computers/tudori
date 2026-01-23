@@ -826,7 +826,7 @@ const SalesOrders = () => {
           </DialogHeader>
           
           {/* Header Fields */}
-          <div className="grid grid-cols-3 gap-4 pb-4 border-b">
+          <div className="grid grid-cols-3 gap-4 pb-4 border-b px-6">
             <div className="space-y-2">
               <Label htmlFor="customer">Customer *</Label>
               <SearchableSelect
@@ -863,7 +863,7 @@ const SalesOrders = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="items" className="w-full">
+          <Tabs defaultValue="items" className="w-full px-6">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="items">Items</TabsTrigger>
               <TabsTrigger value="rates">Rates</TabsTrigger>
@@ -1142,7 +1142,7 @@ const SalesOrders = () => {
           </DialogHeader>
           
           {viewOrder && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6">
               {/* Header Fields */}
               <div className="grid grid-cols-4 gap-4 pb-4 border-b">
                 <div>

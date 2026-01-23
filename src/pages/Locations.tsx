@@ -609,7 +609,7 @@ const Locations = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="users">
