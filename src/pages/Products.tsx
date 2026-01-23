@@ -984,7 +984,7 @@ const Products = () => {
                                         { value: 'CTN', label: 'CTN - Carton' },
                                         { value: 'BX', label: 'BX - Box' },
                                         { value: 'PK', label: 'PK - Pack' },
-                                        { value: 'PLT', label: 'PLT - Pallet' },
+                                        { value: 'PLA', label: 'PLA - Pallet' },
                                         { value: 'DZ', label: 'DZ - Dozen' },
                                         { value: 'KG', label: 'KG - Kilogram' },
                                         { value: 'LB', label: 'LB - Pound' },
