@@ -104,8 +104,7 @@ const Configuration = () => {
   const [processControls, setProcessControls] = useState<ProcessControlSettings>({
     require_gr_on_delivery: true,
   });
-  const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
-  const [savingImportExport, setSavingImportExport] = useState(false);
+const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
 
   useEffect(() => {
     setTransaction(`config/${activeTab}`);
@@ -332,6 +331,7 @@ const Configuration = () => {
 
     setSavingConfig(true);
     try {
+      // Save document ID configs
       for (const config of documentConfigs) {
         if (config.id) {
           const { error } = await supabase
@@ -359,10 +359,33 @@ const Configuration = () => {
         }
       }
 
+      // Save import/export settings
+      const { data: existingImportExport } = await supabase
+        .from('company_settings')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'import_export_settings')
+        .maybeSingle();
+
+      if (existingImportExport) {
+        await supabase
+          .from('company_settings')
+          .update({ setting_value: importExportSettings })
+          .eq('id', existingImportExport.id);
+      } else {
+        await supabase
+          .from('company_settings')
+          .insert([{
+            company_id: companyId,
+            setting_key: 'import_export_settings',
+            setting_value: importExportSettings,
+          }]);
+      }
+
       await fetchDocumentConfigs(companyId);
-      toast.success('Document ID configuration saved');
+      toast.success('Configuration saved');
     } catch (error: any) {
-      console.error('Error saving document configs:', error);
+      console.error('Error saving configs:', error);
       toast.error(error.message || 'Failed to save configuration');
     } finally {
       setSavingConfig(false);
@@ -423,42 +446,6 @@ const Configuration = () => {
     }));
   };
 
-  const handleSaveImportExportSettings = async () => {
-    if (!companyId) return;
-
-    setSavingImportExport(true);
-    try {
-      const { data: existing } = await supabase
-        .from('company_settings')
-        .select('id')
-        .eq('company_id', companyId)
-        .eq('setting_key', 'import_export_settings')
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from('company_settings')
-          .update({ setting_value: importExportSettings })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('company_settings')
-          .insert([{
-            company_id: companyId,
-            setting_key: 'import_export_settings',
-            setting_value: importExportSettings,
-          }]);
-      }
-
-      toast.success('Import/Export settings saved');
-    } catch (error: any) {
-      console.error('Error saving import/export settings:', error);
-      toast.error(error.message || 'Failed to save settings');
-    } finally {
-      setSavingImportExport(false);
-    }
-  };
-
   const getPreviewId = (config: DocumentIdConfig): string => {
     const paddedNumber = String(config.starting_number).padStart(config.num_digits, '0');
     return `${config.prefix}${paddedNumber}`;
@@ -516,14 +503,48 @@ const Configuration = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
-          <div className="flex items-center h-16 gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <Cog className="w-7 h-7 text-primary" />
-              <h1 className="text-xl font-display font-bold text-foreground">Configuration</h1>
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex items-center gap-3">
+                <Cog className="w-7 h-7 text-primary" />
+                <h1 className="text-xl font-display font-bold text-foreground">Configuration</h1>
+              </div>
             </div>
+            {activeTab === 'ids' && (
+              <Button onClick={handleSaveConfigs} disabled={savingConfig}>
+                {savingConfig ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                    <Kbd className="ml-2">⌘S</Kbd>
+                  </>
+                )}
+              </Button>
+            )}
+            {activeTab === 'controls' && (
+              <Button onClick={handleSaveControls} disabled={savingControls}>
+                {savingControls ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                    <Kbd className="ml-2">⌘S</Kbd>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -781,35 +802,6 @@ const Configuration = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
-              <Button onClick={handleSaveImportExportSettings} disabled={savingImportExport} variant="outline">
-                {savingImportExport ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Import/Export Settings
-                  </>
-                )}
-              </Button>
-              <Button onClick={handleSaveConfigs} disabled={savingConfig}>
-                {savingConfig ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save ID Configuration
-                    <Kbd className="ml-2">⌘S</Kbd>
-                  </>
-                )}
-              </Button>
-            </div>
           </TabsContent>
 
           <TabsContent value="controls" className="space-y-6">
@@ -850,22 +842,6 @@ const Configuration = () => {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSaveControls} disabled={savingControls}>
-                {savingControls ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Controls
-                    <Kbd className="ml-2">⌘S</Kbd>
-                  </>
-                )}
-              </Button>
-            </div>
           </TabsContent>
         </Tabs>
       </main>
