@@ -643,10 +643,10 @@ const Orders = () => {
     doc.setFontSize(12);
     doc.text(viewOrder.po_number, pageWidth - leftMargin, 33, { align: 'right' });
     
-    // Order date
+    // Order date (use created_at as the PO date)
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${new Date(viewOrder.order_date).toLocaleDateString()}`, pageWidth - leftMargin, 40, { align: 'right' });
+    doc.text(`Date: ${new Date(viewOrder.created_at).toLocaleDateString()}`, pageWidth - leftMargin, 40, { align: 'right' });
     
     yPos = Math.max(yPos, 50);
     
@@ -2076,8 +2076,8 @@ const Orders = () => {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Order Date</Label>
-                    <p className="text-sm">{new Date(viewOrder.order_date).toLocaleDateString()}</p>
+                    <Label className="text-muted-foreground">Created Date</Label>
+                    <p className="text-sm">{new Date(viewOrder.created_at).toLocaleDateString()}</p>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -2433,8 +2433,8 @@ function OrdersTable({
                 filterable={false}
               />
               <SortableTableHead
-                label="Order Date"
-                sortKey="order_date"
+                label="Created Date"
+                sortKey="created_at"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
@@ -2486,7 +2486,7 @@ function OrdersTable({
                   ${Number(order.total_amount || 0).toFixed(2)}
                 </TableCell>
                 <TableCell>
-                  {new Date(order.order_date).toLocaleDateString()}
+                  {new Date(order.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
