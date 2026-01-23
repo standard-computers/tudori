@@ -70,6 +70,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "accounts_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -739,6 +746,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "goods_issues_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "goods_issues_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
@@ -1349,6 +1363,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_deliveries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_safe"
             referencedColumns: ["id"]
           },
           {
@@ -2038,6 +2059,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_orders_ledger_id_fkey"
             columns: ["ledger_id"]
             isOneToOne: false
@@ -2290,7 +2318,77 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customers_safe: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          company_id: string | null
+          contact_name: string | null
+          country: string | null
+          created_at: string | null
+          customer_id: string | null
+          email: string | null
+          id: string | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          type: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_id?: string | null
+          contact_name?: never
+          country?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          email?: never
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: never
+          postal_code?: string | null
+          state?: string | null
+          type?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_id?: string | null
+          contact_name?: never
+          country?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          email?: never
+          id?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: never
+          postal_code?: string | null
+          state?: string | null
+          type?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
