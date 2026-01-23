@@ -48,7 +48,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { useExcel } from '@/hooks/use-excel';
 
 interface Product {
   id: string;
@@ -304,6 +304,7 @@ const Products = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
   const { plainVendorOptions } = useVendorSources(companyId);
+  const { exportToExcel, readExcel } = useExcel();
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -321,7 +322,7 @@ const Products = () => {
   ];
 
   // Export products to XLSX
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     const dataToExport = filteredProducts.length > 0 ? filteredProducts : products;
     
     if (dataToExport.length === 0) {
@@ -347,15 +348,16 @@ const Products = () => {
       weight: p.weight ?? '',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Products');
-    XLSX.writeFile(wb, `products_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    await exportToExcel(
+      exportData,
+      `products_export_${new Date().toISOString().split('T')[0]}.xlsx`,
+      'Products'
+    );
     toast.success(`Exported ${exportData.length} products`);
-  }, [products, filteredProducts]);
+  }, [products, filteredProducts, exportToExcel]);
 
   // Download import template
-  const handleDownloadTemplate = useCallback(() => {
+  const handleDownloadTemplate = useCallback(async () => {
     const templateData = [{
       product_id: 'PROD-001',
       name: 'Example Product',
@@ -374,21 +376,14 @@ const Products = () => {
       weight: '',
     }];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Products Template');
-    XLSX.writeFile(wb, 'products_import_template.xlsx');
+    await exportToExcel(templateData, 'products_import_template.xlsx', 'Products Template');
     toast.success('Template downloaded');
-  }, []);
+  }, [exportToExcel]);
 
   // Handle file import
   const handleImport = useCallback(async (file: File) => {
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+      const jsonData = await readExcel(file);
 
       if (jsonData.length === 0) {
         toast.error('No data found in file');
@@ -468,7 +463,7 @@ const Products = () => {
       console.error('Import error:', error);
       toast.error('Failed to import file');
     }
-  }, [companyId, products]);
+  }, [companyId, products, readExcel]);
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
