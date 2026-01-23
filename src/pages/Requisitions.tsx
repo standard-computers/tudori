@@ -55,8 +55,41 @@ interface Requisition {
   notes: string | null;
   total_amount: number;
   created_at: string;
-  location?: { name: string } | null;
-  vendor?: { name: string } | null;
+  location?: { name: string; location_id: string } | null;
+  vendor?: { name: string; vendor_id: string } | null;
+}
+
+// Full vendor details for detail dialog
+interface VendorDetail {
+  id: string;
+  vendor_id: string;
+  name: string;
+  type: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  website: string | null;
+  notes: string | null;
+}
+
+// Full location details for detail dialog
+interface LocationDetail {
+  id: string;
+  location_id: string;
+  name: string;
+  type: string;
+  address_line1: string;
+  address_line2: string | null;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
 }
 
 interface RequisitionItem {
@@ -154,6 +187,13 @@ const Requisitions = () => {
   const [isPOViewDialogOpen, setIsPOViewDialogOpen] = useState(false);
   const [viewPO, setViewPO] = useState<PurchaseOrder | null>(null);
   const [viewPOItems, setViewPOItems] = useState<PurchaseOrderItem[]>([]);
+  
+  // Nested detail dialog states
+  const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
+  const [isLocationDetailOpen, setIsLocationDetailOpen] = useState(false);
+  const [detailVendor, setDetailVendor] = useState<VendorDetail | null>(null);
+  const [detailLocation, setDetailLocation] = useState<LocationDetail | null>(null);
+  const [detailLocationLabel, setDetailLocationLabel] = useState<string>('');
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -254,8 +294,8 @@ const Requisitions = () => {
       .from('requisitions')
       .select(`
         *,
-        location:locations(name),
-        vendor:vendors(name)
+        location:locations(name, location_id),
+        vendor:vendors(name, vendor_id)
       `)
       .eq('company_id', companyId)
       .order('requisition_id', { ascending: false });
@@ -657,6 +697,35 @@ const Requisitions = () => {
     setSuggestedItems(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Helper to open vendor detail dialog
+  const openVendorDetail = async (vendorId: string | null) => {
+    if (!vendorId) return;
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('id', vendorId)
+      .single();
+    if (vendor) {
+      setDetailVendor(vendor as VendorDetail);
+      setIsVendorDetailOpen(true);
+    }
+  };
+
+  // Helper to open location detail dialog
+  const openLocationDetail = async (locationId: string | null, label: string) => {
+    if (!locationId) return;
+    const { data: location } = await supabase
+      .from('locations')
+      .select('*')
+      .eq('id', locationId)
+      .single();
+    if (location) {
+      setDetailLocation(location as LocationDetail);
+      setDetailLocationLabel(label);
+      setIsLocationDetailOpen(true);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -718,6 +787,8 @@ const Requisitions = () => {
             onDeleteRequisition={handleDeleteRequisition}
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
+            onLocationClick={(locationId) => openLocationDetail(locationId, 'Location')}
+            onVendorClick={openVendorDetail}
           />
         )}
       </main>
@@ -1042,6 +1113,118 @@ const Requisitions = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Vendor Detail Dialog */}
+      <Dialog open={isVendorDetailOpen} onOpenChange={setIsVendorDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vendor Details</DialogTitle>
+            <DialogDescription>
+              {detailVendor?.vendor_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailVendor && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailVendor.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p>{detailVendor.type || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Contact</Label>
+                  <p>{detailVendor.contact_name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Phone</Label>
+                  <p>{detailVendor.phone || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Email</Label>
+                <p>{detailVendor.email || '-'}</p>
+              </div>
+              {(detailVendor.address_line1 || detailVendor.city) && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <p>{detailVendor.address_line1}</p>
+                  {detailVendor.address_line2 && <p>{detailVendor.address_line2}</p>}
+                  <p>
+                    {[detailVendor.city, detailVendor.state, detailVendor.postal_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                  {detailVendor.country && <p>{detailVendor.country}</p>}
+                </div>
+              )}
+              {detailVendor.website && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Website</Label>
+                  <p>{detailVendor.website}</p>
+                </div>
+              )}
+              {detailVendor.notes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Notes</Label>
+                  <p className="text-sm text-muted-foreground">{detailVendor.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsVendorDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Detail Dialog */}
+      <Dialog open={isLocationDetailOpen} onOpenChange={setIsLocationDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{detailLocationLabel} Details</DialogTitle>
+            <DialogDescription>
+              {detailLocation?.location_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailLocation && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailLocation.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p className="capitalize">{detailLocation.type}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Address</Label>
+                <p>{detailLocation.address_line1}</p>
+                {detailLocation.address_line2 && <p>{detailLocation.address_line2}</p>}
+                <p>
+                  {[detailLocation.city, detailLocation.state, detailLocation.postal_code]
+                    .filter(Boolean)
+                    .join(', ')}
+                </p>
+                {detailLocation.country && <p>{detailLocation.country}</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLocationDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -1054,6 +1237,8 @@ function RequisitionsTable({
   onDeleteRequisition,
   selectedIds,
   onSelectionChange,
+  onLocationClick,
+  onVendorClick,
 }: {
   requisitions: Requisition[];
   onViewRequisition: (requisition: Requisition) => void;
@@ -1061,6 +1246,8 @@ function RequisitionsTable({
   onDeleteRequisition: (id: string) => void;
   selectedIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
+  onLocationClick: (locationId: string | null) => void;
+  onVendorClick: (vendorId: string | null) => void;
 }) {
   const {
     sortConfig,
@@ -1148,6 +1335,15 @@ function RequisitionsTable({
               />
               <SortableTableHead
                 label="Location"
+                sortKey="location.location_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['location.location_id']}
+                onFilter={(v) => setFilter('location.location_id', v)}
+              />
+              <SortableTableHead
+                label="Location Name"
                 sortKey="location.name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -1157,6 +1353,15 @@ function RequisitionsTable({
               />
               <SortableTableHead
                 label="Vendor"
+                sortKey="vendor.vendor_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['vendor.vendor_id']}
+                onFilter={(v) => setFilter('vendor.vendor_id', v)}
+              />
+              <SortableTableHead
+                label="Vendor Name"
                 sortKey="vendor.name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -1200,7 +1405,27 @@ function RequisitionsTable({
                     {req.status}
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  {req.location?.location_id ? (
+                    <button
+                      onClick={() => onLocationClick(req.location_id)}
+                      className="text-primary hover:underline font-mono"
+                    >
+                      {req.location.location_id}
+                    </button>
+                  ) : '-'}
+                </TableCell>
                 <TableCell>{req.location?.name || '-'}</TableCell>
+                <TableCell>
+                  {req.vendor?.vendor_id ? (
+                    <button
+                      onClick={() => onVendorClick(req.vendor_id)}
+                      className="text-primary hover:underline font-mono"
+                    >
+                      {req.vendor.vendor_id}
+                    </button>
+                  ) : '-'}
+                </TableCell>
                 <TableCell>{req.vendor?.name || 'All Vendors'}</TableCell>
                 <TableCell className="text-right font-mono">
                   ${req.total_amount?.toFixed(2) || '0.00'}
