@@ -102,12 +102,31 @@ interface Location {
   id: string;
   name: string;
   location_id: string;
+  type?: string;
+  address_line1?: string;
+  address_line2?: string | null;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
 }
 
 interface Vendor {
   id: string;
   name: string;
   vendor_id: string;
+  type?: string;
+  contact_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  website?: string | null;
+  notes?: string | null;
 }
 
 interface Ledger {
@@ -171,6 +190,14 @@ const Orders = () => {
   // Delivery items selection dialog state
   const [isDeliveryItemsDialogOpen, setIsDeliveryItemsDialogOpen] = useState(false);
   const [pendingConfirmOrderId, setPendingConfirmOrderId] = useState<string | null>(null);
+  
+  // Nested detail dialog states
+  const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
+  const [isLocationDetailOpen, setIsLocationDetailOpen] = useState(false);
+  const [detailVendor, setDetailVendor] = useState<Vendor | null>(null);
+  const [detailLocation, setDetailLocation] = useState<Location | null>(null);
+  const [detailLocationLabel, setDetailLocationLabel] = useState<string>('');
+  const [allVendors, setAllVendors] = useState<Vendor[]>([]);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -230,6 +257,7 @@ const Orders = () => {
       fetchProducts();
       fetchTaxRates();
       fetchLedgers();
+      fetchAllVendors();
     }
   }, [companyId]);
 
@@ -273,10 +301,19 @@ const Orders = () => {
   const fetchLocations = async () => {
     const { data } = await supabase
       .from('locations')
-      .select('id, name, location_id')
+      .select('id, name, location_id, type, address_line1, address_line2, city, state, postal_code, country')
       .eq('company_id', companyId)
       .order('name');
     setLocations(data || []);
+  };
+
+  const fetchAllVendors = async () => {
+    const { data } = await supabase
+      .from('vendors')
+      .select('id, vendor_id, name, type, contact_name, email, phone, address_line1, address_line2, city, state, postal_code, country, website, notes')
+      .eq('company_id', companyId)
+      .order('name');
+    setAllVendors(data || []);
   };
 
   // Create location options for SearchableSelect
@@ -394,6 +431,27 @@ const Orders = () => {
   const hasStockIssue = useMemo(() => {
     return Object.values(itemAvailability).some(a => !a.sufficient);
   }, [itemAvailability]);
+
+  // Helper to open vendor detail dialog
+  const openVendorDetail = (vendorId: string | null) => {
+    if (!vendorId) return;
+    const vendor = allVendors.find(v => v.id === vendorId);
+    if (vendor) {
+      setDetailVendor(vendor);
+      setIsVendorDetailOpen(true);
+    }
+  };
+
+  // Helper to open location detail dialog
+  const openLocationDetail = (locationId: string | null, label: string) => {
+    if (!locationId) return;
+    const location = locations.find(l => l.id === locationId);
+    if (location) {
+      setDetailLocation(location);
+      setDetailLocationLabel(label);
+      setIsLocationDetailOpen(true);
+    }
+  };
 
   const handleCreateClick = () => {
     const defaultRate = taxRates.find(r => r.is_default);
@@ -1353,15 +1411,45 @@ const Orders = () => {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Vendor</Label>
-                  <p className="mt-1 font-medium">{viewOrder.vendor?.name || '-'}</p>
+                  {viewOrder.vendor_id ? (
+                    <button
+                      type="button"
+                      onClick={() => openVendorDetail(viewOrder.vendor_id)}
+                      className="mt-1 font-medium text-primary hover:underline cursor-pointer block text-left"
+                    >
+                      {viewOrder.vendor?.name || '-'}
+                    </button>
+                  ) : (
+                    <p className="mt-1 font-medium">-</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Ship To</Label>
-                  <p className="mt-1">{viewOrder.location?.name || '-'}</p>
+                  {viewOrder.location_id ? (
+                    <button
+                      type="button"
+                      onClick={() => openLocationDetail(viewOrder.location_id, 'Ship To')}
+                      className="mt-1 text-primary hover:underline cursor-pointer block text-left"
+                    >
+                      {viewOrder.location?.name || '-'}
+                    </button>
+                  ) : (
+                    <p className="mt-1">-</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Bill To</Label>
-                  <p className="mt-1">{viewOrder.bill_to_location?.name || '-'}</p>
+                  {viewOrder.bill_to_location_id ? (
+                    <button
+                      type="button"
+                      onClick={() => openLocationDetail(viewOrder.bill_to_location_id, 'Bill To')}
+                      className="mt-1 text-primary hover:underline cursor-pointer block text-left"
+                    >
+                      {viewOrder.bill_to_location?.name || '-'}
+                    </button>
+                  ) : (
+                    <p className="mt-1">-</p>
+                  )}
                 </div>
               </div>
 
@@ -1552,6 +1640,118 @@ const Orders = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Vendor Detail Dialog */}
+      <Dialog open={isVendorDetailOpen} onOpenChange={setIsVendorDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vendor Details</DialogTitle>
+            <DialogDescription>
+              {detailVendor?.vendor_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailVendor && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailVendor.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p>{detailVendor.type || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Contact</Label>
+                  <p>{detailVendor.contact_name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Phone</Label>
+                  <p>{detailVendor.phone || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Email</Label>
+                <p>{detailVendor.email || '-'}</p>
+              </div>
+              {(detailVendor.address_line1 || detailVendor.city) && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <p>{detailVendor.address_line1}</p>
+                  {detailVendor.address_line2 && <p>{detailVendor.address_line2}</p>}
+                  <p>
+                    {[detailVendor.city, detailVendor.state, detailVendor.postal_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                  {detailVendor.country && <p>{detailVendor.country}</p>}
+                </div>
+              )}
+              {detailVendor.website && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Website</Label>
+                  <p>{detailVendor.website}</p>
+                </div>
+              )}
+              {detailVendor.notes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Notes</Label>
+                  <p className="text-sm text-muted-foreground">{detailVendor.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsVendorDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Detail Dialog */}
+      <Dialog open={isLocationDetailOpen} onOpenChange={setIsLocationDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{detailLocationLabel} Location</DialogTitle>
+            <DialogDescription>
+              {detailLocation?.location_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailLocation && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailLocation.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p>{detailLocation.type || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Address</Label>
+                <p>{detailLocation.address_line1}</p>
+                {detailLocation.address_line2 && <p>{detailLocation.address_line2}</p>}
+                <p>
+                  {[detailLocation.city, detailLocation.state, detailLocation.postal_code]
+                    .filter(Boolean)
+                    .join(', ')}
+                </p>
+                {detailLocation.country && <p>{detailLocation.country}</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLocationDetailOpen(false)}>
               Close
             </Button>
           </DialogFooter>
