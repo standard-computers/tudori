@@ -2,3 +2,9 @@ project_id = "yxkteyttwdezqbfspgwb"
 
 [functions.lookup-vendor]
 verify_jwt = false
+
+[functions.parse-product-description]
+verify_jwt = false
+
+[functions.check-invitation]
+verify_jwt = false
