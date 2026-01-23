@@ -46,7 +46,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
 
@@ -215,6 +216,13 @@ const Orders = () => {
   // Product detail dialog state
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<DetailProduct | null>(null);
+  
+  // Multi-select state for bulk actions
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  
+  // Bulk status update state
+  const [bulkConfirmOrderIndex, setBulkConfirmOrderIndex] = useState(0);
+  const [bulkConfirmOrderIds, setBulkConfirmOrderIds] = useState<string[]>([]);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -956,7 +964,33 @@ const Orders = () => {
   const handleDeliveryItemsConfirm = async (items: { product_id: string; quantity: number }[]) => {
     if (pendingConfirmOrderId) {
       await executeStatusUpdate(pendingConfirmOrderId, 'confirmed', items);
-      setPendingConfirmOrderId(null);
+      
+      // Check if we're in bulk mode
+      if (bulkConfirmOrderIds.length > 0) {
+        const nextIndex = bulkConfirmOrderIndex + 1;
+        if (nextIndex < bulkConfirmOrderIds.length) {
+          setBulkConfirmOrderIndex(nextIndex);
+          // Small delay to let UI update, then trigger next dialog
+          setPendingConfirmOrderId(null);
+          setIsDeliveryItemsDialogOpen(false);
+          setTimeout(() => {
+            handleUpdateStatus(bulkConfirmOrderIds[nextIndex], 'confirmed');
+          }, 300);
+        } else {
+          // All done with bulk
+          setBulkConfirmOrderIds([]);
+          setBulkConfirmOrderIndex(0);
+          setSelectedOrderIds(new Set());
+          setPendingConfirmOrderId(null);
+          setIsDeliveryItemsDialogOpen(false);
+          toast.success(`Updated ${bulkConfirmOrderIds.length} order(s) to confirmed`);
+          fetchOrders();
+        }
+      } else {
+        setPendingConfirmOrderId(null);
+        setIsDeliveryItemsDialogOpen(false);
+        fetchOrders();
+      }
     }
   };
 
@@ -1000,6 +1034,69 @@ const Orders = () => {
     }
 
     toast.success('Purchase order deleted');
+    fetchOrders();
+  };
+
+  // Handle bulk status update
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    const selectedIds = Array.from(selectedOrderIds);
+    
+    if (selectedIds.length === 0) return;
+    
+    // If setting to 'confirmed', we need to process each one with the delivery flow
+    if (newStatus === 'confirmed') {
+      // Store the list and start processing them one by one
+      setBulkConfirmOrderIds(selectedIds);
+      setBulkConfirmOrderIndex(0);
+      // Trigger the first one
+      handleUpdateStatus(selectedIds[0], 'confirmed');
+      return;
+    }
+
+    // For other statuses, batch update directly
+    try {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({ status: newStatus })
+        .in('id', selectedIds);
+
+      if (error) {
+        toast.error('Failed to update status');
+        return;
+      }
+
+      toast.success(`Updated ${selectedIds.length} order(s) to ${newStatus}`);
+      setSelectedOrderIds(new Set());
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error bulk updating status:', error);
+      toast.error('Failed to update orders');
+    }
+  };
+
+  // Handle the next bulk confirm order after delivery dialog closes
+  const handleBulkDeliveryComplete = () => {
+    setIsDeliveryItemsDialogOpen(false);
+    setPendingConfirmOrderId(null);
+    
+    // If we're in bulk mode, process next
+    if (bulkConfirmOrderIds.length > 0) {
+      const nextIndex = bulkConfirmOrderIndex + 1;
+      if (nextIndex < bulkConfirmOrderIds.length) {
+        setBulkConfirmOrderIndex(nextIndex);
+        // Small delay to let UI update
+        setTimeout(() => {
+          handleUpdateStatus(bulkConfirmOrderIds[nextIndex], 'confirmed');
+        }, 300);
+      } else {
+        // All done
+        setBulkConfirmOrderIds([]);
+        setBulkConfirmOrderIndex(0);
+        setSelectedOrderIds(new Set());
+        toast.success(`Updated ${bulkConfirmOrderIds.length} order(s) to confirmed`);
+      }
+    }
+    
     fetchOrders();
   };
 
@@ -1047,6 +1144,29 @@ const Orders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {selectedOrderIds.size > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary">
+                      Update Status ({selectedOrderIds.size})
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {['draft', 'pending', 'sent', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((status) => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => handleBulkStatusUpdate(status)}
+                      >
+                        <Badge className={`${statusColors[status]} text-white mr-2`}>
+                          {status}
+                        </Badge>
+                        Set to {status}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <ImportExportButtons
                 importEnabled={isImportEnabled('purchase_order')}
                 exportEnabled={isExportEnabled('purchase_order')}
@@ -1079,6 +1199,8 @@ const Orders = () => {
         ) : (
           <OrdersTable 
             orders={orders} 
+            selectedOrderIds={selectedOrderIds}
+            onSelectionChange={setSelectedOrderIds}
             onViewOrder={handleViewOrder} 
             onDeleteOrder={handleDeleteOrder} 
           />
@@ -1406,12 +1528,21 @@ const Orders = () => {
           open={isDeliveryItemsDialogOpen}
           onOpenChange={(open) => {
             setIsDeliveryItemsDialogOpen(open);
-            if (!open) setPendingConfirmOrderId(null);
+            if (!open) {
+              setPendingConfirmOrderId(null);
+              // If user cancels during bulk, clear bulk state
+              if (bulkConfirmOrderIds.length > 0) {
+                setBulkConfirmOrderIds([]);
+                setBulkConfirmOrderIndex(0);
+              }
+            }
           }}
           purchaseOrderId={pendingConfirmOrderId}
           companyId={companyId}
           onConfirm={handleDeliveryItemsConfirm}
-          title="Select Items for Delivery"
+          title={bulkConfirmOrderIds.length > 0 
+            ? `Select Items for Delivery (${bulkConfirmOrderIndex + 1} of ${bulkConfirmOrderIds.length})`
+            : "Select Items for Delivery"}
           description="Choose which items to include in this delivery. You can select all or partial quantities."
         />
       )}
@@ -1876,10 +2007,14 @@ const Orders = () => {
 // Separate table component for sorting/filtering
 function OrdersTable({
   orders,
+  selectedOrderIds,
+  onSelectionChange,
   onViewOrder,
   onDeleteOrder,
 }: {
   orders: PurchaseOrder[];
+  selectedOrderIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
   onViewOrder: (order: PurchaseOrder) => void;
   onDeleteOrder: (id: string) => void;
 }) {
@@ -1893,6 +2028,31 @@ function OrdersTable({
   } = useTableSort(orders, 'po_number', 'desc');
 
   const hasFilters = Object.values(filters).some((v) => v);
+
+  const allSelected = sortedAndFilteredData.length > 0 && sortedAndFilteredData.every(o => selectedOrderIds.has(o.id));
+  const someSelected = sortedAndFilteredData.some(o => selectedOrderIds.has(o.id)) && !allSelected;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const newSelection = new Set(selectedOrderIds);
+      sortedAndFilteredData.forEach(o => newSelection.add(o.id));
+      onSelectionChange(newSelection);
+    } else {
+      const newSelection = new Set(selectedOrderIds);
+      sortedAndFilteredData.forEach(o => newSelection.delete(o.id));
+      onSelectionChange(newSelection);
+    }
+  };
+
+  const handleSelectRow = (orderId: string, checked: boolean) => {
+    const newSelection = new Set(selectedOrderIds);
+    if (checked) {
+      newSelection.add(orderId);
+    } else {
+      newSelection.delete(orderId);
+    }
+    onSelectionChange(newSelection);
+  };
 
   return (
     <div className="space-y-4">
@@ -1915,6 +2075,17 @@ function OrdersTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) {
+                      (el as HTMLButtonElement).dataset.state = someSelected ? 'indeterminate' : allSelected ? 'checked' : 'unchecked';
+                    }
+                  }}
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
               <SortableTableHead
                 label="PO #"
                 sortKey="po_number"
@@ -1973,7 +2144,13 @@ function OrdersTable({
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.map((order) => (
-              <TableRow key={order.id}>
+              <TableRow key={order.id} className={selectedOrderIds.has(order.id) ? 'bg-muted/50' : ''}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedOrderIds.has(order.id)}
+                    onCheckedChange={(checked) => handleSelectRow(order.id, !!checked)}
+                  />
+                </TableCell>
                 <TableCell className="font-mono">{order.po_number}</TableCell>
                 <TableCell>
                   <Badge className={`${statusColors[order.status]} text-white`}>
