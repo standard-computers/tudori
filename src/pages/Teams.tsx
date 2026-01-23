@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogBody,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -512,35 +513,37 @@ const Teams = () => {
               {isEditing ? 'Update team information' : 'Create a new team'}
             </DialogDescription>
           </DialogHeader>
-          <form id="team-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="team_id">Team ID</Label>
-              <Input
-                id="team_id"
-                value={formData.team_id}
-                onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
-                disabled={isEditing}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-          </form>
+          <DialogBody>
+            <form id="team-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="team_id">Team ID</Label>
+                <Input
+                  id="team_id"
+                  value={formData.team_id}
+                  onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
+                  disabled={isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </form>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
@@ -563,88 +566,88 @@ const Teams = () => {
               Add or remove employees from this team
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Add member form */}
-            <div className="flex gap-2 items-end">
-              <div className="flex-1">
-                <Label>Add Employee</Label>
-                <SearchableSelect
-                  options={employeeOptions}
-                  value={newMemberEmployeeId}
-                  onValueChange={setNewMemberEmployeeId}
-                  placeholder="Select employee..."
-                />
+          <DialogBody>
+            <div className="space-y-4">
+              {/* Add member form */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label>Add Employee</Label>
+                  <SearchableSelect
+                    options={employeeOptions}
+                    value={newMemberEmployeeId}
+                    onValueChange={setNewMemberEmployeeId}
+                    placeholder="Select employee..."
+                  />
+                </div>
+                <div className="w-32">
+                  <Label>Role</Label>
+                  <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEMBER_ROLES.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleAddMember} disabled={!newMemberEmployeeId}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add
+                </Button>
               </div>
-              <div className="w-32">
-                <Label>Role</Label>
-                <Select value={newMemberRole} onValueChange={setNewMemberRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEMBER_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>{r}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleAddMember} disabled={!newMemberEmployeeId}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add
-              </Button>
-            </div>
 
-            {/* Current members list */}
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableCell className="font-medium">Employee</TableCell>
-                    <TableCell className="font-medium">Role</TableCell>
-                    <TableCell className="font-medium w-20"></TableCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {member.employee?.first_name} {member.employee?.last_name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {member.employee?.job_title || member.employee?.employee_id}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{member.role}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => handleRemoveMember(member.id)}
-                        >
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {teamMembers.length === 0 && (
+              {/* Current members list */}
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                        No members in this team
-                      </TableCell>
+                      <TableCell className="font-medium">Employee</TableCell>
+                      <TableCell className="font-medium">Role</TableCell>
+                      <TableCell className="font-medium w-20"></TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {teamMembers.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {member.employee?.first_name} {member.employee?.last_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {member.employee?.job_title || member.employee?.employee_id}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{member.role}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => handleRemoveMember(member.id)}
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {teamMembers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                          No members in this team
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
-
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsMembersDialogOpen(false)}>
               Close
