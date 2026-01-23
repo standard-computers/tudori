@@ -941,7 +941,7 @@ const Requisitions = () => {
           </DialogHeader>
           
           {viewPO && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6">
               {/* Header Fields */}
               <div className="grid grid-cols-4 gap-4 pb-4 border-b">
                 <div>
