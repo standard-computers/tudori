@@ -1136,7 +1136,7 @@ const Orders = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="items" className="w-full px-6">
+          <Tabs defaultValue="items" className="w-full mt-4 px-6">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="items">Items</TabsTrigger>
               <TabsTrigger value="rates">Rates</TabsTrigger>
