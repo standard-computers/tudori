@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,10 +47,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
+import jsPDF from 'jspdf';
 
 interface TaxRate {
   id: string;
@@ -178,10 +180,23 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500',
 };
 
+interface Company {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  address_line1: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  phone: string | null;
+}
+
 const Orders = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
+  const { exportToExcel } = useExcel();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -189,6 +204,7 @@ const Orders = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   
   // Use vendor sources hook for combined vendors + DC/warehouse locations
   const { vendorOptions, plainVendorOptions, parseVendorValue, getVendorDisplayName } = useVendorSources(companyId);
@@ -295,6 +311,17 @@ const Orders = () => {
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
+      
+      // Also fetch company details for logo
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('id, name, logo_url, address_line1, city, state, postal_code, country, phone')
+        .eq('id', profile.company_id)
+        .single();
+      
+      if (companyData) {
+        setCompany(companyData);
+      }
     }
     setLoading(false);
   };
@@ -502,6 +529,237 @@ const Orders = () => {
       vendor: vendorData,
     });
     setIsProductDetailOpen(true);
+  };
+
+  // Download PO as XLSX
+  const handleDownloadXlsx = async () => {
+    if (!viewOrder || viewItems.length === 0) return;
+    
+    const data = viewItems.map((item, index) => ({
+      'Line #': index + 1,
+      'Product ID': item.product?.product_id || '',
+      'Product Name': item.product?.name || 'Unknown',
+      'Quantity': item.quantity,
+      'Unit Price': Number(item.unit_price || 0).toFixed(2),
+      'Total': Number(item.total_price || 0).toFixed(2),
+    }));
+    
+    // Add summary rows
+    data.push({
+      'Line #': '',
+      'Product ID': '',
+      'Product Name': '',
+      'Quantity': '',
+      'Unit Price': 'Subtotal:',
+      'Total': Number(viewOrder.subtotal || 0).toFixed(2),
+    } as any);
+    
+    if (viewTaxRates.length > 0) {
+      viewTaxRates.forEach(vt => {
+        data.push({
+          'Line #': '',
+          'Product ID': '',
+          'Product Name': '',
+          'Quantity': '',
+          'Unit Price': `${vt.tax_rate.name} (${vt.tax_rate.rate}%):`,
+          'Total': Number(vt.tax_amount || 0).toFixed(2),
+        } as any);
+      });
+    }
+    
+    data.push({
+      'Line #': '',
+      'Product ID': '',
+      'Product Name': '',
+      'Quantity': '',
+      'Unit Price': 'Total:',
+      'Total': Number(viewOrder.total_amount || 0).toFixed(2),
+    } as any);
+    
+    await exportToExcel(data, `PO_${viewOrder.po_number}.xlsx`, 'Purchase Order');
+    toast.success('Downloaded as XLSX');
+  };
+
+  // Download PO as PDF
+  const handleDownloadPdf = async () => {
+    if (!viewOrder || viewItems.length === 0) return;
+    
+    const doc = new jsPDF();
+    let yPos = 20;
+    const leftMargin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Add company logo if available
+    if (company?.logo_url) {
+      try {
+        const response = await fetch(company.logo_url);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        
+        await new Promise<void>((resolve) => {
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            doc.addImage(base64data, 'PNG', leftMargin, yPos, 40, 20);
+            resolve();
+          };
+          reader.readAsDataURL(blob);
+        });
+        
+        yPos += 25;
+      } catch (error) {
+        console.error('Failed to load company logo:', error);
+      }
+    }
+    
+    // Company name
+    if (company?.name) {
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(company.name, leftMargin, yPos);
+      yPos += 6;
+    }
+    
+    // Company address
+    if (company?.address_line1) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(company.address_line1, leftMargin, yPos);
+      yPos += 4;
+      doc.text(`${company.city}, ${company.state} ${company.postal_code}`, leftMargin, yPos);
+      yPos += 4;
+      if (company.phone) {
+        doc.text(company.phone, leftMargin, yPos);
+        yPos += 4;
+      }
+    }
+    
+    yPos += 6;
+    
+    // PO Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PURCHASE ORDER', pageWidth - leftMargin, 25, { align: 'right' });
+    
+    doc.setFontSize(12);
+    doc.text(viewOrder.po_number, pageWidth - leftMargin, 33, { align: 'right' });
+    
+    // Order date
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${new Date(viewOrder.order_date).toLocaleDateString()}`, pageWidth - leftMargin, 40, { align: 'right' });
+    
+    yPos = Math.max(yPos, 50);
+    
+    // Vendor info
+    if (viewOrder.vendor) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Vendor:', leftMargin, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(viewOrder.vendor.name, leftMargin + 20, yPos);
+      yPos += 6;
+    }
+    
+    // Ship To
+    if (viewOrder.location) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Ship To:', leftMargin, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(viewOrder.location.name, leftMargin + 20, yPos);
+      yPos += 6;
+    }
+    
+    // Bill To
+    if (viewOrder.bill_to_location) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Bill To:', leftMargin, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(viewOrder.bill_to_location.name, leftMargin + 20, yPos);
+      yPos += 6;
+    }
+    
+    yPos += 10;
+    
+    // Table header
+    const colWidths = [15, 35, 55, 20, 25, 25];
+    const tableHeaders = ['#', 'Item ID', 'Product', 'Qty', 'Unit Price', 'Total'];
+    
+    doc.setFillColor(240, 240, 240);
+    doc.rect(leftMargin, yPos - 4, pageWidth - leftMargin * 2, 8, 'F');
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    let xPos = leftMargin;
+    tableHeaders.forEach((header, i) => {
+      doc.text(header, xPos + 2, yPos);
+      xPos += colWidths[i];
+    });
+    
+    yPos += 8;
+    
+    // Table rows
+    doc.setFont('helvetica', 'normal');
+    viewItems.forEach((item, index) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      xPos = leftMargin;
+      doc.text(String(index + 1), xPos + 2, yPos);
+      xPos += colWidths[0];
+      doc.text(item.product?.product_id || '-', xPos + 2, yPos);
+      xPos += colWidths[1];
+      const productName = item.product?.name || 'Unknown';
+      doc.text(productName.substring(0, 30), xPos + 2, yPos);
+      xPos += colWidths[2];
+      doc.text(String(item.quantity), xPos + 2, yPos);
+      xPos += colWidths[3];
+      doc.text(`$${Number(item.unit_price || 0).toFixed(2)}`, xPos + 2, yPos);
+      xPos += colWidths[4];
+      doc.text(`$${Number(item.total_price || 0).toFixed(2)}`, xPos + 2, yPos);
+      
+      yPos += 6;
+    });
+    
+    // Separator line
+    yPos += 4;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
+    yPos += 8;
+    
+    // Totals
+    const totalsX = pageWidth - 70;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text('Subtotal:', totalsX, yPos);
+    doc.text(`$${Number(viewOrder.subtotal || 0).toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+    yPos += 6;
+    
+    viewTaxRates.forEach(vt => {
+      doc.text(`${vt.tax_rate.name} (${vt.tax_rate.rate}%):`, totalsX, yPos);
+      doc.text(`$${Number(vt.tax_amount || 0).toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+      yPos += 6;
+    });
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total:', totalsX, yPos);
+    doc.text(`$${Number(viewOrder.total_amount || 0).toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+    
+    // Notes
+    if (viewOrder.notes) {
+      yPos += 15;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Notes:', leftMargin, yPos);
+      yPos += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      const splitNotes = doc.splitTextToSize(viewOrder.notes, pageWidth - leftMargin * 2);
+      doc.text(splitNotes, leftMargin, yPos);
+    }
+    
+    doc.save(`PO_${viewOrder.po_number}.pdf`);
+    toast.success('Downloaded as PDF');
   };
 
   const handleCreateClick = () => {
@@ -1825,6 +2083,25 @@ const Orders = () => {
           )}
 
           <DialogFooter>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={handleDownloadXlsx}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Download as XLSX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadPdf}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Download as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
             </Button>
