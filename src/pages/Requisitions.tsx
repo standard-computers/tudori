@@ -225,6 +225,40 @@ const Requisitions = () => {
     }
     setSelectedIds(new Set());
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    // Check if any selected requisitions have linked POs
+    const selectedReqs = requisitions.filter(r => selectedIds.has(r.id));
+    const { data: linkedPOs } = await supabase
+      .from('purchase_orders')
+      .select('requisition_id, po_number')
+      .in('requisition_id', selectedReqs.map(r => r.id));
+
+    if (linkedPOs && linkedPOs.length > 0) {
+      const blockedIds = new Set(linkedPOs.map(po => po.requisition_id));
+      const blockedReqs = selectedReqs.filter(r => blockedIds.has(r.id));
+      toast.error(`Cannot delete ${blockedReqs.length} requisition(s) already converted to POs`);
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} requisition(s)?`)) return;
+
+    const { error } = await supabase
+      .from('requisitions')
+      .delete()
+      .in('id', Array.from(selectedIds));
+
+    if (error) {
+      toast.error('Failed to delete requisitions');
+      return;
+    }
+
+    toast.success(`Deleted ${selectedIds.size} requisition(s)`);
+    setSelectedIds(new Set());
+    fetchRequisitions();
+  };
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
@@ -901,6 +935,12 @@ const Requisitions = () => {
                 onImport={handleImport}
                 onDownloadTemplate={handleDownloadTemplate}
               />
+              {selectedIds.size > 0 && (
+                <Button onClick={handleBulkDelete} variant="destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete ({selectedIds.size})
+                </Button>
+              )}
               {selectedConvertibleReqs.length > 0 && (
                 <Button onClick={handleBulkConvert} variant="secondary">
                   <ShoppingCart className="w-4 h-4 mr-2" />
