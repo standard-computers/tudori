@@ -49,7 +49,7 @@
     --input: 220 13% 88%;
     --ring: 222 47% 18%;
 
-    --radius: 0;
+    --radius: 0.75rem;
 
     /* Sidebar */
     --sidebar-background: 222 47% 12%;
