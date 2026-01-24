@@ -75,6 +75,10 @@ interface Product {
   length: number | null;
   height: number | null;
   weight: number | null;
+  width_uom: string | null;
+  length_uom: string | null;
+  height_uom: string | null;
+  weight_uom: string | null;
   status: string;
   vendors?: { name: string } | null;
 }
@@ -112,6 +116,25 @@ interface Vendor {
 
 const PRODUCT_CATEGORIES = ['Raw Materials', 'Components', 'Finished Goods', 'Packaging', 'Equipment', 'Supplies', 'Services'];
 const PRODUCT_UNITS = ['each', 'box', 'case', 'pallet', 'kg', 'lb', 'liter', 'gallon', 'meter', 'foot', 'roll', 'bag', 'bundle', 'sheet'];
+
+// Dimension UoM options
+const DIMENSION_UOMS = [
+  { value: 'in', label: 'in - Inches' },
+  { value: 'ft', label: 'ft - Feet' },
+  { value: 'cm', label: 'cm - Centimeters' },
+  { value: 'm', label: 'm - Meters' },
+  { value: 'mm', label: 'mm - Millimeters' },
+  { value: 'yd', label: 'yd - Yards' },
+];
+
+const WEIGHT_UOMS = [
+  { value: 'lb', label: 'lb - Pounds' },
+  { value: 'oz', label: 'oz - Ounces' },
+  { value: 'kg', label: 'kg - Kilograms' },
+  { value: 'g', label: 'g - Grams' },
+  { value: 'mg', label: 'mg - Milligrams' },
+  { value: 'ton', label: 'ton - Tons' },
+];
 
 // Separated table component with sorting/filtering
 const ProductTable = ({
@@ -349,6 +372,10 @@ const Products = () => {
     length: '',
     height: '',
     weight: '',
+    width_uom: 'in',
+    length_uom: 'in',
+    height_uom: 'in',
+    weight_uom: 'lb',
     status: 'active',
   });
   const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
@@ -371,7 +398,7 @@ const Products = () => {
   const EXPORT_COLUMNS = [
     'product_id', 'name', 'sku', 'description', 'category', 'price', 'unit',
     'vendor_name', 'is_batched', 'min_shelf_life_days', 'keep_inventory',
-    'width', 'length', 'height', 'weight'
+    'width', 'width_uom', 'length', 'length_uom', 'height', 'height_uom', 'weight', 'weight_uom'
   ];
 
   // Export products to XLSX
@@ -396,9 +423,13 @@ const Products = () => {
       min_shelf_life_days: p.min_shelf_life_days ?? '',
       keep_inventory: p.keep_inventory ? 'Yes' : 'No',
       width: p.width ?? '',
+      width_uom: p.width_uom || 'in',
       length: p.length ?? '',
+      length_uom: p.length_uom || 'in',
       height: p.height ?? '',
+      height_uom: p.height_uom || 'in',
       weight: p.weight ?? '',
+      weight_uom: p.weight_uom || 'lb',
     }));
 
     await exportToExcel(
@@ -424,9 +455,13 @@ const Products = () => {
       min_shelf_life_days: '',
       keep_inventory: 'Yes',
       width: '',
+      width_uom: 'in',
       length: '',
+      length_uom: 'in',
       height: '',
+      height_uom: 'in',
       weight: '',
+      weight_uom: 'lb',
     }];
 
     await exportToExcel(templateData, 'products_import_template.xlsx', 'Products Template');
@@ -478,9 +513,13 @@ const Products = () => {
             min_shelf_life_days: row.min_shelf_life_days ? parseInt(row.min_shelf_life_days) : null,
             keep_inventory: row.keep_inventory?.toString().toLowerCase() !== 'no',
             width: row.width ? parseFloat(row.width) : null,
+            width_uom: row.width_uom?.toString() || 'in',
             length: row.length ? parseFloat(row.length) : null,
+            length_uom: row.length_uom?.toString() || 'in',
             height: row.height ? parseFloat(row.height) : null,
+            height_uom: row.height_uom?.toString() || 'in',
             weight: row.weight ? parseFloat(row.weight) : null,
+            weight_uom: row.weight_uom?.toString() || 'lb',
           };
 
           if (!productData.name) {
@@ -671,6 +710,10 @@ const Products = () => {
       length: '',
       height: '',
       weight: '',
+      width_uom: 'in',
+      length_uom: 'in',
+      height_uom: 'in',
+      weight_uom: 'lb',
       status: 'active',
     });
     setUoms([]);
@@ -709,6 +752,10 @@ const Products = () => {
       length: product.length?.toString() || '',
       height: product.height?.toString() || '',
       weight: product.weight?.toString() || '',
+      width_uom: product.width_uom || 'in',
+      length_uom: product.length_uom || 'in',
+      height_uom: product.height_uom || 'in',
+      weight_uom: product.weight_uom || 'lb',
       status: product.status || 'active',
     });
     setIsEditing(true);
@@ -873,6 +920,10 @@ const Products = () => {
           length: formData.length ? parseFloat(formData.length) : null,
           height: formData.height ? parseFloat(formData.height) : null,
           weight: formData.weight ? parseFloat(formData.weight) : null,
+          width_uom: formData.width_uom || 'in',
+          length_uom: formData.length_uom || 'in',
+          height_uom: formData.height_uom || 'in',
+          weight_uom: formData.weight_uom || 'lb',
           status: formData.status,
         })
         .eq('id', editingId);
@@ -901,6 +952,10 @@ const Products = () => {
           length: formData.length ? parseFloat(formData.length) : null,
           height: formData.height ? parseFloat(formData.height) : null,
           weight: formData.weight ? parseFloat(formData.weight) : null,
+          width_uom: formData.width_uom || 'in',
+          length_uom: formData.length_uom || 'in',
+          height_uom: formData.height_uom || 'in',
+          weight_uom: formData.weight_uom || 'lb',
           status: formData.status,
         })
         .select('id')
@@ -1072,6 +1127,14 @@ const Products = () => {
                           is_batched: product.is_batched || false,
                           min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
                           keep_inventory: product.keep_inventory ?? true,
+                          width: product.width?.toString() || '',
+                          length: product.length?.toString() || '',
+                          height: product.height?.toString() || '',
+                          weight: product.weight?.toString() || '',
+                          width_uom: product.width_uom || 'in',
+                          length_uom: product.length_uom || 'in',
+                          height_uom: product.height_uom || 'in',
+                          weight_uom: product.weight_uom || 'lb',
                         }));
                         
                         // Also copy components if this is a Finished Goods product
@@ -1267,51 +1330,175 @@ const Products = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="width">Width</Label>
-                          <Input
-                            id="width"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.width}
-                            onChange={(e) => setFormData({ ...formData, width: e.target.value })}
-                            placeholder="0.00"
-                          />
+                          <div className="flex gap-2">
+                            <Input
+                              id="width"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={formData.width}
+                              onChange={(e) => setFormData({ ...formData, width: e.target.value })}
+                              placeholder="0.00"
+                              className="flex-1"
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-20 justify-between px-2">
+                                  {formData.width_uom}
+                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[180px] p-0" align="end">
+                                <Command>
+                                  <CommandInput placeholder="Search UoM..." />
+                                  <CommandList>
+                                    <CommandEmpty>No UoM found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {DIMENSION_UOMS.map((uom) => (
+                                        <CommandItem
+                                          key={uom.value}
+                                          value={uom.value}
+                                          onSelect={() => setFormData({ ...formData, width_uom: uom.value })}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", formData.width_uom === uom.value ? "opacity-100" : "opacity-0")} />
+                                          {uom.label}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="length">Length</Label>
-                          <Input
-                            id="length"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.length}
-                            onChange={(e) => setFormData({ ...formData, length: e.target.value })}
-                            placeholder="0.00"
-                          />
+                          <div className="flex gap-2">
+                            <Input
+                              id="length"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={formData.length}
+                              onChange={(e) => setFormData({ ...formData, length: e.target.value })}
+                              placeholder="0.00"
+                              className="flex-1"
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-20 justify-between px-2">
+                                  {formData.length_uom}
+                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[180px] p-0" align="end">
+                                <Command>
+                                  <CommandInput placeholder="Search UoM..." />
+                                  <CommandList>
+                                    <CommandEmpty>No UoM found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {DIMENSION_UOMS.map((uom) => (
+                                        <CommandItem
+                                          key={uom.value}
+                                          value={uom.value}
+                                          onSelect={() => setFormData({ ...formData, length_uom: uom.value })}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", formData.length_uom === uom.value ? "opacity-100" : "opacity-0")} />
+                                          {uom.label}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="height">Height</Label>
-                          <Input
-                            id="height"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.height}
-                            onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                            placeholder="0.00"
-                          />
+                          <div className="flex gap-2">
+                            <Input
+                              id="height"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={formData.height}
+                              onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                              placeholder="0.00"
+                              className="flex-1"
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-20 justify-between px-2">
+                                  {formData.height_uom}
+                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[180px] p-0" align="end">
+                                <Command>
+                                  <CommandInput placeholder="Search UoM..." />
+                                  <CommandList>
+                                    <CommandEmpty>No UoM found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {DIMENSION_UOMS.map((uom) => (
+                                        <CommandItem
+                                          key={uom.value}
+                                          value={uom.value}
+                                          onSelect={() => setFormData({ ...formData, height_uom: uom.value })}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", formData.height_uom === uom.value ? "opacity-100" : "opacity-0")} />
+                                          {uom.label}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="weight">Weight</Label>
-                          <Input
-                            id="weight"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.weight}
-                            onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                            placeholder="0.00"
-                          />
+                          <div className="flex gap-2">
+                            <Input
+                              id="weight"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={formData.weight}
+                              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                              placeholder="0.00"
+                              className="flex-1"
+                            />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-20 justify-between px-2">
+                                  {formData.weight_uom}
+                                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[180px] p-0" align="end">
+                                <Command>
+                                  <CommandInput placeholder="Search UoM..." />
+                                  <CommandList>
+                                    <CommandEmpty>No UoM found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {WEIGHT_UOMS.map((uom) => (
+                                        <CommandItem
+                                          key={uom.value}
+                                          value={uom.value}
+                                          onSelect={() => setFormData({ ...formData, weight_uom: uom.value })}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", formData.weight_uom === uom.value ? "opacity-100" : "opacity-0")} />
+                                          {uom.label}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                       </div>
                       
@@ -1322,7 +1509,7 @@ const Products = () => {
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">Volume</p>
                               <p className="text-lg font-semibold">
-                                {(parseFloat(formData.width) * parseFloat(formData.length) * parseFloat(formData.height)).toFixed(2)}
+                                {(parseFloat(formData.width) * parseFloat(formData.length) * parseFloat(formData.height)).toFixed(2)} {formData.width_uom}³
                               </p>
                             </div>
                             <div className="space-y-1">
@@ -1332,7 +1519,7 @@ const Products = () => {
                                   parseFloat(formData.width) * parseFloat(formData.length) +
                                   parseFloat(formData.length) * parseFloat(formData.height) +
                                   parseFloat(formData.height) * parseFloat(formData.width)
-                                )).toFixed(2)}
+                                )).toFixed(2)} {formData.width_uom}²
                               </p>
                             </div>
                           </div>
