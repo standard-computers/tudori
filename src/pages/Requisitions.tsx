@@ -189,6 +189,7 @@ const Requisitions = () => {
   
   // View dialog state
   const [viewRequisition, setViewRequisition] = useState<Requisition | null>(null);
+  const [viewLinkedPO, setViewLinkedPO] = useState<{ po_number: string } | null>(null);
   const [viewItems, setViewItems] = useState<RequisitionItem[]>([]);
   
   // PO View dialog state (for viewing created PO after conversion)
@@ -497,6 +498,7 @@ const Requisitions = () => {
 
   const handleViewRequisition = async (requisition: Requisition) => {
     setViewRequisition(requisition);
+    setViewLinkedPO(null);
     
     // Fetch items for this requisition
     const { data: items } = await supabase
@@ -508,6 +510,15 @@ const Requisitions = () => {
       .eq('requisition_id', requisition.id);
 
     setViewItems(items || []);
+    
+    // Fetch linked PO if exists
+    const { data: linkedPO } = await supabase
+      .from('purchase_orders')
+      .select('po_number')
+      .eq('requisition_id', requisition.id)
+      .maybeSingle();
+    
+    setViewLinkedPO(linkedPO);
     setIsViewDialogOpen(true);
   };
 
@@ -1162,6 +1173,14 @@ const Requisitions = () => {
                     </button>
                   ) : (
                     <p className="mt-1">All Vendors</p>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Associated PO</Label>
+                  {viewLinkedPO ? (
+                    <p className="mt-1 text-sm font-mono">{viewLinkedPO.po_number}</p>
+                  ) : (
+                    <p className="mt-1 text-muted-foreground">-</p>
                   )}
                 </div>
               </div>
