@@ -75,6 +75,52 @@ interface Vendor {
   vendor_id: string;
 }
 
+// Extended interfaces for nested detail dialogs
+interface VendorDetail {
+  id: string;
+  vendor_id: string;
+  name: string;
+  type: string | null;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  website: string | null;
+  notes: string | null;
+}
+
+interface LocationDetail {
+  id: string;
+  location_id: string;
+  name: string;
+  type: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+}
+
+interface PODetail {
+  id: string;
+  po_number: string;
+  status: string;
+  order_date: string | null;
+  expected_delivery_date: string | null;
+  subtotal: number | null;
+  tax_amount: number | null;
+  total_amount: number | null;
+  notes: string | null;
+  vendor?: { name: string; vendor_id: string } | null;
+  location?: { name: string; location_id: string } | null;
+}
+
 interface DeliveryItem {
   id: string;
   delivery_id: string;
@@ -119,6 +165,14 @@ const Deliveries = () => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [viewDelivery, setViewDelivery] = useState<Delivery | null>(null);
   const [viewItems, setViewItems] = useState<DeliveryItem[]>([]);
+  
+  // Nested detail dialog states
+  const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
+  const [isLocationDetailOpen, setIsLocationDetailOpen] = useState(false);
+  const [isPODetailOpen, setIsPODetailOpen] = useState(false);
+  const [detailVendor, setDetailVendor] = useState<VendorDetail | null>(null);
+  const [detailLocation, setDetailLocation] = useState<LocationDetail | null>(null);
+  const [detailPO, setDetailPO] = useState<PODetail | null>(null);
   const [activeTab, setActiveTab] = useState('details');
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState('');
@@ -377,6 +431,52 @@ const Deliveries = () => {
       .eq('delivery_id', delivery.id);
     setViewItems(data || []);
     setIsViewOpen(true);
+  };
+
+  // Helper to open vendor detail dialog
+  const openVendorDetail = async (vendorId: string | null) => {
+    if (!vendorId) return;
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('id', vendorId)
+      .single();
+    if (vendor) {
+      setDetailVendor(vendor as VendorDetail);
+      setIsVendorDetailOpen(true);
+    }
+  };
+
+  // Helper to open location detail dialog
+  const openLocationDetail = async (locationId: string | null) => {
+    if (!locationId) return;
+    const { data: location } = await supabase
+      .from('locations')
+      .select('*')
+      .eq('id', locationId)
+      .single();
+    if (location) {
+      setDetailLocation(location as LocationDetail);
+      setIsLocationDetailOpen(true);
+    }
+  };
+
+  // Helper to open PO detail dialog
+  const openPODetail = async (poId: string | null) => {
+    if (!poId) return;
+    const { data: po } = await supabase
+      .from('purchase_orders')
+      .select(`
+        *,
+        vendor:vendors(name, vendor_id),
+        location:locations!purchase_orders_location_id_fkey(name, location_id)
+      `)
+      .eq('id', poId)
+      .single();
+    if (po) {
+      setDetailPO(po as unknown as PODetail);
+      setIsPODetailOpen(true);
+    }
   };
 
   const handleEdit = (delivery: Delivery) => {
@@ -898,17 +998,47 @@ const Deliveries = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Purchase Order</Label>
-                    <p className="text-sm">{viewDelivery.purchase_order?.po_number || '—'}</p>
+                    {viewDelivery.purchase_order?.po_number ? (
+                      <button
+                        type="button"
+                        onClick={() => openPODetail(viewDelivery.purchase_order_id)}
+                        className="text-sm text-primary hover:underline font-mono block"
+                      >
+                        {viewDelivery.purchase_order.po_number}
+                      </button>
+                    ) : (
+                      <p className="text-sm">—</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Vendor</Label>
-                    <p className="text-sm">{viewDelivery.vendor?.name || '—'}</p>
+                    {viewDelivery.vendor?.name ? (
+                      <button
+                        type="button"
+                        onClick={() => openVendorDetail(viewDelivery.vendor_id)}
+                        className="text-sm text-primary hover:underline block"
+                      >
+                        {viewDelivery.vendor.name}
+                      </button>
+                    ) : (
+                      <p className="text-sm">—</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Destination</Label>
-                    <p className="text-sm">{viewDelivery.location?.name || '—'}</p>
+                    {viewDelivery.location?.name ? (
+                      <button
+                        type="button"
+                        onClick={() => openLocationDetail(viewDelivery.location_id)}
+                        className="text-sm text-primary hover:underline block"
+                      >
+                        {viewDelivery.location.name}
+                      </button>
+                    ) : (
+                      <p className="text-sm">—</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -991,6 +1121,179 @@ const Deliveries = () => {
             }}>
               <Pencil className="w-4 h-4 mr-2" />
               Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Vendor Detail Dialog */}
+      <Dialog open={isVendorDetailOpen} onOpenChange={setIsVendorDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Vendor Details</DialogTitle>
+            <DialogDescription>
+              {detailVendor?.vendor_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailVendor && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailVendor.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p>{detailVendor.type || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Contact</Label>
+                  <p>{detailVendor.contact_name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Phone</Label>
+                  <p>{detailVendor.phone || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Email</Label>
+                <p>{detailVendor.email || '-'}</p>
+              </div>
+              {(detailVendor.address_line1 || detailVendor.city) && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <p>{detailVendor.address_line1}</p>
+                  {detailVendor.address_line2 && <p>{detailVendor.address_line2}</p>}
+                  <p>
+                    {[detailVendor.city, detailVendor.state, detailVendor.postal_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                  {detailVendor.country && <p>{detailVendor.country}</p>}
+                </div>
+              )}
+              {detailVendor.website && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Website</Label>
+                  <p>{detailVendor.website}</p>
+                </div>
+              )}
+              {detailVendor.notes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Notes</Label>
+                  <p className="text-sm text-muted-foreground">{detailVendor.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsVendorDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Detail Dialog */}
+      <Dialog open={isLocationDetailOpen} onOpenChange={setIsLocationDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Destination Details</DialogTitle>
+            <DialogDescription>
+              {detailLocation?.location_id}
+            </DialogDescription>
+          </DialogHeader>
+          {detailLocation && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailLocation.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p>{detailLocation.type || '-'}</p>
+                </div>
+              </div>
+              {(detailLocation.address_line1 || detailLocation.city) && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <p>{detailLocation.address_line1}</p>
+                  {detailLocation.address_line2 && <p>{detailLocation.address_line2}</p>}
+                  <p>
+                    {[detailLocation.city, detailLocation.state, detailLocation.postal_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                  {detailLocation.country && <p>{detailLocation.country}</p>}
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLocationDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PO Detail Dialog */}
+      <Dialog open={isPODetailOpen} onOpenChange={setIsPODetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Purchase Order Details</DialogTitle>
+            <DialogDescription>
+              {detailPO?.po_number}
+            </DialogDescription>
+          </DialogHeader>
+          {detailPO && (
+            <div className="space-y-4 px-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Status</Label>
+                  <Badge variant="outline" className="mt-1">
+                    {detailPO.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Vendor</Label>
+                  <p className="font-medium">{detailPO.vendor?.name || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Order Date</Label>
+                  <p>{detailPO.order_date ? format(new Date(detailPO.order_date), 'MMM d, yyyy') : '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Expected Delivery</Label>
+                  <p>{detailPO.expected_delivery_date ? format(new Date(detailPO.expected_delivery_date), 'MMM d, yyyy') : '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Location</Label>
+                  <p>{detailPO.location?.name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Total Amount</Label>
+                  <p className="font-medium">${Number(detailPO.total_amount || 0).toFixed(2)}</p>
+                </div>
+              </div>
+              {detailPO.notes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Notes</Label>
+                  <p className="text-sm text-muted-foreground">{detailPO.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPODetailOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
