@@ -36,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye } from 'lucide-react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -116,6 +116,9 @@ const Deliveries = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextDeliveryId, setNextDeliveryId] = useState('DEL-0001');
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewDelivery, setViewDelivery] = useState<Delivery | null>(null);
+  const [viewItems, setViewItems] = useState<DeliveryItem[]>([]);
   const [activeTab, setActiveTab] = useState('details');
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState('');
@@ -361,6 +364,20 @@ const Deliveries = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleView = async (delivery: Delivery) => {
+    setViewDelivery(delivery);
+    // Fetch items for this delivery
+    const { data } = await supabase
+      .from('delivery_items')
+      .select(`
+        *,
+        product:products(name, product_id)
+      `)
+      .eq('delivery_id', delivery.id);
+    setViewItems(data || []);
+    setIsViewOpen(true);
+  };
 
   const handleEdit = (delivery: Delivery) => {
     setFormData({
@@ -823,6 +840,13 @@ const Deliveries = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleView(delivery)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleEdit(delivery)}
                         >
                           <Pencil className="w-4 h-4" />
@@ -843,6 +867,134 @@ const Deliveries = () => {
           </div>
         )}
       </main>
+
+      {/* View Delivery Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>View Delivery</DialogTitle>
+            <DialogDescription>
+              {viewDelivery?.delivery_id}
+            </DialogDescription>
+          </DialogHeader>
+          {viewDelivery && (
+            <Tabs defaultValue="details" className="px-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="items">
+                  Items {viewItems.length > 0 && `(${viewItems.length})`}
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Status</Label>
+                    <div>
+                      <Badge variant="outline" className={getStatusColor(viewDelivery.status)}>
+                        {viewDelivery.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Purchase Order</Label>
+                    <p className="text-sm">{viewDelivery.purchase_order?.po_number || '—'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Vendor</Label>
+                    <p className="text-sm">{viewDelivery.vendor?.name || '—'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Destination</Label>
+                    <p className="text-sm">{viewDelivery.location?.name || '—'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Carrier</Label>
+                    <p className="text-sm">{viewDelivery.carrier || '—'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Tracking Number</Label>
+                    <p className="text-sm font-mono">{viewDelivery.tracking_number || '—'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Expected Date</Label>
+                    <p className="text-sm">
+                      {viewDelivery.expected_date 
+                        ? format(new Date(viewDelivery.expected_date), 'MMM d, yyyy')
+                        : '—'}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Delivered Date</Label>
+                    <p className="text-sm">
+                      {viewDelivery.delivered_date 
+                        ? format(new Date(viewDelivery.delivered_date), 'MMM d, yyyy')
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+                {viewDelivery.notes && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Notes</Label>
+                    <p className="text-sm">{viewDelivery.notes}</p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="items" className="mt-4">
+                {viewItems.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p>No items in this delivery</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                              <div className="text-sm text-muted-foreground font-mono">
+                                {item.product?.product_id}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              setIsViewOpen(false);
+              if (viewDelivery) handleEdit(viewDelivery);
+            }}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
