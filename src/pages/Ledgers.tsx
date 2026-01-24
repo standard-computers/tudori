@@ -626,7 +626,7 @@ const Ledgers = () => {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-6">
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                 <TabsList className="grid w-full grid-cols-1">
                   <TabsTrigger value="general">General</TabsTrigger>

@@ -1480,7 +1480,7 @@ const Orders = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pb-6">
           {/* Header Fields */}
           <div className="grid grid-cols-3 gap-4 pb-4 border-b px-6">
             <div className="space-y-2">
@@ -1823,7 +1823,7 @@ const Orders = () => {
           </DialogHeader>
           
           {viewOrder && (
-            <div className="flex-1 overflow-y-auto space-y-4 px-6">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 pb-6">
               {/* Header Fields */}
               <div className="grid grid-cols-5 gap-4 pb-4 border-b">
                 <div>

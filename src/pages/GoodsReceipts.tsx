@@ -553,7 +553,7 @@ const GoodsReceipts = () => {
                     <TabsTrigger value="items" disabled={!isEditing}>Items</TabsTrigger>
                   </TabsList>
                   <TabsContent value="details">
-                    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 py-4">
+                    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 py-4 pb-6">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="receipt_number">Receipt Number</Label>

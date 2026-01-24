@@ -534,7 +534,7 @@ const Customers = () => {
                     </div>
                   )}
                   
-                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                  <div className="flex-1 overflow-y-auto px-6 py-4 pb-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="customer_id">Customer ID</Label>
