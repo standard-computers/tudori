@@ -1165,7 +1165,7 @@ const Products = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <div className="flex-1 overflow-y-auto px-6">
+                  <div className="flex-1 overflow-y-auto px-6 pb-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                     <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-5' : 'grid-cols-4'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
@@ -1873,7 +1873,7 @@ const Products = () => {
                   </Tabs>
                   </div>
                   
-                  <DialogFooter className="mt-6 px-6 pb-6 sticky bottom-0 bg-background border-t pt-4">
+                  <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
