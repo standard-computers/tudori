@@ -1825,7 +1825,7 @@ const Orders = () => {
           {viewOrder && (
             <div className="flex-1 overflow-y-auto space-y-4 px-6">
               {/* Header Fields */}
-              <div className="grid grid-cols-4 gap-4 pb-4 border-b">
+              <div className="grid grid-cols-5 gap-4 pb-4 border-b">
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
                   <div className="mt-1">
@@ -1888,6 +1888,14 @@ const Orders = () => {
                     </button>
                   ) : (
                     <p className="mt-1">-</p>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">From Requisition</Label>
+                  {viewOrder.requisition ? (
+                    <p className="mt-1 text-sm font-mono">{viewOrder.requisition.requisition_id}</p>
+                  ) : (
+                    <p className="mt-1 text-muted-foreground">-</p>
                   )}
                 </div>
               </div>
@@ -2074,12 +2082,6 @@ const Orders = () => {
                       </p>
                     )}
                   </div>
-                  {viewOrder.requisition && (
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground">From Requisition</Label>
-                      <p className="text-sm">{viewOrder.requisition.requisition_id}</p>
-                    </div>
-                  )}
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Created Date</Label>
                     <p className="text-sm">{new Date(viewOrder.created_at).toLocaleDateString()}</p>
