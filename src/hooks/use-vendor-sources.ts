@@ -39,14 +39,15 @@ export function useVendorSources(companyId: string | null, options?: UseVendorSo
     const fetchVendorSources = async () => {
       setLoading(true);
       
-      // Build locations query - either all locations or just DC/warehouse
+      // Build locations query - either all locations or just those marked as internal vendors
       let locationsQuery = supabase
         .from('locations')
-        .select('id, name, location_id, type')
+        .select('id, name, location_id, type, is_internal_vendor')
         .eq('company_id', companyId);
       
       if (!includeAllLocations) {
-        locationsQuery = locationsQuery.in('type', ['dc', 'warehouse']);
+        // Only include locations marked as internal vendors
+        locationsQuery = locationsQuery.eq('is_internal_vendor', true);
       }
       
       // Fetch regular vendors and locations in parallel

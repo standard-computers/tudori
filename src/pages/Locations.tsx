@@ -36,7 +36,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users, X } from 'lucide-react';
+import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users, X, Settings2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
@@ -53,6 +54,7 @@ interface Location {
   state: string;
   postal_code: string;
   country: string;
+  is_internal_vendor?: boolean;
 }
 
 interface CompanyUser {
@@ -274,6 +276,7 @@ const Locations = () => {
     state: '',
     postal_code: '',
     country: 'United States',
+    is_internal_vendor: true,
   });
 
   useEffect(() => {
@@ -370,6 +373,7 @@ const Locations = () => {
       state: '',
       postal_code: '',
       country: 'United States',
+      is_internal_vendor: true,
     });
     setIsEditing(false);
     setEditingId(null);
@@ -398,6 +402,7 @@ const Locations = () => {
       state: location.state,
       postal_code: location.postal_code,
       country: location.country,
+      is_internal_vendor: location.is_internal_vendor ?? true,
     });
     setIsEditing(true);
     setEditingId(location.id);
@@ -487,6 +492,7 @@ const Locations = () => {
             state: formData.state,
             postal_code: formData.postal_code,
             country: formData.country,
+            is_internal_vendor: formData.is_internal_vendor,
           })
           .eq('id', editingId);
 
@@ -510,6 +516,7 @@ const Locations = () => {
             state: formData.state,
             postal_code: formData.postal_code,
             country: formData.country,
+            is_internal_vendor: formData.is_internal_vendor,
           })
           .select()
           .single();
@@ -610,11 +617,15 @@ const Locations = () => {
                   </DialogHeader>
                   
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="users">
                         <Users className="w-4 h-4 mr-2" />
                         Users ({selectedUserIds.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="controls">
+                        <Settings2 className="w-4 h-4 mr-2" />
+                        Controls
                       </TabsTrigger>
                     </TabsList>
                     
@@ -775,6 +786,29 @@ const Locations = () => {
                             No users selected. This location won't be visible in Cockpit to anyone.
                           </p>
                         )}
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="controls" className="mt-4">
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Configure how this location behaves in the system.
+                        </p>
+                        <div className="border rounded-lg p-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="is_internal_vendor" className="font-medium">Internal Vendor</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Allow this location to appear as a vendor source in purchase requisitions.
+                              </p>
+                            </div>
+                            <Switch
+                              id="is_internal_vendor"
+                              checked={formData.is_internal_vendor}
+                              onCheckedChange={(checked) => setFormData({ ...formData, is_internal_vendor: checked })}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </TabsContent>
                   </Tabs>
