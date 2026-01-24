@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +47,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 interface Requisition {
@@ -207,6 +208,11 @@ const Requisitions = () => {
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Bulk conversion progress state
+  const [isBulkConverting, setIsBulkConverting] = useState(false);
+  const [bulkConvertProgress, setBulkConvertProgress] = useState({ current: 0, total: 0, currentAction: '' });
+  const [bulkConvertResults, setBulkConvertResults] = useState<{ success: string[]; failed: string[] }>({ success: [], failed: [] });
+
   // Clear selection when requisitions change
   useEffect(() => {
     setSelectedIds(new Set());
@@ -219,13 +225,179 @@ const Requisitions = () => {
     );
   }, [requisitions, selectedIds]);
 
+  // Internal conversion function without UI side effects (for bulk operations)
+  const convertRequisitionToPO = async (requisition: Requisition): Promise<{ success: boolean; poNumber?: string; error?: string }> => {
+    try {
+      // Fetch requisition items
+      const { data: reqItems, error: itemsError } = await supabase
+        .from('requisition_items')
+        .select('*, product:products(name, price)')
+        .eq('requisition_id', requisition.id);
+
+      if (itemsError) throw itemsError;
+
+      if (!reqItems || reqItems.length === 0) {
+        return { success: false, error: 'No items found' };
+      }
+
+      // Fetch active ledgers for auto-selection
+      const { data: ledgersData } = await supabase
+        .from('ledgers' as any)
+        .select('id, name, location_id, is_active')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name');
+
+      const ledgers = (ledgersData as any) || [];
+
+      if (ledgers.length === 0) {
+        return { success: false, error: 'No ledger available' };
+      }
+
+      // Get next PO number
+      const { data: poNumber, error: poNumError } = await supabase.rpc('get_next_po_number', {
+        p_company_id: companyId,
+      });
+
+      if (poNumError) throw poNumError;
+
+      // Calculate totals
+      const subtotal = reqItems.reduce((sum, item) => {
+        return sum + (item.unit_price || item.product?.price || 0) * item.quantity;
+      }, 0);
+      const totalAmount = subtotal;
+
+      // Parse vendor_id
+      const parsedVendor = requisition.vendor_id ? parseVendorValue(requisition.vendor_id) : null;
+      const poVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+
+      // Auto-select ledger
+      let selectedLedgerId: string | null = null;
+      if (ledgers.length === 1) {
+        selectedLedgerId = ledgers[0].id;
+      } else if (requisition.location_id) {
+        const locationLedger = ledgers.find((l: any) => l.location_id === requisition.location_id);
+        if (locationLedger) {
+          selectedLedgerId = locationLedger.id;
+        } else {
+          const generalLedger = ledgers.find((l: any) => !l.location_id);
+          selectedLedgerId = generalLedger?.id || ledgers[0].id;
+        }
+      } else {
+        const generalLedger = ledgers.find((l: any) => !l.location_id);
+        selectedLedgerId = generalLedger?.id || ledgers[0].id;
+      }
+
+      // Create purchase order
+      const { data: newPO, error: poError } = await supabase
+        .from('purchase_orders')
+        .insert({
+          company_id: companyId,
+          po_number: poNumber,
+          status: 'draft',
+          vendor_id: poVendorId,
+          location_id: requisition.location_id,
+          bill_to_location_id: requisition.location_id,
+          ledger_id: selectedLedgerId,
+          requisition_id: requisition.id,
+          subtotal,
+          tax_amount: 0,
+          total_amount: totalAmount,
+          notes: `Converted from requisition ${requisition.requisition_id}`,
+        })
+        .select()
+        .single();
+
+      if (poError) throw poError;
+
+      // Create purchase order items
+      const poItems = reqItems.map(item => ({
+        purchase_order_id: newPO.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price || item.product?.price || 0,
+        total_price: (item.unit_price || item.product?.price || 0) * item.quantity,
+      }));
+
+      const { error: poItemsError } = await supabase
+        .from('purchase_order_items')
+        .insert(poItems);
+
+      if (poItemsError) throw poItemsError;
+
+      // Create ledger transaction
+      if (selectedLedgerId) {
+        await supabase
+          .from('ledger_transactions' as any)
+          .insert({
+            ledger_id: selectedLedgerId,
+            transaction_type: 'purchase_order',
+            reference_id: newPO.id,
+            reference_number: poNumber,
+            amount: -totalAmount,
+            description: `Purchase Order ${poNumber} (from Req ${requisition.requisition_id})`,
+          });
+      }
+
+      // Update requisition status to 'ordered'
+      await supabase
+        .from('requisitions')
+        .update({ status: 'ordered' })
+        .eq('id', requisition.id);
+
+      return { success: true, poNumber };
+    } catch (error: any) {
+      console.error('Error converting to PO:', error);
+      return { success: false, error: error.message || 'Conversion failed' };
+    }
+  };
+
   const handleBulkConvert = async () => {
     if (selectedConvertibleReqs.length === 0) return;
 
-    for (const req of selectedConvertibleReqs) {
-      await handleConvertToPO(req);
+    const total = selectedConvertibleReqs.length;
+    setIsBulkConverting(true);
+    setBulkConvertProgress({ current: 0, total, currentAction: 'Starting conversion...' });
+    setBulkConvertResults({ success: [], failed: [] });
+
+    const successList: string[] = [];
+    const failedList: string[] = [];
+
+    for (let i = 0; i < selectedConvertibleReqs.length; i++) {
+      const req = selectedConvertibleReqs[i];
+      setBulkConvertProgress({
+        current: i + 1,
+        total,
+        currentAction: `Converting ${req.requisition_id} to Purchase Order...`,
+      });
+
+      const result = await convertRequisitionToPO(req);
+      
+      if (result.success && result.poNumber) {
+        successList.push(`${req.requisition_id} → ${result.poNumber}`);
+      } else {
+        failedList.push(`${req.requisition_id}: ${result.error || 'Unknown error'}`);
+      }
     }
-    setSelectedIds(new Set());
+
+    setBulkConvertResults({ success: successList, failed: failedList });
+    setBulkConvertProgress({ current: total, total, currentAction: 'Completed' });
+    
+    // Brief delay to show completion, then close
+    setTimeout(() => {
+      setIsBulkConverting(false);
+      setSelectedIds(new Set());
+      fetchRequisitions();
+      
+      // Show summary toast
+      if (failedList.length === 0) {
+        toast.success(`Successfully converted ${successList.length} requisition(s) to Purchase Orders`);
+      } else if (successList.length === 0) {
+        toast.error(`Failed to convert ${failedList.length} requisition(s)`);
+      } else {
+        toast.info(`Converted ${successList.length} requisition(s), ${failedList.length} failed`);
+      }
+    }, 1500);
   };
 
   const handleBulkDelete = async () => {
@@ -1343,6 +1515,65 @@ const Requisitions = () => {
               Go to Purchase Orders
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Conversion Progress Dialog */}
+      <Dialog open={isBulkConverting} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Converting Requisitions</DialogTitle>
+            <DialogDescription>
+              Converting {bulkConvertProgress.total} requisition(s) to Purchase Orders
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-mono">{bulkConvertProgress.current} / {bulkConvertProgress.total}</span>
+              </div>
+              <Progress value={(bulkConvertProgress.current / bulkConvertProgress.total) * 100} className="h-2" />
+            </div>
+            
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {bulkConvertProgress.currentAction !== 'Completed' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4 text-green-500" />
+              )}
+              <span>{bulkConvertProgress.currentAction}</span>
+            </div>
+
+            {bulkConvertResults.success.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Converted</Label>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {bulkConvertResults.success.map((item, i) => (
+                    <div key={i} className="text-xs font-mono flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <Check className="w-3 h-3" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {bulkConvertResults.failed.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Failed</Label>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {bulkConvertResults.failed.map((item, i) => (
+                    <div key={i} className="text-xs font-mono flex items-center gap-2 text-destructive">
+                      <X className="w-3 h-3" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
