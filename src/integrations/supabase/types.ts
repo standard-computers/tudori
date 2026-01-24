@@ -1550,10 +1550,12 @@ export type Database = {
           created_at: string
           description: string | null
           height: number | null
+          height_uom: string | null
           id: string
           is_batched: boolean
           keep_inventory: boolean
           length: number | null
+          length_uom: string | null
           min_shelf_life_days: number | null
           name: string
           price: number | null
@@ -1564,7 +1566,9 @@ export type Database = {
           updated_at: string
           vendor_id: string | null
           weight: number | null
+          weight_uom: string | null
           width: number | null
+          width_uom: string | null
         }
         Insert: {
           category?: string | null
@@ -1572,10 +1576,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           height?: number | null
+          height_uom?: string | null
           id?: string
           is_batched?: boolean
           keep_inventory?: boolean
           length?: number | null
+          length_uom?: string | null
           min_shelf_life_days?: number | null
           name: string
           price?: number | null
@@ -1586,7 +1592,9 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           weight?: number | null
+          weight_uom?: string | null
           width?: number | null
+          width_uom?: string | null
         }
         Update: {
           category?: string | null
@@ -1594,10 +1602,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           height?: number | null
+          height_uom?: string | null
           id?: string
           is_batched?: boolean
           keep_inventory?: boolean
           length?: number | null
+          length_uom?: string | null
           min_shelf_life_days?: number | null
           name?: string
           price?: number | null
@@ -1608,7 +1618,9 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           weight?: number | null
+          weight_uom?: string | null
           width?: number | null
+          width_uom?: string | null
         }
         Relationships: [
           {
