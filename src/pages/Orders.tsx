@@ -1461,7 +1461,8 @@ const Orders = () => {
             orders={orders} 
             selectedOrderIds={selectedOrderIds}
             onSelectionChange={setSelectedOrderIds}
-            onViewOrder={handleViewOrder} 
+            onViewOrder={handleViewOrder}
+            onConfirmOrder={(id) => handleUpdateStatus(id, 'confirmed')}
             onDeleteOrder={handleDeleteOrder}
             onVendorClick={openVendorDetail}
             onLocationClick={(locationId) => openLocationDetail(locationId, 'Ship To')}
@@ -2293,6 +2294,7 @@ function OrdersTable({
   selectedOrderIds,
   onSelectionChange,
   onViewOrder,
+  onConfirmOrder,
   onDeleteOrder,
   onVendorClick,
   onLocationClick,
@@ -2301,6 +2303,7 @@ function OrdersTable({
   selectedOrderIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   onViewOrder: (order: PurchaseOrder) => void;
+  onConfirmOrder: (id: string) => void;
   onDeleteOrder: (id: string) => void;
   onVendorClick: (vendorId: string) => void;
   onLocationClick: (locationId: string) => void;
@@ -2508,6 +2511,12 @@ function OrdersTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onConfirmOrder(order.id)}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Confirm
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onDeleteOrder(order.id)}
                           className="text-destructive focus:text-destructive"
