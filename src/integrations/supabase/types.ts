@@ -1556,6 +1556,7 @@ export type Database = {
           price: number | null
           product_id: string
           sku: string | null
+          status: string
           unit: string | null
           updated_at: string
           vendor_id: string | null
@@ -1577,6 +1578,7 @@ export type Database = {
           price?: number | null
           product_id: string
           sku?: string | null
+          status?: string
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null
@@ -1598,6 +1600,7 @@ export type Database = {
           price?: number | null
           product_id?: string
           sku?: string | null
+          status?: string
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null

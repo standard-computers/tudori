@@ -158,6 +158,7 @@ interface Product {
   product_id: string;
   price: number | null;
   vendor_id: string | null;
+  status: string;
 }
 
 interface InventoryRecord {
@@ -389,8 +390,9 @@ const Orders = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id')
+      .select('id, name, product_id, price, vendor_id, status')
       .eq('company_id', companyId)
+      .eq('status', 'active') // Only fetch active products for purchase orders
       .order('name');
     setProducts(data || []);
   };
