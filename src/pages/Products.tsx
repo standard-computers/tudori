@@ -1005,7 +1005,7 @@ const Products = () => {
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
-              <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[650px] max-h-[85vh] flex flex-col overflow-hidden">
                 {!isEditing && (
                   <div className="flex items-start gap-1 absolute top-4 right-12">
                     <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
@@ -1102,7 +1102,8 @@ const Products = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
+                  <div className="flex-1 overflow-y-auto px-6">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                     <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-5' : 'grid-cols-4'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
@@ -1683,8 +1684,9 @@ const Products = () => {
                       </div>
                     </TabsContent>
                   </Tabs>
+                  </div>
                   
-                  <DialogFooter className="mt-6">
+                  <DialogFooter className="mt-6 px-6 pb-6 sticky bottom-0 bg-background border-t pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
