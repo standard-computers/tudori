@@ -1,7 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
+import { useExcel } from '@/hooks/use-excel';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -43,6 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -172,6 +175,10 @@ const Requisitions = () => {
   // Use vendor sources hook for combined vendors + DC/warehouse locations
   const { vendorOptions, parseVendorValue } = useVendorSources(companyId);
   
+  // Excel import/export
+  const { exportToExcel, readExcel } = useExcel();
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
@@ -726,6 +733,142 @@ const Requisitions = () => {
     }
   };
 
+  // Export requisitions to XLSX
+  const handleExport = useCallback(async () => {
+    if (requisitions.length === 0) {
+      toast.error('No requisitions to export');
+      return;
+    }
+
+    const exportData = requisitions.map(r => ({
+      requisition_id: r.requisition_id,
+      status: r.status,
+      location_id: r.location?.location_id || '',
+      location_name: r.location?.name || '',
+      vendor_id: r.vendor?.vendor_id || '',
+      vendor_name: r.vendor?.name || 'All Vendors',
+      total_amount: r.total_amount ?? '',
+      notes: r.notes || '',
+      created_at: r.created_at,
+    }));
+
+    await exportToExcel(
+      exportData,
+      `requisitions_export_${new Date().toISOString().split('T')[0]}.xlsx`,
+      'Requisitions'
+    );
+    toast.success(`Exported ${exportData.length} requisitions`);
+  }, [requisitions, exportToExcel]);
+
+  // Download import template
+  const handleDownloadTemplate = useCallback(async () => {
+    const templateData = [{
+      requisition_id: 'REQ-001',
+      status: 'draft',
+      location_id: 'LOC-001',
+      vendor_id: 'VEND-001',
+      notes: 'Example notes',
+    }];
+
+    await exportToExcel(templateData, 'requisitions_import_template.xlsx', 'Requisitions Template');
+    toast.success('Template downloaded');
+  }, [exportToExcel]);
+
+  // Handle file import
+  const handleImport = useCallback(async (file: File) => {
+    if (!companyId) return;
+    
+    try {
+      const jsonData = await readExcel(file);
+
+      if (jsonData.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const row of jsonData) {
+        try {
+          let requisitionId = row.requisition_id?.toString() || '';
+          
+          // Auto-generate requisition_id if not provided
+          if (!requisitionId) {
+            const { data: nextId, error: idError } = await supabase.rpc('get_next_requisition_id', {
+              p_company_id: companyId,
+            });
+            
+            if (idError || !nextId) {
+              console.error('Error generating requisition ID:', idError);
+              errorCount++;
+              continue;
+            }
+            requisitionId = nextId;
+          }
+
+          // Look up location by location_id
+          let locationUuid: string | null = null;
+          if (row.location_id) {
+            const { data: loc } = await supabase
+              .from('locations')
+              .select('id')
+              .eq('location_id', row.location_id.toString())
+              .eq('company_id', companyId)
+              .single();
+            locationUuid = loc?.id || null;
+          }
+
+          // Look up vendor by vendor_id
+          let vendorUuid: string | null = null;
+          if (row.vendor_id) {
+            const { data: vend } = await supabase
+              .from('vendors')
+              .select('id')
+              .eq('vendor_id', row.vendor_id.toString())
+              .eq('company_id', companyId)
+              .single();
+            vendorUuid = vend?.id || null;
+          }
+
+          const requisitionData = {
+            company_id: companyId,
+            requisition_id: requisitionId,
+            status: row.status?.toString() || 'draft',
+            location_id: locationUuid,
+            vendor_id: vendorUuid,
+            notes: row.notes?.toString() || null,
+            total_amount: 0,
+          };
+
+          // Check if requisition exists
+          const existing = requisitions.find(r => r.requisition_id === requisitionData.requisition_id);
+          
+          if (existing) {
+            await supabase.from('requisitions').update(requisitionData).eq('id', existing.id);
+          } else {
+            await supabase.from('requisitions').insert(requisitionData);
+          }
+          successCount++;
+        } catch (err) {
+          console.error('Error importing row:', err);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Imported ${successCount} requisitions`);
+        fetchRequisitions();
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to import ${errorCount} rows`);
+      }
+    } catch (err) {
+      console.error('Import error:', err);
+      toast.error('Failed to import file');
+    }
+  }, [companyId, requisitions, readExcel, fetchRequisitions]);
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -750,6 +893,14 @@ const Requisitions = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('requisition')}
+                exportEnabled={isExportEnabled('requisition')}
+                entityName="Requisitions"
+                onExport={handleExport}
+                onImport={handleImport}
+                onDownloadTemplate={handleDownloadTemplate}
+              />
               {selectedConvertibleReqs.length > 0 && (
                 <Button onClick={handleBulkConvert} variant="secondary">
                   <ShoppingCart className="w-4 h-4 mr-2" />
