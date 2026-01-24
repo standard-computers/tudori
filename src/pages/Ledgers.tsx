@@ -592,41 +592,45 @@ const Ledgers = () => {
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={(e) => e.preventDefault()}>
-          {!isEditing && (
-            <CopyFromIdDialog<Ledger>
-              idLabel="Ledger ID"
-              onFetch={async (id) => {
-                const { data } = await supabase
-                  .from('ledgers')
-                  .select('*')
-                  .eq('company_id', companyId!)
-                  .eq('ledger_id', id)
-                  .maybeSingle();
-                return data;
-              }}
-              onApply={(ledger) => {
-                setFormData(prev => ({
-                  ...prev,
-                  name: ledger.name,
-                  description: ledger.description || '',
-                  location_id: ledger.location_id || '',
-                  is_active: ledger.is_active,
-                }));
-              }}
-            />
-          )}
-          <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Ledger' : 'Create Ledger'}</DialogTitle>
-            <DialogDescription>
-              {isEditing ? 'Update ledger information' : 'Add a new financial ledger'}
-            </DialogDescription>
-          </DialogHeader>
+          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>{isEditing ? 'Edit Ledger' : 'Create Ledger'}</DialogTitle>
+              <DialogDescription>
+                {isEditing ? 'Update ledger information' : 'Add a new financial ledger'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {!isEditing && (
+              <div className="absolute right-12 top-4 z-10">
+                <CopyFromIdDialog<Ledger>
+                  idLabel="Ledger ID"
+                  onFetch={async (id) => {
+                    const { data } = await supabase
+                      .from('ledgers')
+                      .select('*')
+                      .eq('company_id', companyId!)
+                      .eq('ledger_id', id)
+                      .maybeSingle();
+                    return data;
+                  }}
+                  onApply={(ledger) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      name: ledger.name,
+                      description: ledger.description || '',
+                      location_id: ledger.location_id || '',
+                      is_active: ledger.is_active,
+                    }));
+                  }}
+                />
+              </div>
+            )}
 
-          <form ref={formRef} onSubmit={handleSubmit}>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
-              <TabsList className="grid w-full grid-cols-1">
-                <TabsTrigger value="general">General</TabsTrigger>
-              </TabsList>
+            <div className="flex-1 overflow-y-auto px-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                <TabsList className="grid w-full grid-cols-1">
+                  <TabsTrigger value="general">General</TabsTrigger>
+                </TabsList>
 
               <TabsContent value="general" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -691,8 +695,9 @@ const Ledgers = () => {
                 </div>
               </TabsContent>
             </Tabs>
+            </div>
 
-            <DialogFooter className="mt-6">
+            <DialogFooter className="shrink-0">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>

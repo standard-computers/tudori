@@ -595,35 +595,7 @@ const Deliveries = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
-                {!isEditing && (
-                  <CopyFromIdDialog<Delivery>
-                    idLabel="Delivery ID"
-                    onFetch={async (id) => {
-                      const { data } = await supabase
-                        .from('deliveries')
-                        .select('*')
-                        .eq('company_id', companyId!)
-                        .eq('delivery_id', id)
-                        .maybeSingle();
-                      return data;
-                    }}
-                    onApply={(delivery) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        status: delivery.status,
-                        purchase_order_id: delivery.purchase_order_id || '',
-                        location_id: delivery.location_id || '',
-                        vendor_id: delivery.vendor_id || '',
-                        carrier: delivery.carrier || '',
-                        tracking_number: '', // Don't copy tracking number
-                        expected_date: delivery.expected_date || '',
-                        delivered_date: '',
-                        notes: delivery.notes || '',
-                      }));
-                    }}
-                  />
-                )}
-                <form ref={formRef} onSubmit={handleSubmit}>
+                <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>
                     <DialogDescription>
@@ -631,15 +603,47 @@ const Deliveries = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="details">Details</TabsTrigger>
-                      <TabsTrigger value="items" disabled={!isEditing}>
-                        Items {isEditing && deliveryItems.length > 0 && `(${deliveryItems.length})`}
-                      </TabsTrigger>
-                    </TabsList>
+                  {!isEditing && (
+                    <div className="absolute right-12 top-4 z-10">
+                      <CopyFromIdDialog<Delivery>
+                        idLabel="Delivery ID"
+                        onFetch={async (id) => {
+                          const { data } = await supabase
+                            .from('deliveries')
+                            .select('*')
+                            .eq('company_id', companyId!)
+                            .eq('delivery_id', id)
+                            .maybeSingle();
+                          return data;
+                        }}
+                        onApply={(delivery) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            status: delivery.status,
+                            purchase_order_id: delivery.purchase_order_id || '',
+                            location_id: delivery.location_id || '',
+                            vendor_id: delivery.vendor_id || '',
+                            carrier: delivery.carrier || '',
+                            tracking_number: '', // Don't copy tracking number
+                            expected_date: delivery.expected_date || '',
+                            delivered_date: '',
+                            notes: delivery.notes || '',
+                          }));
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 overflow-y-auto px-6">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="details">Details</TabsTrigger>
+                        <TabsTrigger value="items" disabled={!isEditing}>
+                          Items {isEditing && deliveryItems.length > 0 && `(${deliveryItems.length})`}
+                        </TabsTrigger>
+                      </TabsList>
                     
-                    <TabsContent value="details" className="mt-4">
+                      <TabsContent value="details" className="mt-4">
                       <div className="grid gap-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -872,8 +876,9 @@ const Deliveries = () => {
                       </div>
                     </TabsContent>
                   </Tabs>
+                  </div>
                   
-                  <DialogFooter className="mt-6">
+                  <DialogFooter className="shrink-0">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>

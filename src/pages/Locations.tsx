@@ -581,34 +581,7 @@ const Locations = () => {
                   </Button>
                 </DialogTrigger>
               <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
-                {!isEditing && (
-                  <CopyFromIdDialog<Location>
-                    idLabel="Location ID"
-                    onFetch={async (id) => {
-                      const { data } = await supabase
-                        .from('locations')
-                        .select('*')
-                        .eq('company_id', companyId!)
-                        .eq('location_id', id)
-                        .maybeSingle();
-                      return data;
-                    }}
-                    onApply={(location) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        name: location.name,
-                        type: location.type,
-                        address_line1: location.address_line1,
-                        address_line2: location.address_line2 || '',
-                        city: location.city,
-                        state: location.state,
-                        postal_code: location.postal_code,
-                        country: location.country,
-                      }));
-                    }}
-                  />
-                )}
-                <form ref={formRef} onSubmit={handleSubmit}>
+                <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Location' : 'Add Location'}</DialogTitle>
                     <DialogDescription>
@@ -616,18 +589,50 @@ const Locations = () => {
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 px-6">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="general">General</TabsTrigger>
-                      <TabsTrigger value="users">
-                        <Users className="w-4 h-4 mr-2" />
-                        Users ({selectedUserIds.length})
-                      </TabsTrigger>
-                      <TabsTrigger value="controls">
-                        <Settings2 className="w-4 h-4 mr-2" />
-                        Controls
-                      </TabsTrigger>
-                    </TabsList>
+                  {!isEditing && (
+                    <div className="absolute right-12 top-4 z-10">
+                      <CopyFromIdDialog<Location>
+                        idLabel="Location ID"
+                        onFetch={async (id) => {
+                          const { data } = await supabase
+                            .from('locations')
+                            .select('*')
+                            .eq('company_id', companyId!)
+                            .eq('location_id', id)
+                            .maybeSingle();
+                          return data;
+                        }}
+                        onApply={(location) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            name: location.name,
+                            type: location.type,
+                            address_line1: location.address_line1,
+                            address_line2: location.address_line2 || '',
+                            city: location.city,
+                            state: location.state,
+                            postal_code: location.postal_code,
+                            country: location.country,
+                            is_internal_vendor: location.is_internal_vendor ?? true,
+                          }));
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 overflow-y-auto px-6">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="general">General</TabsTrigger>
+                        <TabsTrigger value="users">
+                          <Users className="w-4 h-4 mr-2" />
+                          Users ({selectedUserIds.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="controls">
+                          <Settings2 className="w-4 h-4 mr-2" />
+                          Controls
+                        </TabsTrigger>
+                      </TabsList>
                     
                     <TabsContent value="general" className="space-y-4 mt-4">
                       <div className="grid grid-cols-2 gap-4">
@@ -812,8 +817,9 @@ const Locations = () => {
                       </div>
                     </TabsContent>
                   </Tabs>
+                  </div>
                   
-                  <DialogFooter className="mt-6">
+                  <DialogFooter className="shrink-0">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>

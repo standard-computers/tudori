@@ -532,47 +532,51 @@ const Vendors = () => {
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                {!isEditing && (
-                  <CopyFromIdDialog<Vendor>
-                    idLabel="Vendor ID"
-                    onFetch={async (id) => {
-                      const { data } = await supabase
-                        .from('vendors')
-                        .select('*')
-                        .eq('company_id', companyId!)
-                        .eq('vendor_id', id)
-                        .maybeSingle();
-                      return data;
-                    }}
-                    onApply={(vendor) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        name: vendor.name,
-                        type: vendor.type,
-                        contact_name: vendor.contact_name || '',
-                        email: vendor.email || '',
-                        phone: vendor.phone || '',
-                        address_line1: vendor.address_line1 || '',
-                        address_line2: vendor.address_line2 || '',
-                        city: vendor.city || '',
-                        state: vendor.state || '',
-                        postal_code: vendor.postal_code || '',
-                        country: vendor.country || 'United States',
-                        website: vendor.website || '',
-                        notes: vendor.notes || '',
-                      }));
-                    }}
-                  />
-                )}
-                <form ref={formRef} onSubmit={handleSubmit}>
+                <DialogContent className="sm:max-w-[600px]">
+                <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Vendor' : 'Add Vendor'}</DialogTitle>
                     <DialogDescription>
                       {isEditing ? 'Update vendor details.' : 'Add a new vendor to your company.'}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4 px-6">
+                  
+                  {!isEditing && (
+                    <div className="absolute right-12 top-4 z-10">
+                      <CopyFromIdDialog<Vendor>
+                        idLabel="Vendor ID"
+                        onFetch={async (id) => {
+                          const { data } = await supabase
+                            .from('vendors')
+                            .select('*')
+                            .eq('company_id', companyId!)
+                            .eq('vendor_id', id)
+                            .maybeSingle();
+                          return data;
+                        }}
+                        onApply={(vendor) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            name: vendor.name,
+                            type: vendor.type,
+                            contact_name: vendor.contact_name || '',
+                            email: vendor.email || '',
+                            phone: vendor.phone || '',
+                            address_line1: vendor.address_line1 || '',
+                            address_line2: vendor.address_line2 || '',
+                            city: vendor.city || '',
+                            state: vendor.state || '',
+                            postal_code: vendor.postal_code || '',
+                            country: vendor.country || 'United States',
+                            website: vendor.website || '',
+                            notes: vendor.notes || '',
+                          }));
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 overflow-y-auto px-6 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="vendor_id">Vendor ID</Label>
@@ -752,7 +756,7 @@ const Vendors = () => {
                       />
                     </div>
                   </div>
-                  <DialogFooter>
+                  <DialogFooter className="shrink-0">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
