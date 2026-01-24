@@ -52,6 +52,7 @@ interface POAutomationSettings {
 
 interface ProcessControlSettings {
   require_gr_on_delivery: boolean;
+  require_delivery_receipt: boolean;
 }
 
 interface ImportExportSettings {
@@ -103,6 +104,7 @@ const Configuration = () => {
   const [savingPOSettings, setSavingPOSettings] = useState(false);
   const [processControls, setProcessControls] = useState<ProcessControlSettings>({
     require_gr_on_delivery: true,
+    require_delivery_receipt: true,
   });
 const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
 
@@ -233,6 +235,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
         const val = data.setting_value as Record<string, unknown>;
         setProcessControls({
           require_gr_on_delivery: (val.require_gr_on_delivery as boolean) ?? true,
+          require_delivery_receipt: (val.require_delivery_receipt as boolean) ?? true,
         });
       }
     } catch (error) {
@@ -406,6 +409,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
 
       const settingValue = {
         require_gr_on_delivery: processControls.require_gr_on_delivery,
+        require_delivery_receipt: processControls.require_delivery_receipt,
       };
 
       if (existing) {
@@ -821,6 +825,23 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1">
+                      <Label className="font-medium text-base">Required Delivery Receipt</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, a delivery must have a receipt document before it can be marked as received or delivered.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        When disabled, deliveries can be marked as delivered without requiring a formal receipt.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={processControls.require_delivery_receipt}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, require_delivery_receipt: checked }))
+                      }
+                    />
+                  </div>
                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">Require Goods Receipt</Label>
