@@ -970,7 +970,7 @@ const Deliveries = () => {
 
       {/* View Delivery Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>View Delivery</DialogTitle>
             <DialogDescription>
@@ -978,7 +978,7 @@ const Deliveries = () => {
             </DialogDescription>
           </DialogHeader>
           {viewDelivery && (
-            <Tabs defaultValue="details" className="px-6">
+            <Tabs defaultValue="details" className="flex-1 overflow-y-auto px-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="items">
@@ -1111,7 +1111,7 @@ const Deliveries = () => {
               </TabsContent>
             </Tabs>
           )}
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
             <Button variant="outline" onClick={() => setIsViewOpen(false)}>
               Close
             </Button>
