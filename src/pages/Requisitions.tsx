@@ -945,11 +945,31 @@ const Requisitions = () => {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Location</Label>
-                  <p className="mt-1">{viewRequisition.location?.name || '-'}</p>
+                  {viewRequisition.location ? (
+                    <button
+                      type="button"
+                      onClick={() => openLocationDetail(viewRequisition.location_id, 'Location')}
+                      className="mt-1 text-sm text-primary hover:underline font-mono block"
+                    >
+                      {viewRequisition.location.name}
+                    </button>
+                  ) : (
+                    <p className="mt-1">-</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Vendor</Label>
-                  <p className="mt-1">{viewRequisition.vendor?.name || 'All Vendors'}</p>
+                  {viewRequisition.vendor ? (
+                    <button
+                      type="button"
+                      onClick={() => openVendorDetail(viewRequisition.vendor_id)}
+                      className="mt-1 text-sm text-primary hover:underline font-mono block"
+                    >
+                      {viewRequisition.vendor.name}
+                    </button>
+                  ) : (
+                    <p className="mt-1">All Vendors</p>
+                  )}
                 </div>
               </div>
 
