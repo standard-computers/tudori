@@ -121,6 +121,7 @@ interface Product {
   product_id: string;
   price: number | null;
   vendor_id: string | null;
+  status: string;
 }
 
 interface PurchaseOrder {
@@ -363,8 +364,9 @@ const Requisitions = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id')
+      .select('id, name, product_id, price, vendor_id, status')
       .eq('company_id', companyId)
+      .eq('status', 'active') // Only fetch active products
       .order('name');
     setProducts(data || []);
   };

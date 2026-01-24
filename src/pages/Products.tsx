@@ -50,6 +50,8 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { useExcel } from '@/hooks/use-excel';
 
+type ProductStatus = 'active' | 'do_not_buy' | 'discontinued';
+
 interface Product {
   id: string;
   product_id: string;
@@ -67,8 +69,15 @@ interface Product {
   length: number | null;
   height: number | null;
   weight: number | null;
+  status: string;
   vendors?: { name: string } | null;
 }
+
+const PRODUCT_STATUSES: { value: ProductStatus; label: string; color: string }[] = [
+  { value: 'active', label: 'Active', color: 'bg-success' },
+  { value: 'do_not_buy', label: 'Do Not Buy', color: 'bg-yellow-500' },
+  { value: 'discontinued', label: 'Discontinued', color: 'bg-destructive' },
+];
 
 interface ProductUom {
   id?: string;
@@ -208,6 +217,15 @@ const ProductTable = ({
                 className="text-right"
               />
               <SortableTableHead
+                label="Status"
+                sortKey="status"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['status']}
+                onFilter={(value) => setFilter('status', value)}
+              />
+              <SortableTableHead
                 label="Actions"
                 sortKey=""
                 currentSortKey=""
@@ -221,41 +239,49 @@ const ProductTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No products match your filters
                 </TableCell>
               </TableRow>
             ) : (
-              sortedAndFilteredData.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{product.sku || '-'}</TableCell>
-                  <TableCell>{product.category || '-'}</TableCell>
-                  <TableCell>{product.vendors?.name || '-'}</TableCell>
-                  <TableCell className="text-right">
-                    {product.price ? `$${product.price.toFixed(2)}` : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(product)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(product.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              sortedAndFilteredData.map((product) => {
+                const statusConfig = PRODUCT_STATUSES.find(s => s.value === product.status) || PRODUCT_STATUSES[0];
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{product.sku || '-'}</TableCell>
+                    <TableCell>{product.category || '-'}</TableCell>
+                    <TableCell>{product.vendors?.name || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {product.price ? `$${product.price.toFixed(2)}` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${statusConfig.color} text-white`}>
+                        {statusConfig.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(product)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(product.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -297,6 +323,7 @@ const Products = () => {
     length: '',
     height: '',
     weight: '',
+    status: 'active',
   });
   const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
@@ -618,6 +645,7 @@ const Products = () => {
       length: '',
       height: '',
       weight: '',
+      status: 'active',
     });
     setUoms([]);
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
@@ -655,6 +683,7 @@ const Products = () => {
       length: product.length?.toString() || '',
       height: product.height?.toString() || '',
       weight: product.weight?.toString() || '',
+      status: product.status || 'active',
     });
     setIsEditing(true);
     setEditingId(product.id);
@@ -818,6 +847,7 @@ const Products = () => {
           length: formData.length ? parseFloat(formData.length) : null,
           height: formData.height ? parseFloat(formData.height) : null,
           weight: formData.weight ? parseFloat(formData.weight) : null,
+          status: formData.status,
         })
         .eq('id', editingId);
 
@@ -845,6 +875,7 @@ const Products = () => {
           length: formData.length ? parseFloat(formData.length) : null,
           height: formData.height ? parseFloat(formData.height) : null,
           weight: formData.weight ? parseFloat(formData.weight) : null,
+          status: formData.status,
         })
         .select('id')
         .single();
@@ -1168,6 +1199,24 @@ const Products = () => {
                           onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                           placeholder="0.00"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => setFormData({ ...formData, status: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PRODUCT_STATUSES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
