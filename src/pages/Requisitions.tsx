@@ -1099,7 +1099,7 @@ const Requisitions = () => {
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Requisition {viewRequisition?.requisition_id}</DialogTitle>
             <DialogDescription>
@@ -1107,7 +1107,7 @@ const Requisitions = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="overflow-y-auto px-6">
+          <div className="flex-1 overflow-y-auto px-6">
             {viewRequisition && (
               <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
@@ -1214,7 +1214,7 @@ const Requisitions = () => {
 
       {/* PO View Dialog (shown after converting requisition to PO) */}
       <Dialog open={isPOViewDialogOpen} onOpenChange={setIsPOViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Purchase Order {viewPO?.po_number}</DialogTitle>
             <DialogDescription>
@@ -1223,7 +1223,7 @@ const Requisitions = () => {
           </DialogHeader>
           
           {viewPO && (
-            <div className="space-y-4 px-6">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6">
               {/* Header Fields */}
               <div className="grid grid-cols-4 gap-4 pb-4 border-b">
                 <div>
@@ -1311,7 +1311,7 @@ const Requisitions = () => {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
             <Button variant="outline" onClick={() => setIsPOViewDialogOpen(false)}>
               Close
             </Button>

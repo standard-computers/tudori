@@ -817,7 +817,7 @@ const SalesOrders = () => {
 
       {/* Create SO Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create Sales Order</DialogTitle>
             <DialogDescription>
@@ -825,6 +825,7 @@ const SalesOrders = () => {
             </DialogDescription>
           </DialogHeader>
           
+          <div className="flex-1 overflow-y-auto">
           {/* Header Fields */}
           <div className="grid grid-cols-3 gap-4 pb-4 border-b px-6">
             <div className="space-y-2">
@@ -1117,8 +1118,9 @@ const SalesOrders = () => {
               </div>
             </TabsContent>
           </Tabs>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
               Cancel
             </Button>
@@ -1133,7 +1135,7 @@ const SalesOrders = () => {
 
       {/* View Order Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Sales Order {viewOrder?.so_number}</DialogTitle>
             <DialogDescription>
@@ -1142,7 +1144,7 @@ const SalesOrders = () => {
           </DialogHeader>
           
           {viewOrder && (
-            <div className="space-y-4 px-6">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6">
               {/* Header Fields */}
               <div className="grid grid-cols-4 gap-4 pb-4 border-b">
                 <div>
@@ -1360,7 +1362,7 @@ const SalesOrders = () => {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
             </Button>
