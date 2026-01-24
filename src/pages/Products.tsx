@@ -40,7 +40,13 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2, MoreHorizontal, Eye } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -112,11 +118,13 @@ const ProductTable = ({
   products,
   onEdit,
   onDelete,
+  onView,
   onFilteredDataChange,
 }: {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
+  onView: (product: Product) => void;
   onFilteredDataChange?: (data: Product[]) => void;
 }) => {
   const {
@@ -262,21 +270,39 @@ const ProductTable = ({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => onEdit(product)}
+                          onClick={() => onView(product)}
+                          title="View product"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDelete(product.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(product)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onView(product)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(product.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1696,6 +1722,7 @@ const Products = () => {
             products={products}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onView={handleEdit}
             onFilteredDataChange={handleFilteredDataChange}
           />
         )}
