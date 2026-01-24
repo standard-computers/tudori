@@ -1191,13 +1191,6 @@ const Cockpit = () => {
 
       <Dialog open={isAreaDialogOpen} onOpenChange={setIsAreaDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
-          {!editingArea && (
-            <CopyFromIdDialog<Area>
-              onFetch={fetchAreaForCopy}
-              onApply={applyAreaCopy}
-              idLabel="Area ID"
-            />
-          )}
           <form ref={areaFormRef} onSubmit={handleAreaSubmit}>
             <DialogHeader>
               <DialogTitle>{editingArea ? 'Edit Area' : 'Add Area'}</DialogTitle>
@@ -1205,7 +1198,18 @@ const Cockpit = () => {
                 {editingArea ? 'Update area details.' : 'Create a new warehouse area.'}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
+            
+            {!editingArea && (
+              <div className="absolute right-12 top-4 z-10">
+                <CopyFromIdDialog<Area>
+                  onFetch={fetchAreaForCopy}
+                  onApply={applyAreaCopy}
+                  idLabel="Area ID"
+                />
+              </div>
+            )}
+            
+            <div className="space-y-4 mt-4 px-6">
               <div className="space-y-2">
                 <Label htmlFor="area_id">Area ID</Label>
                 <Input
@@ -1254,13 +1258,6 @@ const Cockpit = () => {
       {/* Bin Dialog */}
       <Dialog open={isBinDialogOpen} onOpenChange={setIsBinDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
-          {!editingBin && (
-            <CopyFromIdDialog<Bin>
-              onFetch={fetchBinForCopy}
-              onApply={applyBinCopy}
-              idLabel="Bin ID"
-            />
-          )}
           <form ref={binFormRef} onSubmit={handleBinSubmit}>
             <DialogHeader>
               <DialogTitle>{editingBin ? 'Edit Bin' : 'Add Bin'}</DialogTitle>
@@ -1268,7 +1265,18 @@ const Cockpit = () => {
                 {editingBin ? 'Update bin details.' : 'Create a new storage bin.'}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
+            
+            {!editingBin && (
+              <div className="absolute right-12 top-4 z-10">
+                <CopyFromIdDialog<Bin>
+                  onFetch={fetchBinForCopy}
+                  onApply={applyBinCopy}
+                  idLabel="Bin ID"
+                />
+              </div>
+            )}
+            
+            <div className="space-y-4 mt-4 px-6">
               <div className="space-y-2">
                 <Label htmlFor="bin_area">Area *</Label>
                 <Select
