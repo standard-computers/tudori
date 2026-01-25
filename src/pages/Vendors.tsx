@@ -35,7 +35,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X, Eye, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
@@ -63,10 +69,12 @@ const VENDOR_TYPES = ['Supplier', 'Manufacturer', 'Distributor', 'Contractor', '
 // Separated table component with sorting/filtering
 const VendorTable = ({
   vendors,
+  onView,
   onEdit,
   onDelete,
 }: {
   vendors: Vendor[];
+  onView: (vendor: Vendor) => void;
   onEdit: (vendor: Vendor) => void;
   onDelete: (id: string) => void;
 }) => {
@@ -189,21 +197,34 @@ const VendorTable = ({
                   <TableCell>{vendor.email || '-'}</TableCell>
                   <TableCell>{vendor.phone || '-'}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onEdit(vendor)}
+                        onClick={() => onView(vendor)}
                       >
-                        <Pencil className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(vendor.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit(vendor)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => onDelete(vendor.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -224,6 +245,8 @@ const Vendors = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingVendor, setViewingVendor] = useState<Vendor | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState('0001');
@@ -792,11 +815,94 @@ const Vendors = () => {
         ) : (
           <VendorTable
             vendors={vendors}
+            onView={(vendor) => {
+              setViewingVendor(vendor);
+              setIsViewDialogOpen(true);
+            }}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
         )}
       </main>
+
+      {/* View Vendor Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>View Vendor</DialogTitle>
+            <DialogDescription>
+              {viewingVendor?.vendor_id} - {viewingVendor?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingVendor && (
+            <div className="space-y-4 px-6 pb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Vendor ID</Label>
+                  <p className="font-mono">{viewingVendor.vendor_id}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <p>{viewingVendor.type}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Name</Label>
+                <p className="font-medium">{viewingVendor.name}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Contact Name</Label>
+                  <p>{viewingVendor.contact_name || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <p>{viewingVendor.email || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Phone</Label>
+                  <p>{viewingVendor.phone || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Website</Label>
+                  <p>{viewingVendor.website || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Address</Label>
+                <p>
+                  {viewingVendor.address_line1 || '-'}
+                  {viewingVendor.address_line2 && <><br />{viewingVendor.address_line2}</>}
+                  {(viewingVendor.city || viewingVendor.state || viewingVendor.postal_code) && (
+                    <><br />{[viewingVendor.city, viewingVendor.state, viewingVendor.postal_code].filter(Boolean).join(', ')}</>
+                  )}
+                  {viewingVendor.country && <><br />{viewingVendor.country}</>}
+                </p>
+              </div>
+              {viewingVendor.notes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Notes</Label>
+                  <p className="whitespace-pre-wrap">{viewingVendor.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="shrink-0">
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              setIsViewDialogOpen(false);
+              if (viewingVendor) handleEdit(viewingVendor);
+            }}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
