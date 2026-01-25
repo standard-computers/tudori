@@ -133,10 +133,10 @@ const Users = () => {
     
     setCurrentUserRole(roleData?.role || null);
 
-    // Get all team members
+    // Get all team members with email
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, user_id, first_name, last_name')
+      .select('id, user_id, first_name, last_name, email')
       .eq('company_id', profileData.company_id);
 
     const { data: roles } = await supabase
@@ -165,6 +165,7 @@ const Users = () => {
         user_id: p.user_id,
         first_name: p.first_name,
         last_name: p.last_name,
+        email: p.email || undefined,
         role: rolesMap.get(p.user_id) || 'member',
       }));
 
@@ -285,9 +286,9 @@ const Users = () => {
       toast.error('Cannot change owner role');
       return;
     }
-    // Only owner can change IT role
-    if (member.role === 'it' && currentUserRole !== 'owner') {
-      toast.error('Only owners can change IT role');
+    // IT users can edit other IT users, but not themselves
+    if (member.user_id === user?.id) {
+      toast.error('Cannot change your own role');
       return;
     }
 
@@ -567,13 +568,14 @@ const Users = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {teamMembers.map((member) => {
-                  const canEditMember = canManageUsers && member.role !== 'owner' && member.user_id !== user?.id && (currentUserRole === 'owner' || member.role !== 'it');
+                  const canEditMember = canManageUsers && member.role !== 'owner' && member.user_id !== user?.id;
                   return (
                   <TableRow 
                     key={member.id} 
@@ -598,6 +600,9 @@ const Users = () => {
                           )}
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-muted-foreground">{member.email || '-'}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={roleColors[member.role]}>
