@@ -906,11 +906,11 @@ const Orders = () => {
       const { data: order, error: orderError } = await supabase
         .from('purchase_orders')
         .insert({
-          company_id: companyId,
+          company_id: companyId!,
           po_number: poNumber,
           status: 'draft',
-          vendor_id: actualVendorId || null,
-          source_location_id: sourceLocationId || null,
+          vendor_id: actualVendorId,
+          source_location_id: sourceLocationId,
           location_id: formData.location_id || null,
           bill_to_location_id: formData.bill_to_location_id || null,
           ledger_id: selectedLedgerId,
@@ -919,7 +919,7 @@ const Orders = () => {
           tax_amount: taxAmount,
           total_amount: totalAmount,
           notes: formData.notes || null,
-        } as any)
+        })
         .select()
         .single();
 
