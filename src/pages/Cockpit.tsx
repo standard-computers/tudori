@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
   CardContent,
@@ -43,9 +42,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, DollarSign, TrendingUp, AlertCircle, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2 } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Location {
   id: string;
@@ -126,6 +126,8 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
+type SidebarTab = 'deliveries' | 'orders' | 'areas' | 'bins' | 'inventory';
+
 const Cockpit = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -134,6 +136,7 @@ const Cockpit = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [activeTab, setActiveTab] = useState<SidebarTab>('deliveries');
 
   // Areas & Bins state
   const [areas, setAreas] = useState<Area[]>([]);
@@ -147,10 +150,9 @@ const Cockpit = () => {
   const areaFormRef = useRef<HTMLFormElement>(null);
   const binFormRef = useRef<HTMLFormElement>(null);
 
-  // Stats state
+  // Deliveries state
   const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
   const [pendingDeliveries, setPendingDeliveries] = useState<Delivery[]>([]);
-  const [isDeliveriesDialogOpen, setIsDeliveriesDialogOpen] = useState(false);
   
   // Receive delivery state
   const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
@@ -159,14 +161,12 @@ const Cockpit = () => {
   // Inventory state
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
-  const [activeTab, setActiveTab] = useState('actions');
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [isInventoryDetailOpen, setIsInventoryDetailOpen] = useState(false);
 
   // Sales orders state
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [salesOrdersCount, setSalesOrdersCount] = useState<number>(0);
-  const [isSalesOrdersDialogOpen, setIsSalesOrdersDialogOpen] = useState(false);
   const [selectedSalesOrder, setSelectedSalesOrder] = useState<SalesOrder | null>(null);
   const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
   const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
@@ -245,7 +245,6 @@ const Cockpit = () => {
   };
 
   const fetchAccessibleLocations = async () => {
-    // First get locations the user has access to via location_users
     const { data: accessibleLocationIds } = await supabase
       .from('location_users')
       .select('location_id')
@@ -258,7 +257,6 @@ const Cockpit = () => {
 
     const locationIds = accessibleLocationIds.map(l => l.location_id);
 
-    // Then fetch the actual location data for those locations
     const { data } = await supabase
       .from('locations')
       .select('id, location_id, name, type, address_line1, city, state')
@@ -283,7 +281,6 @@ const Cockpit = () => {
     }
     setAreas(data || []);
     
-    // Fetch bins for all areas
     if (data && data.length > 0) {
       const areaIds = data.map(a => a.id);
       const { data: binData } = await supabase
@@ -387,7 +384,6 @@ const Cockpit = () => {
     setIsFulfilling(true);
     
     try {
-      // 1. Get sales order items
       const { data: items } = await supabase
         .from('sales_order_items' as any)
         .select('product_id, quantity')
@@ -399,7 +395,6 @@ const Cockpit = () => {
         return;
       }
 
-      // 2. Check inventory availability (include all inventory at location, regardless of bin)
       for (const item of items as any[]) {
         const { data: invData } = await supabase
           .from('inventory')
@@ -420,12 +415,10 @@ const Cockpit = () => {
         }
       }
 
-      // 3. Get next outbound delivery number
       const { data: deliveryNumber } = await supabase.rpc('get_next_outbound_delivery_number', {
         p_company_id: companyId,
       });
 
-      // 4. Create outbound delivery
       const customer = selectedSalesOrder.customer;
       const { data: outboundDelivery, error: odError } = await supabase
         .from('outbound_deliveries' as any)
@@ -454,12 +447,10 @@ const Cockpit = () => {
         return;
       }
 
-      // 5. Get next goods issue number
       const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', {
         p_company_id: companyId,
       });
 
-      // 6. Create goods issue with reference to outbound delivery
       const { data: goodsIssue, error: giError } = await supabase
         .from('goods_issues' as any)
         .insert({
@@ -482,7 +473,6 @@ const Cockpit = () => {
         return;
       }
 
-      // 7. Create goods issue items
       const giItems = (items as any[]).map(item => ({
         goods_issue_id: (goodsIssue as any).id,
         product_id: item.product_id,
@@ -497,13 +487,11 @@ const Cockpit = () => {
         console.error('Failed to create goods issue items:', itemsError);
       }
 
-      // 8. Update outbound delivery with goods_issue_id
       await supabase
         .from('outbound_deliveries' as any)
         .update({ goods_issue_id: (goodsIssue as any).id })
         .eq('id', (outboundDelivery as any).id);
 
-      // 9. Auto-post the Goods Issue to update inventory
       const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
       if (!postResult.success) {
         toast.error(postResult.error || 'Failed to auto-post goods issue');
@@ -511,7 +499,6 @@ const Cockpit = () => {
         return;
       }
 
-      // 10. Update sales order status to 'shipped'
       await supabase
         .from('sales_orders' as any)
         .update({ status: 'shipped' })
@@ -648,7 +635,6 @@ const Cockpit = () => {
     fetchAreas();
   };
 
-  // Copy handlers for Area and Bin
   const fetchAreaForCopy = async (areaId: string): Promise<Area | null> => {
     const { data } = await supabase
       .from('areas')
@@ -684,7 +670,6 @@ const Cockpit = () => {
     });
   };
 
-  // Keyboard shortcuts for creating areas and bins
   useKeyboardShortcut('a', () => {
     if (isWarehouseOrDC && selectedLocationId) {
       openAreaDialog();
@@ -782,9 +767,17 @@ const Cockpit = () => {
     );
   }
 
-  // Location Dashboard
+  const sidebarItems: { id: SidebarTab; label: string; icon: React.ElementType; count?: number }[] = [
+    { id: 'deliveries', label: 'Inbound Shipments', icon: Truck, count: pendingDeliveriesCount },
+    { id: 'orders', label: 'Orders to Fulfill', icon: ShoppingCart, count: salesOrdersCount },
+    { id: 'inventory', label: 'Inventory', icon: Boxes, count: inventory.length },
+    { id: 'areas', label: 'Areas', icon: Grid3X3, count: areas.length },
+    { id: 'bins', label: 'Bins', icon: Box, count: bins.length },
+  ];
+
+  // Location Dashboard with Sidebar
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
@@ -823,176 +816,212 @@ const Cockpit = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Products</p>
-                  <p className="text-2xl font-bold">—</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Revenue</p>
-                  <p className="text-2xl font-bold">—</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setIsSalesOrdersDialogOpen(true)}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                  <ShoppingCart className="w-6 h-6 text-violet-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Orders to Fulfill</p>
-                  <p className="text-2xl font-bold">{salesOrdersCount}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setIsDeliveriesDialogOpen(true)}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <Truck className="w-6 h-6 text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Inbound Shipments</p>
-                  <p className="text-2xl font-bold">{pendingDeliveriesCount}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex flex-1 h-[calc(100vh-4rem)]">
+        {/* Vertical Sidebar */}
+        <aside className="w-56 border-r border-border bg-card/30 flex-shrink-0">
+          <nav className="p-2 space-y-1">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left",
+                  activeTab === item.id
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {item.count !== undefined && item.count > 0 && (
+                  <span className={cn(
+                    "text-xs px-1.5 py-0.5 rounded-full",
+                    activeTab === item.id
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-        {/* Main Tabbed Interface */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
-            <TabsTrigger value="actions" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Quick Actions
-            </TabsTrigger>
-            <TabsTrigger value="areas" className="flex items-center gap-2">
-              <Grid3X3 className="w-4 h-4" />
-              Areas
-              {areas.length > 0 && (
-                <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                  {areas.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="bins" className="flex items-center gap-2">
-              <Box className="w-4 h-4" />
-              Bins
-              {bins.length > 0 && (
-                <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                  {bins.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-2">
-              <Boxes className="w-4 h-4" />
-              Inventory
-              {inventory.length > 0 && (
-                <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                  {inventory.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Quick Actions Tab */}
-          <TabsContent value="actions" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Quick Actions
-                  </CardTitle>
-                  <CardDescription>Common tasks for this location</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/orders')}>
-                    <ShoppingCart className="w-5 h-5" />
-                    <span>New Order</span>
-                  </Button>
-                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/requisitions')}>
-                    <Package className="w-5 h-5" />
-                    <span>Requisition</span>
-                  </Button>
-                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/products')}>
-                    <Package className="w-5 h-5" />
-                    <span>Products</span>
-                  </Button>
-                  <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate('/vendors')}>
-                    <Users className="w-5 h-5" />
-                    <span>Vendors</span>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    Recent Activity
-                  </CardTitle>
-                  <CardDescription>Latest updates at this location</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <AlertCircle className="w-10 h-10 text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No recent activity</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Activity will appear here as you work
-                    </p>
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-auto">
+          {/* Inbound Shipments Tab */}
+          {activeTab === 'deliveries' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-amber-500" />
+                    Inbound Shipments
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Deliveries pending arrival at this location</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/deliveries')}>
+                  View All
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto">
+                {pendingDeliveries.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Truck className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No pending deliveries</p>
                   </div>
-                </CardContent>
-              </Card>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Delivery ID</TableHead>
+                        <TableHead>PO #</TableHead>
+                        <TableHead>Vendor</TableHead>
+                        <TableHead>Expected Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-24"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingDeliveries.map((delivery) => (
+                        <TableRow key={delivery.id}>
+                          <TableCell className="font-mono">{delivery.delivery_id}</TableCell>
+                          <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
+                          <TableCell>{delivery.vendor?.name || '—'}</TableCell>
+                          <TableCell>
+                            {delivery.expected_date 
+                              ? new Date(delivery.expected_date).toLocaleDateString() 
+                              : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              delivery.status === 'in_transit' 
+                                ? 'bg-blue-500/10 text-blue-500' 
+                                : delivery.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-500'
+                                : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {delivery.status.replace('_', ' ')}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedDelivery(delivery);
+                                setIsReceiveDialogOpen(true);
+                              }}
+                            >
+                              Receive
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
             </div>
-          </TabsContent>
+          )}
+
+          {/* Orders to Fulfill Tab */}
+          {activeTab === 'orders' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-violet-500" />
+                    Orders to Fulfill
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Confirmed sales orders ready for fulfillment</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/sales-orders')}>
+                  View All
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto">
+                {salesOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No orders to fulfill</p>
+                    <p className="text-xs mt-1">Confirmed sales orders shipping from this location will appear here</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>SO #</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Order Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="w-24"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {salesOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono">{order.so_number}</TableCell>
+                          <TableCell>{order.customer?.name || '—'}</TableCell>
+                          <TableCell>
+                            {order.order_date 
+                              ? new Date(order.order_date).toLocaleDateString() 
+                              : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={statusColors[order.status] || ''}>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            ${order.total_amount?.toFixed(2) || '0.00'}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                setSelectedSalesOrder(order);
+                                fetchSalesOrderItems(order.id);
+                                setIsFulfillDialogOpen(true);
+                              }}
+                            >
+                              Fulfill
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Areas Tab */}
-          <TabsContent value="areas" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+          {activeTab === 'areas' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
                     <Grid3X3 className="w-5 h-5" />
                     Areas
-                  </CardTitle>
-                  <CardDescription>Zones and sections at this location</CardDescription>
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Warehouse zones and sections</p>
                 </div>
                 <Button size="sm" onClick={() => openAreaDialog()}>
                   <Plus className="w-4 h-4 mr-1" />
                   Add Area
-                  <Kbd>A</Kbd>
+                  <Kbd className="ml-2">A</Kbd>
                 </Button>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="flex-1 overflow-auto">
                 {areas.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Grid3X3 className="w-12 h-12 text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground font-medium">No areas defined</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Create areas to organize this location
-                    </p>
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Grid3X3 className="w-12 h-12 mb-3 opacity-30" />
+                    <p className="font-medium">No areas defined</p>
+                    <p className="text-sm mt-1">Create areas to organize your warehouse layout</p>
                   </div>
                 ) : (
                   <Table>
@@ -1027,33 +1056,33 @@ const Cockpit = () => {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </div>
+          )}
 
           {/* Bins Tab */}
-          <TabsContent value="bins" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+          {activeTab === 'bins' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
                     <Box className="w-5 h-5" />
                     Bins
-                  </CardTitle>
-                  <CardDescription>Storage locations within areas</CardDescription>
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Storage locations within areas</p>
                 </div>
                 <Button size="sm" onClick={() => openBinDialog()} disabled={areas.length === 0}>
                   <Plus className="w-4 h-4 mr-1" />
                   Add Bin
-                  <Kbd>B</Kbd>
+                  <Kbd className="ml-2">B</Kbd>
                 </Button>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="flex-1 overflow-auto">
                 {bins.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Box className="w-12 h-12 text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground font-medium">No bins defined</p>
-                    <p className="text-sm text-muted-foreground mt-1">
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Box className="w-12 h-12 mb-3 opacity-30" />
+                    <p className="font-medium">No bins defined</p>
+                    <p className="text-sm mt-1">
                       {areas.length === 0 ? 'Create an area first to add bins' : 'Create bins to track inventory locations'}
                     </p>
                   </div>
@@ -1093,20 +1122,20 @@ const Cockpit = () => {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </div>
+          )}
 
           {/* Inventory Tab */}
-          <TabsContent value="inventory" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+          {activeTab === 'inventory' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
                     <Boxes className="w-5 h-5" />
                     Inventory
-                  </CardTitle>
-                  <CardDescription>Products stored at this location</CardDescription>
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Products stored at this location</p>
                 </div>
                 <div className="relative w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1117,15 +1146,13 @@ const Cockpit = () => {
                     className="pl-9"
                   />
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="flex-1 overflow-auto">
                 {inventory.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Boxes className="w-12 h-12 text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground font-medium">No inventory at this location</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Inventory will appear here when products are received
-                    </p>
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Boxes className="w-12 h-12 mb-3 opacity-30" />
+                    <p className="font-medium">No inventory at this location</p>
+                    <p className="text-sm mt-1">Inventory will appear here when products are received</p>
                   </div>
                 ) : (
                   <Table>
@@ -1189,12 +1216,13 @@ const Cockpit = () => {
                     </TableBody>
                   </Table>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </main>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
+      {/* Area Dialog */}
       <Dialog open={isAreaDialogOpen} onOpenChange={setIsAreaDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <form ref={areaFormRef} onSubmit={handleAreaSubmit}>
@@ -1215,7 +1243,7 @@ const Cockpit = () => {
               </div>
             )}
             
-            <div className="space-y-4 mt-4 px-6">
+            <div className="space-y-4 mt-4 px-6 pb-6">
               <div className="space-y-2">
                 <Label htmlFor="area_id">Area ID</Label>
                 <Input
@@ -1247,7 +1275,7 @@ const Cockpit = () => {
                 />
               </div>
             </div>
-            <DialogFooter className="mt-6">
+            <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
               <Button type="button" variant="outline" onClick={() => setIsAreaDialogOpen(false)}>
                 Cancel
                 <Kbd>Esc</Kbd>
@@ -1282,7 +1310,7 @@ const Cockpit = () => {
               </div>
             )}
             
-            <div className="space-y-4 mt-4 px-6">
+            <div className="space-y-4 mt-4 px-6 pb-6">
               <div className="space-y-2">
                 <Label htmlFor="bin_area">Area *</Label>
                 <Select
@@ -1339,7 +1367,7 @@ const Cockpit = () => {
                 />
               </div>
             </div>
-            <DialogFooter className="mt-6">
+            <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
               <Button type="button" variant="outline" onClick={() => setIsBinDialogOpen(false)}>
                 Cancel
                 <Kbd>Esc</Kbd>
@@ -1350,87 +1378,6 @@ const Cockpit = () => {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Inbound Deliveries Dialog */}
-      <Dialog open={isDeliveriesDialogOpen} onOpenChange={setIsDeliveriesDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Truck className="w-5 h-5 text-amber-500" />
-              Inbound Shipments - {selectedLocation?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Deliveries pending arrival at this location
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-auto">
-            {pendingDeliveries.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No pending deliveries</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Delivery ID</TableHead>
-                    <TableHead>PO #</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Expected Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-24"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingDeliveries.map((delivery) => (
-                    <TableRow key={delivery.id}>
-                      <TableCell className="font-mono">{delivery.delivery_id}</TableCell>
-                      <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
-                      <TableCell>{delivery.vendor?.name || '—'}</TableCell>
-                      <TableCell>
-                        {delivery.expected_date 
-                          ? new Date(delivery.expected_date).toLocaleDateString() 
-                          : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          delivery.status === 'in_transit' 
-                            ? 'bg-blue-500/10 text-blue-500' 
-                            : delivery.status === 'pending'
-                            ? 'bg-amber-500/10 text-amber-500'
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {delivery.status.replace('_', ' ')}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedDelivery(delivery);
-                            setIsReceiveDialogOpen(true);
-                          }}
-                        >
-                          Receive
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeliveriesDialogOpen(false)}>
-              Close
-            </Button>
-            <Button onClick={() => { setIsDeliveriesDialogOpen(false); navigate('/deliveries'); }}>
-              Go to Deliveries
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1468,84 +1415,6 @@ const Cockpit = () => {
         />
       )}
 
-      {/* Sales Orders Dialog */}
-      <Dialog open={isSalesOrdersDialogOpen} onOpenChange={setIsSalesOrdersDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-violet-500" />
-              Orders to Fulfill - {selectedLocation?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Confirmed sales orders ready for fulfillment from this location
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-auto">
-            {salesOrders.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No orders to fulfill</p>
-                <p className="text-xs mt-1">Confirmed sales orders shipping from this location will appear here</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SO #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Order Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="w-24"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {salesOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-mono">{order.so_number}</TableCell>
-                      <TableCell>{order.customer?.name || '—'}</TableCell>
-                      <TableCell>
-                        {order.order_date 
-                          ? new Date(order.order_date).toLocaleDateString() 
-                          : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={statusColors[order.status] || ''}>
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${order.total_amount?.toFixed(2) || '0.00'}
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          size="sm" 
-                          onClick={() => {
-                            setSelectedSalesOrder(order);
-                            fetchSalesOrderItems(order.id);
-                            setIsFulfillDialogOpen(true);
-                          }}
-                        >
-                          Fulfill
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSalesOrdersDialogOpen(false)}>
-              Close
-            </Button>
-            <Button onClick={() => { setIsSalesOrdersDialogOpen(false); navigate('/sales-orders'); }}>
-              Go to Sales Orders
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Fulfill Order Dialog */}
       <Dialog open={isFulfillDialogOpen} onOpenChange={(open) => {
         setIsFulfillDialogOpen(open);
@@ -1562,7 +1431,7 @@ const Cockpit = () => {
             </DialogDescription>
           </DialogHeader>
           {selectedSalesOrder && (
-            <div className="space-y-4">
+            <div className="space-y-4 px-6 pb-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Customer</p>
@@ -1622,7 +1491,7 @@ const Cockpit = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
             <Button variant="outline" onClick={() => setIsFulfillDialogOpen(false)}>
               Cancel
             </Button>
