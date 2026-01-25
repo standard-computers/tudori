@@ -9,14 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogBody } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Kbd } from '@/components/ui/kbd';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye } from 'lucide-react';
 import { z } from 'zod';
+import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
 
 interface TeamMember {
   id: string;
@@ -73,6 +75,7 @@ const Users = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [viewingMember, setViewingMember] = useState<TeamMember | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [noCompany, setNoCompany] = useState(false);
 
@@ -277,13 +280,14 @@ const Users = () => {
   const handleUpdateRole = async (member: TeamMember, newRole: 'admin' | 'member' | 'viewer' | 'it') => {
     if (!companyId) return;
     
-    // Prevent changing owner or IT role (IT is special)
+    // Prevent changing owner role
     if (member.role === 'owner') {
       toast.error('Cannot change owner role');
       return;
     }
-    if (member.role === 'it') {
-      toast.error('Cannot change IT role - contact system administrator');
+    // Only owner can change IT role
+    if (member.role === 'it' && currentUserRole !== 'owner') {
+      toast.error('Only owners can change IT role');
       return;
     }
 
@@ -569,7 +573,7 @@ const Users = () => {
               </TableHeader>
               <TableBody>
                 {teamMembers.map((member) => {
-                  const canEditMember = canManageUsers && member.role !== 'owner' && member.role !== 'it' && member.user_id !== user?.id;
+                  const canEditMember = canManageUsers && member.role !== 'owner' && member.user_id !== user?.id && (currentUserRole === 'owner' || member.role !== 'it');
                   return (
                   <TableRow 
                     key={member.id} 
@@ -601,31 +605,46 @@ const Users = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {canEditMember && (
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingMember(member);
-                            }}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveUser(member);
-                            }}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingMember(member);
+                          }}
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {canEditMember && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingMember(member);
+                              }}
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveUser(member);
+                              }}
+                              className="text-destructive hover:text-destructive"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                   );
@@ -637,52 +656,123 @@ const Users = () => {
 
         {/* Edit User Dialog */}
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit User</DialogTitle>
               <DialogDescription>
-                Update {editingMember?.first_name} {editingMember?.last_name}'s access level
+                Update {editingMember?.first_name} {editingMember?.last_name}'s access level and permissions
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {editingMember?.first_name[0]}{editingMember?.last_name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{editingMember?.first_name} {editingMember?.last_name}</p>
-                  <p className="text-sm text-muted-foreground">Current role: {editingMember?.role}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Access Level</Label>
-                <Select 
-                  value={editingMember?.role} 
-                  onValueChange={(v) => {
-                    if (editingMember) {
-                      handleUpdateRole(editingMember, v as 'admin' | 'member' | 'viewer' | 'it');
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="it">IT</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
-                    <SelectItem value="viewer">Viewer</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  {editingMember && roleDescriptions[editingMember.role]}
-                </p>
-              </div>
-            </div>
-            <DialogFooter className="mt-4">
+            <DialogBody>
+              <Tabs defaultValue="general" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="access">Transaction Access</TabsTrigger>
+                </TabsList>
+                <TabsContent value="general" className="mt-4 space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {editingMember?.first_name[0]}{editingMember?.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{editingMember?.first_name} {editingMember?.last_name}</p>
+                      <p className="text-sm text-muted-foreground">Current role: {editingMember?.role}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Access Level</Label>
+                    <Select 
+                      value={editingMember?.role} 
+                      onValueChange={(v) => {
+                        if (editingMember) {
+                          handleUpdateRole(editingMember, v as 'admin' | 'member' | 'viewer' | 'it');
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="it">IT</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      {editingMember && roleDescriptions[editingMember.role]}
+                    </p>
+                  </div>
+                </TabsContent>
+                <TabsContent value="access" className="mt-4">
+                  {editingMember && companyId && (
+                    <TransactionAccessTab 
+                      userId={editingMember.user_id} 
+                      companyId={companyId}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            </DialogBody>
+            <DialogFooter>
               <Button variant="outline" onClick={() => setEditingMember(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* View User Dialog (Read-only) */}
+        <Dialog open={!!viewingMember} onOpenChange={(open) => !open && setViewingMember(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>View User</DialogTitle>
+              <DialogDescription>
+                {viewingMember?.first_name} {viewingMember?.last_name}'s profile and permissions
+              </DialogDescription>
+            </DialogHeader>
+            <DialogBody>
+              <Tabs defaultValue="general" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="access">Transaction Access</TabsTrigger>
+                </TabsList>
+                <TabsContent value="general" className="mt-4 space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {viewingMember?.first_name[0]}{viewingMember?.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{viewingMember?.first_name} {viewingMember?.last_name}</p>
+                      <Badge variant="outline" className={viewingMember ? roleColors[viewingMember.role] : ''}>
+                        {viewingMember?.role}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Role Description</Label>
+                    <p className="text-sm">
+                      {viewingMember && roleDescriptions[viewingMember.role]}
+                    </p>
+                  </div>
+                </TabsContent>
+                <TabsContent value="access" className="mt-4">
+                  {viewingMember && companyId && (
+                    <TransactionAccessTab 
+                      userId={viewingMember.user_id} 
+                      companyId={companyId}
+                      readOnly={true}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            </DialogBody>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewingMember(null)}>
                 Close
               </Button>
             </DialogFooter>
