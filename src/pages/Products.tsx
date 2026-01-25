@@ -1296,6 +1296,57 @@ const Products = () => {
                     </TabsList>
                     
                     <TabsContent value="general" className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <Label>Product Image</Label>
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-20 w-20 rounded-lg border-2 border-border">
+                            {imagePreview ? (
+                              <AvatarImage src={imagePreview} alt="Product image" className="object-cover" />
+                            ) : (
+                              <AvatarFallback className="rounded-lg bg-muted">
+                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => document.getElementById('product-image-upload')?.click()}
+                                disabled={uploadingImage}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {imagePreview ? 'Change' : 'Upload'}
+                              </Button>
+                              {imagePreview && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleRemoveImage}
+                                  disabled={uploadingImage}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              JPG, PNG, or WebP. Max 5MB.
+                            </p>
+                          </div>
+                          <input
+                            id="product-image-upload"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="product_id">Product ID</Label>
@@ -1425,57 +1476,6 @@ const Products = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Product Image</Label>
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-20 w-20 rounded-lg border-2 border-border">
-                            {imagePreview ? (
-                              <AvatarImage src={imagePreview} alt="Product image" className="object-cover" />
-                            ) : (
-                              <AvatarFallback className="rounded-lg bg-muted">
-                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => document.getElementById('product-image-upload')?.click()}
-                                disabled={uploadingImage}
-                              >
-                                <Upload className="w-4 h-4 mr-2" />
-                                {imagePreview ? 'Change' : 'Upload'}
-                              </Button>
-                              {imagePreview && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={handleRemoveImage}
-                                  disabled={uploadingImage}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <X className="w-4 h-4 mr-1" />
-                                  Remove
-                                </Button>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              JPG, PNG, or WebP. Max 5MB.
-                            </p>
-                          </div>
-                          <input
-                            id="product-image-upload"
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleImageChange}
-                            className="hidden"
-                          />
-                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
