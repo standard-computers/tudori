@@ -2587,6 +2587,44 @@ export type Database = {
           },
         ]
       }
+      user_transaction_access: {
+        Row: {
+          company_id: string
+          created_at: string
+          has_access: boolean
+          id: string
+          transaction_code: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          has_access?: boolean
+          id?: string
+          transaction_code: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          has_access?: boolean
+          id?: string
+          transaction_code?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_transaction_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address_line1: string | null
