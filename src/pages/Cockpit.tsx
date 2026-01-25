@@ -137,6 +137,24 @@ interface SalesOrderItem {
   product?: { name: string; product_id: string };
 }
 
+interface InternalPurchaseOrder {
+  id: string;
+  po_number: string;
+  status: string;
+  source_location_id: string;
+  location_id: string | null;
+  total_amount: number;
+  created_at: string;
+  location?: { name: string; location_id: string } | null;
+}
+
+interface PurchaseOrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  product?: { name: string; product_id: string };
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
   pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
@@ -200,6 +218,12 @@ const Cockpit = () => {
   const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
 
+  // Internal purchase orders state (POs where this location is the source/vendor)
+  const [internalPOs, setInternalPOs] = useState<InternalPurchaseOrder[]>([]);
+  const [selectedInternalPO, setSelectedInternalPO] = useState<InternalPurchaseOrder | null>(null);
+  const [internalPOItems, setInternalPOItems] = useState<PurchaseOrderItem[]>([]);
+  const [isInternalPOFulfillDialogOpen, setIsInternalPOFulfillDialogOpen] = useState(false);
+
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
@@ -252,11 +276,13 @@ const Cockpit = () => {
       fetchPendingDeliveries();
       fetchInventory();
       fetchOutstandingSalesOrders();
+      fetchInternalPurchaseOrders();
     } else {
       setPendingDeliveriesCount(0);
       setInventory([]);
       setSalesOrders([]);
       setSalesOrdersCount(0);
+      setInternalPOs([]);
     }
   }, [selectedLocationId]);
 
@@ -536,6 +562,46 @@ const Cockpit = () => {
     setSalesOrderItems((data as any) || []);
   };
 
+  // Fetch internal purchase orders where this location is the source (vendor)
+  const fetchInternalPurchaseOrders = async () => {
+    if (!selectedLocationId) return;
+    const { data, error } = await supabase
+      .from('purchase_orders' as any)
+      .select(`
+        id,
+        po_number,
+        status,
+        source_location_id,
+        location_id,
+        total_amount,
+        created_at,
+        location:locations!purchase_orders_location_id_fkey(name, location_id)
+      `)
+      .eq('source_location_id', selectedLocationId)
+      .in('status', ['draft', 'confirmed', 'processing'])
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('Failed to fetch internal purchase orders:', error);
+      return;
+    }
+    setInternalPOs((data as any) || []);
+  };
+
+  const fetchInternalPOItems = async (orderId: string) => {
+    const { data } = await supabase
+      .from('purchase_order_items' as any)
+      .select(`
+        id,
+        product_id,
+        quantity,
+        product:products(name, product_id)
+      `)
+      .eq('purchase_order_id', orderId);
+    
+    setInternalPOItems((data as any) || []);
+  };
+
   const handleFulfillOrder = async () => {
     if (!selectedSalesOrder || !selectedLocationId || !companyId) return;
     
@@ -671,6 +737,122 @@ const Cockpit = () => {
     } catch (error) {
       console.error('Fulfillment error:', error);
       toast.error('Failed to fulfill order');
+    } finally {
+      setIsFulfilling(false);
+    }
+  };
+
+  // Handle fulfillment for internal purchase orders (this location is the source/vendor)
+  const handleFulfillInternalPO = async () => {
+    if (!selectedInternalPO || !selectedLocationId || !companyId) return;
+    
+    setIsFulfilling(true);
+    
+    try {
+      const { data: items } = await supabase
+        .from('purchase_order_items' as any)
+        .select('product_id, quantity')
+        .eq('purchase_order_id', selectedInternalPO.id);
+      
+      if (!items || items.length === 0) {
+        toast.error('No items to fulfill');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // Check inventory availability
+      for (const item of items as any[]) {
+        const { data: invData } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('location_id', selectedLocationId)
+          .eq('product_id', item.product_id);
+        
+        const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
+        if (totalAvailable < item.quantity) {
+          const { data: productData } = await supabase
+            .from('products')
+            .select('name')
+            .eq('id', item.product_id)
+            .single();
+          toast.error(`Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
+          setIsFulfilling(false);
+          return;
+        }
+      }
+
+      // Create goods issue
+      const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', {
+        p_company_id: companyId,
+      });
+
+      const { data: goodsIssue, error: giError } = await supabase
+        .from('goods_issues' as any)
+        .insert({
+          company_id: companyId,
+          issue_number: issueNumber,
+          location_id: selectedLocationId,
+          status: 'pending',
+          notes: `Internal transfer fulfillment for PO ${selectedInternalPO.po_number}`,
+        })
+        .select()
+        .single();
+
+      if (giError) {
+        console.error('Failed to create goods issue:', giError);
+        toast.error('Failed to create goods issue');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // Create goods issue items
+      const giItems = (items as any[]).map(item => ({
+        goods_issue_id: (goodsIssue as any).id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('goods_issue_items' as any)
+        .insert(giItems);
+
+      if (itemsError) {
+        console.error('Failed to create goods issue items:', itemsError);
+      }
+
+      // Post the goods issue to update inventory
+      const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
+      if (!postResult.success) {
+        toast.error(postResult.error || 'Failed to post goods issue');
+        setIsFulfilling(false);
+        return;
+      }
+
+      // Mark the associated delivery as fulfilled so destination can receive
+      await supabase
+        .from('deliveries' as any)
+        .update({ 
+          is_fulfilled: true,
+          status: 'shipped'
+        })
+        .eq('purchase_order_id', selectedInternalPO.id);
+
+      // Update PO status to shipped
+      await supabase
+        .from('purchase_orders' as any)
+        .update({ status: 'shipped' })
+        .eq('id', selectedInternalPO.id);
+
+      toast.success(`Internal transfer fulfilled - PO ${selectedInternalPO.po_number} shipped, inventory updated.`);
+      
+      setIsInternalPOFulfillDialogOpen(false);
+      setSelectedInternalPO(null);
+      setInternalPOItems([]);
+      fetchInternalPurchaseOrders();
+      fetchInventory();
+    } catch (error) {
+      console.error('Internal PO fulfillment error:', error);
+      toast.error('Failed to fulfill internal transfer');
     } finally {
       setIsFulfilling(false);
     }
@@ -1084,34 +1266,78 @@ const Cockpit = () => {
                     <ShoppingCart className="w-5 h-5 text-violet-500" />
                     Orders to Fulfill
                   </h2>
-                  <p className="text-sm text-muted-foreground">Confirmed sales orders ready for fulfillment</p>
+                  <p className="text-sm text-muted-foreground">Sales orders and internal transfers to fulfill from this location</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/sales-orders')}>
                   View All
                 </Button>
               </div>
               <div className="flex-1 overflow-auto">
-                {salesOrders.length === 0 ? (
+                {salesOrders.length === 0 && internalPOs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
                     <p>No orders to fulfill</p>
-                    <p className="text-xs mt-1">Confirmed sales orders shipping from this location will appear here</p>
+                    <p className="text-xs mt-1">Confirmed orders shipping from this location will appear here</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SO #</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Order Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Order #</TableHead>
+                        <TableHead>Ship To</TableHead>
+                        <TableHead>Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         <TableHead className="w-24"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {/* Internal Purchase Orders (this location is the vendor) */}
+                      {internalPOs.map((po) => (
+                        <TableRow key={`po-${po.id}`} className="bg-blue-500/5">
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+                              Transfer
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{po.po_number}</TableCell>
+                          <TableCell>{po.location?.name || '—'}</TableCell>
+                          <TableCell>
+                            {po.created_at 
+                              ? new Date(po.created_at).toLocaleDateString() 
+                              : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={statusColors[po.status] || ''}>
+                              {po.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            ${po.total_amount?.toFixed(2) || '0.00'}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                setSelectedInternalPO(po);
+                                fetchInternalPOItems(po.id);
+                                setIsInternalPOFulfillDialogOpen(true);
+                              }}
+                            >
+                              Fulfill
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Sales Orders */}
                       {salesOrders.map((order) => (
-                        <TableRow key={order.id}>
+                        <TableRow key={`so-${order.id}`}>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20">
+                              Sales
+                            </Badge>
+                          </TableCell>
                           <TableCell className="font-mono">{order.so_number}</TableCell>
                           <TableCell>{order.customer?.name || '—'}</TableCell>
                           <TableCell>
@@ -1728,6 +1954,84 @@ const Cockpit = () => {
             <Button onClick={handleFulfillOrder} disabled={isFulfilling || salesOrderItems.length === 0}>
               {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Fulfill Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fulfill Internal PO Dialog */}
+      <Dialog open={isInternalPOFulfillDialogOpen} onOpenChange={(open) => {
+        setIsInternalPOFulfillDialogOpen(open);
+        if (!open) {
+          setSelectedInternalPO(null);
+          setInternalPOItems([]);
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Fulfill Internal Transfer</DialogTitle>
+            <DialogDescription>
+              Ship items to {selectedInternalPO?.location?.name} for PO {selectedInternalPO?.po_number}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedInternalPO && (
+            <div className="space-y-4 px-6 pb-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Destination</p>
+                  <p className="font-medium">{selectedInternalPO.location?.name || '—'}</p>
+                  <p className="text-xs text-muted-foreground">{selectedInternalPO.location?.location_id}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Total Value</p>
+                  <p className="font-medium">${selectedInternalPO.total_amount?.toFixed(2) || '0.00'}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-muted-foreground text-sm mb-2">Items to transfer</p>
+                <div className="border rounded-md max-h-48 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {internalPOItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.product?.name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">{item.product?.product_id}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 p-3 rounded-md text-sm border border-blue-500/20">
+                <p className="font-medium mb-1 text-blue-700">This will:</p>
+                <ul className="list-disc list-inside text-blue-600 space-y-1">
+                  <li>Create a Goods Issue to deduct inventory from this location</li>
+                  <li>Mark the delivery as fulfilled so destination can receive</li>
+                  <li>Update the purchase order status to "Shipped"</li>
+                </ul>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
+            <Button variant="outline" onClick={() => setIsInternalPOFulfillDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleFulfillInternalPO} disabled={isFulfilling || internalPOItems.length === 0}>
+              {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Fulfill Transfer
             </Button>
           </DialogFooter>
         </DialogContent>

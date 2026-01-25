@@ -853,6 +853,7 @@ const Orders = () => {
     // Parse vendor value to extract actual UUID (handles 'vendor:uuid' or 'location:uuid' format)
     const parsedVendor = parseVendorValue(formData.vendor_id);
     const actualVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+    const sourceLocationId = parsedVendor?.type === 'location' ? parsedVendor.id : null;
 
     // Determine which ledger to use - prioritize explicit selection
     let selectedLedgerId: string | null = formData.ledger_id || null;
@@ -909,6 +910,7 @@ const Orders = () => {
           po_number: poNumber,
           status: 'draft',
           vendor_id: actualVendorId || null,
+          source_location_id: sourceLocationId || null,
           location_id: formData.location_id || null,
           bill_to_location_id: formData.bill_to_location_id || null,
           ledger_id: selectedLedgerId,
@@ -917,7 +919,7 @@ const Orders = () => {
           tax_amount: taxAmount,
           total_amount: totalAmount,
           notes: formData.notes || null,
-        })
+        } as any)
         .select()
         .single();
 

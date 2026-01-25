@@ -556,6 +556,7 @@ export type Database = {
           delivery_id: string
           expected_date: string | null
           id: string
+          is_fulfilled: boolean
           location_id: string | null
           notes: string | null
           purchase_order_id: string | null
@@ -572,6 +573,7 @@ export type Database = {
           delivery_id: string
           expected_date?: string | null
           id?: string
+          is_fulfilled?: boolean
           location_id?: string | null
           notes?: string | null
           purchase_order_id?: string | null
@@ -588,6 +590,7 @@ export type Database = {
           delivery_id?: string
           expected_date?: string | null
           id?: string
+          is_fulfilled?: boolean
           location_id?: string | null
           notes?: string | null
           purchase_order_id?: string | null
@@ -1943,6 +1946,7 @@ export type Database = {
           order_date: string | null
           po_number: string
           requisition_id: string | null
+          source_location_id: string | null
           status: string
           subtotal: number | null
           tax_amount: number | null
@@ -1963,6 +1967,7 @@ export type Database = {
           order_date?: string | null
           po_number: string
           requisition_id?: string | null
+          source_location_id?: string | null
           status?: string
           subtotal?: number | null
           tax_amount?: number | null
@@ -1983,6 +1988,7 @@ export type Database = {
           order_date?: string | null
           po_number?: string
           requisition_id?: string | null
+          source_location_id?: string | null
           status?: string
           subtotal?: number | null
           tax_amount?: number | null
@@ -2025,6 +2031,13 @@ export type Database = {
             columns: ["requisition_id"]
             isOneToOne: false
             referencedRelation: "requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
