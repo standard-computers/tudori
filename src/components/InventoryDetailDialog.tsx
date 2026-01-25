@@ -79,6 +79,9 @@ export const InventoryDetailDialog = ({
   const [isAssigningPU, setIsAssigningPU] = useState(false);
   const [isExploding, setIsExploding] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [siblingPUItems, setSiblingPUItems] = useState<InventoryItem[]>([]);
+  const [showPUConfirmDialog, setShowPUConfirmDialog] = useState(false);
+  const [pendingMoveAction, setPendingMoveAction] = useState<'manual' | 'auto' | null>(null);
 
   useEffect(() => {
     if (open && item) {
@@ -113,6 +116,41 @@ export const InventoryDetailDialog = ({
     setBins(binsData || []);
   };
 
+  // Check for sibling inventory items that share the same PU
+  const checkSiblingPUItems = async (): Promise<InventoryItem[]> => {
+    if (!item?.pu_id) return [];
+    
+    const { data: siblings } = await supabase
+      .from('inventory')
+      .select(`
+        id, location_id, bin_id, product_id, pu_id, quantity, min_quantity, max_quantity,
+        product:products(name, product_id, sku, company_id),
+        bin:bins(bin_id, name),
+        packaging_unit:packaging_units(pu_number)
+      `)
+      .eq('pu_id', item.pu_id)
+      .neq('id', item.id);
+    
+    return (siblings || []) as unknown as InventoryItem[];
+  };
+
+  const handleInitiatePutAway = async () => {
+    if (!item) return;
+    
+    // Check for siblings with same PU
+    if (item.pu_id) {
+      const siblings = await checkSiblingPUItems();
+      if (siblings.length > 0) {
+        setSiblingPUItems(siblings);
+        setPendingMoveAction('manual');
+        setShowPUConfirmDialog(true);
+        return;
+      }
+    }
+    
+    setIsPutAwayMode(true);
+  };
+
   const handlePutAway = async () => {
     if (!item || !selectedBinId) {
       toast.error('Please select a bin');
@@ -127,53 +165,66 @@ export const InventoryDetailDialog = ({
     setIsLoading(true);
 
     try {
-      // Check if there's already inventory in the target bin for this product
-      const { data: existingBinInventory } = await supabase
-        .from('inventory')
-        .select('id, quantity')
-        .eq('location_id', locationId)
-        .eq('product_id', item.product_id)
-        .eq('bin_id', selectedBinId)
-        .maybeSingle();
+      // Get all items to move (current item + siblings if they share PU)
+      const itemsToMove = siblingPUItems.length > 0 
+        ? [item, ...siblingPUItems] 
+        : [item];
 
-      if (existingBinInventory) {
-        // Add to existing bin inventory
-        await supabase
+      for (const invItem of itemsToMove) {
+        const moveQuantity = invItem.id === item.id ? putAwayQuantity : invItem.quantity;
+        
+        // Check if there's already inventory in the target bin for this product
+        const { data: existingBinInventory } = await supabase
           .from('inventory')
-          .update({
-            quantity: existingBinInventory.quantity + putAwayQuantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingBinInventory.id);
-      } else {
-        // Create new inventory record in the bin
-        await supabase.from('inventory').insert({
-          location_id: locationId,
-          product_id: item.product_id,
-          bin_id: selectedBinId,
-          quantity: putAwayQuantity,
-          min_quantity: item.min_quantity,
-          max_quantity: item.max_quantity,
-        });
-      }
+          .select('id, quantity')
+          .eq('location_id', locationId)
+          .eq('product_id', invItem.product_id)
+          .eq('bin_id', selectedBinId)
+          .maybeSingle();
 
-      // Update or delete the source (unassigned) inventory
-      const remainingQuantity = item.quantity - putAwayQuantity;
-      if (remainingQuantity > 0) {
-        await supabase
-          .from('inventory')
-          .update({
-            quantity: remainingQuantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', item.id);
-      } else {
-        // Delete the source record if all was put away
-        await supabase.from('inventory').delete().eq('id', item.id);
+        if (existingBinInventory) {
+          // Add to existing bin inventory
+          await supabase
+            .from('inventory')
+            .update({
+              quantity: existingBinInventory.quantity + moveQuantity,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingBinInventory.id);
+        } else {
+          // Create new inventory record in the bin
+          await supabase.from('inventory').insert({
+            location_id: locationId,
+            product_id: invItem.product_id,
+            bin_id: selectedBinId,
+            quantity: moveQuantity,
+            min_quantity: invItem.min_quantity,
+            max_quantity: invItem.max_quantity,
+            pu_id: invItem.pu_id,
+          });
+        }
+
+        // Update or delete the source inventory
+        const remainingQuantity = invItem.quantity - moveQuantity;
+        if (remainingQuantity > 0) {
+          await supabase
+            .from('inventory')
+            .update({
+              quantity: remainingQuantity,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', invItem.id);
+        } else {
+          await supabase.from('inventory').delete().eq('id', invItem.id);
+        }
       }
 
       const selectedBin = bins.find(b => b.id === selectedBinId);
-      toast.success(`Put away ${putAwayQuantity} units to ${selectedBin?.bin_id || 'bin'}`);
+      const totalItems = siblingPUItems.length > 0 ? itemsToMove.length : 1;
+      toast.success(
+        `Put away ${totalItems > 1 ? `${totalItems} items (PU)` : `${putAwayQuantity} units`} to ${selectedBin?.bin_id || 'bin'}`
+      );
+      setSiblingPUItems([]);
       onUpdated();
       onOpenChange(false);
     } catch (error) {
@@ -182,6 +233,23 @@ export const InventoryDetailDialog = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleInitiateAutoPutAway = async () => {
+    if (!item) return;
+    
+    // Check for siblings with same PU
+    if (item.pu_id) {
+      const siblings = await checkSiblingPUItems();
+      if (siblings.length > 0) {
+        setSiblingPUItems(siblings);
+        setPendingMoveAction('auto');
+        setShowPUConfirmDialog(true);
+        return;
+      }
+    }
+    
+    await handleAutoPutAway();
   };
 
   const handleAutoPutAway = async () => {
@@ -237,47 +305,54 @@ export const InventoryDetailDialog = ({
         return;
       }
       
-      // Set the selected bin and trigger put away
-      setSelectedBinId(targetBinId);
-      
-      // Perform the put away with full quantity
       const selectedBin = bins.find(b => b.id === targetBinId);
       
-      // Check if there's already inventory in the target bin for this product
-      const { data: existingBinInventory } = await supabase
-        .from('inventory')
-        .select('id, quantity')
-        .eq('location_id', locationId)
-        .eq('product_id', item.product_id)
-        .eq('bin_id', targetBinId)
-        .maybeSingle();
+      // Get all items to move (current item + siblings if they share PU)
+      const itemsToMove = siblingPUItems.length > 0 
+        ? [item, ...siblingPUItems] 
+        : [item];
 
-      if (existingBinInventory) {
-        // Add to existing bin inventory
-        await supabase
+      for (const invItem of itemsToMove) {
+        // Check if there's already inventory in the target bin for this product
+        const { data: existingBinInventory } = await supabase
           .from('inventory')
-          .update({
-            quantity: existingBinInventory.quantity + item.quantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingBinInventory.id);
-      } else {
-        // Create new inventory record in the bin
-        await supabase.from('inventory').insert({
-          location_id: locationId,
-          product_id: item.product_id,
-          bin_id: targetBinId,
-          quantity: item.quantity,
-          min_quantity: item.min_quantity,
-          max_quantity: item.max_quantity,
-          pu_id: item.pu_id,
-        });
+          .select('id, quantity')
+          .eq('location_id', locationId)
+          .eq('product_id', invItem.product_id)
+          .eq('bin_id', targetBinId)
+          .maybeSingle();
+
+        if (existingBinInventory) {
+          // Add to existing bin inventory
+          await supabase
+            .from('inventory')
+            .update({
+              quantity: existingBinInventory.quantity + invItem.quantity,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingBinInventory.id);
+        } else {
+          // Create new inventory record in the bin
+          await supabase.from('inventory').insert({
+            location_id: locationId,
+            product_id: invItem.product_id,
+            bin_id: targetBinId,
+            quantity: invItem.quantity,
+            min_quantity: invItem.min_quantity,
+            max_quantity: invItem.max_quantity,
+            pu_id: invItem.pu_id,
+          });
+        }
+
+        // Delete the source inventory
+        await supabase.from('inventory').delete().eq('id', invItem.id);
       }
 
-      // Delete the source (unassigned) inventory
-      await supabase.from('inventory').delete().eq('id', item.id);
-
-      toast.success(`Auto put away ${item.quantity} units to ${selectedBin?.bin_id || 'bin'}`);
+      const totalItems = siblingPUItems.length > 0 ? itemsToMove.length : 1;
+      toast.success(
+        `Auto put away ${totalItems > 1 ? `${totalItems} items (PU)` : `${item.quantity} units`} to ${selectedBin?.bin_id || 'bin'}`
+      );
+      setSiblingPUItems([]);
       onUpdated();
       onOpenChange(false);
     } catch (error) {
@@ -286,6 +361,22 @@ export const InventoryDetailDialog = ({
     } finally {
       setIsAutoAssigning(false);
     }
+  };
+
+  const handlePUConfirmContinue = () => {
+    setShowPUConfirmDialog(false);
+    if (pendingMoveAction === 'manual') {
+      setIsPutAwayMode(true);
+    } else if (pendingMoveAction === 'auto') {
+      handleAutoPutAway();
+    }
+    setPendingMoveAction(null);
+  };
+
+  const handlePUConfirmCancel = () => {
+    setShowPUConfirmDialog(false);
+    setSiblingPUItems([]);
+    setPendingMoveAction(null);
   };
 
   const handleDelete = async () => {
@@ -514,6 +605,20 @@ export const InventoryDetailDialog = ({
               </p>
             </div>
 
+            {siblingPUItems.length > 0 && (
+              <div className="p-3 border border-primary/30 bg-primary/5 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">
+                    Moving entire PU: {item.packaging_unit?.pu_number}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {siblingPUItems.length + 1} items will be moved together
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="put-away-qty">Quantity to Put Away</Label>
               <Input
@@ -524,9 +629,12 @@ export const InventoryDetailDialog = ({
                 value={putAwayQuantity}
                 onChange={(e) => setPutAwayQuantity(parseInt(e.target.value) || 0)}
                 className="text-lg font-medium"
+                disabled={siblingPUItems.length > 0}
               />
               <p className="text-xs text-muted-foreground">
-                Available: {item.quantity} units
+                {siblingPUItems.length > 0 
+                  ? 'Full quantity will be moved with the packaging unit'
+                  : `Available: ${item.quantity} units`}
               </p>
             </div>
 
@@ -537,7 +645,7 @@ export const InventoryDetailDialog = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleAutoPutAway}
+                    onClick={handleInitiateAutoPutAway}
                     disabled={isAutoAssigning}
                     className="h-7"
                   >
@@ -613,7 +721,7 @@ export const InventoryDetailDialog = ({
                 </Button>
               )}
               {canPutAway && (
-                <Button onClick={() => setIsPutAwayMode(true)} disabled={bins.length === 0}>
+                <Button onClick={handleInitiatePutAway} disabled={bins.length === 0}>
                   <Boxes className="w-4 h-4 mr-2" />
                   Put Away
                 </Button>
@@ -635,6 +743,42 @@ export const InventoryDetailDialog = ({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* PU Confirmation Dialog */}
+      <AlertDialog open={showPUConfirmDialog} onOpenChange={setShowPUConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Move Entire Packaging Unit?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This item is part of packaging unit <strong className="font-mono">{item.packaging_unit?.pu_number}</strong> which contains {siblingPUItems.length + 1} inventory lines.
+                </p>
+                <p>All items in this packaging unit will be moved together:</p>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>
+                    {item.product?.name} - {item.quantity} units
+                  </li>
+                  {siblingPUItems.map((sibling) => (
+                    <li key={sibling.id}>
+                      {sibling.product?.name || 'Unknown'} - {sibling.quantity} units
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handlePUConfirmCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePUConfirmContinue}>
+              Move Packaging Unit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
