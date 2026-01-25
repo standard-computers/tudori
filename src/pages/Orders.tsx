@@ -426,7 +426,7 @@ const Orders = () => {
     setLedgers((data as any) || []);
   };
 
-  // Fetch inventory for Ship To location (for Availability tab)
+  // Fetch inventory for availability check (source location for internal transfers, Ship To for external)
   const fetchLocationInventory = async (locationId: string) => {
     if (!locationId) {
       setLocationInventory([]);
@@ -449,14 +449,42 @@ const Orders = () => {
     setLocationInventory((data as InventoryRecord[]) || []);
   };
 
-  // Fetch inventory when Ship To location changes
+  // Determine the location to check for availability
+  // For internal transfers: check source location (the internal vendor)
+  // For external vendors: check Ship To location (existing stock)
+  const availabilityLocationId = useMemo(() => {
+    const parsed = parseVendorValue(formData.vendor_id);
+    if (parsed?.type === 'location') {
+      // Internal transfer - check source location (where items ship FROM)
+      return parsed.id;
+    }
+    // External vendor - check Ship To location (existing stock there)
+    return formData.location_id;
+  }, [formData.vendor_id, formData.location_id, parseVendorValue]);
+
+  // Get display name for the availability check location
+  const availabilityLocationName = useMemo(() => {
+    const parsed = parseVendorValue(formData.vendor_id);
+    if (parsed?.type === 'location') {
+      return getVendorDisplayName(formData.vendor_id);
+    }
+    return locations.find(l => l.id === formData.location_id)?.name || '';
+  }, [formData.vendor_id, formData.location_id, parseVendorValue, getVendorDisplayName, locations]);
+
+  // Is this an internal transfer?
+  const isInternalTransfer = useMemo(() => {
+    const parsed = parseVendorValue(formData.vendor_id);
+    return parsed?.type === 'location';
+  }, [formData.vendor_id, parseVendorValue]);
+
+  // Fetch inventory when availability location changes
   useEffect(() => {
-    if (isCreateDialogOpen && formData.location_id) {
-      fetchLocationInventory(formData.location_id);
+    if (isCreateDialogOpen && availabilityLocationId) {
+      fetchLocationInventory(availabilityLocationId);
     } else {
       setLocationInventory([]);
     }
-  }, [isCreateDialogOpen, formData.location_id]);
+  }, [isCreateDialogOpen, availabilityLocationId]);
 
   // Calculate item availability for Availability tab
   const itemAvailability = useMemo(() => {
@@ -1673,9 +1701,11 @@ const Orders = () => {
             </TabsContent>
 
             <TabsContent value="availability" className="space-y-4 mt-4">
-              {!formData.location_id ? (
+              {!availabilityLocationId ? (
                 <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
-                  Select a "Ship To" location to check inventory availability
+                  {isInternalTransfer 
+                    ? 'Select a source location to check inventory availability'
+                    : 'Select a "Ship To" location to check inventory availability'}
                 </p>
               ) : orderItems.filter(item => item.product_id).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
@@ -1685,7 +1715,8 @@ const Orders = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
-                      Checking stock at: <span className="font-medium text-foreground">{locations.find(l => l.id === formData.location_id)?.name}</span>
+                      {isInternalTransfer ? 'Checking source stock at: ' : 'Checking stock at: '}
+                      <span className="font-medium text-foreground">{availabilityLocationName}</span>
                     </span>
                     <Badge variant={hasStockIssue ? "destructive" : "default"}>
                       {hasStockIssue ? "Stock Issues" : "All Available"}
