@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,10 @@ interface Bin {
   height_uom?: string | null;
   weight_capacity?: number | null;
   weight_capacity_uom?: string | null;
+  allow_put_away?: boolean;
+  allow_auto_put_away?: boolean;
+  allow_picking?: boolean;
+  allow_auto_picking?: boolean;
 }
 
 interface BinProduct {
@@ -123,6 +128,10 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
       height_uom: 'in',
       weight_capacity: '',
       weight_capacity_uom: 'lb',
+      allow_put_away: true,
+      allow_auto_put_away: true,
+      allow_picking: true,
+      allow_auto_picking: true,
     });
 
     const [binProducts, setBinProducts] = useState<BinProduct[]>([]);
@@ -148,6 +157,10 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             height_uom: editingBin.height_uom || 'in',
             weight_capacity: editingBin.weight_capacity?.toString() || '',
             weight_capacity_uom: editingBin.weight_capacity_uom || 'lb',
+            allow_put_away: editingBin.allow_put_away ?? true,
+            allow_auto_put_away: editingBin.allow_auto_put_away ?? true,
+            allow_picking: editingBin.allow_picking ?? true,
+            allow_auto_picking: editingBin.allow_auto_picking ?? true,
           });
           fetchBinProducts(editingBin.id);
         } else {
@@ -166,6 +179,10 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             height_uom: 'in',
             weight_capacity: '',
             weight_capacity_uom: 'lb',
+            allow_put_away: true,
+            allow_auto_put_away: true,
+            allow_picking: true,
+            allow_auto_picking: true,
           });
           setBinProducts([]);
         }
@@ -212,6 +229,10 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
         height_uom: formData.height_uom,
         weight_capacity: formData.weight_capacity ? parseFloat(formData.weight_capacity) : null,
         weight_capacity_uom: formData.weight_capacity_uom,
+        allow_put_away: formData.allow_put_away,
+        allow_auto_put_away: formData.allow_auto_put_away,
+        allow_picking: formData.allow_picking,
+        allow_auto_picking: formData.allow_auto_picking,
       };
 
       if (editingBin) {
@@ -298,6 +319,10 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
         height_uom: data.height_uom || 'in',
         weight_capacity: data.weight_capacity?.toString() || '',
         weight_capacity_uom: data.weight_capacity_uom || 'lb',
+        allow_put_away: data.allow_put_away ?? true,
+        allow_auto_put_away: data.allow_auto_put_away ?? true,
+        allow_picking: data.allow_picking ?? true,
+        allow_auto_picking: data.allow_auto_picking ?? true,
       }));
     };
 
@@ -331,9 +356,10 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col mt-4">
-              <TabsList className="mx-6 grid grid-cols-3">
+              <TabsList className="mx-6 grid grid-cols-4">
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+                <TabsTrigger value="controls">Controls</TabsTrigger>
                 <TabsTrigger value="products">Products</TabsTrigger>
               </TabsList>
 
@@ -594,6 +620,88 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
                         <div>
                           <span className="text-muted-foreground">Volume:</span>
                           <span className="ml-2 font-mono">{calculateVolume()} {formData.width_uom}³</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="controls" className="space-y-4 mt-0">
+                  <div className="bg-muted/50 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-muted-foreground">
+                      Control what operations are allowed for this bin.
+                    </p>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm">Put Away</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="allow_put_away">Allow Put Away</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Enable manual put away operations to this bin
+                            </p>
+                          </div>
+                          <Switch
+                            id="allow_put_away"
+                            checked={formData.allow_put_away}
+                            onCheckedChange={(checked) => 
+                              setFormData({ ...formData, allow_put_away: checked })
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="allow_auto_put_away">Allow Auto Put Away</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Include this bin in automatic put away suggestions
+                            </p>
+                          </div>
+                          <Switch
+                            id="allow_auto_put_away"
+                            checked={formData.allow_auto_put_away}
+                            onCheckedChange={(checked) => 
+                              setFormData({ ...formData, allow_auto_put_away: checked })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="font-medium text-sm">Picking</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="allow_picking">Allow Picking</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Enable manual picking operations from this bin
+                            </p>
+                          </div>
+                          <Switch
+                            id="allow_picking"
+                            checked={formData.allow_picking}
+                            onCheckedChange={(checked) => 
+                              setFormData({ ...formData, allow_picking: checked })
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="allow_auto_picking">Allow Auto Picking</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Include this bin in automatic picking suggestions
+                            </p>
+                          </div>
+                          <Switch
+                            id="allow_auto_picking"
+                            checked={formData.allow_auto_picking}
+                            onCheckedChange={(checked) => 
+                              setFormData({ ...formData, allow_auto_picking: checked })
+                            }
+                          />
                         </div>
                       </div>
                     </div>

@@ -164,6 +164,10 @@ export type Database = {
       }
       bins: {
         Row: {
+          allow_auto_picking: boolean
+          allow_auto_put_away: boolean
+          allow_picking: boolean
+          allow_put_away: boolean
           area_id: string
           bin_id: string
           capacity: string | null
@@ -182,6 +186,10 @@ export type Database = {
           width_uom: string | null
         }
         Insert: {
+          allow_auto_picking?: boolean
+          allow_auto_put_away?: boolean
+          allow_picking?: boolean
+          allow_put_away?: boolean
           area_id: string
           bin_id: string
           capacity?: string | null
@@ -200,6 +208,10 @@ export type Database = {
           width_uom?: string | null
         }
         Update: {
+          allow_auto_picking?: boolean
+          allow_auto_put_away?: boolean
+          allow_picking?: boolean
+          allow_put_away?: boolean
           area_id?: string
           bin_id?: string
           capacity?: string | null
