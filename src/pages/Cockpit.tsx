@@ -92,8 +92,10 @@ interface InventoryItem {
   quantity: number;
   min_quantity: number | null;
   max_quantity: number | null;
+  pu_id: string | null;
   product?: { name: string; product_id: string; sku: string | null };
   bin?: { bin_id: string; name: string } | null;
+  packaging_unit?: { pu_number: string } | null;
 }
 
 interface SalesOrder {
@@ -324,8 +326,10 @@ const Cockpit = () => {
         quantity,
         min_quantity,
         max_quantity,
+        pu_id,
         product:products(name, product_id, sku),
-        bin:bins(bin_id, name)
+        bin:bins(bin_id, name),
+        packaging_unit:packaging_units(pu_number)
       `)
       .eq('location_id', selectedLocationId)
       .order('quantity', { ascending: false });
@@ -334,7 +338,7 @@ const Cockpit = () => {
       console.error('Failed to fetch inventory:', error);
       return;
     }
-    setInventory(data || []);
+    setInventory((data || []) as unknown as InventoryItem[]);
   };
 
   const fetchOutstandingSalesOrders = async () => {
@@ -1130,6 +1134,7 @@ const Cockpit = () => {
                         <TableHead>Product ID</TableHead>
                         <TableHead>Product Name</TableHead>
                         <TableHead>SKU</TableHead>
+                        <TableHead>PU #</TableHead>
                         <TableHead>Bin</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Min</TableHead>
@@ -1173,6 +1178,7 @@ const Cockpit = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="text-muted-foreground">{item.product?.sku || '—'}</TableCell>
+                              <TableCell className="font-mono text-sm text-primary">{item.packaging_unit?.pu_number || '—'}</TableCell>
                               <TableCell className="font-mono text-sm">{item.bin?.bin_id || 'Unassigned'}</TableCell>
                               <TableCell className="text-right font-medium">{item.quantity}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>

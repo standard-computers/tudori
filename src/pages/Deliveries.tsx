@@ -127,7 +127,19 @@ interface DeliveryItem {
   product_id: string;
   quantity: number;
   notes: string | null;
+  pu_id: string | null;
   product?: { name: string; product_id: string };
+  packaging_unit?: { pu_number: string } | null;
+}
+
+interface PackingItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_code: string;
+  quantity: number;
+  pu_id: string | null;
+  pu_number: string | null;
 }
 
 interface Product {
@@ -327,11 +339,12 @@ const Deliveries = () => {
       .from('delivery_items')
       .select(`
         *,
-        product:products(name, product_id)
+        product:products(name, product_id),
+        packaging_unit:packaging_units(pu_number)
       `)
       .eq('delivery_id', deliveryId);
     
-    setDeliveryItems(data || []);
+    setDeliveryItems((data || []) as unknown as DeliveryItem[]);
   };
 
   const handleAddItem = async () => {
@@ -636,10 +649,13 @@ const Deliveries = () => {
                   
                   <div className="flex-1 overflow-y-auto px-6 pb-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="details">Details</TabsTrigger>
                         <TabsTrigger value="items" disabled={!isEditing}>
                           Items {isEditing && deliveryItems.length > 0 && `(${deliveryItems.length})`}
+                        </TabsTrigger>
+                        <TabsTrigger value="packing" disabled={!isEditing || deliveryItems.length === 0}>
+                          Packing
                         </TabsTrigger>
                       </TabsList>
                     
@@ -867,6 +883,49 @@ const Deliveries = () => {
                                     >
                                       <Trash2 className="w-4 h-4 text-destructive" />
                                     </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="packing" className="mt-4">
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Assign Packaging Units (PU) to items for ASN tracking. PU numbers will be generated when items are received.
+                        </p>
+                        {deliveryItems.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                            <p>Add items first to configure packing</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Product</TableHead>
+                                <TableHead className="w-24 text-right">Qty</TableHead>
+                                <TableHead className="w-32">PU #</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {deliveryItems.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <div>
+                                      <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                                      <div className="text-sm text-muted-foreground font-mono">
+                                        {item.product?.product_id}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                                  <TableCell className="font-mono text-sm text-primary">
+                                    {item.packaging_unit?.pu_number || 
+                                      <span className="text-muted-foreground italic">Auto-generate on receipt</span>}
                                   </TableCell>
                                 </TableRow>
                               ))}
