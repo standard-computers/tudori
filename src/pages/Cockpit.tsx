@@ -53,7 +53,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
@@ -188,6 +188,9 @@ const Cockpit = () => {
   const [selectedInventoryIds, setSelectedInventoryIds] = useState<Set<string>>(new Set());
   const [isBulkPackageDialogOpen, setIsBulkPackageDialogOpen] = useState(false);
   const [isBulkExploding, setIsBulkExploding] = useState(false);
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [moveToBinId, setMoveToBinId] = useState<string>('');
+  const [isMoving, setIsMoving] = useState(false);
 
   // Sales orders state
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
@@ -461,6 +464,35 @@ const Cockpit = () => {
       toast.error('Failed to explode selected items');
     } finally {
       setIsBulkExploding(false);
+    }
+  };
+
+  const handleBulkMoveToBin = async () => {
+    if (selectedInventoryIds.size === 0 || !moveToBinId) return;
+    
+    setIsMoving(true);
+    
+    try {
+      const itemIds = Array.from(selectedInventoryIds);
+      
+      const { error } = await supabase
+        .from('inventory')
+        .update({ bin_id: moveToBinId })
+        .in('id', itemIds);
+      
+      if (error) throw error;
+      
+      const targetBin = bins.find(b => b.id === moveToBinId);
+      toast.success(`Moved ${itemIds.length} items to ${targetBin?.bin_id || 'selected bin'}`);
+      setSelectedInventoryIds(new Set());
+      setIsMoveDialogOpen(false);
+      setMoveToBinId('');
+      fetchInventory();
+    } catch (error) {
+      console.error('Bulk move error:', error);
+      toast.error('Failed to move items');
+    } finally {
+      setIsMoving(false);
     }
   };
 
@@ -1288,6 +1320,15 @@ const Cockpit = () => {
                         Package
                       </Button>
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsMoveDialogOpen(true)}
+                        disabled={bins.length === 0}
+                      >
+                        <MoveRight className="w-4 h-4 mr-1" />
+                        Move to Bin
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedInventoryIds(new Set())}
@@ -1702,6 +1743,54 @@ const Cockpit = () => {
           setSelectedInventoryIds(new Set());
         }}
       />
+
+      {/* Move to Bin Dialog */}
+      <Dialog open={isMoveDialogOpen} onOpenChange={(open) => {
+        setIsMoveDialogOpen(open);
+        if (!open) setMoveToBinId('');
+      }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Move to Bin</DialogTitle>
+            <DialogDescription>
+              Move {selectedInventoryIds.size} selected item{selectedInventoryIds.size !== 1 ? 's' : ''} to a bin.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 px-6">
+            <div className="space-y-2">
+              <Label htmlFor="target-bin">Target Bin</Label>
+              <Select value={moveToBinId} onValueChange={setMoveToBinId}>
+                <SelectTrigger id="target-bin">
+                  <SelectValue placeholder="Select a bin..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {bins.map((bin) => {
+                    const area = areas.find(a => a.id === bin.area_id);
+                    return (
+                      <SelectItem key={bin.id} value={bin.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">{bin.bin_id}</span>
+                          <span>{bin.name}</span>
+                          {area && <span className="text-xs text-muted-foreground">({area.name})</span>}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="px-6 pb-6">
+            <Button variant="outline" onClick={() => setIsMoveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkMoveToBin} disabled={isMoving || !moveToBinId}>
+              {isMoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Move Items
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
