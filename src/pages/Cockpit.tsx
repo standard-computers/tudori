@@ -12,6 +12,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
+import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import {
   Select,
   SelectContent,
@@ -42,7 +43,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -72,6 +79,14 @@ interface Bin {
   description: string | null;
   capacity: string | null;
   area_id: string;
+  width?: number | null;
+  width_uom?: string | null;
+  length?: number | null;
+  length_uom?: string | null;
+  height?: number | null;
+  height_uom?: string | null;
+  weight_capacity?: number | null;
+  weight_capacity_uom?: string | null;
 }
 
 interface Delivery {
@@ -137,6 +152,7 @@ const Cockpit = () => {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [activeTab, setActiveTab] = useState<SidebarTab>('deliveries');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Areas & Bins state
   const [areas, setAreas] = useState<Area[]>([]);
@@ -146,9 +162,8 @@ const Cockpit = () => {
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
   const [areaFormData, setAreaFormData] = useState({ area_id: '', name: '', description: '' });
-  const [binFormData, setBinFormData] = useState({ bin_id: '', name: '', description: '', capacity: '', area_id: '' });
   const areaFormRef = useRef<HTMLFormElement>(null);
-  const binFormRef = useRef<HTMLFormElement>(null);
+  const binDialogRef = useRef<BinDialogRef>(null);
 
   // Deliveries state
   const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
@@ -175,7 +190,7 @@ const Cockpit = () => {
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
-    else if (isBinDialogOpen) binFormRef.current?.requestSubmit();
+    else if (isBinDialogOpen) binDialogRef.current?.submit();
   });
 
   const isWarehouseOrDC = selectedLocation?.type === 'Warehouse' || selectedLocation?.type === 'Distribution Center';
@@ -545,14 +560,7 @@ const Cockpit = () => {
   };
 
   const openBinDialog = (bin?: Bin) => {
-    if (bin) {
-      setEditingBin(bin);
-      setBinFormData({ bin_id: bin.bin_id, name: bin.name, description: bin.description || '', capacity: bin.capacity || '', area_id: bin.area_id });
-    } else {
-      setEditingBin(null);
-      const defaultAreaId = areas[0]?.id || '';
-      setBinFormData({ bin_id: defaultAreaId ? getNextBinId(defaultAreaId) : '', name: '', description: '', capacity: '', area_id: defaultAreaId });
-    }
+    setEditingBin(bin || null);
     setIsBinDialogOpen(true);
   };
 
@@ -581,37 +589,6 @@ const Cockpit = () => {
       toast.success('Area created');
     }
     setIsAreaDialogOpen(false);
-    fetchAreas();
-  };
-
-  const handleBinSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!binFormData.area_id) {
-      toast.error('Please select an area');
-      return;
-    }
-
-    if (editingBin) {
-      const { error } = await supabase
-        .from('bins')
-        .update({ name: binFormData.name, description: binFormData.description || null, capacity: binFormData.capacity || null })
-        .eq('id', editingBin.id);
-      if (error) {
-        toast.error('Failed to update bin');
-        return;
-      }
-      toast.success('Bin updated');
-    } else {
-      const { error } = await supabase
-        .from('bins')
-        .insert({ area_id: binFormData.area_id, bin_id: binFormData.bin_id, name: binFormData.name, description: binFormData.description || null, capacity: binFormData.capacity || null });
-      if (error) {
-        toast.error('Failed to create bin');
-        return;
-      }
-      toast.success('Bin created');
-    }
-    setIsBinDialogOpen(false);
     fetchAreas();
   };
 
@@ -649,24 +626,6 @@ const Cockpit = () => {
       ...areaFormData,
       name: data.name,
       description: data.description || '',
-    });
-  };
-
-  const fetchBinForCopy = async (binId: string): Promise<Bin | null> => {
-    const { data } = await supabase
-      .from('bins')
-      .select('*')
-      .eq('bin_id', binId)
-      .maybeSingle();
-    return data;
-  };
-
-  const applyBinCopy = (data: Bin) => {
-    setBinFormData({
-      ...binFormData,
-      name: data.name,
-      description: data.description || '',
-      capacity: data.capacity || '',
     });
   };
 
@@ -818,34 +777,81 @@ const Cockpit = () => {
 
       <div className="flex flex-1 h-[calc(100vh-4rem)]">
         {/* Vertical Sidebar */}
-        <aside className="w-56 border-r border-border bg-card/30 flex-shrink-0">
-          <nav className="p-2 space-y-1">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left",
-                  activeTab === item.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        <aside className={cn(
+          "border-r border-border bg-card/30 flex-shrink-0 flex flex-col transition-all duration-200",
+          sidebarCollapsed ? "w-14" : "w-56"
+        )}>
+          <TooltipProvider delayDuration={0}>
+            <nav className="p-2 space-y-1 flex-1">
+              {sidebarItems.map((item) => (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setActiveTab(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left",
+                        activeTab === item.id
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        sidebarCollapsed && "justify-center px-0"
+                      )}
+                    >
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span className="flex-1">{item.label}</span>
+                          {item.count !== undefined && item.count > 0 && (
+                            <span className={cn(
+                              "text-xs px-1.5 py-0.5 rounded-full",
+                              activeTab === item.id
+                                ? "bg-primary/20 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              {item.count}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  {sidebarCollapsed && (
+                    <TooltipContent side="right" className="flex items-center gap-2">
+                      {item.label}
+                      {item.count !== undefined && item.count > 0 && (
+                        <Badge variant="secondary" className="ml-1">{item.count}</Badge>
+                      )}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              ))}
+            </nav>
+          </TooltipProvider>
+          <div className="p-2 border-t border-border">
+            <Tooltip>
+              <TooltipProvider delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className={cn("w-full", sidebarCollapsed && "px-0")}
+                  >
+                    {sidebarCollapsed ? (
+                      <PanelLeft className="w-4 h-4" />
+                    ) : (
+                      <>
+                        <PanelLeftClose className="w-4 h-4 mr-2" />
+                        Collapse
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                {sidebarCollapsed && (
+                  <TooltipContent side="right">Expand sidebar</TooltipContent>
                 )}
-              >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {item.count !== undefined && item.count > 0 && (
-                  <span className={cn(
-                    "text-xs px-1.5 py-0.5 rounded-full",
-                    activeTab === item.id
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {item.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
+              </TooltipProvider>
+            </Tooltip>
+          </div>
         </aside>
 
         {/* Main Content Area */}
@@ -1290,96 +1296,16 @@ const Cockpit = () => {
       </Dialog>
 
       {/* Bin Dialog */}
-      <Dialog open={isBinDialogOpen} onOpenChange={setIsBinDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <form ref={binFormRef} onSubmit={handleBinSubmit}>
-            <DialogHeader>
-              <DialogTitle>{editingBin ? 'Edit Bin' : 'Add Bin'}</DialogTitle>
-              <DialogDescription>
-                {editingBin ? 'Update bin details.' : 'Create a new storage bin.'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            {!editingBin && (
-              <div className="absolute right-12 top-4 z-10">
-                <CopyFromIdDialog<Bin>
-                  onFetch={fetchBinForCopy}
-                  onApply={applyBinCopy}
-                  idLabel="Bin ID"
-                />
-              </div>
-            )}
-            
-            <div className="space-y-4 mt-4 px-6 pb-6">
-              <div className="space-y-2">
-                <Label htmlFor="bin_area">Area *</Label>
-                <Select
-                  value={binFormData.area_id}
-                  onValueChange={(value) => {
-                    setBinFormData({ 
-                      ...binFormData, 
-                      area_id: value, 
-                      bin_id: editingBin ? binFormData.bin_id : getNextBinId(value) 
-                    });
-                  }}
-                  disabled={!!editingBin}
-                >
-                  <SelectTrigger className={editingBin ? 'bg-muted' : ''}>
-                    <SelectValue placeholder="Select an area" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {areas.map((area) => (
-                      <SelectItem key={area.id} value={area.id}>
-                        {area.area_id} - {area.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bin_id">Bin ID</Label>
-                <Input
-                  id="bin_id"
-                  value={binFormData.bin_id}
-                  onChange={(e) => setBinFormData({ ...binFormData, bin_id: e.target.value })}
-                  disabled={!!editingBin}
-                  className={editingBin ? 'bg-muted' : ''}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bin_name">Name *</Label>
-                <Input
-                  id="bin_name"
-                  value={binFormData.name}
-                  onChange={(e) => setBinFormData({ ...binFormData, name: e.target.value })}
-                  placeholder="e.g., Shelf A1"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bin_capacity">Capacity</Label>
-                <Input
-                  id="bin_capacity"
-                  value={binFormData.capacity}
-                  onChange={(e) => setBinFormData({ ...binFormData, capacity: e.target.value })}
-                  placeholder="e.g., 100 units"
-                />
-              </div>
-            </div>
-            <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsBinDialogOpen(false)}>
-                Cancel
-                <Kbd>Esc</Kbd>
-              </Button>
-              <Button type="submit">
-                {editingBin ? 'Save Changes' : 'Create'}
-                <Kbd className="ml-2">⌘S</Kbd>
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <BinDialog
+        ref={binDialogRef}
+        open={isBinDialogOpen}
+        onOpenChange={setIsBinDialogOpen}
+        editingBin={editingBin}
+        areas={areas}
+        getNextBinId={getNextBinId}
+        onSaved={fetchAreas}
+        companyId={companyId}
+      />
 
       {/* Receive Delivery Dialog */}
       {selectedDelivery && selectedLocationId && (

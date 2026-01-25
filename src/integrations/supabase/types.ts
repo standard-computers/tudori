@@ -123,6 +123,45 @@ export type Database = {
           },
         ]
       }
+      bin_products: {
+        Row: {
+          bin_id: string
+          created_at: string
+          id: string
+          max_quantity: number | null
+          product_id: string
+        }
+        Insert: {
+          bin_id: string
+          created_at?: string
+          id?: string
+          max_quantity?: number | null
+          product_id: string
+        }
+        Update: {
+          bin_id?: string
+          created_at?: string
+          id?: string
+          max_quantity?: number | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bin_products_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bin_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bins: {
         Row: {
           area_id: string
@@ -130,9 +169,17 @@ export type Database = {
           capacity: string | null
           created_at: string
           description: string | null
+          height: number | null
+          height_uom: string | null
           id: string
+          length: number | null
+          length_uom: string | null
           name: string
           updated_at: string
+          weight_capacity: number | null
+          weight_capacity_uom: string | null
+          width: number | null
+          width_uom: string | null
         }
         Insert: {
           area_id: string
@@ -140,9 +187,17 @@ export type Database = {
           capacity?: string | null
           created_at?: string
           description?: string | null
+          height?: number | null
+          height_uom?: string | null
           id?: string
+          length?: number | null
+          length_uom?: string | null
           name: string
           updated_at?: string
+          weight_capacity?: number | null
+          weight_capacity_uom?: string | null
+          width?: number | null
+          width_uom?: string | null
         }
         Update: {
           area_id?: string
@@ -150,9 +205,17 @@ export type Database = {
           capacity?: string | null
           created_at?: string
           description?: string | null
+          height?: number | null
+          height_uom?: string | null
           id?: string
+          length?: number | null
+          length_uom?: string | null
           name?: string
           updated_at?: string
+          weight_capacity?: number | null
+          weight_capacity_uom?: string | null
+          width?: number | null
+          width_uom?: string | null
         }
         Relationships: [
           {
