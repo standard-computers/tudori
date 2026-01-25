@@ -23,6 +23,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          location_id: string | null
           name: string
           type: string
           updated_at: string
@@ -36,6 +37,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          location_id?: string | null
           name: string
           type?: string
           updated_at?: string
@@ -49,6 +51,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          location_id?: string | null
           name?: string
           type?: string
           updated_at?: string
@@ -74,6 +77,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
