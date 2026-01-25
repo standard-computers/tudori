@@ -254,37 +254,46 @@ export const InventoryDetailDialog = ({
 
     setIsExploding(true);
     try {
-      // Create individual PUs for each unit
-      const items = Array.from({ length: item.quantity }, () => ({
+      const hasExistingPU = !!item.pu_id;
+      const newPUsNeeded = hasExistingPU ? item.quantity - 1 : item.quantity;
+
+      // Create PUs only for items that need them
+      const itemsForPU = Array.from({ length: newPUsNeeded }, () => ({
         productId: item.product_id,
         quantity: 1,
       }));
 
-      const createdPUs = await createMultiplePackagingUnits(item.product.company_id, items);
+      const createdPUs = newPUsNeeded > 0
+        ? await createMultiplePackagingUnits(item.product.company_id, itemsForPU)
+        : [];
 
-      if (createdPUs.length === 0) {
+      if (newPUsNeeded > 0 && createdPUs.length === 0) {
         throw new Error('Failed to create packaging units');
       }
 
-      // Delete the original inventory record
-      await supabase.from('inventory').delete().eq('id', item.id);
+      // Update the original record to quantity 1 (keeping existing PU if present)
+      await supabase
+        .from('inventory')
+        .update({ quantity: 1 })
+        .eq('id', item.id);
 
-      // Create new individual inventory records
-      const inventoryRecords = createdPUs.map((pu) => ({
-        location_id: item.location_id,
-        product_id: item.product_id,
-        bin_id: item.bin_id,
-        quantity: 1,
-        min_quantity: item.min_quantity,
-        max_quantity: item.max_quantity,
-        pu_id: pu.id,
-      }));
+      // Create new individual inventory records for remaining units
+      if (createdPUs.length > 0) {
+        const inventoryRecords = createdPUs.map((pu) => ({
+          location_id: item.location_id,
+          product_id: item.product_id,
+          bin_id: item.bin_id,
+          quantity: 1,
+          min_quantity: item.min_quantity,
+          max_quantity: item.max_quantity,
+          pu_id: pu.id,
+        }));
 
-      const { error } = await supabase.from('inventory').insert(inventoryRecords);
+        const { error } = await supabase.from('inventory').insert(inventoryRecords);
+        if (error) throw error;
+      }
 
-      if (error) throw error;
-
-      toast.success(`Exploded into ${createdPUs.length} individual units with PUs`);
+      toast.success(`Exploded into ${item.quantity} individual units${hasExistingPU ? ' (kept existing PU on first)' : ''}`);
       onUpdated();
       onOpenChange(false);
     } catch (error) {

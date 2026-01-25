@@ -401,19 +401,27 @@ const Cockpit = () => {
       let totalCreated = 0;
 
       for (const item of itemsToExplode) {
-        // Create individual PUs for each unit
-        const items = Array.from({ length: item.quantity }, () => ({
+        const hasExistingPU = !!item.pu_id;
+        const newPUsNeeded = hasExistingPU ? item.quantity - 1 : item.quantity;
+
+        // Create PUs only for items that need them
+        const itemsForPU = Array.from({ length: newPUsNeeded }, () => ({
           productId: item.product_id,
           quantity: 1,
         }));
 
-        const createdPUs = await createMultiplePackagingUnits(companyIdForExplode, items);
+        const createdPUs = newPUsNeeded > 0 
+          ? await createMultiplePackagingUnits(companyIdForExplode, itemsForPU)
+          : [];
 
+        // Update the original record to quantity 1 (keeping existing PU if present)
+        await supabase
+          .from('inventory')
+          .update({ quantity: 1 })
+          .eq('id', item.id);
+
+        // Create new individual inventory records for remaining units
         if (createdPUs.length > 0) {
-          // Delete the original inventory record
-          await supabase.from('inventory').delete().eq('id', item.id);
-
-          // Create new individual inventory records
           const inventoryRecords = createdPUs.map((pu) => ({
             location_id: item.location_id,
             product_id: item.product_id,
@@ -425,11 +433,13 @@ const Cockpit = () => {
           }));
 
           await supabase.from('inventory').insert(inventoryRecords);
-          totalCreated += createdPUs.length;
         }
+
+        totalCreated += item.quantity; // Original (1) + new records
       }
 
       toast.success(`Exploded ${itemsToExplode.length} items into ${totalCreated} individual units`);
+      setSelectedInventoryIds(new Set());
       fetchInventory();
     } catch (error) {
       console.error('Bulk explode error:', error);
