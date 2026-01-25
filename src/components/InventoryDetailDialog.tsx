@@ -190,14 +190,14 @@ export const InventoryDetailDialog = ({
     try {
       let targetBinId: string | null = null;
       
-      // Step 1: Check bin_products for bins that have this product in their list
+      // Step 1: Check bin_products for bins that explicitly list this product
       const { data: binProducts } = await supabase
         .from('bin_products')
         .select('bin_id')
         .eq('product_id', item.product_id);
       
       if (binProducts && binProducts.length > 0) {
-        // Find a bin that's in our available bins list
+        // Find the first bin that's in our available bins list at this location
         for (const bp of binProducts) {
           const matchingBin = bins.find(b => b.id === bp.bin_id);
           if (matchingBin) {
@@ -207,31 +207,28 @@ export const InventoryDetailDialog = ({
         }
       }
       
-      // Step 2: If no bin_product match, check existing inventory at this location
-      if (!targetBinId) {
-        const { data: existingInventory } = await supabase
+      // Step 2: If no bin_product match, find the first empty bin (no inventory at all)
+      if (!targetBinId && bins.length > 0) {
+        // Get all bins that have any inventory at this location
+        const { data: binsWithInventory } = await supabase
           .from('inventory')
           .select('bin_id')
           .eq('location_id', locationId)
-          .eq('product_id', item.product_id)
-          .not('bin_id', 'is', null)
-          .limit(1);
+          .not('bin_id', 'is', null);
         
-        if (existingInventory && existingInventory.length > 0 && existingInventory[0].bin_id) {
-          const matchingBin = bins.find(b => b.id === existingInventory[0].bin_id);
-          if (matchingBin) {
-            targetBinId = matchingBin.id;
-          }
+        const occupiedBinIds = new Set(
+          (binsWithInventory || []).map(inv => inv.bin_id).filter(Boolean)
+        );
+        
+        // Find first bin that has no inventory
+        const emptyBin = bins.find(b => !occupiedBinIds.has(b.id));
+        if (emptyBin) {
+          targetBinId = emptyBin.id;
         }
       }
       
-      // Step 3: Fall back to first available bin
-      if (!targetBinId && bins.length > 0) {
-        targetBinId = bins[0].id;
-      }
-      
       if (!targetBinId) {
-        toast.error('No bins available');
+        toast.error('No suitable bin found. Either assign this product to a bin or ensure there is an empty bin available.');
         return;
       }
       
