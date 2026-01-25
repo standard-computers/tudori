@@ -5,6 +5,7 @@ import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -35,11 +42,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal } from 'lucide-react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+
+// Statuses that prevent editing
+const NON_EDITABLE_STATUSES = ['delivered', 'shipped', 'in_transit'];
 
 interface Delivery {
   id: string;
@@ -190,6 +201,15 @@ const Deliveries = () => {
   const [newItemProductId, setNewItemProductId] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Table sorting and filtering
+  const {
+    sortConfig,
+    filters,
+    handleSort,
+    setFilter,
+    sortedAndFilteredData,
+  } = useTableSort(deliveries, 'delivery_id', 'desc');
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -971,61 +991,139 @@ const Deliveries = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-28">ID</TableHead>
-                  <TableHead>PO</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Destination</TableHead>
-                  <TableHead>Carrier</TableHead>
-                  <TableHead>Expected</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
+                  <SortableTableHead
+                    label="ID"
+                    sortKey="delivery_id"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterValue={filters['delivery_id'] || ''}
+                    onFilter={(value) => setFilter('delivery_id', value)}
+                    className="w-28"
+                  />
+                  <SortableTableHead
+                    label="PO"
+                    sortKey="purchase_order.po_number"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterValue={filters['purchase_order.po_number'] || ''}
+                    onFilter={(value) => setFilter('purchase_order.po_number', value)}
+                  />
+                  <SortableTableHead
+                    label="Vendor"
+                    sortKey="vendor.name"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterValue={filters['vendor.name'] || ''}
+                    onFilter={(value) => setFilter('vendor.name', value)}
+                  />
+                  <SortableTableHead
+                    label="Destination"
+                    sortKey="location.name"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterValue={filters['location.name'] || ''}
+                    onFilter={(value) => setFilter('location.name', value)}
+                  />
+                  <SortableTableHead
+                    label="Carrier"
+                    sortKey="carrier"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterValue={filters['carrier'] || ''}
+                    onFilter={(value) => setFilter('carrier', value)}
+                  />
+                  <SortableTableHead
+                    label="Expected"
+                    sortKey="expected_date"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterable={false}
+                  />
+                  <SortableTableHead
+                    label="Status"
+                    sortKey="status"
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    filterValue={filters['status'] || ''}
+                    onFilter={(value) => setFilter('status', value)}
+                  />
+                  <SortableTableHead
+                    label="Actions"
+                    sortKey=""
+                    currentSortKey={sortConfig.key}
+                    currentSortDirection={sortConfig.direction}
+                    onSort={() => {}}
+                    filterable={false}
+                    className="w-24"
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deliveries.map((delivery) => (
-                  <TableRow key={delivery.id}>
-                    <TableCell className="font-mono text-sm">{delivery.delivery_id}</TableCell>
-                    <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
-                    <TableCell>{delivery.vendor?.name || '—'}</TableCell>
-                    <TableCell>{delivery.location?.name || '—'}</TableCell>
-                    <TableCell>{delivery.carrier || '—'}</TableCell>
-                    <TableCell>
-                      {delivery.expected_date 
-                        ? format(new Date(delivery.expected_date), 'MMM d, yyyy')
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getStatusColor(delivery.status)}>
-                        {delivery.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(delivery)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(delivery)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(delivery.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sortedAndFilteredData.map((delivery) => {
+                  const isEditable = !NON_EDITABLE_STATUSES.includes(delivery.status);
+                  return (
+                    <TableRow key={delivery.id}>
+                      <TableCell className="font-mono text-sm">{delivery.delivery_id}</TableCell>
+                      <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
+                      <TableCell>{delivery.vendor?.name || '—'}</TableCell>
+                      <TableCell>{delivery.location?.name || '—'}</TableCell>
+                      <TableCell>{delivery.carrier || '—'}</TableCell>
+                      <TableCell>
+                        {delivery.expected_date 
+                          ? format(new Date(delivery.expected_date), 'MMM d, yyyy')
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getStatusColor(delivery.status)}>
+                          {delivery.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(delivery)}
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(delivery)}
+                                disabled={!isEditable}
+                              >
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(delivery.id)}
+                                disabled={!isEditable}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -1179,13 +1277,15 @@ const Deliveries = () => {
             <Button variant="outline" onClick={() => setIsViewOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => {
-              setIsViewOpen(false);
-              if (viewDelivery) handleEdit(viewDelivery);
-            }}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
+            {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
+              <Button onClick={() => {
+                setIsViewOpen(false);
+                if (viewDelivery) handleEdit(viewDelivery);
+              }}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
