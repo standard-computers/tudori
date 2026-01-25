@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -76,6 +76,7 @@ export const InventoryDetailDialog = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAssigningPU, setIsAssigningPU] = useState(false);
   const [isExploding, setIsExploding] = useState(false);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
 
   useEffect(() => {
     if (open && item) {
@@ -178,6 +179,110 @@ export const InventoryDetailDialog = ({
       toast.error('Failed to put away inventory');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAutoPutAway = async () => {
+    if (!item) return;
+    
+    setIsAutoAssigning(true);
+    
+    try {
+      let targetBinId: string | null = null;
+      
+      // Step 1: Check bin_products for bins that have this product in their list
+      const { data: binProducts } = await supabase
+        .from('bin_products')
+        .select('bin_id')
+        .eq('product_id', item.product_id);
+      
+      if (binProducts && binProducts.length > 0) {
+        // Find a bin that's in our available bins list
+        for (const bp of binProducts) {
+          const matchingBin = bins.find(b => b.id === bp.bin_id);
+          if (matchingBin) {
+            targetBinId = matchingBin.id;
+            break;
+          }
+        }
+      }
+      
+      // Step 2: If no bin_product match, check existing inventory at this location
+      if (!targetBinId) {
+        const { data: existingInventory } = await supabase
+          .from('inventory')
+          .select('bin_id')
+          .eq('location_id', locationId)
+          .eq('product_id', item.product_id)
+          .not('bin_id', 'is', null)
+          .limit(1);
+        
+        if (existingInventory && existingInventory.length > 0 && existingInventory[0].bin_id) {
+          const matchingBin = bins.find(b => b.id === existingInventory[0].bin_id);
+          if (matchingBin) {
+            targetBinId = matchingBin.id;
+          }
+        }
+      }
+      
+      // Step 3: Fall back to first available bin
+      if (!targetBinId && bins.length > 0) {
+        targetBinId = bins[0].id;
+      }
+      
+      if (!targetBinId) {
+        toast.error('No bins available');
+        return;
+      }
+      
+      // Set the selected bin and trigger put away
+      setSelectedBinId(targetBinId);
+      
+      // Perform the put away with full quantity
+      const selectedBin = bins.find(b => b.id === targetBinId);
+      
+      // Check if there's already inventory in the target bin for this product
+      const { data: existingBinInventory } = await supabase
+        .from('inventory')
+        .select('id, quantity')
+        .eq('location_id', locationId)
+        .eq('product_id', item.product_id)
+        .eq('bin_id', targetBinId)
+        .maybeSingle();
+
+      if (existingBinInventory) {
+        // Add to existing bin inventory
+        await supabase
+          .from('inventory')
+          .update({
+            quantity: existingBinInventory.quantity + item.quantity,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingBinInventory.id);
+      } else {
+        // Create new inventory record in the bin
+        await supabase.from('inventory').insert({
+          location_id: locationId,
+          product_id: item.product_id,
+          bin_id: targetBinId,
+          quantity: item.quantity,
+          min_quantity: item.min_quantity,
+          max_quantity: item.max_quantity,
+          pu_id: item.pu_id,
+        });
+      }
+
+      // Delete the source (unassigned) inventory
+      await supabase.from('inventory').delete().eq('id', item.id);
+
+      toast.success(`Auto put away ${item.quantity} units to ${selectedBin?.bin_id || 'bin'}`);
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Auto put away error:', error);
+      toast.error('Failed to auto put away');
+    } finally {
+      setIsAutoAssigning(false);
     }
   };
 
@@ -424,7 +529,25 @@ export const InventoryDetailDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Destination Bin</Label>
+              <div className="flex items-center justify-between">
+                <Label>Destination Bin</Label>
+                {bins.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoPutAway}
+                    disabled={isAutoAssigning}
+                    className="h-7"
+                  >
+                    {isAutoAssigning ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Wand2 className="w-3 h-3 mr-1" />
+                    )}
+                    Auto
+                  </Button>
+                )}
+              </div>
               {bins.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
                   No bins available. Create bins in the Bins tab first.
