@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet, Boxes } from 'lucide-react';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
@@ -31,8 +31,10 @@ const DOCUMENT_TYPES = [
   { value: 'sales_order', label: 'Sales Order', prefix_placeholder: 'SO-', icon: ClipboardList },
   { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-', icon: FileText },
   { value: 'delivery', label: 'Delivery', prefix_placeholder: 'DEL-', icon: Truck },
+  { value: 'outbound_delivery', label: 'Outbound Delivery', prefix_placeholder: 'OD', icon: Truck },
   { value: 'goods_receipt', label: 'Goods Receipt', prefix_placeholder: 'GR-', icon: PackageCheck },
   { value: 'goods_issue', label: 'Goods Issue', prefix_placeholder: 'GI-', icon: PackageMinus },
+  { value: 'packaging_unit', label: 'Packaging Unit', prefix_placeholder: 'PU-', icon: Boxes },
   { value: 'invoice', label: 'Invoice', prefix_placeholder: 'INV-', icon: FileSpreadsheet },
   { value: 'credit_memo', label: 'Credit Memo', prefix_placeholder: 'CM-', icon: CreditCard },
   { value: 'debit_memo', label: 'Debit Memo', prefix_placeholder: 'DM-', icon: Wallet },
