@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2 } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -32,17 +32,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { createPackagingUnit } from '@/lib/packaging-units';
 
 interface InventoryItem {
   id: string;
   location_id: string;
   bin_id: string | null;
   product_id: string;
+  pu_id: string | null;
   quantity: number;
   min_quantity: number | null;
   max_quantity: number | null;
-  product?: { name: string; product_id: string; sku: string | null };
+  product?: { name: string; product_id: string; sku: string | null; company_id: string };
   bin?: { bin_id: string; name: string } | null;
+  packaging_unit?: { pu_number: string } | null;
 }
 
 interface Bin {
@@ -72,6 +75,7 @@ export const InventoryDetailDialog = ({
   const [putAwayQuantity, setPutAwayQuantity] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAssigningPU, setIsAssigningPU] = useState(false);
 
   useEffect(() => {
     if (open && item) {
@@ -200,9 +204,47 @@ export const InventoryDetailDialog = ({
     }
   };
 
+  const handleAssignPU = async () => {
+    if (!item || !item.product?.company_id) {
+      toast.error('Missing product or company information');
+      return;
+    }
+
+    setIsAssigningPU(true);
+    try {
+      const result = await createPackagingUnit(
+        item.product.company_id,
+        item.product_id,
+        item.quantity
+      );
+
+      if (!result) {
+        throw new Error('Failed to generate PU number');
+      }
+
+      // Update the inventory record with the new PU
+      const { error } = await supabase
+        .from('inventory')
+        .update({ pu_id: result.id, updated_at: new Date().toISOString() })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      toast.success(`Assigned PU: ${result.pu_number}`);
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Assign PU error:', error);
+      toast.error('Failed to assign PU');
+    } finally {
+      setIsAssigningPU(false);
+    }
+  };
+
   if (!item) return null;
 
   const canPutAway = !item.bin_id;
+  const hasPU = !!item.pu_id;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,7 +262,7 @@ export const InventoryDetailDialog = ({
         </DialogHeader>
 
         {!isPutAwayMode ? (
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs text-muted-foreground">Product ID</Label>
@@ -253,6 +295,29 @@ export const InventoryDetailDialog = ({
             </div>
 
             <div>
+              <Label className="text-xs text-muted-foreground">PU #</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Tag className="w-4 h-4 text-muted-foreground" />
+                {item.packaging_unit?.pu_number ? (
+                  <span className="font-mono text-sm">{item.packaging_unit.pu_number}</span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">Not assigned</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAssignPU}
+                      disabled={isAssigningPU}
+                    >
+                      <Tag className="w-3 h-3 mr-1" />
+                      {isAssigningPU ? 'Assigning...' : 'Assign PU'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
               <Label className="text-xs text-muted-foreground">Bin Location</Label>
               <div className="flex items-center gap-2 mt-1">
                 <MapPin className="w-4 h-4 text-muted-foreground" />
@@ -267,7 +332,7 @@ export const InventoryDetailDialog = ({
             </div>
           </div>
         ) : (
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4">
             <div className="p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2 mb-1">
                 <Package className="w-4 h-4" />
