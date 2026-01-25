@@ -71,6 +71,7 @@ interface PurchaseOrder {
   po_number: string;
   status: string;
   vendor_id: string | null;
+  source_location_id: string | null;
   location_id: string | null;
   bill_to_location_id: string | null;
   ledger_id: string | null;
@@ -84,6 +85,7 @@ interface PurchaseOrder {
   expected_delivery_date: string | null;
   created_at: string;
   vendor?: { name: string; vendor_id: string } | null;
+  source_location?: { name: string; location_id: string } | null;
   location?: { name: string; location_id: string } | null;
   bill_to_location?: { name: string } | null;
   ledger?: { name: string } | null;
@@ -333,6 +335,7 @@ const Orders = () => {
       .select(`
         *,
         vendor:vendors(name, vendor_id),
+        source_location:locations!purchase_orders_source_location_id_fkey(name, location_id),
         location:locations!purchase_orders_location_id_fkey(name, location_id),
         bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name),
         ledger:ledgers(name),
@@ -1851,7 +1854,9 @@ const Orders = () => {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Vendor</Label>
+                  <Label className="text-muted-foreground">
+                    {viewOrder.source_location_id ? 'Source Location' : 'Vendor'}
+                  </Label>
                   {viewOrder.vendor_id ? (
                     <button
                       type="button"
@@ -1860,6 +1865,17 @@ const Orders = () => {
                     >
                       {viewOrder.vendor?.name || '-'}
                     </button>
+                  ) : viewOrder.source_location_id ? (
+                    <div className="mt-1">
+                      <button
+                        type="button"
+                        onClick={() => openLocationDetail(viewOrder.source_location_id, 'Source Location')}
+                        className="font-medium text-primary hover:underline cursor-pointer block text-left"
+                      >
+                        {viewOrder.source_location?.name || '-'}
+                      </button>
+                      <Badge variant="outline" className="mt-1 text-xs">Internal Transfer</Badge>
+                    </div>
                   ) : (
                     <p className="mt-1 font-medium">-</p>
                   )}
@@ -2478,9 +2494,22 @@ function OrdersTable({
                     >
                       {order.vendor.vendor_id}
                     </button>
+                  ) : order.source_location?.location_id ? (
+                    <button
+                      type="button"
+                      onClick={() => onLocationClick(order.source_location_id!)}
+                      className="text-primary hover:underline font-mono"
+                    >
+                      {order.source_location.location_id}
+                    </button>
                   ) : '-'}
                 </TableCell>
-                <TableCell>{order.vendor?.name || '-'}</TableCell>
+                <TableCell>
+                  {order.vendor?.name || order.source_location?.name || '-'}
+                  {order.source_location && !order.vendor && (
+                    <Badge variant="outline" className="ml-2 text-xs">Transfer</Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   {order.location?.location_id ? (
                     <button
