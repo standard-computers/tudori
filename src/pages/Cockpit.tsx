@@ -101,8 +101,13 @@ interface Delivery {
   status: string;
   expected_date: string | null;
   purchase_order_id: string | null;
+  is_fulfilled: boolean;
   vendor?: { name: string } | null;
-  purchase_order?: { po_number: string } | null;
+  purchase_order?: { 
+    po_number: string;
+    source_location_id: string | null;
+    source_location?: { name: string; location_id: string } | null;
+  } | null;
 }
 
 interface InventoryItem {
@@ -352,7 +357,20 @@ const Cockpit = () => {
     if (!selectedLocationId) return;
     const { data, count, error } = await supabase
       .from('deliveries')
-      .select('id, delivery_id, status, expected_date, purchase_order_id, vendor:vendors(name), purchase_order:purchase_orders(po_number)', { count: 'exact' })
+      .select(`
+        id, 
+        delivery_id, 
+        status, 
+        expected_date, 
+        purchase_order_id, 
+        is_fulfilled,
+        vendor:vendors(name), 
+        purchase_order:purchase_orders(
+          po_number, 
+          source_location_id, 
+          source_location:locations!purchase_orders_source_location_id_fkey(name, location_id)
+        )
+      `, { count: 'exact' })
       .eq('location_id', selectedLocationId)
       .neq('status', 'delivered')
       .order('expected_date', { ascending: true });
@@ -362,7 +380,7 @@ const Cockpit = () => {
       return;
     }
     setPendingDeliveriesCount(count || 0);
-    setPendingDeliveries(data || []);
+    setPendingDeliveries((data || []) as unknown as Delivery[]);
   };
 
   const fetchInventory = async () => {
@@ -1208,48 +1226,65 @@ const Cockpit = () => {
                       <TableRow>
                         <TableHead>Delivery ID</TableHead>
                         <TableHead>PO #</TableHead>
-                        <TableHead>Vendor</TableHead>
+                        <TableHead>Source</TableHead>
                         <TableHead>Expected Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="w-24"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingDeliveries.map((delivery) => (
-                        <TableRow key={delivery.id}>
-                          <TableCell className="font-mono">{delivery.delivery_id}</TableCell>
-                          <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
-                          <TableCell>{delivery.vendor?.name || '—'}</TableCell>
-                          <TableCell>
-                            {delivery.expected_date 
-                              ? new Date(delivery.expected_date).toLocaleDateString() 
-                              : '—'}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              delivery.status === 'in_transit' 
-                                ? 'bg-blue-500/10 text-blue-500' 
-                                : delivery.status === 'pending'
-                                ? 'bg-amber-500/10 text-amber-500'
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {delivery.status.replace('_', ' ')}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedDelivery(delivery);
-                                setIsReceiveDialogOpen(true);
-                              }}
-                            >
-                              Receive
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {pendingDeliveries.map((delivery) => {
+                        const isInternalTransfer = !!delivery.purchase_order?.source_location_id;
+                        const sourceName = isInternalTransfer 
+                          ? delivery.purchase_order?.source_location?.name 
+                          : delivery.vendor?.name;
+                        
+                        return (
+                          <TableRow key={delivery.id}>
+                            <TableCell className="font-mono">{delivery.delivery_id}</TableCell>
+                            <TableCell>
+                              {delivery.purchase_order?.po_number || '—'}
+                              {isInternalTransfer && (
+                                <Badge variant="outline" className="ml-2 text-xs">Transfer</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{sourceName || '—'}</TableCell>
+                            <TableCell>
+                              {delivery.expected_date 
+                                ? new Date(delivery.expected_date).toLocaleDateString() 
+                                : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                delivery.status === 'shipped' 
+                                  ? 'bg-green-500/10 text-green-500' 
+                                  : delivery.status === 'in_transit' 
+                                  ? 'bg-blue-500/10 text-blue-500' 
+                                  : delivery.status === 'pending'
+                                  ? 'bg-amber-500/10 text-amber-500'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {delivery.status === 'shipped' && isInternalTransfer 
+                                  ? 'Ready to Receive' 
+                                  : delivery.status.replace('_', ' ')}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedDelivery(delivery);
+                                  setIsReceiveDialogOpen(true);
+                                }}
+                                disabled={isInternalTransfer && !delivery.is_fulfilled}
+                              >
+                                {isInternalTransfer && !delivery.is_fulfilled ? 'Awaiting' : 'Receive'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
