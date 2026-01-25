@@ -13,6 +13,7 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
+import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
 import {
   Select,
   SelectContent,
@@ -49,7 +50,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -159,6 +160,7 @@ const Cockpit = () => {
   const [bins, setBins] = useState<Bin[]>([]);
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
   const [isBinDialogOpen, setIsBinDialogOpen] = useState(false);
+  const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
   const [areaFormData, setAreaFormData] = useState({ area_id: '', name: '', description: '' });
@@ -1077,11 +1079,17 @@ const Cockpit = () => {
                   </h2>
                   <p className="text-sm text-muted-foreground">Storage locations within areas</p>
                 </div>
-                <Button size="sm" onClick={() => openBinDialog()} disabled={areas.length === 0}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Bin
-                  <Kbd className="ml-2">B</Kbd>
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setIsAutoMakeDialogOpen(true)} disabled={areas.length === 0}>
+                    <Wand2 className="w-4 h-4 mr-1" />
+                    AutoMake
+                  </Button>
+                  <Button size="sm" onClick={() => openBinDialog()} disabled={areas.length === 0}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Bin
+                    <Kbd className="ml-2">B</Kbd>
+                  </Button>
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
                 {bins.length === 0 ? (
@@ -1294,6 +1302,16 @@ const Cockpit = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Bin Dialog */}
+      {/* AutoMake Bins Dialog */}
+      <AutoMakeBinsDialog
+        open={isAutoMakeDialogOpen}
+        onOpenChange={setIsAutoMakeDialogOpen}
+        areas={areas}
+        companyId={companyId}
+        onCreated={fetchAreas}
+      />
 
       {/* Bin Dialog */}
       <BinDialog
