@@ -559,6 +559,7 @@ export type Database = {
           id: string
           notes: string | null
           product_id: string
+          pu_id: string | null
           quantity: number
         }
         Insert: {
@@ -567,6 +568,7 @@ export type Database = {
           id?: string
           notes?: string | null
           product_id: string
+          pu_id?: string | null
           quantity?: number
         }
         Update: {
@@ -575,6 +577,7 @@ export type Database = {
           id?: string
           notes?: string | null
           product_id?: string
+          pu_id?: string | null
           quantity?: number
         }
         Relationships: [
@@ -590,6 +593,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_items_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
             referencedColumns: ["id"]
           },
         ]
@@ -711,6 +721,7 @@ export type Database = {
           id: string
           notes: string | null
           product_id: string
+          pu_id: string | null
           quantity: number
         }
         Insert: {
@@ -720,6 +731,7 @@ export type Database = {
           id?: string
           notes?: string | null
           product_id: string
+          pu_id?: string | null
           quantity?: number
         }
         Update: {
@@ -729,6 +741,7 @@ export type Database = {
           id?: string
           notes?: string | null
           product_id?: string
+          pu_id?: string | null
           quantity?: number
         }
         Relationships: [
@@ -751,6 +764,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issue_items_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
             referencedColumns: ["id"]
           },
         ]
@@ -851,6 +871,7 @@ export type Database = {
           id: string
           notes: string | null
           product_id: string
+          pu_id: string | null
           quantity: number
         }
         Insert: {
@@ -860,6 +881,7 @@ export type Database = {
           id?: string
           notes?: string | null
           product_id: string
+          pu_id?: string | null
           quantity?: number
         }
         Update: {
@@ -869,6 +891,7 @@ export type Database = {
           id?: string
           notes?: string | null
           product_id?: string
+          pu_id?: string | null
           quantity?: number
         }
         Relationships: [
@@ -891,6 +914,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
             referencedColumns: ["id"]
           },
         ]
@@ -987,6 +1017,7 @@ export type Database = {
           min_quantity: number | null
           notes: string | null
           product_id: string
+          pu_id: string | null
           quantity: number
           updated_at: string
         }
@@ -1000,6 +1031,7 @@ export type Database = {
           min_quantity?: number | null
           notes?: string | null
           product_id: string
+          pu_id?: string | null
           quantity?: number
           updated_at?: string
         }
@@ -1013,6 +1045,7 @@ export type Database = {
           min_quantity?: number | null
           notes?: string | null
           product_id?: string
+          pu_id?: string | null
           quantity?: number
           updated_at?: string
         }
@@ -1036,6 +1069,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
             referencedColumns: ["id"]
           },
         ]
@@ -1465,6 +1505,54 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packaging_units: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          product_id: string | null
+          pu_number: string
+          quantity: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          pu_number: string
+          quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          pu_number?: string
+          quantity?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_units_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_units_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -2589,6 +2677,7 @@ export type Database = {
       }
       get_next_po_number: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_pu_number: { Args: { p_company_id: string }; Returns: string }
       get_next_requisition_id: {
         Args: { p_company_id: string }
         Returns: string

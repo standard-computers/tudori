@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { postGoodsReceipt } from '@/lib/inventory-posting';
+import { createPackagingUnit } from '@/lib/packaging-units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -40,6 +41,8 @@ interface ReceivedItem {
   product_code: string;
   expected_quantity: number;
   received_quantity: number;
+  pu_id?: string | null;
+  pu_number?: string | null;
 }
 
 interface ReceiveDeliveryDialogProps {
@@ -228,24 +231,68 @@ export const ReceiveDeliveryDialog = ({
         }
 
         // Create goods receipt items from received quantities
-        const grItems = items
-          .filter(item => item.received_quantity > 0)
-          .map(item => ({
-            goods_receipt_id: goodsReceipt.id,
-            product_id: item.product_id,
-            quantity: item.received_quantity,
-            notes: item.received_quantity !== item.expected_quantity 
-              ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
-              : null,
-          }));
+        // If explodeDelivery is true, create individual PUs for each unit
+        if (explodeDelivery) {
+          // Create PUs and GR items for each individual unit
+          for (const item of items) {
+            if (item.received_quantity <= 0) continue;
+            
+            for (let i = 0; i < item.received_quantity; i++) {
+              // Check if delivery item already has a PU assigned
+              let puId = item.pu_id;
+              
+              if (!puId) {
+                // Create a new PU for this unit
+                const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
+                puId = pu?.id || null;
+              }
+              
+              // Create GR item with PU
+              await supabase
+                .from('goods_receipt_items')
+                .insert({
+                  goods_receipt_id: goodsReceipt.id,
+                  product_id: item.product_id,
+                  quantity: 1,
+                  pu_id: puId,
+                  notes: `Unit ${i + 1} of ${item.received_quantity}`,
+                });
+            }
+          }
+        } else {
+          // Standard behavior: create GR items without individual PUs
+          // But still create PUs if not already assigned
+          const grItems = [];
+          for (const item of items) {
+            if (item.received_quantity <= 0) continue;
+            
+            let puId = item.pu_id;
+            
+            // If no PU assigned, create one for the full quantity
+            if (!puId) {
+              const pu = await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity);
+              puId = pu?.id || null;
+            }
+            
+            grItems.push({
+              goods_receipt_id: goodsReceipt.id,
+              product_id: item.product_id,
+              quantity: item.received_quantity,
+              pu_id: puId,
+              notes: item.received_quantity !== item.expected_quantity 
+                ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
+                : null,
+            });
+          }
+          
+          if (grItems.length > 0) {
+            const { error: itemsError } = await supabase
+              .from('goods_receipt_items')
+              .insert(grItems);
 
-        if (grItems.length > 0) {
-          const { error: itemsError } = await supabase
-            .from('goods_receipt_items')
-            .insert(grItems);
-
-          if (itemsError) {
-            console.error('Failed to create goods receipt items:', itemsError);
+            if (itemsError) {
+              console.error('Failed to create goods receipt items:', itemsError);
+            }
           }
         }
 
@@ -258,14 +305,34 @@ export const ReceiveDeliveryDialog = ({
         }
       } else {
         // Directly post inventory without creating a GR
+        // Still generate PUs for tracking
         for (const item of items) {
-          if (item.received_quantity > 0) {
-            // Check if inventory record exists for this product at this location
+          if (item.received_quantity <= 0) continue;
+          
+          if (explodeDelivery) {
+            // Create individual inventory records with PUs
+            for (let i = 0; i < item.received_quantity; i++) {
+              const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
+              await supabase
+                .from('inventory')
+                .insert({
+                  location_id: locationId,
+                  product_id: item.product_id,
+                  quantity: 1,
+                  pu_id: pu?.id || null,
+                });
+            }
+          } else {
+            // Create PU for the batch
+            const pu = await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity);
+            
+            // Check if inventory record exists for this product at this location (without PU)
             const { data: existingInventory } = await supabase
               .from('inventory')
               .select('id, quantity')
               .eq('location_id', locationId)
               .eq('product_id', item.product_id)
+              .is('pu_id', null)
               .maybeSingle();
 
             if (existingInventory) {
@@ -278,13 +345,14 @@ export const ReceiveDeliveryDialog = ({
                 })
                 .eq('id', existingInventory.id);
             } else {
-              // Create new inventory record
+              // Create new inventory record with PU
               await supabase
                 .from('inventory')
                 .insert({
                   location_id: locationId,
                   product_id: item.product_id,
                   quantity: item.received_quantity,
+                  pu_id: pu?.id || null,
                 });
             }
           }

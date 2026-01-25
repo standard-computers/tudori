@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { createPackagingUnit } from './packaging-units';
 
 /**
  * Post a Goods Receipt - adds items to inventory and creates ledger transaction
@@ -24,31 +25,50 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
 
     // Add each item to inventory
     for (const item of items as any[]) {
-      const { data: existingInventory } = await supabase
-        .from('inventory')
-        .select('id, quantity')
-        .eq('location_id', locationId)
-        .eq('product_id', item.product_id)
-        .is('bin_id', item.bin_id || null)
-        .maybeSingle();
-
-      if (existingInventory) {
-        await supabase
-          .from('inventory')
-          .update({ 
-            quantity: existingInventory.quantity + item.quantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingInventory.id);
-      } else {
+      // Check if item has a PU assigned
+      const puId = item.pu_id || null;
+      
+      if (puId) {
+        // PU-based inventory: each PU is a separate inventory record
         await supabase
           .from('inventory')
           .insert({
             location_id: locationId,
             product_id: item.product_id,
             quantity: item.quantity,
-            bin_id: item.bin_id || null
+            bin_id: item.bin_id || null,
+            pu_id: puId,
           });
+      } else {
+        // Legacy behavior: aggregate by location/product/bin
+        const { data: existingInventory } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('location_id', locationId)
+          .eq('product_id', item.product_id)
+          .is('bin_id', item.bin_id || null)
+          .is('pu_id', null)
+          .maybeSingle();
+
+        if (existingInventory) {
+          await supabase
+            .from('inventory')
+            .update({ 
+              quantity: existingInventory.quantity + item.quantity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingInventory.id);
+        } else {
+          await supabase
+            .from('inventory')
+            .insert({
+              location_id: locationId,
+              product_id: item.product_id,
+              quantity: item.quantity,
+              bin_id: item.bin_id || null,
+              pu_id: null,
+            });
+        }
       }
     }
 
@@ -111,10 +131,33 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
 
     // Deduct each item from inventory
     for (const item of items as any[]) {
+      // If item has a specific pu_id, use that exact record
+      if (item.pu_id) {
+        const { data: puInventory } = await supabase
+          .from('inventory')
+          .select('id, quantity, pu_id')
+          .eq('location_id', locationId)
+          .eq('product_id', item.product_id)
+          .eq('pu_id', item.pu_id)
+          .maybeSingle();
+        
+        if (puInventory) {
+          // Delete the PU-based inventory record
+          await supabase.from('inventory').delete().eq('id', puInventory.id);
+          
+          // Update PU status to 'issued'
+          await supabase
+            .from('packaging_units' as any)
+            .update({ status: 'issued' })
+            .eq('id', item.pu_id);
+        }
+        continue;
+      }
+      
       // If item has a specific bin_id, use it; otherwise find any available inventory
       let inventoryQuery = supabase
         .from('inventory')
-        .select('id, quantity, bin_id')
+        .select('id, quantity, bin_id, pu_id')
         .eq('location_id', locationId)
         .eq('product_id', item.product_id);
       
