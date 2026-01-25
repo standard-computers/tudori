@@ -68,13 +68,45 @@ export const ReceiveDeliveryDialog = ({
   const [submitting, setSubmitting] = useState(false);
   const [items, setItems] = useState<ReceivedItem[]>([]);
   const [explodeDelivery, setExplodeDelivery] = useState(false);
+  const [isInternalTransfer, setIsInternalTransfer] = useState(false);
+  const [isFulfilled, setIsFulfilled] = useState(true);
 
   useEffect(() => {
     if (open && deliveryId) {
       fetchDeliveryItems();
+      checkInternalTransferStatus();
       setExplodeDelivery(false);
     }
   }, [open, deliveryId]);
+
+  const checkInternalTransferStatus = async () => {
+    // Check if this delivery is from an internal source and if it's fulfilled
+    const { data: delivery } = await supabase
+      .from('deliveries')
+      .select('is_fulfilled, purchase_order_id')
+      .eq('id', deliveryId)
+      .single();
+
+    if (delivery?.purchase_order_id) {
+      // Check if the PO has a source_location_id (internal transfer)
+      const { data: po } = await supabase
+        .from('purchase_orders')
+        .select('source_location_id')
+        .eq('id', delivery.purchase_order_id)
+        .single();
+
+      if (po?.source_location_id) {
+        setIsInternalTransfer(true);
+        setIsFulfilled(delivery?.is_fulfilled ?? false);
+      } else {
+        setIsInternalTransfer(false);
+        setIsFulfilled(true);
+      }
+    } else {
+      setIsInternalTransfer(false);
+      setIsFulfilled(true);
+    }
+  };
 
   const fetchDeliveryItems = async () => {
     setLoading(true);
@@ -503,12 +535,18 @@ export const ReceiveDeliveryDialog = ({
             Cancel
             <Kbd>Esc</Kbd>
           </Button>
-          <Button onClick={handleReceive} disabled={submitting || items.length === 0}>
+          <Button 
+            onClick={handleReceive} 
+            disabled={submitting || items.length === 0 || (isInternalTransfer && !isFulfilled)}
+            title={isInternalTransfer && !isFulfilled ? 'Source location must fulfill this transfer first' : undefined}
+          >
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Receiving...
               </>
+            ) : isInternalTransfer && !isFulfilled ? (
+              'Awaiting Fulfillment'
             ) : (
               <>
                 Confirm Receipt
