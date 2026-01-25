@@ -53,7 +53,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2 } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X } from 'lucide-react';
+import { useTableSort } from '@/hooks/use-table-sort';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -363,7 +365,18 @@ const Cockpit = () => {
   };
 
   // Filtered inventory based on search
-  const filteredInventory = inventory.filter(item => {
+  // Use table sort hook for inventory
+  const {
+    sortConfig: inventorySortConfig,
+    filters: inventoryFilters,
+    handleSort: handleInventorySort,
+    setFilter: setInventoryFilter,
+    clearAllFilters: clearAllInventoryFilters,
+    sortedAndFilteredData: sortedAndFilteredInventory,
+  } = useTableSort(inventory, 'product.product_id', 'asc');
+
+  // Apply additional text search on top of column filters
+  const filteredInventory = sortedAndFilteredInventory.filter(item => {
     if (!inventorySearch) return true;
     const search = inventorySearch.toLowerCase();
     return (
@@ -373,6 +386,8 @@ const Cockpit = () => {
       item.bin?.bin_id?.toLowerCase().includes(search)
     );
   });
+
+  const hasActiveInventoryFilters = Object.keys(inventoryFilters).length > 0;
 
   // Get selected inventory items
   const selectedInventoryItems = inventory.filter(item => selectedInventoryIds.has(item.id));
@@ -1281,6 +1296,17 @@ const Cockpit = () => {
                       </Button>
                     </div>
                   )}
+                  {hasActiveInventoryFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearAllInventoryFilters}
+                      className="text-muted-foreground"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Clear Filters
+                    </Button>
+                  )}
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -1315,14 +1341,81 @@ const Cockpit = () => {
                             }}
                           />
                         </TableHead>
-                        <TableHead>Product ID</TableHead>
-                        <TableHead>Product Name</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>PU #</TableHead>
-                        <TableHead>Bin</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Min</TableHead>
-                        <TableHead className="text-right">Max</TableHead>
+                        <SortableTableHead
+                          label="Product ID"
+                          sortKey="product.product_id"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['product.product_id']}
+                          onFilter={(value) => setInventoryFilter('product.product_id', value)}
+                        />
+                        <SortableTableHead
+                          label="Product Name"
+                          sortKey="product.name"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['product.name']}
+                          onFilter={(value) => setInventoryFilter('product.name', value)}
+                        />
+                        <SortableTableHead
+                          label="SKU"
+                          sortKey="product.sku"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['product.sku']}
+                          onFilter={(value) => setInventoryFilter('product.sku', value)}
+                        />
+                        <SortableTableHead
+                          label="PU #"
+                          sortKey="packaging_unit.pu_number"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['packaging_unit.pu_number']}
+                          onFilter={(value) => setInventoryFilter('packaging_unit.pu_number', value)}
+                        />
+                        <SortableTableHead
+                          label="Bin"
+                          sortKey="bin.bin_id"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['bin.bin_id']}
+                          onFilter={(value) => setInventoryFilter('bin.bin_id', value)}
+                        />
+                        <SortableTableHead
+                          label="Quantity"
+                          sortKey="quantity"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['quantity']}
+                          onFilter={(value) => setInventoryFilter('quantity', value)}
+                          className="text-right"
+                        />
+                        <SortableTableHead
+                          label="Min"
+                          sortKey="min_quantity"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['min_quantity']}
+                          onFilter={(value) => setInventoryFilter('min_quantity', value)}
+                          className="text-right"
+                        />
+                        <SortableTableHead
+                          label="Max"
+                          sortKey="max_quantity"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['max_quantity']}
+                          onFilter={(value) => setInventoryFilter('max_quantity', value)}
+                          className="text-right"
+                        />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
