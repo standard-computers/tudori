@@ -1728,6 +1728,7 @@ export type Database = {
           height: number | null
           height_uom: string | null
           id: string
+          image_url: string | null
           is_batched: boolean
           keep_inventory: boolean
           length: number | null
@@ -1754,6 +1755,7 @@ export type Database = {
           height?: number | null
           height_uom?: string | null
           id?: string
+          image_url?: string | null
           is_batched?: boolean
           keep_inventory?: boolean
           length?: number | null
@@ -1780,6 +1782,7 @@ export type Database = {
           height?: number | null
           height_uom?: string | null
           id?: string
+          image_url?: string | null
           is_batched?: boolean
           keep_inventory?: boolean
           length?: number | null

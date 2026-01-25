@@ -40,7 +40,8 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2, MoreHorizontal, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2, MoreHorizontal, Eye, Upload, ImageIcon } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +81,7 @@ interface Product {
   height_uom: string | null;
   weight_uom: string | null;
   status: string;
+  image_url: string | null;
   vendors?: { name: string } | null;
 }
 
@@ -377,7 +379,11 @@ const Products = () => {
     height_uom: 'in',
     weight_uom: 'lb',
     status: 'active',
+    image_url: '',
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -715,7 +721,10 @@ const Products = () => {
       height_uom: 'in',
       weight_uom: 'lb',
       status: 'active',
+      image_url: '',
     });
+    setImageFile(null);
+    setImagePreview(null);
     setUoms([]);
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
     setComponents([]);
@@ -757,7 +766,10 @@ const Products = () => {
       height_uom: product.height_uom || 'in',
       weight_uom: product.weight_uom || 'lb',
       status: product.status || 'active',
+      image_url: product.image_url || '',
     });
+    setImagePreview(product.image_url || null);
+    setImageFile(null);
     setIsEditing(true);
     setEditingId(product.id);
     setActiveTab('general');
@@ -851,6 +863,84 @@ const Products = () => {
     }, 0);
   };
 
+  // Image handling functions
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (isEditing && formData.image_url) {
+      setUploadingImage(true);
+      try {
+        // Extract file path from URL
+        const url = new URL(formData.image_url);
+        const pathParts = url.pathname.split('/product-images/');
+        if (pathParts.length > 1) {
+          await supabase.storage.from('product-images').remove([pathParts[1]]);
+        }
+        
+        await supabase
+          .from('products')
+          .update({ image_url: null } as any)
+          .eq('id', editingId);
+        
+        toast.success('Image removed');
+      } catch (error) {
+        toast.error('Failed to remove image');
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, image_url: '' }));
+  };
+
+  const uploadProductImage = async (productId: string): Promise<string | null> => {
+    if (!imageFile) return formData.image_url || null;
+    
+    const fileExt = imageFile.name.split('.').pop();
+    const fileName = `product-${Date.now()}.${fileExt}`;
+    const filePath = `${companyId}/${productId}/${fileName}`;
+    
+    // Remove old image if exists
+    if (formData.image_url) {
+      try {
+        const url = new URL(formData.image_url);
+        const pathParts = url.pathname.split('/product-images/');
+        if (pathParts.length > 1) {
+          await supabase.storage.from('product-images').remove([pathParts[1]]);
+        }
+      } catch (e) {
+        console.error('Failed to remove old image:', e);
+      }
+    }
+    
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, imageFile);
+    
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+    
+    return publicUrl;
+  };
+
   const handleAiAutofill = async () => {
     if (!aiDescription.trim()) {
       toast.error('Please enter a product description');
@@ -903,6 +993,17 @@ const Products = () => {
     let productId = editingId;
 
     if (isEditing && editingId) {
+      // Upload image first if there's a new one
+      let imageUrl = formData.image_url || null;
+      if (imageFile) {
+        try {
+          imageUrl = await uploadProductImage(editingId);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          toast.error('Failed to upload image');
+        }
+      }
+
       const { error } = await supabase
         .from('products')
         .update({
@@ -925,7 +1026,8 @@ const Products = () => {
           height_uom: formData.height_uom || 'in',
           weight_uom: formData.weight_uom || 'lb',
           status: formData.status,
-        })
+          image_url: imageUrl,
+        } as any)
         .eq('id', editingId);
 
       if (error) {
@@ -957,7 +1059,7 @@ const Products = () => {
           height_uom: formData.height_uom || 'in',
           weight_uom: formData.weight_uom || 'lb',
           status: formData.status,
-        })
+        } as any)
         .select('id')
         .single();
 
@@ -967,6 +1069,22 @@ const Products = () => {
       }
 
       productId = data.id;
+
+      // Upload image for new product
+      if (imageFile && productId) {
+        try {
+          const imageUrl = await uploadProductImage(productId);
+          if (imageUrl) {
+            await supabase
+              .from('products')
+              .update({ image_url: imageUrl } as any)
+              .eq('id', productId);
+          }
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          toast.error('Product saved but failed to upload image');
+        }
+      }
     }
 
     // Save UOMs
@@ -1307,6 +1425,57 @@ const Products = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Product Image</Label>
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-20 w-20 rounded-lg border-2 border-border">
+                            {imagePreview ? (
+                              <AvatarImage src={imagePreview} alt="Product image" className="object-cover" />
+                            ) : (
+                              <AvatarFallback className="rounded-lg bg-muted">
+                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => document.getElementById('product-image-upload')?.click()}
+                                disabled={uploadingImage}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {imagePreview ? 'Change' : 'Upload'}
+                              </Button>
+                              {imagePreview && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleRemoveImage}
+                                  disabled={uploadingImage}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              JPG, PNG, or WebP. Max 5MB.
+                            </p>
+                          </div>
+                          <input
+                            id="product-image-upload"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
