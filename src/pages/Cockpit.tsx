@@ -93,7 +93,7 @@ interface InventoryItem {
   min_quantity: number | null;
   max_quantity: number | null;
   pu_id: string | null;
-  product?: { name: string; product_id: string; sku: string | null };
+  product?: { name: string; product_id: string; sku: string | null; company_id: string };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
 }
@@ -324,7 +324,7 @@ const Cockpit = () => {
         min_quantity,
         max_quantity,
         pu_id,
-        product:products(name, product_id, sku),
+        product:products(name, product_id, sku, company_id),
         bin:bins(bin_id, name),
         packaging_unit:packaging_units(pu_number)
       `)
