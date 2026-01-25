@@ -5,15 +5,18 @@ import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut, useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
 import { postGoodsIssue } from '@/lib/inventory-posting';
+import { createMultiplePackagingUnits } from '@/lib/packaging-units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
+import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import {
   Select,
   SelectContent,
@@ -50,7 +53,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2 } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -180,6 +183,9 @@ const Cockpit = () => {
   const [inventorySearch, setInventorySearch] = useState('');
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [isInventoryDetailOpen, setIsInventoryDetailOpen] = useState(false);
+  const [selectedInventoryIds, setSelectedInventoryIds] = useState<Set<string>>(new Set());
+  const [isBulkPackageDialogOpen, setIsBulkPackageDialogOpen] = useState(false);
+  const [isBulkExploding, setIsBulkExploding] = useState(false);
 
   // Sales orders state
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
@@ -353,6 +359,84 @@ const Cockpit = () => {
       return;
     }
     setInventory((data || []) as unknown as InventoryItem[]);
+    setSelectedInventoryIds(new Set());
+  };
+
+  // Filtered inventory based on search
+  const filteredInventory = inventory.filter(item => {
+    if (!inventorySearch) return true;
+    const search = inventorySearch.toLowerCase();
+    return (
+      item.product?.name?.toLowerCase().includes(search) ||
+      item.product?.product_id?.toLowerCase().includes(search) ||
+      item.product?.sku?.toLowerCase().includes(search) ||
+      item.bin?.bin_id?.toLowerCase().includes(search)
+    );
+  });
+
+  // Get selected inventory items
+  const selectedInventoryItems = inventory.filter(item => selectedInventoryIds.has(item.id));
+
+  // Bulk explode handler
+  const handleBulkExplode = async () => {
+    if (selectedInventoryIds.size === 0) {
+      toast.error('No items selected');
+      return;
+    }
+
+    const itemsToExplode = selectedInventoryItems.filter(item => item.quantity > 1);
+    if (itemsToExplode.length === 0) {
+      toast.error('Selected items must have quantity > 1 to explode');
+      return;
+    }
+
+    const companyIdForExplode = itemsToExplode[0]?.product?.company_id;
+    if (!companyIdForExplode) {
+      toast.error('Missing company information');
+      return;
+    }
+
+    setIsBulkExploding(true);
+    try {
+      let totalCreated = 0;
+
+      for (const item of itemsToExplode) {
+        // Create individual PUs for each unit
+        const items = Array.from({ length: item.quantity }, () => ({
+          productId: item.product_id,
+          quantity: 1,
+        }));
+
+        const createdPUs = await createMultiplePackagingUnits(companyIdForExplode, items);
+
+        if (createdPUs.length > 0) {
+          // Delete the original inventory record
+          await supabase.from('inventory').delete().eq('id', item.id);
+
+          // Create new individual inventory records
+          const inventoryRecords = createdPUs.map((pu) => ({
+            location_id: item.location_id,
+            product_id: item.product_id,
+            bin_id: item.bin_id,
+            quantity: 1,
+            min_quantity: item.min_quantity,
+            max_quantity: item.max_quantity,
+            pu_id: pu.id,
+          }));
+
+          await supabase.from('inventory').insert(inventoryRecords);
+          totalCreated += createdPUs.length;
+        }
+      }
+
+      toast.success(`Exploded ${itemsToExplode.length} items into ${totalCreated} individual units`);
+      fetchInventory();
+    } catch (error) {
+      console.error('Bulk explode error:', error);
+      toast.error('Failed to explode selected items');
+    } finally {
+      setIsBulkExploding(false);
+    }
   };
 
   const fetchOutstandingSalesOrders = async () => {
@@ -1148,17 +1232,54 @@ const Cockpit = () => {
                   <h2 className="text-lg font-semibold flex items-center gap-2">
                     <Boxes className="w-5 h-5" />
                     Inventory
+                    {selectedInventoryIds.size > 0 && (
+                      <Badge variant="secondary" className="ml-2">{selectedInventoryIds.size} selected</Badge>
+                    )}
                   </h2>
                   <p className="text-sm text-muted-foreground">Products stored at this location</p>
                 </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search products..."
-                    value={inventorySearch}
-                    onChange={(e) => setInventorySearch(e.target.value)}
-                    className="pl-9"
-                  />
+                <div className="flex items-center gap-2">
+                  {selectedInventoryIds.size > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkExplode}
+                        disabled={isBulkExploding}
+                      >
+                        {isBulkExploding ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <Split className="w-4 h-4 mr-1" />
+                        )}
+                        Explode
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsBulkPackageDialogOpen(true)}
+                      >
+                        <Package2 className="w-4 h-4 mr-1" />
+                        Package
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedInventoryIds(new Set())}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search products..."
+                      value={inventorySearch}
+                      onChange={(e) => setInventorySearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex-1 overflow-auto">
@@ -1172,6 +1293,18 @@ const Cockpit = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={filteredInventory.length > 0 && selectedInventoryIds.size === filteredInventory.length}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedInventoryIds(new Set(filteredInventory.map(i => i.id)));
+                              } else {
+                                setSelectedInventoryIds(new Set());
+                              }
+                            }}
+                          />
+                        </TableHead>
                         <TableHead>Product ID</TableHead>
                         <TableHead>Product Name</TableHead>
                         <TableHead>SKU</TableHead>
@@ -1183,29 +1316,38 @@ const Cockpit = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {inventory
-                        .filter(item => {
-                          if (!inventorySearch) return true;
-                          const search = inventorySearch.toLowerCase();
-                          return (
-                            item.product?.name?.toLowerCase().includes(search) ||
-                            item.product?.product_id?.toLowerCase().includes(search) ||
-                            item.product?.sku?.toLowerCase().includes(search) ||
-                            item.bin?.bin_id?.toLowerCase().includes(search)
-                          );
-                        })
-                        .map((item) => {
+                      {filteredInventory.map((item) => {
                           const isLow = item.min_quantity && item.quantity <= item.min_quantity;
                           const isHigh = item.max_quantity && item.quantity >= item.max_quantity;
+                          const isSelected = selectedInventoryIds.has(item.id);
                           return (
                             <TableRow 
                               key={item.id} 
-                              className={`cursor-pointer hover:bg-muted/50 ${isLow ? 'bg-amber-500/5' : isHigh ? 'bg-blue-500/5' : ''}`}
+                              className={cn(
+                                "cursor-pointer hover:bg-muted/50",
+                                isLow && "bg-amber-500/5",
+                                isHigh && "bg-blue-500/5",
+                                isSelected && "bg-primary/5"
+                              )}
                               onClick={() => {
                                 setSelectedInventoryItem(item);
                                 setIsInventoryDetailOpen(true);
                               }}
                             >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    const newSet = new Set(selectedInventoryIds);
+                                    if (checked) {
+                                      newSet.add(item.id);
+                                    } else {
+                                      newSet.delete(item.id);
+                                    }
+                                    setSelectedInventoryIds(newSet);
+                                  }}
+                                />
+                              </TableCell>
                               <TableCell className="font-mono">{item.product?.product_id || '—'}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -1446,6 +1588,17 @@ const Cockpit = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Package Dialog */}
+      <BulkInventoryActionsDialog
+        open={isBulkPackageDialogOpen}
+        onOpenChange={setIsBulkPackageDialogOpen}
+        selectedItems={selectedInventoryItems}
+        onCompleted={() => {
+          fetchInventory();
+          setSelectedInventoryIds(new Set());
+        }}
+      />
     </div>
   );
 };
