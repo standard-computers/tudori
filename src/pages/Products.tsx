@@ -1275,15 +1275,15 @@ const Products = () => {
                     />
                   </div>
                 )}
-                <form ref={formRef} onSubmit={handleSubmit}>
-                  <DialogHeader>
+                <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                  <DialogHeader className="shrink-0">
                     <DialogTitle>{isEditing ? 'Edit Product' : 'Add Product'}</DialogTitle>
                     <DialogDescription>
                       {isEditing ? 'Update product details.' : 'Add a new product to your catalog.'}
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <div className="flex-1 overflow-y-auto px-6 pb-6">
+                  <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                     <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-5' : 'grid-cols-4'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
