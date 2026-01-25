@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -32,8 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { createPackagingUnit } from '@/lib/packaging-units';
-
+import { createPackagingUnit, createMultiplePackagingUnits } from '@/lib/packaging-units';
 interface InventoryItem {
   id: string;
   location_id: string;
@@ -76,6 +75,7 @@ export const InventoryDetailDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAssigningPU, setIsAssigningPU] = useState(false);
+  const [isExploding, setIsExploding] = useState(false);
 
   useEffect(() => {
     if (open && item) {
@@ -241,10 +241,65 @@ export const InventoryDetailDialog = ({
     }
   };
 
+  const handleExplode = async () => {
+    if (!item || !item.product?.company_id) {
+      toast.error('Missing product or company information');
+      return;
+    }
+
+    if (item.quantity <= 1) {
+      toast.error('Quantity must be greater than 1 to explode');
+      return;
+    }
+
+    setIsExploding(true);
+    try {
+      // Create individual PUs for each unit
+      const items = Array.from({ length: item.quantity }, () => ({
+        productId: item.product_id,
+        quantity: 1,
+      }));
+
+      const createdPUs = await createMultiplePackagingUnits(item.product.company_id, items);
+
+      if (createdPUs.length === 0) {
+        throw new Error('Failed to create packaging units');
+      }
+
+      // Delete the original inventory record
+      await supabase.from('inventory').delete().eq('id', item.id);
+
+      // Create new individual inventory records
+      const inventoryRecords = createdPUs.map((pu) => ({
+        location_id: item.location_id,
+        product_id: item.product_id,
+        bin_id: item.bin_id,
+        quantity: 1,
+        min_quantity: item.min_quantity,
+        max_quantity: item.max_quantity,
+        pu_id: pu.id,
+      }));
+
+      const { error } = await supabase.from('inventory').insert(inventoryRecords);
+
+      if (error) throw error;
+
+      toast.success(`Exploded into ${createdPUs.length} individual units with PUs`);
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Explode error:', error);
+      toast.error('Failed to explode inventory');
+    } finally {
+      setIsExploding(false);
+    }
+  };
+
   if (!item) return null;
 
   const canPutAway = !item.bin_id;
   const hasPU = !!item.pu_id;
+  const canExplode = item.quantity > 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -413,6 +468,16 @@ export const InventoryDetailDialog = ({
                 Close
                 <Kbd>Esc</Kbd>
               </Button>
+              {canExplode && (
+                <Button 
+                  variant="secondary" 
+                  onClick={handleExplode} 
+                  disabled={isExploding}
+                >
+                  <Split className="w-4 h-4 mr-2" />
+                  {isExploding ? 'Exploding...' : 'Explode'}
+                </Button>
+              )}
               {canPutAway && (
                 <Button onClick={() => setIsPutAwayMode(true)} disabled={bins.length === 0}>
                   <Boxes className="w-4 h-4 mr-2" />
