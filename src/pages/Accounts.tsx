@@ -54,11 +54,13 @@ interface Account {
   type: string;
   customer_id: string | null;
   vendor_id: string | null;
+  location_id: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
   vendor?: { name: string } | null;
+  location?: { name: string } | null;
 }
 
 interface Customer {
@@ -73,6 +75,12 @@ interface Vendor {
   vendor_id: string;
 }
 
+interface Location {
+  id: string;
+  name: string;
+  location_id: string;
+}
+
 const Accounts = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -81,6 +89,7 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Import/Export settings
@@ -100,6 +109,7 @@ const Accounts = () => {
     type: 'customer',
     customer_id: '',
     vendor_id: '',
+    location_id: '',
     description: '',
     is_active: true,
   });
@@ -141,6 +151,7 @@ const Accounts = () => {
       fetchAccounts();
       fetchCustomers();
       fetchVendors();
+      fetchLocations();
     }
   }, [companyId]);
 
@@ -163,7 +174,8 @@ const Accounts = () => {
       .select(`
         *,
         customer:customers(name),
-        vendor:vendors(name)
+        vendor:vendors(name),
+        location:locations(name)
       `)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
@@ -195,6 +207,15 @@ const Accounts = () => {
     setVendors(data || []);
   };
 
+  const fetchLocations = async () => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name, location_id')
+      .eq('company_id', companyId)
+      .order('name');
+    setLocations(data || []);
+  };
+
   const customerOptions: SearchableSelectOption[] = useMemo(() => {
     return customers.map((c) => ({
       value: c.id,
@@ -210,6 +231,14 @@ const Accounts = () => {
       sublabel: v.vendor_id,
     }));
   }, [vendors]);
+
+  const locationOptions: SearchableSelectOption[] = useMemo(() => {
+    return locations.map((l) => ({
+      value: l.id,
+      label: l.name,
+      sublabel: l.location_id,
+    }));
+  }, [locations]);
 
   const filteredAccounts = useMemo(() => {
     if (!searchQuery) return sortedAndFilteredData;
@@ -228,6 +257,7 @@ const Accounts = () => {
       type: 'customer',
       customer_id: '',
       vendor_id: '',
+      location_id: '',
       description: '',
       is_active: true,
     });
@@ -243,6 +273,7 @@ const Accounts = () => {
       type: account.type,
       customer_id: account.customer_id || '',
       vendor_id: account.vendor_id || '',
+      location_id: account.location_id || '',
       description: account.description || '',
       is_active: account.is_active,
     });
@@ -269,6 +300,7 @@ const Accounts = () => {
         type: formData.type,
         customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
         vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
+        location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
         description: formData.description || null,
         is_active: formData.is_active,
       });
@@ -302,6 +334,7 @@ const Accounts = () => {
           type: formData.type,
           customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
           vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
+          location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
           description: formData.description || null,
           is_active: formData.is_active,
         })
@@ -445,6 +478,7 @@ const Accounts = () => {
                     <TableCell>
                       {account.type === 'customer' && account.customer?.name}
                       {account.type === 'vendor' && account.vendor?.name}
+                      {account.type === 'location' && account.location?.name}
                     </TableCell>
                     <TableCell>
                       <Badge variant={account.is_active ? 'default' : 'secondary'}>
@@ -508,7 +542,7 @@ const Accounts = () => {
               <Select
                 value={formData.type}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, type: value, customer_id: '', vendor_id: '' })
+                  setFormData({ ...formData, type: value, customer_id: '', vendor_id: '', location_id: '' })
                 }
               >
                 <SelectTrigger>
@@ -517,6 +551,7 @@ const Accounts = () => {
                 <SelectContent className="bg-popover">
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="vendor">Vendor</SelectItem>
+                  <SelectItem value="location">Location</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -541,6 +576,18 @@ const Accounts = () => {
                   value={formData.vendor_id}
                   onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
                   placeholder="Select vendor..."
+                />
+              </div>
+            )}
+
+            {formData.type === 'location' && (
+              <div>
+                <Label>Link to Location</Label>
+                <SearchableSelect
+                  options={locationOptions}
+                  value={formData.location_id}
+                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                  placeholder="Select location..."
                 />
               </div>
             )}
@@ -591,7 +638,7 @@ const Accounts = () => {
               <Select
                 value={formData.type}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, type: value, customer_id: '', vendor_id: '' })
+                  setFormData({ ...formData, type: value, customer_id: '', vendor_id: '', location_id: '' })
                 }
               >
                 <SelectTrigger>
@@ -600,6 +647,7 @@ const Accounts = () => {
                 <SelectContent className="bg-popover">
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="vendor">Vendor</SelectItem>
+                  <SelectItem value="location">Location</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -624,6 +672,18 @@ const Accounts = () => {
                   value={formData.vendor_id}
                   onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
                   placeholder="Select vendor..."
+                />
+              </div>
+            )}
+
+            {formData.type === 'location' && (
+              <div>
+                <Label>Link to Location</Label>
+                <SearchableSelect
+                  options={locationOptions}
+                  value={formData.location_id}
+                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                  placeholder="Select location..."
                 />
               </div>
             )}
