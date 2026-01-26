@@ -751,6 +751,7 @@ export type Database = {
           phone: string | null
           status: string
           updated_at: string
+          user_id: string | null
           wage: number | null
         }
         Insert: {
@@ -770,6 +771,7 @@ export type Database = {
           phone?: string | null
           status?: string
           updated_at?: string
+          user_id?: string | null
           wage?: number | null
         }
         Update: {
@@ -789,6 +791,7 @@ export type Database = {
           phone?: string | null
           status?: string
           updated_at?: string
+          user_id?: string | null
           wage?: number | null
         }
         Relationships: [
@@ -2540,6 +2543,64 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_punches: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          location_id: string | null
+          notes: string | null
+          punch_in: string
+          punch_out: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          punch_in: string
+          punch_out?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          location_id?: string | null
+          notes?: string | null
+          punch_in?: string
+          punch_out?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_punches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_punches_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_punches_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]

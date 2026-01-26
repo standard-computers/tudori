@@ -33,11 +33,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2 } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
 
 interface Employee {
   id: string;
@@ -54,6 +56,14 @@ interface Employee {
   wage: number | null;
   is_hourly: boolean;
   bonus_eligible: boolean;
+  user_id: string | null;
+}
+
+interface UserProfile {
+  user_id: string;
+  email: string | null;
+  first_name: string;
+  last_name: string;
 }
 
 const DEPARTMENTS = ['Engineering', 'Sales', 'Marketing', 'Finance', 'Operations', 'HR', 'Customer Support', 'Product'];
@@ -228,6 +238,7 @@ const Employees = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nextEmployeeId, setNextEmployeeId] = useState('0001');
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -243,6 +254,7 @@ const Employees = () => {
     wage: '',
     is_hourly: false,
     bonus_eligible: false,
+    user_id: '',
   });
 
   useEffect(() => {
@@ -275,8 +287,19 @@ const Employees = () => {
     if (companyId) {
       fetchEmployees();
       fetchNextEmployeeId();
+      fetchUsers();
     }
   }, [companyId]);
+
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('user_id, email, first_name, last_name')
+      .eq('company_id', companyId)
+      .order('last_name');
+    
+    setUsers(data || []);
+  };
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase
@@ -331,6 +354,7 @@ const Employees = () => {
       wage: '',
       is_hourly: false,
       bonus_eligible: false,
+      user_id: '',
     });
     setIsEditing(false);
     setEditingId(null);
@@ -354,6 +378,7 @@ const Employees = () => {
       wage: employee.wage?.toString() || '',
       is_hourly: employee.is_hourly || false,
       bonus_eligible: employee.bonus_eligible || false,
+      user_id: employee.user_id || '',
     });
     setIsEditing(true);
     setEditingId(employee.id);
@@ -395,6 +420,7 @@ const Employees = () => {
         wage: formData.wage ? parseFloat(formData.wage) : null,
         is_hourly: formData.is_hourly,
         bonus_eligible: formData.bonus_eligible,
+        user_id: formData.user_id || null,
       };
 
       if (isEditing && editingId) {
@@ -596,6 +622,23 @@ const Employees = () => {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="user_id">Linked User</Label>
+                <Select value={formData.user_id || "none"} onValueChange={(v) => setFormData({ ...formData, user_id: v === "none" ? '' : v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user to link" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No linked user</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>
+                        {u.first_name} {u.last_name} ({u.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Link this employee to a user account for time clock access</p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
@@ -621,84 +664,99 @@ const Employees = () => {
 
       {/* View Employee Dialog */}
       <Dialog open={!!viewingEmployee} onOpenChange={() => setViewingEmployee(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
               {viewingEmployee?.first_name} {viewingEmployee?.last_name}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="flex items-center gap-2">
               Employee ID: {viewingEmployee?.employee_id}
+              {viewingEmployee?.user_id && (
+                <Badge variant="outline" className="ml-2">
+                  <Link2 className="h-3 w-3 mr-1" />
+                  Linked to User
+                </Badge>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
             {viewingEmployee && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'secondary'}>
-                      {viewingEmployee.status}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Department</p>
-                    <p className="font-medium">{viewingEmployee.department || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Job Title</p>
-                    <p className="font-medium">{viewingEmployee.job_title || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Hire Date</p>
-                    <p className="font-medium">{viewingEmployee.hire_date || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="font-medium">{viewingEmployee.email || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Phone</p>
-                    <p className="font-medium">{viewingEmployee.phone || '-'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Wage</p>
-                    <p className="font-medium">
-                      {viewingEmployee.wage 
-                        ? `$${viewingEmployee.wage.toLocaleString('en-US', { minimumFractionDigits: 2 })}${viewingEmployee.is_hourly ? '/hr' : ''}`
-                        : '-'}
-                    </p>
-                    {viewingEmployee.is_hourly && viewingEmployee.wage && (
-                      <p className="text-xs text-muted-foreground">
-                        ≈ ${(viewingEmployee.wage * 40 * 52).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Compensation</p>
-                    <div className="flex gap-2 mt-1">
-                      <Badge variant={viewingEmployee.is_hourly ? 'default' : 'secondary'}>
-                        {viewingEmployee.is_hourly ? 'Hourly' : 'Salary'}
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
+                </TabsList>
+                <TabsContent value="details" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'secondary'}>
+                        {viewingEmployee.status}
                       </Badge>
-                      {viewingEmployee.bonus_eligible && (
-                        <Badge variant="outline">Bonus Eligible</Badge>
-                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Department</p>
+                      <p className="font-medium">{viewingEmployee.department || '-'}</p>
                     </div>
                   </div>
-                </div>
-                {viewingEmployee.notes && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Notes</p>
-                    <p className="text-sm whitespace-pre-wrap">{viewingEmployee.notes}</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Job Title</p>
+                      <p className="font-medium">{viewingEmployee.job_title || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Hire Date</p>
+                      <p className="font-medium">{viewingEmployee.hire_date || '-'}</p>
+                    </div>
                   </div>
-                )}
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-medium">{viewingEmployee.email || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="font-medium">{viewingEmployee.phone || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Wage</p>
+                      <p className="font-medium">
+                        {viewingEmployee.wage 
+                          ? `$${viewingEmployee.wage.toLocaleString('en-US', { minimumFractionDigits: 2 })}${viewingEmployee.is_hourly ? '/hr' : ''}`
+                          : '-'}
+                      </p>
+                      {viewingEmployee.is_hourly && viewingEmployee.wage && (
+                        <p className="text-xs text-muted-foreground">
+                          ≈ ${(viewingEmployee.wage * 40 * 52).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Compensation</p>
+                      <div className="flex gap-2 mt-1">
+                        <Badge variant={viewingEmployee.is_hourly ? 'default' : 'secondary'}>
+                          {viewingEmployee.is_hourly ? 'Hourly' : 'Salary'}
+                        </Badge>
+                        {viewingEmployee.bonus_eligible && (
+                          <Badge variant="outline">Bonus Eligible</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {viewingEmployee.notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Notes</p>
+                      <p className="text-sm whitespace-pre-wrap">{viewingEmployee.notes}</p>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="timesheets" className="mt-4">
+                  <TimesheetsTab employeeId={viewingEmployee.id} />
+                </TabsContent>
+              </Tabs>
             )}
           </DialogBody>
           <DialogFooter>

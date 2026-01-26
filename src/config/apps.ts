@@ -27,6 +27,7 @@ import {
   PackageMinus,
   Cog,
   Store,
+  Clock,
   LucideIcon
 } from 'lucide-react';
 
@@ -60,6 +61,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Requisitions', icon: FileSpreadsheet, color: 'text-sky-500', description: 'Purchase requests', path: '/requisitions' },
   { name: 'Shipping', icon: Truck, color: 'text-teal-500', description: 'Logistics & delivery', path: '/deliveries' },
   { name: 'Employees', icon: User, color: 'text-blue-500', description: 'Staff directory', path: '/employees' },
+  { name: 'Time Clock', icon: Clock, color: 'text-cyan-500', description: 'Clock in/out', path: '/time-clock' },
   { name: 'Teams', icon: Users2, color: 'text-teal-500', description: 'Team management', path: '/teams' },
   { name: 'Calendar', icon: Calendar, color: 'text-indigo-500', description: 'Events & scheduling', path: null },
   { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: '/tasks' },
