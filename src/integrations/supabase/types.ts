@@ -1433,6 +1433,7 @@ export type Database = {
           created_at: string
           id: string
           is_internal_vendor: boolean
+          is_pos_enabled: boolean
           location_id: string
           name: string
           postal_code: string
@@ -1449,6 +1450,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_internal_vendor?: boolean
+          is_pos_enabled?: boolean
           location_id: string
           name: string
           postal_code: string
@@ -1465,6 +1467,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_internal_vendor?: boolean
+          is_pos_enabled?: boolean
           location_id?: string
           name?: string
           postal_code?: string
