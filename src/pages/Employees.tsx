@@ -66,7 +66,11 @@ interface UserProfile {
   last_name: string;
 }
 
-const DEPARTMENTS = ['Engineering', 'Sales', 'Marketing', 'Finance', 'Operations', 'HR', 'Customer Support', 'Product'];
+interface Team {
+  id: string;
+  name: string;
+}
+
 const STATUSES = ['active', 'inactive', 'on_leave'];
 
 const EmployeeTable = ({
@@ -154,7 +158,7 @@ const EmployeeTable = ({
                 onFilter={(value) => setFilter('job_title', value)}
               />
               <SortableTableHead
-                label="Department"
+                label="Team"
                 sortKey="department"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -239,6 +243,7 @@ const Employees = () => {
   const [nextEmployeeId, setNextEmployeeId] = useState('0001');
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -288,6 +293,7 @@ const Employees = () => {
       fetchEmployees();
       fetchNextEmployeeId();
       fetchUsers();
+      fetchTeams();
     }
   }, [companyId]);
 
@@ -299,6 +305,16 @@ const Employees = () => {
       .order('last_name');
     
     setUsers(data || []);
+  };
+
+  const fetchTeams = async () => {
+    const { data } = await supabase
+      .from('teams')
+      .select('id, name')
+      .eq('company_id', companyId)
+      .order('name');
+    
+    setTeams(data || []);
   };
 
   const fetchCompanyId = async () => {
@@ -423,6 +439,8 @@ const Employees = () => {
         user_id: formData.user_id || null,
       };
 
+      let employeeId = editingId;
+      
       if (isEditing && editingId) {
         const { error } = await supabase
           .from('employees')
@@ -431,9 +449,28 @@ const Employees = () => {
         if (error) throw error;
         toast.success('Employee updated');
       } else {
-        const { error } = await supabase.from('employees').insert(employeeData);
+        const { data, error } = await supabase.from('employees').insert(employeeData).select('id').single();
         if (error) throw error;
+        employeeId = data.id;
         toast.success('Employee created');
+      }
+
+      // Sync team membership based on department (team name)
+      if (employeeId) {
+        // Remove from all teams first
+        await supabase.from('team_members').delete().eq('employee_id', employeeId);
+        
+        // If a team is selected, add to that team
+        if (formData.department) {
+          const team = teams.find(t => t.name === formData.department);
+          if (team) {
+            await supabase.from('team_members').insert({
+              team_id: team.id,
+              employee_id: employeeId,
+              role: 'member',
+            });
+          }
+        }
       }
 
       setIsDialogOpen(false);
@@ -562,17 +599,19 @@ const Employees = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
+                  <Label htmlFor="department">Team</Label>
+                  <Select value={formData.department || "none"} onValueChange={(v) => setFormData({ ...formData, department: v === "none" ? '' : v })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder="Select team" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENTS.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      <SelectItem value="none">No team</SelectItem>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Assigning a team auto-adds employee to that team</p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -696,7 +735,7 @@ const Employees = () => {
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Department</p>
+                      <p className="text-xs text-muted-foreground">Team</p>
                       <p className="font-medium">{viewingEmployee.department || '-'}</p>
                     </div>
                   </div>

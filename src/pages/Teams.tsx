@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
@@ -25,16 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, Users2, UserPlus, UserMinus } from 'lucide-react';
+import { TeamEmployeesTab } from '@/components/teams/TeamEmployeesTab';
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, Users2, Eye } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -47,33 +41,16 @@ interface Team {
   member_count?: number;
 }
 
-interface Employee {
-  id: string;
-  employee_id: string;
-  first_name: string;
-  last_name: string;
-  job_title: string | null;
-}
-
-interface TeamMember {
-  id: string;
-  employee_id: string;
-  role: string;
-  employee?: Employee;
-}
-
-const MEMBER_ROLES = ['member', 'lead', 'manager'];
-
 const TeamTable = ({
   teams,
+  onView,
   onEdit,
   onDelete,
-  onManageMembers,
 }: {
   teams: Team[];
+  onView: (team: Team) => void;
   onEdit: (team: Team) => void;
   onDelete: (id: string) => void;
-  onManageMembers: (team: Team) => void;
 }) => {
   const {
     sortConfig,
@@ -168,8 +145,8 @@ const TeamTable = ({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onManageMembers(team)} title="Manage members">
-                      <Users2 className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onView(team)} title="View team">
+                      <Eye className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(team)}>
                       <Pencil className="h-4 w-4" />
@@ -202,20 +179,13 @@ const Teams = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(true);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nextTeamId, setNextTeamId] = useState('0001');
-  
-  // Members management state
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [newMemberEmployeeId, setNewMemberEmployeeId] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState('member');
+  const [viewingTeam, setViewingTeam] = useState<Team | null>(null);
 
   const [formData, setFormData] = useState({
     team_id: '',
@@ -223,26 +193,15 @@ const Teams = () => {
     description: '',
   });
 
-  const employeeOptions: SearchableSelectOption[] = useMemo(() => {
-    const memberEmployeeIds = teamMembers.map(m => m.employee_id);
-    return employees
-      .filter(e => !memberEmployeeIds.includes(e.id))
-      .map((e) => ({
-        value: e.id,
-        label: `${e.first_name} ${e.last_name}`,
-        sublabel: e.job_title || e.employee_id,
-      }));
-  }, [employees, teamMembers]);
-
   useEffect(() => {
     if (isDialogOpen) {
       setTransaction(isEditing ? 'team/edit' : 'team/new');
-    } else if (isMembersDialogOpen) {
-      setTransaction('team/members');
+    } else if (viewingTeam) {
+      setTransaction('team/view');
     } else {
       setTransaction('team');
     }
-  }, [isDialogOpen, isMembersDialogOpen, isEditing, setTransaction]);
+  }, [isDialogOpen, viewingTeam, isEditing, setTransaction]);
 
   useSaveShortcut(() => {
     if (isDialogOpen && formRef.current) {
@@ -265,7 +224,6 @@ const Teams = () => {
   useEffect(() => {
     if (companyId) {
       fetchTeams();
-      fetchEmployees();
       fetchNextTeamId();
     }
   }, [companyId]);
@@ -314,16 +272,6 @@ const Teams = () => {
     setTeams(teamsWithCounts);
   };
 
-  const fetchEmployees = async () => {
-    const { data } = await supabase
-      .from('employees')
-      .select('id, employee_id, first_name, last_name, job_title')
-      .eq('company_id', companyId)
-      .eq('status', 'active')
-      .order('last_name');
-    setEmployees(data || []);
-  };
-
   const fetchNextTeamId = async () => {
     const { data } = await supabase.rpc('get_next_team_id', {
       p_company_id: companyId,
@@ -331,28 +279,6 @@ const Teams = () => {
     if (data) {
       setNextTeamId(data);
     }
-  };
-
-  const fetchTeamMembers = async (teamId: string) => {
-    const { data, error } = await supabase
-      .from('team_members')
-      .select(`
-        id,
-        employee_id,
-        role,
-        employee:employees(id, employee_id, first_name, last_name, job_title)
-      `)
-      .eq('team_id', teamId);
-
-    if (error) {
-      console.error('Error fetching team members:', error);
-      return;
-    }
-
-    setTeamMembers((data || []).map(m => ({
-      ...m,
-      employee: m.employee as unknown as Employee,
-    })));
   };
 
   const handleOpenDialog = () => {
@@ -387,48 +313,6 @@ const Teams = () => {
     }
     toast.success('Team deleted');
     fetchTeams();
-  };
-
-  const handleManageMembers = (team: Team) => {
-    setSelectedTeam(team);
-    fetchTeamMembers(team.id);
-    setNewMemberEmployeeId('');
-    setNewMemberRole('member');
-    setIsMembersDialogOpen(true);
-  };
-
-  const handleAddMember = async () => {
-    if (!selectedTeam || !newMemberEmployeeId) return;
-
-    const { error } = await supabase.from('team_members').insert({
-      team_id: selectedTeam.id,
-      employee_id: newMemberEmployeeId,
-      role: newMemberRole,
-    });
-
-    if (error) {
-      toast.error('Failed to add member');
-      return;
-    }
-
-    toast.success('Member added');
-    fetchTeamMembers(selectedTeam.id);
-    fetchTeams();
-    setNewMemberEmployeeId('');
-    setNewMemberRole('member');
-  };
-
-  const handleRemoveMember = async (memberId: string) => {
-    const { error } = await supabase.from('team_members').delete().eq('id', memberId);
-    if (error) {
-      toast.error('Failed to remove member');
-      return;
-    }
-    toast.success('Member removed');
-    if (selectedTeam) {
-      fetchTeamMembers(selectedTeam.id);
-      fetchTeams();
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -488,7 +372,7 @@ const Teams = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <Users2 className="h-6 w-6 text-teal-500" />
+              <Users2 className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold">Teams</h1>
             </div>
           </div>
@@ -501,12 +385,12 @@ const Teams = () => {
       </header>
 
       <main className="p-0">
-        <TeamTable teams={teams} onEdit={handleEdit} onDelete={handleDelete} onManageMembers={handleManageMembers} />
+        <TeamTable teams={teams} onView={setViewingTeam} onEdit={handleEdit} onDelete={handleDelete} />
       </main>
 
       {/* Create/Edit Team Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Team' : 'Add Team'}</DialogTitle>
             <DialogDescription>
@@ -514,35 +398,53 @@ const Teams = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <form id="team-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="team_id">Team ID</Label>
-                <Input
-                  id="team_id"
-                  value={formData.team_id}
-                  onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
-                  disabled={isEditing}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </form>
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="employees" disabled={!isEditing}>Employees</TabsTrigger>
+              </TabsList>
+              <TabsContent value="details" className="mt-4">
+                <form id="team-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="team_id">Team ID</Label>
+                    <Input
+                      id="team_id"
+                      value={formData.team_id}
+                      onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
+                      disabled={isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+                </form>
+              </TabsContent>
+              <TabsContent value="employees" className="mt-4">
+                {isEditing && editingId && companyId && (
+                  <TeamEmployeesTab 
+                    teamId={editingId} 
+                    teamName={formData.name}
+                    companyId={companyId} 
+                    onMemberChange={fetchTeams}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -557,100 +459,58 @@ const Teams = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Manage Members Dialog */}
-      <Dialog open={isMembersDialogOpen} onOpenChange={setIsMembersDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* View Team Dialog */}
+      <Dialog open={!!viewingTeam} onOpenChange={() => setViewingTeam(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Manage Team Members - {selectedTeam?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Users2 className="h-5 w-5 text-primary" />
+              {viewingTeam?.name}
+            </DialogTitle>
             <DialogDescription>
-              Add or remove employees from this team
+              Team ID: {viewingTeam?.team_id}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div className="space-y-4">
-              {/* Add member form */}
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <Label>Add Employee</Label>
-                  <SearchableSelect
-                    options={employeeOptions}
-                    value={newMemberEmployeeId}
-                    onValueChange={setNewMemberEmployeeId}
-                    placeholder="Select employee..."
+            {viewingTeam && companyId && (
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="employees">Employees</TabsTrigger>
+                </TabsList>
+                <TabsContent value="details" className="space-y-4 mt-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Description</p>
+                    <p className="font-medium">{viewingTeam.description || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Members</p>
+                    <Badge variant="secondary">{viewingTeam.member_count || 0}</Badge>
+                  </div>
+                </TabsContent>
+                <TabsContent value="employees" className="mt-4">
+                  <TeamEmployeesTab 
+                    teamId={viewingTeam.id} 
+                    teamName={viewingTeam.name}
+                    companyId={companyId} 
+                    onMemberChange={fetchTeams}
                   />
-                </div>
-                <div className="w-32">
-                  <Label>Role</Label>
-                  <Select value={newMemberRole} onValueChange={setNewMemberRole}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MEMBER_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAddMember} disabled={!newMemberEmployeeId}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add
-                </Button>
-              </div>
-
-              {/* Current members list */}
-              <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableCell className="font-medium">Employee</TableCell>
-                      <TableCell className="font-medium">Role</TableCell>
-                      <TableCell className="font-medium w-20"></TableCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamMembers.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {member.employee?.first_name} {member.employee?.last_name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {member.employee?.job_title || member.employee?.employee_id}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{member.role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleRemoveMember(member.id)}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {teamMembers.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                          No members in this team
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+                </TabsContent>
+              </Tabs>
+            )}
           </DialogBody>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsMembersDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setViewingTeam(null)}>
               Close
+            </Button>
+            <Button onClick={() => {
+              if (viewingTeam) {
+                handleEdit(viewingTeam);
+                setViewingTeam(null);
+              }
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
             </Button>
           </DialogFooter>
         </DialogContent>
