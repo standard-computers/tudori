@@ -26,6 +26,7 @@ import {
   PackagePlus,
   PackageMinus,
   Cog,
+  Store,
   LucideIcon
 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export interface AppTile {
 }
 
 export const defaultApps: AppTile[] = [
+  { name: 'POS', icon: Store, color: 'text-pink-500', description: 'Point of sale', path: '/pos' },
   { name: 'Cockpit', icon: Gauge, color: 'text-orange-500', description: 'Location dashboard', path: '/cockpit' },
   { name: 'Sales Orders', icon: DollarSign, color: 'text-emerald-500', description: 'Customer orders', path: '/sales-orders' },
   { name: 'Inventory', icon: Warehouse, color: 'text-blue-500', description: 'Stock management', path: '/inventory' },

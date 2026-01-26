@@ -1,0 +1,387 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Location {
+  id: string;
+  location_id: string;
+  name: string;
+}
+
+interface Product {
+  id: string;
+  product_id: string;
+  name: string;
+  sku: string | null;
+  price: number | null;
+  image_url: string | null;
+}
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+const POS = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const { setTransaction } = useStatusBar();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    setTransaction('pos');
+  }, [setTransaction]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchCompanyId();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (companyId) {
+      fetchPOSLocations();
+      fetchProducts();
+    }
+  }, [companyId]);
+
+  const fetchCompanyId = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', user!.id)
+      .single();
+    
+    if (data?.company_id) {
+      setCompanyId(data.company_id);
+    }
+  };
+
+  const fetchPOSLocations = async () => {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, location_id, name')
+      .eq('company_id', companyId!)
+      .eq('is_pos_enabled', true)
+      .order('name');
+
+    if (error) {
+      toast.error('Failed to load POS locations');
+      return;
+    }
+
+    setLocations(data || []);
+    if (data && data.length > 0 && !selectedLocationId) {
+      setSelectedLocationId(data[0].id);
+    }
+  };
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, product_id, name, sku, price, image_url')
+      .eq('company_id', companyId!)
+      .eq('status', 'Active')
+      .order('name');
+
+    if (error) {
+      toast.error('Failed to load products');
+      return;
+    }
+
+    setProducts(data || []);
+  };
+
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.product_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.product.id === product.id);
+      if (existing) {
+        return prev.map(item =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prev, { product, quantity: 1 }];
+    });
+  };
+
+  const updateQuantity = (productId: string, delta: number) => {
+    setCart(prev => {
+      return prev.map(item => {
+        if (item.product.id === productId) {
+          const newQuantity = item.quantity + delta;
+          if (newQuantity <= 0) return null;
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      }).filter(Boolean) as CartItem[];
+    });
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => prev.filter(item => item.product.id !== productId));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const cartTotal = cart.reduce((sum, item) => {
+    return sum + (item.product.price || 0) * item.quantity;
+  }, 0);
+
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleCheckout = () => {
+    if (!selectedLocationId) {
+      toast.error('Please select a location');
+      return;
+    }
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+    // TODO: Implement checkout flow (create sales order, goods issue, etc.)
+    toast.success('Checkout functionality coming soon!');
+  };
+
+  if (locations.length === 0 && companyId) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
+          <div className="px-4">
+            <div className="flex items-center gap-4 h-14">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="text-xl font-semibold">Point of Sale</h1>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center py-12">
+            <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No POS locations</h3>
+            <p className="text-muted-foreground mb-4">
+              Enable POS in location settings to get started.
+            </p>
+            <Button onClick={() => navigate('/locations')}>
+              Go to Locations
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
+        <div className="px-4">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="text-xl font-semibold">Point of Sale</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 flex">
+        {/* Products Grid */}
+        <div className="flex-1 p-4 overflow-auto">
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {filteredProducts.map(product => (
+              <Card
+                key={product.id}
+                className="cursor-pointer hover:border-primary transition-colors"
+                onClick={() => addToCart(product)}
+              >
+                <CardContent className="p-4">
+                  <div className="aspect-square bg-muted rounded-md mb-3 flex items-center justify-center overflow-hidden">
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ShoppingCart className="w-8 h-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <h3 className="font-medium text-sm truncate">{product.name}</h3>
+                  <p className="text-xs text-muted-foreground truncate">{product.product_id}</p>
+                  <p className="text-sm font-semibold mt-1">
+                    ${(product.price || 0).toFixed(2)}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Cart Sidebar */}
+        <div className="w-96 border-l bg-card flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5" />
+                Cart ({cartItemCount})
+              </h2>
+              {cart.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearCart}>
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-4">
+            {cart.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Cart is empty
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {cart.map(item => (
+                  <div key={item.product.id} className="flex items-center gap-3 p-2 border rounded-lg">
+                    <div className="w-12 h-12 bg-muted rounded flex items-center justify-center shrink-0 overflow-hidden">
+                      {item.product.image_url ? (
+                        <img
+                          src={item.product.image_url}
+                          alt={item.product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ShoppingCart className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.product.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        ${(item.product.price || 0).toFixed(2)} each
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => updateQuantity(item.product.id, -1)}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </Button>
+                      <span className="w-8 text-center text-sm">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => updateQuantity(item.product.id, 1)}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={() => removeFromCart(item.product.id)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t space-y-4">
+            <div className="flex items-center justify-between text-lg font-semibold">
+              <span>Total</span>
+              <span>${cartTotal.toFixed(2)}</span>
+            </div>
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleCheckout}
+              disabled={cart.length === 0}
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Checkout
+            </Button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default POS;

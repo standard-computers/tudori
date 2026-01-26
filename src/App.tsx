@@ -40,6 +40,7 @@ import Configuration from "./pages/Configuration";
 import Tasks from "./pages/Tasks";
 import Employees from "./pages/Employees";
 import Teams from "./pages/Teams";
+import POS from "./pages/POS";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -88,6 +89,7 @@ const App = () => (
                   <Route path="/tasks" element={<Tasks />} />
                   <Route path="/employees" element={<Employees />} />
                   <Route path="/teams" element={<Teams />} />
+                  <Route path="/pos" element={<POS />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>

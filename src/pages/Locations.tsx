@@ -55,6 +55,7 @@ interface Location {
   postal_code: string;
   country: string;
   is_internal_vendor?: boolean;
+  is_pos_enabled?: boolean;
 }
 
 interface CompanyUser {
@@ -277,6 +278,7 @@ const Locations = () => {
     postal_code: '',
     country: 'United States',
     is_internal_vendor: true,
+    is_pos_enabled: false,
   });
 
   useEffect(() => {
@@ -374,6 +376,7 @@ const Locations = () => {
       postal_code: '',
       country: 'United States',
       is_internal_vendor: true,
+      is_pos_enabled: false,
     });
     setIsEditing(false);
     setEditingId(null);
@@ -403,6 +406,7 @@ const Locations = () => {
       postal_code: location.postal_code,
       country: location.country,
       is_internal_vendor: location.is_internal_vendor ?? true,
+      is_pos_enabled: (location as any).is_pos_enabled ?? false,
     });
     setIsEditing(true);
     setEditingId(location.id);
@@ -493,6 +497,7 @@ const Locations = () => {
             postal_code: formData.postal_code,
             country: formData.country,
             is_internal_vendor: formData.is_internal_vendor,
+            is_pos_enabled: formData.is_pos_enabled,
           })
           .eq('id', editingId);
 
@@ -517,6 +522,7 @@ const Locations = () => {
             postal_code: formData.postal_code,
             country: formData.country,
             is_internal_vendor: formData.is_internal_vendor,
+            is_pos_enabled: formData.is_pos_enabled,
           })
           .select()
           .single();
@@ -811,6 +817,19 @@ const Locations = () => {
                               id="is_internal_vendor"
                               checked={formData.is_internal_vendor}
                               onCheckedChange={(checked) => setFormData({ ...formData, is_internal_vendor: checked })}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="is_pos_enabled" className="font-medium">POS Enabled</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Enable point-of-sale functionality for this location.
+                              </p>
+                            </div>
+                            <Switch
+                              id="is_pos_enabled"
+                              checked={formData.is_pos_enabled}
+                              onCheckedChange={(checked) => setFormData({ ...formData, is_pos_enabled: checked })}
                             />
                           </div>
                         </div>
