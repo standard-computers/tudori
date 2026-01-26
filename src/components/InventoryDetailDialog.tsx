@@ -706,10 +706,6 @@ export const InventoryDetailDialog = ({
                 </AlertDialogContent>
               </AlertDialog>
               <div className="flex-1" />
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
-                <Kbd>Esc</Kbd>
-              </Button>
               {canExplode && (
                 <Button 
                   variant="secondary" 

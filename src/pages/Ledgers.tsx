@@ -862,9 +862,6 @@ const Ledgers = () => {
               {isAdjustingOff ? 'Creating...' : 'Adjust Off'}
             </Button>
             <div className="flex-1" />
-            <Button variant="ghost" onClick={() => setViewingTransaction(null)}>
-              Close
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

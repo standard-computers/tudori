@@ -1398,9 +1398,6 @@ const Requisitions = () => {
           </div>
 
           <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

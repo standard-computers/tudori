@@ -1274,9 +1274,6 @@ const Deliveries = () => {
             </Tabs>
           )}
           <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
-              Close
-            </Button>
             {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
               <Button onClick={() => {
                 setIsViewOpen(false);
@@ -1353,9 +1350,6 @@ const Deliveries = () => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsVendorDetailOpen(false)}>
-              Close
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1397,9 +1391,6 @@ const Deliveries = () => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLocationDetailOpen(false)}>
-              Close
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1456,9 +1447,6 @@ const Deliveries = () => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPODetailOpen(false)}>
-              Close
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

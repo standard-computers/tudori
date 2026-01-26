@@ -722,9 +722,6 @@ const Users = () => {
               </Tabs>
             </DialogBody>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingMember(null)}>
-                Close
-              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -777,9 +774,6 @@ const Users = () => {
               </Tabs>
             </DialogBody>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setViewingMember(null)}>
-                Close
-              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

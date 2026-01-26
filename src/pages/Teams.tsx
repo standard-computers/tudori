@@ -500,9 +500,6 @@ const Teams = () => {
             )}
           </DialogBody>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewingTeam(null)}>
-              Close
-            </Button>
             <Button onClick={() => {
               if (viewingTeam) {
                 handleEdit(viewingTeam);

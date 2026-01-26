@@ -799,9 +799,6 @@ const Employees = () => {
             )}
           </DialogBody>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewingEmployee(null)}>
-              Close
-            </Button>
             <Button onClick={() => {
               if (viewingEmployee) {
                 handleEdit(viewingEmployee);
