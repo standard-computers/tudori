@@ -667,9 +667,6 @@ const CreditMemos = () => {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

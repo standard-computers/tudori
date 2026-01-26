@@ -612,9 +612,6 @@ const GoodsIssues = () => {
                         </TableBody>
                       </Table>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                          Done
-                        </Button>
                       </DialogFooter>
                     </div>
                   </TabsContent>

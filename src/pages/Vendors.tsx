@@ -890,9 +890,6 @@ const Vendors = () => {
             </div>
           )}
           <DialogFooter className="shrink-0">
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
             <Button onClick={() => {
               setIsViewDialogOpen(false);
               if (viewingVendor) handleEdit(viewingVendor);
