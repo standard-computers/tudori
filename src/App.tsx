@@ -41,6 +41,7 @@ import Tasks from "./pages/Tasks";
 import Employees from "./pages/Employees";
 import Teams from "./pages/Teams";
 import POS from "./pages/POS";
+import TimeClock from "./pages/TimeClock";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -90,6 +91,7 @@ const App = () => (
                   <Route path="/employees" element={<Employees />} />
                   <Route path="/teams" element={<Teams />} />
                   <Route path="/pos" element={<POS />} />
+                  <Route path="/time-clock" element={<TimeClock />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
