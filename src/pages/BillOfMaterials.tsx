@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -39,7 +40,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
@@ -63,11 +64,36 @@ interface BomItem {
   product?: { name: string; product_id: string; unit: string | null };
 }
 
+interface BomStep {
+  id?: string;
+  step_number: number;
+  name: string;
+  description: string | null;
+  location_id: string | null;
+  bin_id: string | null;
+  estimated_duration_minutes: number | null;
+  location?: { name: string };
+  bin?: { name: string; bin_id: string };
+}
+
 interface Product {
   id: string;
   product_id: string;
   name: string;
   unit: string | null;
+}
+
+interface Location {
+  id: string;
+  name: string;
+}
+
+interface Bin {
+  id: string;
+  bin_id: string;
+  name: string;
+  area_id: string;
+  area?: { location_id: string };
 }
 
 const STATUSES = ['active', 'inactive'];
@@ -251,14 +277,25 @@ const BillOfMaterials = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [boms, setBoms] = useState<BillOfMaterial[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [allBins, setAllBins] = useState<Bin[]>([]);
   const [bomItems, setBomItems] = useState<BomItem[]>([]);
+  const [bomSteps, setBomSteps] = useState<BomStep[]>([]);
   const [newItem, setNewItem] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
+  const [newStep, setNewStep] = useState<{ name: string; description: string; location_id: string; bin_id: string; duration: string }>({
+    name: '',
+    description: '',
+    location_id: '',
+    bin_id: '',
+    duration: '',
+  });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextBomId, setNextBomId] = useState('BOM-0001');
+  const [activeTab, setActiveTab] = useState('details');
 
   const [formData, setFormData] = useState({
     bom_id: '',
@@ -300,6 +337,8 @@ const BillOfMaterials = () => {
       fetchBoms();
       fetchProducts();
       fetchNextBomId();
+      fetchLocations();
+      fetchAllBins();
     }
   }, [companyId]);
 
@@ -344,6 +383,35 @@ const BillOfMaterials = () => {
     }
   };
 
+  const fetchLocations = async () => {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, name')
+      .eq('company_id', companyId!)
+      .order('name');
+
+    if (!error && data) {
+      setLocations(data);
+    }
+  };
+
+  const fetchAllBins = async () => {
+    const { data, error } = await supabase
+      .from('bins')
+      .select(`
+        id,
+        bin_id,
+        name,
+        area_id,
+        area:areas(location_id)
+      `)
+      .order('bin_id');
+
+    if (!error && data) {
+      setAllBins(data as unknown as Bin[]);
+    }
+  };
+
   const fetchNextBomId = async () => {
     const { data, error } = await supabase.rpc('get_next_bom_id', {
       p_company_id: companyId!,
@@ -372,6 +440,30 @@ const BillOfMaterials = () => {
     }
   };
 
+  const fetchBomSteps = async (bomId: string) => {
+    const { data, error } = await supabase
+      .from('bom_steps')
+      .select(`
+        id,
+        step_number,
+        name,
+        description,
+        location_id,
+        bin_id,
+        estimated_duration_minutes,
+        location:locations(name),
+        bin:bins(name, bin_id)
+      `)
+      .eq('bom_id', bomId)
+      .order('step_number');
+
+    if (!error && data) {
+      setBomSteps(data as unknown as BomStep[]);
+    } else {
+      setBomSteps([]);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       bom_id: nextBomId,
@@ -385,7 +477,10 @@ const BillOfMaterials = () => {
     setIsViewMode(false);
     setEditingId(null);
     setBomItems([]);
+    setBomSteps([]);
     setNewItem({ product_id: '', quantity: '1' });
+    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '' });
+    setActiveTab('details');
   };
 
   const handleOpenDialog = () => {
@@ -408,7 +503,8 @@ const BillOfMaterials = () => {
     setIsViewMode(true);
     setIsEditing(false);
     setEditingId(bom.id);
-    await fetchBomItems(bom.id);
+    await Promise.all([fetchBomItems(bom.id), fetchBomSteps(bom.id)]);
+    setActiveTab('details');
     setIsDialogOpen(true);
   };
 
@@ -424,7 +520,8 @@ const BillOfMaterials = () => {
     setIsViewMode(false);
     setIsEditing(true);
     setEditingId(bom.id);
-    await fetchBomItems(bom.id);
+    await Promise.all([fetchBomItems(bom.id), fetchBomSteps(bom.id)]);
+    setActiveTab('details');
     setIsDialogOpen(true);
   };
 
@@ -469,6 +566,45 @@ const BillOfMaterials = () => {
 
   const handleRemoveItem = (productId: string) => {
     setBomItems(bomItems.filter(item => item.product_id !== productId));
+  };
+
+  const handleAddStep = () => {
+    if (!newStep.name.trim()) {
+      toast.error('Please enter a step name');
+      return;
+    }
+
+    const nextStepNumber = bomSteps.length > 0 
+      ? Math.max(...bomSteps.map(s => s.step_number)) + 1 
+      : 1;
+
+    const location = locations.find(l => l.id === newStep.location_id);
+    const bin = allBins.find(b => b.id === newStep.bin_id);
+
+    setBomSteps([...bomSteps, {
+      step_number: nextStepNumber,
+      name: newStep.name,
+      description: newStep.description || null,
+      location_id: newStep.location_id || null,
+      bin_id: newStep.bin_id || null,
+      estimated_duration_minutes: newStep.duration ? parseInt(newStep.duration) : null,
+      location: location ? { name: location.name } : undefined,
+      bin: bin ? { name: bin.name, bin_id: bin.bin_id } : undefined,
+    }]);
+    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '' });
+  };
+
+  const handleRemoveStep = (stepNumber: number) => {
+    const updatedSteps = bomSteps
+      .filter(step => step.step_number !== stepNumber)
+      .map((step, index) => ({ ...step, step_number: index + 1 }));
+    setBomSteps(updatedSteps);
+  };
+
+  // Get bins for selected location in step form
+  const getFilteredBins = (locationId: string) => {
+    if (!locationId) return [];
+    return allBins.filter(bin => bin.area?.location_id === locationId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -521,6 +657,30 @@ const BillOfMaterials = () => {
 
         if (itemsError) throw itemsError;
 
+        // Delete existing steps and re-insert
+        await supabase
+          .from('bom_steps')
+          .delete()
+          .eq('bom_id', editingId);
+
+        if (bomSteps.length > 0) {
+          const stepsToInsert = bomSteps.map((step, index) => ({
+            bom_id: editingId,
+            step_number: index + 1,
+            name: step.name,
+            description: step.description,
+            location_id: step.location_id,
+            bin_id: step.bin_id,
+            estimated_duration_minutes: step.estimated_duration_minutes,
+          }));
+
+          const { error: stepsError } = await supabase
+            .from('bom_steps')
+            .insert(stepsToInsert);
+
+          if (stepsError) throw stepsError;
+        }
+
         toast.success('Bill of materials updated');
       } else {
         const { data, error } = await supabase
@@ -552,6 +712,24 @@ const BillOfMaterials = () => {
 
         if (itemsError) throw itemsError;
 
+        if (bomSteps.length > 0) {
+          const stepsToInsert = bomSteps.map((step, index) => ({
+            bom_id: data.id,
+            step_number: index + 1,
+            name: step.name,
+            description: step.description,
+            location_id: step.location_id,
+            bin_id: step.bin_id,
+            estimated_duration_minutes: step.estimated_duration_minutes,
+          }));
+
+          const { error: stepsError } = await supabase
+            .from('bom_steps')
+            .insert(stepsToInsert);
+
+          if (stepsError) throw stepsError;
+        }
+
         toast.success('Bill of materials created');
       }
 
@@ -570,6 +748,18 @@ const BillOfMaterials = () => {
       value: p.id,
       label: `${p.product_id} - ${p.name}`,
     }));
+
+  // Location options for step form
+  const locationOptions: SearchableSelectOption[] = locations.map(l => ({
+    value: l.id,
+    label: l.name,
+  }));
+
+  // Bin options based on selected location
+  const binOptions: SearchableSelectOption[] = getFilteredBins(newStep.location_id).map(b => ({
+    value: b.id,
+    label: `${b.bin_id} - ${b.name}`,
+  }));
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -605,7 +795,7 @@ const BillOfMaterials = () => {
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>
               {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
@@ -615,165 +805,295 @@ const BillOfMaterials = () => {
                 ? 'View BoM details' 
                 : isEditing 
                   ? 'Update BoM details' 
-                  : 'Define the components needed to produce a product'}
+                  : 'Define the components and steps needed to produce a product'}
             </DialogDescription>
           </DialogHeader>
 
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>BoM ID</Label>
-                  <Input value={formData.bom_id} disabled className="bg-muted" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                    disabled={isViewMode}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUSES.map(status => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
+              <TabsList className="shrink-0 mx-6">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="components">Components ({bomItems.length})</TabsTrigger>
+                <TabsTrigger value="steps">Steps ({bomSteps.length})</TabsTrigger>
+              </TabsList>
 
-              <div className="space-y-2">
-                <Label>Name *</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Standard Widget Assembly"
-                  disabled={isViewMode}
-                />
-              </div>
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <TabsContent value="details" className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>BoM ID</Label>
+                      <Input value={formData.bom_id} disabled className="bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                        disabled={isViewMode}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map(status => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Output Product *</Label>
-                  <Select
-                    value={formData.product_id}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, product_id: value }))}
-                    disabled={isViewMode || isEditing}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select output product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map(product => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.product_id} - {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Output Quantity</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={formData.output_quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, output_quantity: parseInt(e.target.value) || 1 }))}
-                    disabled={isViewMode}
-                  />
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <Label>Name *</Label>
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="e.g., Standard Widget Assembly"
+                      disabled={isViewMode}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Components</Label>
-                {!isViewMode && (
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <SearchableSelect
-                        options={componentOptions}
-                        value={newItem.product_id}
-                        onValueChange={(value) => setNewItem(prev => ({ ...prev, product_id: value }))}
-                        placeholder="Select component product"
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Output Product *</Label>
+                      <Select
+                        value={formData.product_id}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, product_id: value }))}
+                        disabled={isViewMode || isEditing}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select output product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map(product => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.product_id} - {product.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Output Quantity</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={formData.output_quantity}
+                        onChange={(e) => setFormData(prev => ({ ...prev, output_quantity: parseInt(e.target.value) || 1 }))}
+                        disabled={isViewMode}
                       />
                     </div>
-                    <Input
-                      type="number"
-                      min={0.01}
-                      step={0.01}
-                      value={newItem.quantity}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))}
-                      className="w-24"
-                      placeholder="Qty"
-                    />
-                    <Button type="button" variant="outline" onClick={handleAddItem}>
-                      <Plus className="w-4 h-4" />
-                    </Button>
                   </div>
-                )}
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableCell className="font-medium">Component</TableCell>
-                        <TableCell className="font-medium w-24">Quantity</TableCell>
-                        <TableCell className="font-medium w-24">Unit</TableCell>
-                        {!isViewMode && <TableCell className="font-medium w-16" />}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bomItems.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={isViewMode ? 3 : 4} className="text-center py-4 text-muted-foreground">
-                            No components added
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        bomItems.map(item => (
-                          <TableRow key={item.product_id}>
-                            <TableCell>
-                              {item.product?.product_id} - {item.product?.name}
-                            </TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{item.product?.unit || '-'}</TableCell>
-                            {!isViewMode && (
-                              <TableCell>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveItem(item.product_id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  disabled={isViewMode}
-                  rows={3}
-                />
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      disabled={isViewMode}
+                      rows={3}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="components" className="mt-4 space-y-4">
+                  {!isViewMode && (
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <SearchableSelect
+                          options={componentOptions}
+                          value={newItem.product_id}
+                          onValueChange={(value) => setNewItem(prev => ({ ...prev, product_id: value }))}
+                          placeholder="Select component product"
+                        />
+                      </div>
+                      <Input
+                        type="number"
+                        min={0.01}
+                        step={0.01}
+                        value={newItem.quantity}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))}
+                        className="w-24"
+                        placeholder="Qty"
+                      />
+                      <Button type="button" variant="outline" onClick={handleAddItem}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableCell className="font-medium">Component</TableCell>
+                          <TableCell className="font-medium w-24">Quantity</TableCell>
+                          <TableCell className="font-medium w-24">Unit</TableCell>
+                          {!isViewMode && <TableCell className="font-medium w-16" />}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bomItems.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={isViewMode ? 3 : 4} className="text-center py-4 text-muted-foreground">
+                              No components added
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          bomItems.map(item => (
+                            <TableRow key={item.product_id}>
+                              <TableCell>
+                                {item.product?.product_id} - {item.product?.name}
+                              </TableCell>
+                              <TableCell>{item.quantity}</TableCell>
+                              <TableCell>{item.product?.unit || '-'}</TableCell>
+                              {!isViewMode && (
+                                <TableCell>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveItem(item.product_id)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="steps" className="mt-4 space-y-4">
+                  {!isViewMode && (
+                    <div className="space-y-3 p-4 border rounded-md bg-muted/30">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Step Name *</Label>
+                          <Input
+                            value={newStep.name}
+                            onChange={(e) => setNewStep(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g., Assemble base unit"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Duration (min)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={newStep.duration}
+                            onChange={(e) => setNewStep(prev => ({ ...prev, duration: e.target.value }))}
+                            placeholder="Optional"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Description</Label>
+                        <Input
+                          value={newStep.description}
+                          onChange={(e) => setNewStep(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Optional step description"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Location</Label>
+                          <SearchableSelect
+                            options={locationOptions}
+                            value={newStep.location_id}
+                            onValueChange={(value) => setNewStep(prev => ({ ...prev, location_id: value, bin_id: '' }))}
+                            placeholder="Select location"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Bin</Label>
+                          <SearchableSelect
+                            options={binOptions}
+                            value={newStep.bin_id}
+                            onValueChange={(value) => setNewStep(prev => ({ ...prev, bin_id: value }))}
+                            placeholder={newStep.location_id ? "Select bin" : "Select location first"}
+                            disabled={!newStep.location_id}
+                          />
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" onClick={handleAddStep} className="w-full">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Step
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableCell className="font-medium w-12">#</TableCell>
+                          <TableCell className="font-medium">Step</TableCell>
+                          <TableCell className="font-medium">Location</TableCell>
+                          <TableCell className="font-medium">Bin</TableCell>
+                          <TableCell className="font-medium w-20">Duration</TableCell>
+                          {!isViewMode && <TableCell className="font-medium w-16" />}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bomSteps.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={isViewMode ? 5 : 6} className="text-center py-4 text-muted-foreground">
+                              No steps added
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          bomSteps.map(step => (
+                            <TableRow key={step.step_number}>
+                              <TableCell className="font-mono text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <GripVertical className="w-3 h-3 text-muted-foreground/50" />
+                                  {step.step_number}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{step.name}</div>
+                                  {step.description && (
+                                    <div className="text-sm text-muted-foreground">{step.description}</div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>{step.location?.name || '-'}</TableCell>
+                              <TableCell>{step.bin ? `${step.bin.bin_id} - ${step.bin.name}` : '-'}</TableCell>
+                              <TableCell>
+                                {step.estimated_duration_minutes ? `${step.estimated_duration_minutes} min` : '-'}
+                              </TableCell>
+                              {!isViewMode && (
+                                <TableCell>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveStep(step.step_number)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
               </div>
-            </div>
+            </Tabs>
 
             {!isViewMode && (
-              <DialogFooter className="shrink-0">
+              <DialogFooter className="shrink-0 px-6 pb-6">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
