@@ -345,6 +345,64 @@ export type Database = {
           },
         ]
       }
+      bom_steps: {
+        Row: {
+          bin_id: string | null
+          bom_id: string
+          created_at: string
+          description: string | null
+          estimated_duration_minutes: number | null
+          id: string
+          location_id: string | null
+          name: string
+          step_number: number
+        }
+        Insert: {
+          bin_id?: string | null
+          bom_id: string
+          created_at?: string
+          description?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          location_id?: string | null
+          name: string
+          step_number?: number
+        }
+        Update: {
+          bin_id?: string | null
+          bom_id?: string
+          created_at?: string
+          description?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          location_id?: string | null
+          name?: string
+          step_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_steps_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_steps_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_steps_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address_line1: string
