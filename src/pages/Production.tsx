@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -46,6 +46,7 @@ import { format } from 'date-fns';
 interface ProductionOrder {
   id: string;
   order_number: string;
+  bom_id: string | null;
   product_id: string;
   location_id: string;
   quantity: number;
@@ -56,13 +57,16 @@ interface ProductionOrder {
   created_at: string;
   product?: { name: string; product_id: string };
   location?: { name: string; location_id: string };
+  bom?: { name: string; bom_id: string; output_quantity: number };
 }
 
-interface Product {
+interface BillOfMaterial {
   id: string;
-  product_id: string;
+  bom_id: string;
   name: string;
-  has_components?: boolean;
+  product_id: string;
+  output_quantity: number;
+  product?: { name: string; product_id: string };
 }
 
 interface Location {
@@ -72,11 +76,11 @@ interface Location {
   is_production_enabled: boolean;
 }
 
-interface ProductComponent {
+interface BomItem {
   id: string;
-  component_product_id: string;
+  product_id: string;
   quantity: number;
-  component?: { name: string; product_id: string };
+  product?: { name: string; product_id: string };
 }
 
 const STATUSES = ['pending', 'in_progress', 'completed', 'cancelled'];
@@ -149,22 +153,22 @@ const ProductionOrderTable = ({
                 className="w-32"
               />
               <SortableTableHead
-                label="Product"
+                label="BoM"
+                sortKey="bom.name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['bom.name']}
+                onFilter={(value) => setFilter('bom.name', value)}
+              />
+              <SortableTableHead
+                label="Output Product"
                 sortKey="product.name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
                 filterValue={filters['product.name']}
                 onFilter={(value) => setFilter('product.name', value)}
-              />
-              <SortableTableHead
-                label="Location"
-                sortKey="location.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['location.name']}
-                onFilter={(value) => setFilter('location.name', value)}
               />
               <SortableTableHead
                 label="Quantity"
@@ -218,8 +222,8 @@ const ProductionOrderTable = ({
               sortedAndFilteredData.map((order) => (
                 <TableRow key={order.id} className="whitespace-nowrap">
                   <TableCell className="font-mono text-sm">{order.order_number}</TableCell>
+                  <TableCell>{order.bom?.name || '-'}</TableCell>
                   <TableCell>{order.product?.name || '-'}</TableCell>
-                  <TableCell>{order.location?.name || '-'}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
@@ -274,9 +278,10 @@ const Production = () => {
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [components, setComponents] = useState<ProductComponent[]>([]);
+  const [allLocations, setAllLocations] = useState<Location[]>([]);
+  const [boms, setBoms] = useState<BillOfMaterial[]>([]);
+  const [bomItems, setBomItems] = useState<BomItem[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -286,13 +291,21 @@ const Production = () => {
 
   const [formData, setFormData] = useState({
     order_number: '',
-    product_id: '',
+    bom_id: '',
     location_id: '',
     quantity: 1,
     status: 'pending',
     scheduled_date: '',
     notes: '',
   });
+
+  // Filter orders by selected location
+  const filteredOrders = selectedLocationId 
+    ? orders.filter(o => o.location_id === selectedLocationId)
+    : orders;
+
+  // Get production-enabled locations
+  const productionLocations = allLocations.filter(l => l.is_production_enabled);
 
   useEffect(() => {
     if (isDialogOpen) {
@@ -323,8 +336,8 @@ const Production = () => {
   useEffect(() => {
     if (companyId) {
       fetchOrders();
-      fetchProducts();
       fetchLocations();
+      fetchBoms();
       fetchNextOrderNumber();
     }
   }, [companyId]);
@@ -346,7 +359,8 @@ const Production = () => {
       .select(`
         *,
         product:products(name, product_id),
-        location:locations(name, location_id)
+        location:locations(name, location_id),
+        bom:bill_of_materials(name, bom_id, output_quantity)
       `)
       .eq('company_id', companyId!)
       .order('created_at', { ascending: false });
@@ -358,26 +372,23 @@ const Production = () => {
     setOrders(data || []);
   };
 
-  const fetchProducts = async () => {
-    // Get products that have components
-    const { data: componentsData } = await supabase
-      .from('product_components')
-      .select('parent_product_id');
-    
-    const productIdsWithComponents = new Set(componentsData?.map(c => c.parent_product_id) || []);
-
+  const fetchBoms = async () => {
     const { data, error } = await supabase
-      .from('products')
-      .select('id, product_id, name')
+      .from('bill_of_materials')
+      .select(`
+        id,
+        bom_id,
+        name,
+        product_id,
+        output_quantity,
+        product:products(name, product_id)
+      `)
       .eq('company_id', companyId!)
-      .eq('status', 'Active')
+      .eq('status', 'active')
       .order('name');
 
     if (!error && data) {
-      setProducts(data.map(p => ({
-        ...p,
-        has_components: productIdsWithComponents.has(p.id)
-      })));
+      setBoms(data as unknown as BillOfMaterial[]);
     }
   };
 
@@ -386,11 +397,10 @@ const Production = () => {
       .from('locations')
       .select('id, location_id, name, is_production_enabled')
       .eq('company_id', companyId!)
-      .eq('is_production_enabled', true)
       .order('name');
 
     if (!error && data) {
-      setLocations(data);
+      setAllLocations(data);
     }
   };
 
@@ -403,29 +413,29 @@ const Production = () => {
     }
   };
 
-  const fetchProductComponents = async (productId: string) => {
+  const fetchBomItems = async (bomId: string) => {
     const { data, error } = await supabase
-      .from('product_components')
+      .from('bom_items')
       .select(`
         id,
-        component_product_id,
+        product_id,
         quantity,
-        component:products!product_components_component_product_id_fkey(name, product_id)
+        product:products(name, product_id)
       `)
-      .eq('parent_product_id', productId);
+      .eq('bom_id', bomId);
 
     if (!error && data) {
-      setComponents(data as unknown as ProductComponent[]);
+      setBomItems(data as unknown as BomItem[]);
     } else {
-      setComponents([]);
+      setBomItems([]);
     }
   };
 
   const resetForm = () => {
     setFormData({
       order_number: nextOrderNumber,
-      product_id: '',
-      location_id: '',
+      bom_id: '',
+      location_id: selectedLocationId, // Pre-select current location filter
       quantity: 1,
       status: 'pending',
       scheduled_date: '',
@@ -434,12 +444,16 @@ const Production = () => {
     setIsEditing(false);
     setIsViewMode(false);
     setEditingId(null);
-    setComponents([]);
+    setBomItems([]);
   };
 
   const handleOpenDialog = () => {
     resetForm();
-    setFormData(prev => ({ ...prev, order_number: nextOrderNumber }));
+    setFormData(prev => ({ 
+      ...prev, 
+      order_number: nextOrderNumber,
+      location_id: selectedLocationId,
+    }));
     setIsDialogOpen(true);
   };
 
@@ -448,7 +462,7 @@ const Production = () => {
   const handleView = async (order: ProductionOrder) => {
     setFormData({
       order_number: order.order_number,
-      product_id: order.product_id,
+      bom_id: order.bom_id || '',
       location_id: order.location_id,
       quantity: order.quantity,
       status: order.status,
@@ -458,14 +472,16 @@ const Production = () => {
     setIsViewMode(true);
     setIsEditing(false);
     setEditingId(order.id);
-    await fetchProductComponents(order.product_id);
+    if (order.bom_id) {
+      await fetchBomItems(order.bom_id);
+    }
     setIsDialogOpen(true);
   };
 
   const handleEdit = async (order: ProductionOrder) => {
     setFormData({
       order_number: order.order_number,
-      product_id: order.product_id,
+      bom_id: order.bom_id || '',
       location_id: order.location_id,
       quantity: order.quantity,
       status: order.status,
@@ -475,7 +491,9 @@ const Production = () => {
     setIsViewMode(false);
     setIsEditing(true);
     setEditingId(order.id);
-    await fetchProductComponents(order.product_id);
+    if (order.bom_id) {
+      await fetchBomItems(order.bom_id);
+    }
     setIsDialogOpen(true);
   };
 
@@ -493,20 +511,26 @@ const Production = () => {
     fetchOrders();
   };
 
-  const handleProductChange = async (productId: string) => {
-    setFormData(prev => ({ ...prev, product_id: productId }));
-    await fetchProductComponents(productId);
+  const handleBomChange = async (bomId: string) => {
+    setFormData(prev => ({ ...prev, bom_id: bomId }));
+    await fetchBomItems(bomId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.product_id) {
-      toast.error('Please select a product');
+    if (!formData.bom_id) {
+      toast.error('Please select a Bill of Materials');
       return;
     }
     if (!formData.location_id) {
       toast.error('Please select a production location');
+      return;
+    }
+
+    const selectedBom = boms.find(b => b.id === formData.bom_id);
+    if (!selectedBom) {
+      toast.error('Invalid BoM selected');
       return;
     }
 
@@ -515,7 +539,8 @@ const Production = () => {
         const { error } = await supabase
           .from('production_orders')
           .update({
-            product_id: formData.product_id,
+            bom_id: formData.bom_id,
+            product_id: selectedBom.product_id,
             location_id: formData.location_id,
             quantity: formData.quantity,
             status: formData.status,
@@ -532,7 +557,8 @@ const Production = () => {
           .insert({
             company_id: companyId!,
             order_number: formData.order_number,
-            product_id: formData.product_id,
+            bom_id: formData.bom_id,
+            product_id: selectedBom.product_id,
             location_id: formData.location_id,
             quantity: formData.quantity,
             status: formData.status,
@@ -552,8 +578,8 @@ const Production = () => {
     }
   };
 
-  // Filter products to only show those with components
-  const productsWithComponents = products.filter(p => p.has_components);
+  // Get selected BoM details
+  const selectedBom = boms.find(b => b.id === formData.bom_id);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -571,6 +597,25 @@ const Production = () => {
             <h1 className="font-semibold">Production</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-muted-foreground" />
+              <Select
+                value={selectedLocationId}
+                onValueChange={setSelectedLocationId}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Locations</SelectItem>
+                  {productionLocations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={handleOpenDialog} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               New Order
@@ -581,7 +626,7 @@ const Production = () => {
 
       <main>
         <ProductionOrderTable
-          orders={orders}
+          orders={filteredOrders}
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
@@ -599,7 +644,7 @@ const Production = () => {
                 ? 'View production order details' 
                 : isEditing 
                   ? 'Update production order details' 
-                  : 'Create a new production order for a product with components'}
+                  : 'Create a new production order from a Bill of Materials'}
             </DialogDescription>
           </DialogHeader>
 
@@ -632,30 +677,41 @@ const Production = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Product *</Label>
+                <Label>Bill of Materials *</Label>
                 <Select
-                  value={formData.product_id}
-                  onValueChange={handleProductChange}
+                  value={formData.bom_id}
+                  onValueChange={handleBomChange}
                   disabled={isViewMode || isEditing}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a product with components" />
+                    <SelectValue placeholder="Select a Bill of Materials" />
                   </SelectTrigger>
                   <SelectContent>
-                    {productsWithComponents.length === 0 ? (
+                    {boms.length === 0 ? (
                       <SelectItem value="_none" disabled>
-                        No products with components found
+                        No active BOMs found
                       </SelectItem>
                     ) : (
-                      productsWithComponents.map(product => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.product_id} - {product.name}
+                      boms.map(bom => (
+                        <SelectItem key={bom.id} value={bom.id}>
+                          {bom.bom_id} - {bom.name}
                         </SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedBom && (
+                <div className="p-3 bg-muted rounded-md space-y-1">
+                  <p className="text-sm">
+                    <span className="font-medium">Output:</span> {selectedBom.product?.product_id} - {selectedBom.product?.name}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Yields:</span> {selectedBom.output_quantity} per batch
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Production Location *</Label>
@@ -668,12 +724,12 @@ const Production = () => {
                     <SelectValue placeholder="Select a production-enabled location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.length === 0 ? (
+                    {productionLocations.length === 0 ? (
                       <SelectItem value="_none" disabled>
                         No production-enabled locations found
                       </SelectItem>
                     ) : (
-                      locations.map(location => (
+                      productionLocations.map(location => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.location_id} - {location.name}
                         </SelectItem>
@@ -685,7 +741,7 @@ const Production = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Quantity</Label>
+                  <Label>Batches to Produce</Label>
                   <Input
                     type="number"
                     min={1}
@@ -693,6 +749,11 @@ const Production = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
                     disabled={isViewMode}
                   />
+                  {selectedBom && (
+                    <p className="text-xs text-muted-foreground">
+                      Total output: {formData.quantity * selectedBom.output_quantity} units
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Scheduled Date</Label>
@@ -705,7 +766,7 @@ const Production = () => {
                 </div>
               </div>
 
-              {components.length > 0 && (
+              {bomItems.length > 0 && (
                 <div className="space-y-2">
                   <Label>Required Components</Label>
                   <div className="border rounded-md">
@@ -713,19 +774,19 @@ const Production = () => {
                       <TableHeader>
                         <TableRow>
                           <TableCell className="font-medium">Component</TableCell>
-                          <TableCell className="font-medium w-32">Per Unit</TableCell>
+                          <TableCell className="font-medium w-32">Per Batch</TableCell>
                           <TableCell className="font-medium w-32">Total Required</TableCell>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {components.map(comp => (
-                          <TableRow key={comp.id}>
+                        {bomItems.map(item => (
+                          <TableRow key={item.id}>
                             <TableCell>
-                              {comp.component?.product_id} - {comp.component?.name}
+                              {item.product?.product_id} - {item.product?.name}
                             </TableCell>
-                            <TableCell>{comp.quantity}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
                             <TableCell className="font-medium">
-                              {comp.quantity * formData.quantity}
+                              {item.quantity * formData.quantity}
                             </TableCell>
                           </TableRow>
                         ))}
