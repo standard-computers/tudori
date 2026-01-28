@@ -600,14 +600,14 @@ const Production = () => {
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted-foreground" />
               <Select
-                value={selectedLocationId}
-                onValueChange={setSelectedLocationId}
+                value={selectedLocationId || '__all__'}
+                onValueChange={(value) => setSelectedLocationId(value === '__all__' ? '' : value)}
               >
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="All Locations" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Locations</SelectItem>
+                  <SelectItem value="__all__">All Locations</SelectItem>
                   {productionLocations.map(location => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.name}
