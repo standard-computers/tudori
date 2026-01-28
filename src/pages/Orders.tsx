@@ -971,25 +971,7 @@ const Orders = () => {
         if (taxError) throw taxError;
       }
 
-      // Create ledger transaction (negative amount for purchase)
-      if (selectedLedgerId) {
-        const { error: txError } = await supabase
-          .from('ledger_transactions' as any)
-          .insert({
-            ledger_id: selectedLedgerId,
-            transaction_type: 'purchase_order',
-            reference_id: order.id,
-            reference_number: poNumber,
-            amount: -totalAmount, // Negative for purchases
-            description: `Purchase Order ${poNumber}`,
-          });
-
-        if (txError) {
-          console.error('Error creating ledger transaction:', txError);
-          // Don't throw, the PO was created successfully
-        }
-        // Balance is computed from transactions, no need to update manually
-      }
+      // Note: Ledger transaction is created when the Goods Receipt is posted
 
       // Create order items
       const itemsToInsert = orderItems.map(item => ({

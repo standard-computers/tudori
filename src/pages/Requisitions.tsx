@@ -325,19 +325,7 @@ const Requisitions = () => {
 
       if (poItemsError) throw poItemsError;
 
-      // Create ledger transaction
-      if (selectedLedgerId) {
-        await supabase
-          .from('ledger_transactions' as any)
-          .insert({
-            ledger_id: selectedLedgerId,
-            transaction_type: 'purchase_order',
-            reference_id: newPO.id,
-            reference_number: poNumber,
-            amount: -totalAmount,
-            description: `Purchase Order ${poNumber} (from Req ${requisition.requisition_id})`,
-          });
-      }
+      // Note: Ledger transaction is created when the Goods Receipt is posted
 
       // Update requisition status to 'ordered'
       await supabase
@@ -827,25 +815,7 @@ const Requisitions = () => {
 
       if (poItemsError) throw poItemsError;
 
-      // Create ledger transaction (negative amount for purchase)
-      if (selectedLedgerId) {
-        const { error: txError } = await supabase
-          .from('ledger_transactions' as any)
-          .insert({
-            ledger_id: selectedLedgerId,
-            transaction_type: 'purchase_order',
-            reference_id: newPO.id,
-            reference_number: poNumber,
-            amount: -totalAmount, // Negative for purchases
-            description: `Purchase Order ${poNumber} (from Req ${requisition.requisition_id})`,
-          });
-
-        if (txError) {
-          console.error('Error creating ledger transaction:', txError);
-          // Don't throw, the PO was created successfully
-        }
-        // Balance is computed from transactions, no need to update manually
-      }
+      // Note: Ledger transaction is created when the Goods Receipt is posted
 
       // Update requisition status to 'ordered'
       const { error: updateError } = await supabase
