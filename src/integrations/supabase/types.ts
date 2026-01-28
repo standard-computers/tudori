@@ -133,6 +133,60 @@ export type Database = {
           },
         ]
       }
+      bill_of_materials: {
+        Row: {
+          bom_id: string
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          output_quantity: number
+          product_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bom_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          output_quantity?: number
+          product_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bom_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          output_quantity?: number
+          product_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_of_materials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bin_products: {
         Row: {
           bin_id: string
@@ -245,6 +299,48 @@ export type Database = {
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bom_items: {
+        Row: {
+          bom_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          bom_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          bom_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_items_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -1772,6 +1868,7 @@ export type Database = {
       }
       production_orders: {
         Row: {
+          bom_id: string | null
           company_id: string
           completed_date: string | null
           created_at: string
@@ -1786,6 +1883,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bom_id?: string | null
           company_id: string
           completed_date?: string | null
           created_at?: string
@@ -1800,6 +1898,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bom_id?: string | null
           company_id?: string
           completed_date?: string | null
           created_at?: string
@@ -1814,6 +1913,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_company_id_fkey"
             columns: ["company_id"]
@@ -2964,6 +3070,7 @@ export type Database = {
     }
     Functions: {
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_bom_id: { Args: { p_company_id: string }; Returns: string }
       get_next_credit_memo_number: {
         Args: { p_company_id: string }
         Returns: string
