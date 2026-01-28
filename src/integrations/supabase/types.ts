@@ -1437,6 +1437,7 @@ export type Database = {
           id: string
           is_internal_vendor: boolean
           is_pos_enabled: boolean
+          is_production_enabled: boolean
           location_id: string
           name: string
           postal_code: string
@@ -1454,6 +1455,7 @@ export type Database = {
           id?: string
           is_internal_vendor?: boolean
           is_pos_enabled?: boolean
+          is_production_enabled?: boolean
           location_id: string
           name: string
           postal_code: string
@@ -1471,6 +1473,7 @@ export type Database = {
           id?: string
           is_internal_vendor?: boolean
           is_pos_enabled?: boolean
+          is_production_enabled?: boolean
           location_id?: string
           name?: string
           postal_code?: string
@@ -1718,6 +1721,115 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "product_uoms_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_order_items: {
+        Row: {
+          consumed_quantity: number
+          created_at: string
+          id: string
+          product_id: string
+          production_order_id: string
+          required_quantity: number
+        }
+        Insert: {
+          consumed_quantity?: number
+          created_at?: string
+          id?: string
+          product_id: string
+          production_order_id: string
+          required_quantity?: number
+        }
+        Update: {
+          consumed_quantity?: number
+          created_at?: string
+          id?: string
+          product_id?: string
+          production_order_id?: string
+          required_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_items_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          company_id: string
+          completed_date: string | null
+          created_at: string
+          id: string
+          location_id: string
+          notes: string | null
+          order_number: string
+          product_id: string
+          quantity: number
+          scheduled_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          completed_date?: string | null
+          created_at?: string
+          id?: string
+          location_id: string
+          notes?: string | null
+          order_number: string
+          product_id: string
+          quantity?: number
+          scheduled_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          completed_date?: string | null
+          created_at?: string
+          id?: string
+          location_id?: string
+          notes?: string | null
+          order_number?: string
+          product_id?: string
+          quantity?: number
+          scheduled_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
@@ -2883,6 +2995,10 @@ export type Database = {
       }
       get_next_po_number: { Args: { p_company_id: string }; Returns: string }
       get_next_product_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_production_order_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_next_pu_number: { Args: { p_company_id: string }; Returns: string }
       get_next_requisition_id: {
         Args: { p_company_id: string }

@@ -56,6 +56,7 @@ interface Location {
   country: string;
   is_internal_vendor?: boolean;
   is_pos_enabled?: boolean;
+  is_production_enabled?: boolean;
 }
 
 interface CompanyUser {
@@ -279,6 +280,7 @@ const Locations = () => {
     country: 'United States',
     is_internal_vendor: true,
     is_pos_enabled: false,
+    is_production_enabled: false,
   });
 
   useEffect(() => {
@@ -377,6 +379,7 @@ const Locations = () => {
       country: 'United States',
       is_internal_vendor: true,
       is_pos_enabled: false,
+      is_production_enabled: false,
     });
     setIsEditing(false);
     setEditingId(null);
@@ -406,7 +409,8 @@ const Locations = () => {
       postal_code: location.postal_code,
       country: location.country,
       is_internal_vendor: location.is_internal_vendor ?? true,
-      is_pos_enabled: (location as any).is_pos_enabled ?? false,
+      is_pos_enabled: location.is_pos_enabled ?? false,
+      is_production_enabled: location.is_production_enabled ?? false,
     });
     setIsEditing(true);
     setEditingId(location.id);
@@ -498,6 +502,7 @@ const Locations = () => {
             country: formData.country,
             is_internal_vendor: formData.is_internal_vendor,
             is_pos_enabled: formData.is_pos_enabled,
+            is_production_enabled: formData.is_production_enabled,
           })
           .eq('id', editingId);
 
@@ -523,6 +528,7 @@ const Locations = () => {
             country: formData.country,
             is_internal_vendor: formData.is_internal_vendor,
             is_pos_enabled: formData.is_pos_enabled,
+            is_production_enabled: formData.is_production_enabled,
           })
           .select()
           .single();
@@ -830,6 +836,19 @@ const Locations = () => {
                               id="is_pos_enabled"
                               checked={formData.is_pos_enabled}
                               onCheckedChange={(checked) => setFormData({ ...formData, is_pos_enabled: checked })}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="is_production_enabled" className="font-medium">Production</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Allow this location to process production orders.
+                              </p>
+                            </div>
+                            <Switch
+                              id="is_production_enabled"
+                              checked={formData.is_production_enabled}
+                              onCheckedChange={(checked) => setFormData({ ...formData, is_production_enabled: checked })}
                             />
                           </div>
                         </div>
