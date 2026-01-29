@@ -59,8 +59,10 @@ interface Requisition {
   notes: string | null;
   total_amount: number;
   created_at: string;
+  created_by: string | null;
   location?: { name: string; location_id: string } | null;
   vendor?: { name: string; vendor_id: string } | null;
+  creator?: { first_name: string | null; last_name: string | null } | null;
 }
 
 // Full vendor details for detail dialog
@@ -509,7 +511,32 @@ const Requisitions = () => {
       return;
     }
 
-    setRequisitions(data || []);
+    // Fetch creator info separately for requisitions with created_by
+    const reqs = (data || []) as any[];
+    const createdByIds = [...new Set(reqs.filter(r => r.created_by).map(r => r.created_by))];
+    
+    let profilesMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
+    if (createdByIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', createdByIds);
+      
+      if (profiles) {
+        profilesMap = profiles.reduce((acc, p) => {
+          acc[p.user_id] = { first_name: p.first_name, last_name: p.last_name };
+          return acc;
+        }, {} as Record<string, { first_name: string | null; last_name: string | null }>);
+      }
+    }
+
+    // Merge creator info into requisitions
+    const requisitionsWithCreator = reqs.map(req => ({
+      ...req,
+      creator: req.created_by ? profilesMap[req.created_by] || null : null,
+    }));
+
+    setRequisitions(requisitionsWithCreator);
   };
 
   const fetchLocations = async () => {
@@ -615,6 +642,7 @@ const Requisitions = () => {
             vendor_id: vendorId,
             total_amount: totalAmount,
             notes: `Auto-generated requisition for ${locationName}`,
+            created_by: user?.id || null,
           })
           .select()
           .single();
@@ -1809,7 +1837,16 @@ function RequisitionsTable({
                 filterable={false}
               />
               <SortableTableHead
-                label="Created"
+                label="Created By"
+                sortKey="creator.last_name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['creator.last_name']}
+                onFilter={(v) => setFilter('creator.last_name', v)}
+              />
+              <SortableTableHead
+                label="Created At"
                 sortKey="created_at"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -1861,7 +1898,11 @@ function RequisitionsTable({
                   ${req.total_amount?.toFixed(2) || '0.00'}
                 </TableCell>
                 <TableCell>
-                  {new Date(req.created_at).toLocaleDateString()}
+                  {req.creator ? `${req.creator.first_name || ''} ${req.creator.last_name || ''}`.trim() || '-' : '-'}
+                </TableCell>
+                <TableCell className="text-sm">
+                  <div>{new Date(req.created_at).toLocaleDateString()}</div>
+                  <div className="text-muted-foreground text-xs">{new Date(req.created_at).toLocaleTimeString()}</div>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
