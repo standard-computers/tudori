@@ -2260,6 +2260,7 @@ export type Database = {
           bill_to_location_id: string | null
           company_id: string
           created_at: string
+          created_by: string | null
           expected_delivery_date: string | null
           id: string
           ledger_id: string | null
@@ -2281,6 +2282,7 @@ export type Database = {
           bill_to_location_id?: string | null
           company_id: string
           created_at?: string
+          created_by?: string | null
           expected_delivery_date?: string | null
           id?: string
           ledger_id?: string | null
@@ -2302,6 +2304,7 @@ export type Database = {
           bill_to_location_id?: string | null
           company_id?: string
           created_at?: string
+          created_by?: string | null
           expected_delivery_date?: string | null
           id?: string
           ledger_id?: string | null
