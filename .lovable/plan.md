@@ -1,134 +1,135 @@
 
-# Add Production Control to Bins
 
-This plan adds a "Production" control to bins, matching the recently added area-level production control. When enabling production on a bin, the system will validate that the parent area also has production enabled.
+# Validate Production-Enabled Bins for BoM Steps
+
+This plan adds validation to the Bill of Materials step creation to ensure that only bins with production enabled can be used for BoM steps.
 
 ---
 
 ## Summary
 
-- Add a new database column `is_production_enabled` to the `bins` table
-- Add a Production toggle to the Bin dialog's Controls tab
-- Implement validation that prevents enabling production on a bin if its parent area doesn't allow production
-- Show a clear error message when the validation fails
+- Update the bins query to include the `is_production_enabled` field
+- Filter bin options to only show production-enabled bins when selecting for a step
+- Add validation in `handleAddStep` to prevent adding steps with non-production bins
+- Show a clear message when no production-enabled bins exist for a location
 
 ---
 
 ## Implementation Steps
 
-### 1. Database Migration
+### 1. Update Bin Interface
 
-Create a migration to add the `is_production_enabled` column to the bins table, defaulting to `false`.
+Add the `is_production_enabled` field to the Bin interface.
 
-**File: New migration file**
-```sql
-ALTER TABLE public.bins
-ADD COLUMN is_production_enabled BOOLEAN NOT NULL DEFAULT false;
-```
+**File: `src/pages/BillOfMaterials.tsx`**
 
----
-
-### 2. Update BinDialog Interface and State
-
-Update the Bin interface and form state to include the new production control.
-
-**File: `src/components/cockpit/BinDialog.tsx`**
-
-Add to the `Bin` interface:
 ```typescript
 interface Bin {
-  // ... existing fields
-  is_production_enabled?: boolean;
-}
-```
-
-Add to the `formData` state initialization:
-```typescript
-is_production_enabled: false,
-```
-
-Update the edit mode to read the existing value and the copy function to include it.
-
----
-
-### 3. Pass Area Data to BinDialog
-
-Update the BinDialog props to receive the areas list with their production status, so we can validate against the parent area.
-
-**File: `src/components/cockpit/BinDialog.tsx`**
-
-Update the `Area` interface to include:
-```typescript
-interface Area {
   id: string;
-  area_id: string;
+  bin_id: string;
   name: string;
+  area_id: string;
   is_production_enabled?: boolean;
+  area?: { location_id: string };
 }
 ```
 
 ---
 
-### 4. Add Production Control UI with Validation
+### 2. Update fetchAllBins Query
 
-Add a new "Production" section to the Controls tab with validation logic.
+Include the `is_production_enabled` field in the bin query.
 
-**File: `src/components/cockpit/BinDialog.tsx`**
+**File: `src/pages/BillOfMaterials.tsx`**
 
-Add below the existing Picking controls:
 ```typescript
-<div className="border-t pt-4 space-y-4">
-  <h4 className="font-medium text-sm">Production</h4>
-  <div className="space-y-3">
-    <div className="flex items-center justify-between">
-      <div className="space-y-0.5">
-        <Label htmlFor="is_production_enabled">Allow Production</Label>
-        <p className="text-xs text-muted-foreground">
-          Enable production operations in this bin
-        </p>
-      </div>
-      <Switch
-        id="is_production_enabled"
-        checked={formData.is_production_enabled}
-        onCheckedChange={(checked) => {
-          // Validate parent area allows production
-          const parentArea = areas.find(a => a.id === formData.area_id);
-          if (checked && !parentArea?.is_production_enabled) {
-            toast.error('Cannot enable production: parent area does not allow production');
-            return;
-          }
-          setFormData({ ...formData, is_production_enabled: checked });
-        }}
-      />
-    </div>
-  </div>
-</div>
+const fetchAllBins = async () => {
+  const { data, error } = await supabase
+    .from('bins')
+    .select(`
+      id,
+      bin_id,
+      name,
+      area_id,
+      is_production_enabled,
+      area:areas(location_id)
+    `)
+    .order('bin_id');
+
+  if (!error && data) {
+    setAllBins(data as unknown as Bin[]);
+  }
+};
 ```
 
 ---
 
-### 5. Update Submit Handler
+### 3. Filter Bins to Production-Enabled Only
 
-Include the new field when saving the bin.
+Update the `getFilteredBins` function to only return bins that have production enabled.
 
-**File: `src/components/cockpit/BinDialog.tsx`**
+**File: `src/pages/BillOfMaterials.tsx`**
 
-Add to `binData` object in `handleSubmit`:
 ```typescript
-is_production_enabled: formData.is_production_enabled,
+// Get bins for selected location in step form (production-enabled only)
+const getFilteredBins = (locationId: string) => {
+  if (!locationId) return [];
+  return allBins.filter(bin => 
+    bin.area?.location_id === locationId && 
+    bin.is_production_enabled === true
+  );
+};
 ```
 
 ---
 
-### 6. Update Cockpit.tsx Interface
+### 4. Add Validation in handleAddStep
 
-Ensure the Bin interface in Cockpit.tsx includes the new field.
+Add a validation check to ensure the selected bin has production enabled before adding the step.
 
-**File: `src/pages/Cockpit.tsx`**
+**File: `src/pages/BillOfMaterials.tsx`**
 
-Add to the Bin interface:
 ```typescript
-is_production_enabled?: boolean;
+const handleAddStep = () => {
+  if (!newStep.name.trim()) {
+    toast.error('Please enter a step name');
+    return;
+  }
+
+  // Validate bin has production enabled if selected
+  if (newStep.bin_id) {
+    const selectedBin = allBins.find(b => b.id === newStep.bin_id);
+    if (selectedBin && !selectedBin.is_production_enabled) {
+      toast.error('Selected bin does not have production enabled');
+      return;
+    }
+  }
+
+  // ... rest of existing logic
+};
+```
+
+---
+
+### 5. Update Bin Selector Placeholder
+
+Update the placeholder text to indicate that only production-enabled bins are shown.
+
+**File: `src/pages/BillOfMaterials.tsx`**
+
+In the Steps tab bin selector:
+```typescript
+<SearchableSelect
+  options={binOptions}
+  value={newStep.bin_id}
+  onValueChange={(value) => setNewStep(prev => ({ ...prev, bin_id: value }))}
+  placeholder={
+    newStep.location_id 
+      ? (binOptions.length > 0 ? "Select production bin" : "No production bins available")
+      : "Select location first"
+  }
+  disabled={!newStep.location_id}
+/>
 ```
 
 ---
@@ -138,29 +139,33 @@ is_production_enabled?: boolean;
 ### Validation Flow
 
 ```text
-User toggles "Allow Production" ON
-         |
-         v
-Check parent area's is_production_enabled
-         |
-    +----+----+
-    |         |
-   YES        NO
-    |         |
-    v         v
- Enable    Show error toast:
-production "Cannot enable production:
-           parent area does not allow
-           production"
+User selects Location
+        |
+        v
+System filters bins to:
+  - Bins in that location (via area)
+  - AND is_production_enabled = true
+        |
+        v
+  +-----+-----+
+  |           |
+ Found      None
+  |           |
+  v           v
+Show bins   Show "No production
+in dropdown   bins available"
 ```
 
 ### Data Flow
 
-- The `areas` prop already passed to BinDialog contains all area data
-- The Area interface will be extended to include `is_production_enabled`
-- No changes needed to how BinDialog is called from Cockpit.tsx since areas already include the production flag from the database
+- The `fetchAllBins` function now retrieves the `is_production_enabled` field
+- The `getFilteredBins` function filters to only production-enabled bins
+- The bin dropdown only shows valid options, preventing invalid selections
+- A secondary validation in `handleAddStep` provides defense-in-depth
 
 ### Edge Cases
 
-1. **Area production disabled after bin was enabled**: The system allows this state to exist, but the validation prevents new bins from being enabled when area is disabled
-2. **Changing bin's area**: When area is changed (only on create, as editing doesn't allow area change), the production state is preserved but validation still applies on save
+1. **Location has no production-enabled bins**: The dropdown will be empty with a helpful placeholder message
+2. **Bin selected before field was added**: The validation uses `=== true` to safely handle undefined/null values
+3. **Existing BoM steps with non-production bins**: These are preserved but new steps cannot use non-production bins
+
