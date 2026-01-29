@@ -84,6 +84,7 @@ interface PurchaseOrder {
   order_date: string;
   expected_delivery_date: string | null;
   created_at: string;
+  created_by: string | null;
   vendor?: { name: string; vendor_id: string } | null;
   source_location?: { name: string; location_id: string } | null;
   location?: { name: string; location_id: string } | null;
@@ -92,6 +93,7 @@ interface PurchaseOrder {
   requisition?: { requisition_id: string } | null;
   tax_rate?: { name: string; rate: number } | null;
   applied_tax_rates?: { tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[];
+  creator?: { first_name: string; last_name: string } | null;
 }
 
 interface PurchaseOrderItem {
@@ -351,7 +353,27 @@ const Orders = () => {
       return;
     }
 
-    setOrders(data || []);
+    // Fetch creator profiles for orders with created_by
+    const ordersData = data || [];
+    const createdByIds = [...new Set(ordersData.filter(o => o.created_by).map(o => o.created_by))] as string[];
+    
+    if (createdByIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', createdByIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, { first_name: p.first_name, last_name: p.last_name }]) || []);
+      
+      const ordersWithCreator = ordersData.map(order => ({
+        ...order,
+        creator: order.created_by ? profileMap.get(order.created_by) || null : null,
+      }));
+      
+      setOrders(ordersWithCreator);
+    } else {
+      setOrders(ordersData.map(o => ({ ...o, creator: null })));
+    }
   };
 
   const fetchLocations = async () => {
@@ -950,6 +972,7 @@ const Orders = () => {
           tax_amount: taxAmount,
           total_amount: totalAmount,
           notes: formData.notes || null,
+          created_by: user?.id || null,
         })
         .select()
         .single();
@@ -2470,13 +2493,23 @@ function OrdersTable({
                 filterable={false}
               />
               <SortableTableHead
-                label="Created Date"
+                label="Created By"
+                sortKey="creator.last_name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['creator.last_name']}
+                onFilter={(v) => setFilter('creator.last_name', v)}
+              />
+              <SortableTableHead
+                label="Date"
                 sortKey="created_at"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
                 filterable={false}
               />
+              <TableHead>Time</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -2535,8 +2568,14 @@ function OrdersTable({
                 <TableCell className="text-right font-mono">
                   ${Number(order.total_amount || 0).toFixed(2)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-sm">
+                  {order.creator ? `${order.creator.first_name || ''} ${order.creator.last_name || ''}`.trim() || '-' : '-'}
+                </TableCell>
+                <TableCell className="text-sm">
                   {new Date(order.created_at).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(order.created_at).toLocaleTimeString()}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
