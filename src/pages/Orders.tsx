@@ -2593,12 +2593,14 @@ function OrdersTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => onConfirmOrder(order.id)}
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          Confirm
-                        </DropdownMenuItem>
+                        {order.status !== 'shipped' && order.status !== 'delivered' && (
+                          <DropdownMenuItem
+                            onClick={() => onConfirmOrder(order.id)}
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Confirm
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() => onDeleteOrder(order.id)}
                           className="text-destructive focus:text-destructive"
