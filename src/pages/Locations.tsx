@@ -232,7 +232,14 @@ const LocationTable = ({
             ) : (
               sortedAndFilteredData.map((location) => (
                 <TableRow key={location.id}>
-                  <TableCell className="font-mono text-sm">{location.location_id}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    <button 
+                      onClick={() => onView(location)}
+                      className="text-primary hover:underline cursor-pointer"
+                    >
+                      {location.location_id}
+                    </button>
+                  </TableCell>
                   <TableCell className="font-medium">{location.name}</TableCell>
                   <TableCell>{location.type}</TableCell>
                   <TableCell>{location.address_line1}</TableCell>
@@ -248,31 +255,36 @@ const LocationTable = ({
                     {location.is_production_enabled && <Badge variant="secondary">✓</Badge>}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onView(location)}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEdit(location)}>
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => onDelete(location.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onView(location)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit(location)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => onDelete(location.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -891,9 +903,14 @@ const Locations = () => {
                                   htmlFor={`user-${companyUser.user_id}`}
                                   className="flex-1 cursor-pointer"
                                 >
-                                  <span className="font-medium">
-                                    {companyUser.first_name} {companyUser.last_name}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {companyUser.first_name} {companyUser.last_name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground font-mono">
+                                      ({companyUser.id})
+                                    </span>
+                                  </div>
                                 </label>
                               </div>
                             ))}
