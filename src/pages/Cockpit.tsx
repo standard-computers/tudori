@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
@@ -76,6 +78,13 @@ interface Area {
   name: string;
   description: string | null;
   location_id: string;
+  width?: number | null;
+  width_uom?: string | null;
+  length?: number | null;
+  length_uom?: string | null;
+  height?: number | null;
+  height_uom?: string | null;
+  is_production_enabled?: boolean;
 }
 
 interface Bin {
@@ -191,7 +200,19 @@ const Cockpit = () => {
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
-  const [areaFormData, setAreaFormData] = useState({ area_id: '', name: '', description: '' });
+const [areaFormData, setAreaFormData] = useState({ 
+    area_id: '', 
+    name: '', 
+    description: '',
+    width: '' as string | number,
+    width_uom: 'in',
+    length: '' as string | number,
+    length_uom: 'in',
+    height: '' as string | number,
+    height_uom: 'in',
+    is_production_enabled: false,
+  });
+  const [areaDialogTab, setAreaDialogTab] = useState('general');
   const areaFormRef = useRef<HTMLFormElement>(null);
   const binDialogRef = useRef<BinDialogRef>(null);
 
@@ -894,11 +915,34 @@ const Cockpit = () => {
   const openAreaDialog = (area?: Area) => {
     if (area) {
       setEditingArea(area);
-      setAreaFormData({ area_id: area.area_id, name: area.name, description: area.description || '' });
+      setAreaFormData({ 
+        area_id: area.area_id, 
+        name: area.name, 
+        description: area.description || '',
+        width: area.width ?? '',
+        width_uom: area.width_uom || 'in',
+        length: area.length ?? '',
+        length_uom: area.length_uom || 'in',
+        height: area.height ?? '',
+        height_uom: area.height_uom || 'in',
+        is_production_enabled: area.is_production_enabled ?? false,
+      });
     } else {
       setEditingArea(null);
-      setAreaFormData({ area_id: getNextAreaId(), name: '', description: '' });
+      setAreaFormData({ 
+        area_id: getNextAreaId(), 
+        name: '', 
+        description: '',
+        width: '',
+        width_uom: 'in',
+        length: '',
+        length_uom: 'in',
+        height: '',
+        height_uom: 'in',
+        is_production_enabled: false,
+      });
     }
+    setAreaDialogTab('general');
     setIsAreaDialogOpen(true);
   };
 
@@ -911,10 +955,22 @@ const Cockpit = () => {
     e.preventDefault();
     if (!selectedLocationId) return;
 
+    const areaData = {
+      name: areaFormData.name,
+      description: areaFormData.description || null,
+      width: areaFormData.width === '' ? null : Number(areaFormData.width),
+      width_uom: areaFormData.width === '' ? null : areaFormData.width_uom,
+      length: areaFormData.length === '' ? null : Number(areaFormData.length),
+      length_uom: areaFormData.length === '' ? null : areaFormData.length_uom,
+      height: areaFormData.height === '' ? null : Number(areaFormData.height),
+      height_uom: areaFormData.height === '' ? null : areaFormData.height_uom,
+      is_production_enabled: areaFormData.is_production_enabled,
+    };
+
     if (editingArea) {
       const { error } = await supabase
         .from('areas')
-        .update({ name: areaFormData.name, description: areaFormData.description || null })
+        .update(areaData)
         .eq('id', editingArea.id);
       if (error) {
         toast.error('Failed to update area');
@@ -924,7 +980,11 @@ const Cockpit = () => {
     } else {
       const { error } = await supabase
         .from('areas')
-        .insert({ location_id: selectedLocationId, area_id: areaFormData.area_id, name: areaFormData.name, description: areaFormData.description || null });
+        .insert({ 
+          location_id: selectedLocationId, 
+          area_id: areaFormData.area_id, 
+          ...areaData,
+        });
       if (error) {
         toast.error('Failed to create area');
         return;
@@ -1785,7 +1845,7 @@ const Cockpit = () => {
 
       {/* Area Dialog */}
       <Dialog open={isAreaDialogOpen} onOpenChange={setIsAreaDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[500px]">
           <form ref={areaFormRef} onSubmit={handleAreaSubmit}>
             <DialogHeader>
               <DialogTitle>{editingArea ? 'Edit Area' : 'Add Area'}</DialogTitle>
@@ -1804,37 +1864,161 @@ const Cockpit = () => {
               </div>
             )}
             
-            <div className="space-y-4 mt-4 px-6 pb-6">
-              <div className="space-y-2">
-                <Label htmlFor="area_id">Area ID</Label>
-                <Input
-                  id="area_id"
-                  value={areaFormData.area_id}
-                  onChange={(e) => setAreaFormData({ ...areaFormData, area_id: e.target.value })}
-                  disabled={!!editingArea}
-                  className={editingArea ? 'bg-muted' : ''}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="area_name">Name *</Label>
-                <Input
-                  id="area_name"
-                  value={areaFormData.name}
-                  onChange={(e) => setAreaFormData({ ...areaFormData, name: e.target.value })}
-                  placeholder="e.g., Receiving Zone"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="area_description">Description</Label>
-                <Input
-                  id="area_description"
-                  value={areaFormData.description}
-                  onChange={(e) => setAreaFormData({ ...areaFormData, description: e.target.value })}
-                  placeholder="Optional description"
-                />
-              </div>
+            <div className="mt-4 px-6 pb-6">
+              <Tabs value={areaDialogTab} onValueChange={setAreaDialogTab}>
+                <TabsList className="grid w-full grid-cols-3 mb-4">
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+                  <TabsTrigger value="controls">Controls</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="general" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="area_id">Area ID</Label>
+                    <Input
+                      id="area_id"
+                      value={areaFormData.area_id}
+                      onChange={(e) => setAreaFormData({ ...areaFormData, area_id: e.target.value })}
+                      disabled={!!editingArea}
+                      className={editingArea ? 'bg-muted' : ''}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="area_name">Name *</Label>
+                    <Input
+                      id="area_name"
+                      value={areaFormData.name}
+                      onChange={(e) => setAreaFormData({ ...areaFormData, name: e.target.value })}
+                      placeholder="e.g., Receiving Zone"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="area_description">Description</Label>
+                    <Input
+                      id="area_description"
+                      value={areaFormData.description}
+                      onChange={(e) => setAreaFormData({ ...areaFormData, description: e.target.value })}
+                      placeholder="Optional description"
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="dimensions" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="area_width">Width</Label>
+                      <Input
+                        id="area_width"
+                        type="number"
+                        step="0.01"
+                        value={areaFormData.width}
+                        onChange={(e) => setAreaFormData({ ...areaFormData, width: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="area_width_uom">Unit</Label>
+                      <Select
+                        value={areaFormData.width_uom}
+                        onValueChange={(value) => setAreaFormData({ ...areaFormData, width_uom: value })}
+                      >
+                        <SelectTrigger id="area_width_uom">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in">in</SelectItem>
+                          <SelectItem value="ft">ft</SelectItem>
+                          <SelectItem value="cm">cm</SelectItem>
+                          <SelectItem value="m">m</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="area_length">Length</Label>
+                      <Input
+                        id="area_length"
+                        type="number"
+                        step="0.01"
+                        value={areaFormData.length}
+                        onChange={(e) => setAreaFormData({ ...areaFormData, length: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="area_length_uom">Unit</Label>
+                      <Select
+                        value={areaFormData.length_uom}
+                        onValueChange={(value) => setAreaFormData({ ...areaFormData, length_uom: value })}
+                      >
+                        <SelectTrigger id="area_length_uom">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in">in</SelectItem>
+                          <SelectItem value="ft">ft</SelectItem>
+                          <SelectItem value="cm">cm</SelectItem>
+                          <SelectItem value="m">m</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="area_height">Height</Label>
+                      <Input
+                        id="area_height"
+                        type="number"
+                        step="0.01"
+                        value={areaFormData.height}
+                        onChange={(e) => setAreaFormData({ ...areaFormData, height: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="area_height_uom">Unit</Label>
+                      <Select
+                        value={areaFormData.height_uom}
+                        onValueChange={(value) => setAreaFormData({ ...areaFormData, height_uom: value })}
+                      >
+                        <SelectTrigger id="area_height_uom">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in">in</SelectItem>
+                          <SelectItem value="ft">ft</SelectItem>
+                          <SelectItem value="cm">cm</SelectItem>
+                          <SelectItem value="m">m</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="controls" className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Configure how this area behaves in the system.
+                  </p>
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="area_is_production_enabled" className="font-medium">Production</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Allow production orders to be processed in this area.
+                        </p>
+                      </div>
+                      <Switch
+                        id="area_is_production_enabled"
+                        checked={areaFormData.is_production_enabled}
+                        onCheckedChange={(checked) => setAreaFormData({ ...areaFormData, is_production_enabled: checked })}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
             <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
               <Button type="button" variant="outline" onClick={() => setIsAreaDialogOpen(false)}>
@@ -1850,7 +2034,6 @@ const Cockpit = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Bin Dialog */}
       {/* AutoMake Bins Dialog */}
       <AutoMakeBinsDialog
         open={isAutoMakeDialogOpen}

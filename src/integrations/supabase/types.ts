@@ -100,28 +100,49 @@ export type Database = {
           area_id: string
           created_at: string
           description: string | null
+          height: number | null
+          height_uom: string | null
           id: string
+          is_production_enabled: boolean
+          length: number | null
+          length_uom: string | null
           location_id: string
           name: string
           updated_at: string
+          width: number | null
+          width_uom: string | null
         }
         Insert: {
           area_id: string
           created_at?: string
           description?: string | null
+          height?: number | null
+          height_uom?: string | null
           id?: string
+          is_production_enabled?: boolean
+          length?: number | null
+          length_uom?: string | null
           location_id: string
           name: string
           updated_at?: string
+          width?: number | null
+          width_uom?: string | null
         }
         Update: {
           area_id?: string
           created_at?: string
           description?: string | null
+          height?: number | null
+          height_uom?: string | null
           id?: string
+          is_production_enabled?: boolean
+          length?: number | null
+          length_uom?: string | null
           location_id?: string
           name?: string
           updated_at?: string
+          width?: number | null
+          width_uom?: string | null
         }
         Relationships: [
           {
