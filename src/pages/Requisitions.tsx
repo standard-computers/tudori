@@ -1846,13 +1846,14 @@ function RequisitionsTable({
                 onFilter={(v) => setFilter('creator.last_name', v)}
               />
               <SortableTableHead
-                label="Created At"
+                label="Date"
                 sortKey="created_at"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
                 filterable={false}
               />
+              <TableHead>Time</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -1901,8 +1902,10 @@ function RequisitionsTable({
                   {req.creator ? `${req.creator.first_name || ''} ${req.creator.last_name || ''}`.trim() || '-' : '-'}
                 </TableCell>
                 <TableCell className="text-sm">
-                  <div>{new Date(req.created_at).toLocaleDateString()}</div>
-                  <div className="text-muted-foreground text-xs">{new Date(req.created_at).toLocaleTimeString()}</div>
+                  {new Date(req.created_at).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(req.created_at).toLocaleTimeString()}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
