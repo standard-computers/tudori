@@ -36,7 +36,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users, X, Settings2 } from 'lucide-react';
+import { ArrowLeft, Plus, MapPin, Pencil, Trash2, AlertCircle, Users, X, Settings2, MoreHorizontal, Eye } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
@@ -77,10 +84,12 @@ const LOCATION_TYPES = ['Warehouse', 'Store', 'Office', 'Distribution Center', '
 // Separated table component with sorting/filtering
 const LocationTable = ({
   locations,
+  onView,
   onEdit,
   onDelete,
 }: {
   locations: Location[];
+  onView: (location: Location) => void;
   onEdit: (location: Location) => void;
   onDelete: (id: string) => void;
 }) => {
@@ -239,22 +248,31 @@ const LocationTable = ({
                     {location.is_production_enabled && <Badge variant="secondary">✓</Badge>}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(location)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(location.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onView(location)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(location)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => onDelete(location.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -278,16 +296,17 @@ const Locations = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
-      setTransaction(isEditing ? 'loc/edit' : 'loc/new');
+      setTransaction(isViewMode ? 'loc/view' : isEditing ? 'loc/edit' : 'loc/new');
     } else {
       setTransaction('loc');
     }
-  }, [isDialogOpen, isEditing, setTransaction]);
+  }, [isDialogOpen, isEditing, isViewMode, setTransaction]);
 
   // Ctrl+S to save
   useSaveShortcut(() => {
@@ -418,6 +437,7 @@ const Locations = () => {
       is_production_enabled: false,
     });
     setIsEditing(false);
+    setIsViewMode(false);
     setEditingId(null);
     setActiveTab('general');
     setSelectedUserIds([]);
@@ -432,6 +452,29 @@ const Locations = () => {
 
   // Keyboard shortcut for adding new location
   useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleView = async (location: Location) => {
+    setFormData({
+      location_id: location.location_id,
+      name: location.name,
+      type: location.type,
+      address_line1: location.address_line1,
+      address_line2: location.address_line2 || '',
+      city: location.city,
+      state: location.state,
+      postal_code: location.postal_code,
+      country: location.country,
+      is_internal_vendor: location.is_internal_vendor ?? true,
+      is_pos_enabled: location.is_pos_enabled ?? false,
+      is_production_enabled: location.is_production_enabled ?? false,
+    });
+    setIsViewMode(true);
+    setIsEditing(false);
+    setEditingId(location.id);
+    setActiveTab('general');
+    await fetchLocationUsers(location.id);
+    setIsDialogOpen(true);
+  };
 
   const handleEdit = async (location: Location) => {
     setFormData({
@@ -448,6 +491,7 @@ const Locations = () => {
       is_pos_enabled: location.is_pos_enabled ?? false,
       is_production_enabled: location.is_production_enabled ?? false,
     });
+    setIsViewMode(false);
     setIsEditing(true);
     setEditingId(location.id);
     setActiveTab('general');
@@ -631,13 +675,19 @@ const Locations = () => {
               <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                   <DialogHeader>
-                    <DialogTitle>{isEditing ? 'Edit Location' : 'Add Location'}</DialogTitle>
+                    <DialogTitle>
+                      {isViewMode ? 'View Location' : isEditing ? 'Edit Location' : 'Add Location'}
+                    </DialogTitle>
                     <DialogDescription>
-                      {isEditing ? 'Update location details and user access.' : 'Add a new location to your company.'}
+                      {isViewMode 
+                        ? 'Location details and user access.' 
+                        : isEditing 
+                          ? 'Update location details and user access.' 
+                          : 'Add a new location to your company.'}
                     </DialogDescription>
                   </DialogHeader>
                   
-                  {!isEditing && (
+                  {!isEditing && !isViewMode && (
                     <div className="absolute right-12 top-4 z-10">
                       <CopyFromIdDialog<Location>
                         idLabel="Location ID"
@@ -690,17 +740,17 @@ const Locations = () => {
                             id="location_id"
                             value={formData.location_id}
                             onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
-                            disabled={isEditing}
-                            className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && locations.some(l => l.location_id === formData.location_id) ? 'border-destructive border-2' : ''}`}
+                            disabled={isEditing || isViewMode}
+                            className={`${isEditing || isViewMode ? 'bg-muted' : ''} ${!isEditing && !isViewMode && locations.some(l => l.location_id === formData.location_id) ? 'border-destructive border-2' : ''}`}
                             required
                           />
-                          {!isEditing && locations.some(l => l.location_id === formData.location_id) && (
+                          {!isEditing && !isViewMode && locations.some(l => l.location_id === formData.location_id) && (
                             <p className="text-sm text-destructive flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
                               This ID is already in use
                             </p>
                           )}
-                          {!isEditing && !locations.some(l => l.location_id === formData.location_id) && formData.location_id && (
+                          {!isEditing && !isViewMode && !locations.some(l => l.location_id === formData.location_id) && formData.location_id && (
                             <p className="text-sm text-amber-600 flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
                               ID cannot be changed after creation
@@ -712,8 +762,9 @@ const Locations = () => {
                           <Select
                             value={formData.type}
                             onValueChange={(value) => setFormData({ ...formData, type: value })}
+                            disabled={isViewMode}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className={isViewMode ? 'bg-muted' : ''}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -728,72 +779,86 @@ const Locations = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="name">Location Name</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Main Warehouse"
-                          required
-                        />
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Main Warehouse"
+                            disabled={isViewMode}
+                            className={isViewMode ? 'bg-muted' : ''}
+                            required
+                          />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="address_line1">Address Line 1</Label>
-                        <Input
-                          id="address_line1"
-                          value={formData.address_line1}
-                          onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                          placeholder="123 Main Street"
-                          required
-                        />
+                          <Input
+                            id="address_line1"
+                            value={formData.address_line1}
+                            onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                            placeholder="123 Main Street"
+                            disabled={isViewMode}
+                            className={isViewMode ? 'bg-muted' : ''}
+                            required
+                          />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="address_line2">Address Line 2</Label>
-                        <Input
-                          id="address_line2"
-                          value={formData.address_line2}
-                          onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                          placeholder="Suite 100"
-                        />
+                          <Input
+                            id="address_line2"
+                            value={formData.address_line2}
+                            onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                            placeholder="Suite 100"
+                            disabled={isViewMode}
+                            className={isViewMode ? 'bg-muted' : ''}
+                          />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={formData.city}
-                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                            required
-                          />
-                        </div>
+                            <Input
+                              id="city"
+                              value={formData.city}
+                              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                              disabled={isViewMode}
+                              className={isViewMode ? 'bg-muted' : ''}
+                              required
+                            />
+                          </div>
                         <div className="space-y-2">
                           <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            value={formData.state}
-                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                            required
-                          />
-                        </div>
+                            <Input
+                              id="state"
+                              value={formData.state}
+                              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                              disabled={isViewMode}
+                              className={isViewMode ? 'bg-muted' : ''}
+                              required
+                            />
+                          </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="postal_code">Postal Code</Label>
-                          <Input
-                            id="postal_code"
-                            value={formData.postal_code}
-                            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                            required
-                          />
-                        </div>
+                            <Input
+                              id="postal_code"
+                              value={formData.postal_code}
+                              onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                              disabled={isViewMode}
+                              className={isViewMode ? 'bg-muted' : ''}
+                              required
+                            />
+                          </div>
                         <div className="space-y-2">
                           <Label htmlFor="country">Country</Label>
-                          <Input
-                            id="country"
-                            value={formData.country}
-                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                            required
-                          />
-                        </div>
+                            <Input
+                              id="country"
+                              value={formData.country}
+                              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                              disabled={isViewMode}
+                              className={isViewMode ? 'bg-muted' : ''}
+                              required
+                            />
+                          </div>
                       </div>
                     </TabsContent>
                     
@@ -820,6 +885,7 @@ const Locations = () => {
                                   onCheckedChange={(checked) => 
                                     handleUserToggle(companyUser.user_id, checked as boolean)
                                   }
+                                  disabled={isViewMode}
                                 />
                                 <label 
                                   htmlFor={`user-${companyUser.user_id}`}
@@ -859,6 +925,7 @@ const Locations = () => {
                               id="is_internal_vendor"
                               checked={formData.is_internal_vendor}
                               onCheckedChange={(checked) => setFormData({ ...formData, is_internal_vendor: checked })}
+                              disabled={isViewMode}
                             />
                           </div>
                           <div className="flex items-center justify-between">
@@ -872,6 +939,7 @@ const Locations = () => {
                               id="is_pos_enabled"
                               checked={formData.is_pos_enabled}
                               onCheckedChange={(checked) => setFormData({ ...formData, is_pos_enabled: checked })}
+                              disabled={isViewMode}
                             />
                           </div>
                           <div className="flex items-center justify-between">
@@ -885,6 +953,7 @@ const Locations = () => {
                               id="is_production_enabled"
                               checked={formData.is_production_enabled}
                               onCheckedChange={(checked) => setFormData({ ...formData, is_production_enabled: checked })}
+                              disabled={isViewMode}
                             />
                           </div>
                         </div>
@@ -893,18 +962,17 @@ const Locations = () => {
                   </Tabs>
                   </div>
                   
-                  <DialogFooter className="shrink-0">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={!isEditing && locations.some(l => l.location_id === formData.location_id)}
-                    >
-                      {isEditing ? 'Update' : 'Create'}
-                      <Kbd className="ml-2">⌘S</Kbd>
-                    </Button>
-                  </DialogFooter>
+                  {!isViewMode && (
+                    <DialogFooter className="shrink-0">
+                      <Button 
+                        type="submit" 
+                        disabled={!isEditing && locations.some(l => l.location_id === formData.location_id)}
+                      >
+                        {isEditing ? 'Update' : 'Create'}
+                        <Kbd className="ml-2">⌘S</Kbd>
+                      </Button>
+                    </DialogFooter>
+                  )}
                 </form>
               </DialogContent>
             </Dialog>
@@ -929,6 +997,7 @@ const Locations = () => {
         ) : (
           <LocationTable
             locations={locations}
+            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
