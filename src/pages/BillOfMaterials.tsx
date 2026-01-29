@@ -93,6 +93,7 @@ interface Bin {
   bin_id: string;
   name: string;
   area_id: string;
+  is_production_enabled?: boolean;
   area?: { location_id: string };
 }
 
@@ -403,6 +404,7 @@ const BillOfMaterials = () => {
         bin_id,
         name,
         area_id,
+        is_production_enabled,
         area:areas(location_id)
       `)
       .order('bin_id');
@@ -574,6 +576,15 @@ const BillOfMaterials = () => {
       return;
     }
 
+    // Validate bin has production enabled if selected
+    if (newStep.bin_id) {
+      const selectedBin = allBins.find(b => b.id === newStep.bin_id);
+      if (selectedBin && !selectedBin.is_production_enabled) {
+        toast.error('Selected bin does not have production enabled');
+        return;
+      }
+    }
+
     const nextStepNumber = bomSteps.length > 0 
       ? Math.max(...bomSteps.map(s => s.step_number)) + 1 
       : 1;
@@ -601,10 +612,13 @@ const BillOfMaterials = () => {
     setBomSteps(updatedSteps);
   };
 
-  // Get bins for selected location in step form
+  // Get bins for selected location in step form (production-enabled only)
   const getFilteredBins = (locationId: string) => {
     if (!locationId) return [];
-    return allBins.filter(bin => bin.area?.location_id === locationId);
+    return allBins.filter(bin => 
+      bin.area?.location_id === locationId && 
+      bin.is_production_enabled === true
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1016,7 +1030,11 @@ const BillOfMaterials = () => {
                             options={binOptions}
                             value={newStep.bin_id}
                             onValueChange={(value) => setNewStep(prev => ({ ...prev, bin_id: value }))}
-                            placeholder={newStep.location_id ? "Select bin" : "Select location first"}
+                            placeholder={
+                              newStep.location_id 
+                                ? (binOptions.length > 0 ? "Select production bin" : "No production bins available")
+                                : "Select location first"
+                            }
                             disabled={!newStep.location_id}
                           />
                         </div>
