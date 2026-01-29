@@ -44,6 +44,7 @@ interface Area {
   id: string;
   area_id: string;
   name: string;
+  is_production_enabled?: boolean;
 }
 
 interface Bin {
@@ -65,6 +66,7 @@ interface Bin {
   allow_auto_put_away?: boolean;
   allow_picking?: boolean;
   allow_auto_picking?: boolean;
+  is_production_enabled?: boolean;
 }
 
 interface BinProduct {
@@ -132,6 +134,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
       allow_auto_put_away: true,
       allow_picking: true,
       allow_auto_picking: true,
+      is_production_enabled: false,
     });
 
     const [binProducts, setBinProducts] = useState<BinProduct[]>([]);
@@ -161,6 +164,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             allow_auto_put_away: editingBin.allow_auto_put_away ?? true,
             allow_picking: editingBin.allow_picking ?? true,
             allow_auto_picking: editingBin.allow_auto_picking ?? true,
+            is_production_enabled: editingBin.is_production_enabled ?? false,
           });
           fetchBinProducts(editingBin.id);
         } else {
@@ -183,6 +187,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             allow_auto_put_away: true,
             allow_picking: true,
             allow_auto_picking: true,
+            is_production_enabled: false,
           });
           setBinProducts([]);
         }
@@ -233,6 +238,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
         allow_auto_put_away: formData.allow_auto_put_away,
         allow_picking: formData.allow_picking,
         allow_auto_picking: formData.allow_auto_picking,
+        is_production_enabled: formData.is_production_enabled,
       };
 
       if (editingBin) {
@@ -323,6 +329,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
         allow_auto_put_away: data.allow_auto_put_away ?? true,
         allow_picking: data.allow_picking ?? true,
         allow_auto_picking: data.allow_auto_picking ?? true,
+        is_production_enabled: data.is_production_enabled ?? false,
       }));
     };
 
@@ -701,6 +708,32 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
                             onCheckedChange={(checked) => 
                               setFormData({ ...formData, allow_auto_picking: checked })
                             }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="font-medium text-sm">Production</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="is_production_enabled">Allow Production</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Enable production operations in this bin
+                            </p>
+                          </div>
+                          <Switch
+                            id="is_production_enabled"
+                            checked={formData.is_production_enabled}
+                            onCheckedChange={(checked) => {
+                              const parentArea = areas.find(a => a.id === formData.area_id);
+                              if (checked && !parentArea?.is_production_enabled) {
+                                toast.error('Cannot enable production: parent area does not allow production');
+                                return;
+                              }
+                              setFormData({ ...formData, is_production_enabled: checked });
+                            }}
                           />
                         </div>
                       </div>

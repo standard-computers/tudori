@@ -102,6 +102,7 @@ interface Bin {
   height_uom?: string | null;
   weight_capacity?: number | null;
   weight_capacity_uom?: string | null;
+  is_production_enabled?: boolean;
 }
 
 interface Delivery {
