@@ -566,23 +566,7 @@ const SalesOrders = () => {
         if (taxError) throw taxError;
       }
 
-      // Create ledger transaction (positive amount for sales)
-      if (selectedLedgerId) {
-        const { error: txError } = await supabase
-          .from('ledger_transactions' as any)
-          .insert({
-            ledger_id: selectedLedgerId,
-            transaction_type: 'sales_order',
-            reference_id: (order as any).id,
-            reference_number: soNumber,
-            amount: totalAmount, // Positive for sales
-            description: `Sales Order ${soNumber}`,
-          });
-
-        if (txError) {
-          console.error('Error creating ledger transaction:', txError);
-        }
-      }
+      // Note: Ledger transaction is created when the Goods Issue is posted
 
       // Create order items
       const itemsToInsert = orderItems.map(item => ({
