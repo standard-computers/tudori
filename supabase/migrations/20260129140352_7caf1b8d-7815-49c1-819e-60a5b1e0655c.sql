@@ -1,0 +1,9 @@
+-- Add dimensions and production control to areas table
+ALTER TABLE public.areas
+ADD COLUMN width NUMERIC DEFAULT NULL,
+ADD COLUMN width_uom TEXT DEFAULT NULL,
+ADD COLUMN length NUMERIC DEFAULT NULL,
+ADD COLUMN length_uom TEXT DEFAULT NULL,
+ADD COLUMN height NUMERIC DEFAULT NULL,
+ADD COLUMN height_uom TEXT DEFAULT NULL,
+ADD COLUMN is_production_enabled BOOLEAN NOT NULL DEFAULT false;
