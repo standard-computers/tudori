@@ -176,6 +176,33 @@ const LocationTable = ({
                 onFilter={(value) => setFilter('state', value)}
               />
               <SortableTableHead
+                label="Internal Vendor"
+                sortKey="is_internal_vendor"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+                className="w-28 text-center"
+              />
+              <SortableTableHead
+                label="POS"
+                sortKey="is_pos_enabled"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+                className="w-20 text-center"
+              />
+              <SortableTableHead
+                label="Production"
+                sortKey="is_production_enabled"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+                className="w-24 text-center"
+              />
+              <SortableTableHead
                 label="Actions"
                 sortKey=""
                 currentSortKey=""
@@ -189,7 +216,7 @@ const LocationTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   No locations match your filters
                 </TableCell>
               </TableRow>
@@ -202,6 +229,15 @@ const LocationTable = ({
                   <TableCell>{location.address_line1}</TableCell>
                   <TableCell>{location.city}</TableCell>
                   <TableCell>{location.state}</TableCell>
+                  <TableCell className="text-center">
+                    {location.is_internal_vendor && <Badge variant="secondary">✓</Badge>}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {location.is_pos_enabled && <Badge variant="secondary">✓</Badge>}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {location.is_production_enabled && <Badge variant="secondary">✓</Badge>}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Button
