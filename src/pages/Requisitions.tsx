@@ -1394,9 +1394,6 @@ const Requisitions = () => {
               </div>
             )}
           </div>
-
-          <DialogFooter className="sticky bottom-0 bg-background border-t pt-4">
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
