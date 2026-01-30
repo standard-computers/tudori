@@ -158,6 +158,33 @@ const Planning = () => {
       .eq('company_id', companyId!)
       .in('status', ['pending', 'in_progress']);
 
+    // Get safety stock items per location to check for shortfalls
+    const { data: safetyStocks } = await supabase
+      .from('product_safety_stock')
+      .select('location_id, product_id, safety_stock_quantity');
+
+    // Get inventory levels to compare with safety stock
+    const { data: inventoryData } = await supabase
+      .from('inventory')
+      .select('location_id, product_id, quantity');
+
+    // Build inventory map by location and product
+    const inventoryByLocProduct = new Map<string, number>();
+    inventoryData?.forEach(inv => {
+      const key = `${inv.location_id}-${inv.product_id}`;
+      inventoryByLocProduct.set(key, (inventoryByLocProduct.get(key) || 0) + inv.quantity);
+    });
+
+    // Check which locations have safety stock shortfalls
+    const locationsWithSafetyShortfall = new Set<string>();
+    safetyStocks?.forEach(ss => {
+      const key = `${ss.location_id}-${ss.product_id}`;
+      const currentStock = inventoryByLocProduct.get(key) || 0;
+      if (currentStock < ss.safety_stock_quantity) {
+        locationsWithSafetyShortfall.add(ss.location_id);
+      }
+    });
+
     // Build summaries
     const summaries: LocationSummary[] = locationsData.map(loc => {
       const soCount = salesOrders?.filter(so => so.location_id === loc.id).length || 0;
@@ -170,8 +197,10 @@ const Planning = () => {
       };
     });
 
-    // Filter to only show locations with outstanding orders
-    const activeSummaries = summaries.filter(s => s.salesOrderCount > 0 || s.productionOrderCount > 0);
+    // Filter to show locations with outstanding orders OR safety stock shortfalls
+    const activeSummaries = summaries.filter(s => 
+      s.salesOrderCount > 0 || s.productionOrderCount > 0 || locationsWithSafetyShortfall.has(s.id)
+    );
     setLocations(activeSummaries);
   };
 
@@ -308,6 +337,39 @@ const Planning = () => {
       inventory?.forEach(inv => {
         const current = inventoryMap.get(inv.product_id) || 0;
         inventoryMap.set(inv.product_id, current + inv.quantity);
+      });
+
+      // Add safety stock items that aren't already in the requirement map
+      // This handles products with safety stock but no outstanding orders
+      const { data: safetyStockProducts } = await supabase
+        .from('product_safety_stock')
+        .select(`
+          product_id,
+          safety_stock_quantity,
+          product:products(product_id, name, unit, vendor_id, vendor:vendors(name))
+        `)
+        .eq('location_id', locationId);
+
+      safetyStockProducts?.forEach(ss => {
+        const product = ss.product as any;
+        if (!product || requirementMap.has(ss.product_id)) return;
+        
+        // Only add if there's a potential shortfall (current stock < safety stock)
+        const currentStock = inventoryMap.get(ss.product_id) || 0;
+        if (currentStock < ss.safety_stock_quantity) {
+          requirementMap.set(ss.product_id, {
+            productId: ss.product_id,
+            productCode: product.product_id,
+            productName: product.name,
+            unit: product.unit,
+            vendorId: product.vendor_id,
+            vendorName: product.vendor?.name || null,
+            totalRequired: 0,
+            safetyStock: ss.safety_stock_quantity,
+            salesOrders: [],
+            productionOrders: [],
+          });
+        }
       });
 
       // Calculate shortfalls (including safety stock)
