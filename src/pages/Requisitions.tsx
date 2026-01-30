@@ -1864,7 +1864,14 @@ function RequisitionsTable({
                     aria-label={`Select ${req.requisition_id}`}
                   />
                 </TableCell>
-                <TableCell className="font-mono">{req.requisition_id}</TableCell>
+                <TableCell className="font-mono">
+                  <button
+                    onClick={() => onViewRequisition(req)}
+                    className="text-primary hover:underline cursor-pointer"
+                  >
+                    {req.requisition_id}
+                  </button>
+                </TableCell>
                 <TableCell>
                   <Badge className={`${statusColors[req.status]} text-white`}>
                     {req.status}
