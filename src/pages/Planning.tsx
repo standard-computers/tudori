@@ -62,6 +62,7 @@ interface InventoryShortfall {
   unit: string | null;
   vendorId: string | null;
   vendorName: string | null;
+  unitPrice: number | null;
   totalRequired: number;
   safetyStock: number;
   currentStock: number;
@@ -76,6 +77,7 @@ interface RequisitionItem {
   productName: string;
   quantity: number;
   vendorId: string | null;
+  unitPrice: number | null;
 }
 
 const Planning = () => {
@@ -217,7 +219,7 @@ const Planning = () => {
           sales_order_items(
             product_id,
             quantity,
-            product:products(product_id, name, unit, vendor_id, vendor:vendors(name))
+            product:products(product_id, name, unit, price, vendor_id, vendor:vendors(name))
           )
         `)
         .eq('company_id', companyId!)
@@ -235,7 +237,7 @@ const Planning = () => {
             bom_items(
               product_id,
               quantity,
-              product:products(product_id, name, unit, vendor_id, vendor:vendors(name))
+              product:products(product_id, name, unit, price, vendor_id, vendor:vendors(name))
             )
           )
         `)
@@ -257,6 +259,7 @@ const Planning = () => {
         unit: string | null;
         vendorId: string | null;
         vendorName: string | null;
+        unitPrice: number | null;
         totalRequired: number;
         safetyStock: number;
         salesOrders: string[];
@@ -287,6 +290,7 @@ const Planning = () => {
             unit: product.unit,
             vendorId: product.vendor_id,
             vendorName: product.vendor?.name || null,
+            unitPrice: product.price || null,
             totalRequired: 0,
             safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
@@ -317,6 +321,7 @@ const Planning = () => {
             unit: product.unit,
             vendorId: product.vendor_id,
             vendorName: product.vendor?.name || null,
+            unitPrice: product.price || null,
             totalRequired: 0,
             safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
@@ -346,7 +351,7 @@ const Planning = () => {
         .select(`
           product_id,
           safety_stock_quantity,
-          product:products(product_id, name, unit, vendor_id, vendor:vendors(name))
+          product:products(product_id, name, unit, price, vendor_id, vendor:vendors(name))
         `)
         .eq('location_id', locationId);
 
@@ -364,6 +369,7 @@ const Planning = () => {
             unit: product.unit,
             vendorId: product.vendor_id,
             vendorName: product.vendor?.name || null,
+            unitPrice: product.price || null,
             totalRequired: 0,
             safetyStock: ss.safety_stock_quantity,
             salesOrders: [],
@@ -440,6 +446,7 @@ const Planning = () => {
         productName: s.productName,
         quantity: s.shortfall,
         vendorId: s.vendorId,
+        unitPrice: s.unitPrice,
       }));
     
     setRequisitionItems(items);
@@ -483,6 +490,9 @@ const Planning = () => {
         requisition_id: requisition.id,
         product_id: item.productId,
         quantity: item.quantity,
+        vendor_id: item.vendorId,
+        unit_price: item.unitPrice,
+        total_price: item.unitPrice ? item.unitPrice * item.quantity : null,
       }));
 
       const { error: itemsError } = await supabase
