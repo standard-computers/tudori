@@ -490,9 +490,7 @@ const Planning = () => {
         requisition_id: requisition.id,
         product_id: item.productId,
         quantity: item.quantity,
-        vendor_id: item.vendorId,
         unit_price: item.unitPrice,
-        total_price: item.unitPrice ? item.unitPrice * item.quantity : null,
       }));
 
       const { error: itemsError } = await supabase
