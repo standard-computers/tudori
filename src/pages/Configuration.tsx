@@ -35,6 +35,7 @@ const DOCUMENT_TYPES = [
   { value: 'goods_receipt', label: 'Goods Receipt', prefix_placeholder: 'GR-', icon: PackageCheck },
   { value: 'goods_issue', label: 'Goods Issue', prefix_placeholder: 'GI-', icon: PackageMinus },
   { value: 'packaging_unit', label: 'Packaging Unit', prefix_placeholder: 'PU-', icon: Boxes },
+  { value: 'bill_of_materials', label: 'Bill of Materials', prefix_placeholder: 'BOM-', icon: ClipboardList },
   { value: 'invoice', label: 'Invoice', prefix_placeholder: 'INV-', icon: FileSpreadsheet },
   { value: 'credit_memo', label: 'Credit Memo', prefix_placeholder: 'CM-', icon: CreditCard },
   { value: 'debit_memo', label: 'Debit Memo', prefix_placeholder: 'DM-', icon: Wallet },
