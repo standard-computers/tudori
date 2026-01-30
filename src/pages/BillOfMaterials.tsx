@@ -124,11 +124,13 @@ const BomTable = ({
   onView,
   onEdit,
   onDelete,
+  isColumnVisible,
 }: {
   boms: BillOfMaterial[];
   onView: (bom: BillOfMaterial) => void;
   onEdit: (bom: BillOfMaterial) => void;
   onDelete: (id: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
@@ -166,54 +168,64 @@ const BomTable = ({
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <SortableTableHead
-                label="BoM ID"
-                sortKey="bom_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['bom_id']}
-                onFilter={(value) => setFilter('bom_id', value)}
-                className="w-32"
-              />
-              <SortableTableHead
-                label="Name"
-                sortKey="name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['name']}
-                onFilter={(value) => setFilter('name', value)}
-              />
-              <SortableTableHead
-                label="Output Product"
-                sortKey="product.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product.name']}
-                onFilter={(value) => setFilter('product.name', value)}
-              />
-              <SortableTableHead
-                label="Output Qty"
-                sortKey="output_quantity"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['output_quantity']}
-                onFilter={(value) => setFilter('output_quantity', value)}
-                className="w-24"
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['status']}
-                onFilter={(value) => setFilter('status', value)}
-                className="w-24"
-              />
+              {isColumnVisible('bom_id') && (
+                <SortableTableHead
+                  label="BoM ID"
+                  sortKey="bom_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['bom_id']}
+                  onFilter={(value) => setFilter('bom_id', value)}
+                  className="w-32"
+                />
+              )}
+              {isColumnVisible('name') && (
+                <SortableTableHead
+                  label="Name"
+                  sortKey="name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['name']}
+                  onFilter={(value) => setFilter('name', value)}
+                />
+              )}
+              {isColumnVisible('product') && (
+                <SortableTableHead
+                  label="Output Product"
+                  sortKey="product.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product.name']}
+                  onFilter={(value) => setFilter('product.name', value)}
+                />
+              )}
+              {isColumnVisible('output_quantity') && (
+                <SortableTableHead
+                  label="Output Qty"
+                  sortKey="output_quantity"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['output_quantity']}
+                  onFilter={(value) => setFilter('output_quantity', value)}
+                  className="w-24"
+                />
+              )}
+              {isColumnVisible('status') && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['status']}
+                  onFilter={(value) => setFilter('status', value)}
+                  className="w-24"
+                />
+              )}
               <SortableTableHead
                 label="Actions"
                 sortKey=""
@@ -228,22 +240,24 @@ const BomTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={BOM_COLUMNS.filter(c => isColumnVisible(c.key)).length} className="text-center py-8 text-muted-foreground">
                   No bills of materials found
                 </TableCell>
               </TableRow>
             ) : (
               sortedAndFilteredData.map((bom) => (
                 <TableRow key={bom.id} className="whitespace-nowrap">
-                  <TableCell className="font-mono text-sm">{bom.bom_id}</TableCell>
-                  <TableCell className="font-medium">{bom.name}</TableCell>
-                  <TableCell>{bom.product?.product_id} - {bom.product?.name}</TableCell>
-                  <TableCell>{bom.output_quantity}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(bom.status)}>
-                      {bom.status}
-                    </Badge>
-                  </TableCell>
+                  {isColumnVisible('bom_id') && <TableCell className="font-mono text-sm">{bom.bom_id}</TableCell>}
+                  {isColumnVisible('name') && <TableCell className="font-medium">{bom.name}</TableCell>}
+                  {isColumnVisible('product') && <TableCell>{bom.product?.product_id} - {bom.product?.name}</TableCell>}
+                  {isColumnVisible('output_quantity') && <TableCell>{bom.output_quantity}</TableCell>}
+                  {isColumnVisible('status') && (
+                    <TableCell>
+                      <Badge className={getStatusColor(bom.status)}>
+                        {bom.status}
+                      </Badge>
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => onView(bom)}>
@@ -286,6 +300,8 @@ const BillOfMaterials = () => {
   const { user, loading } = useAuth();
   const { setTransaction } = useStatusBar();
   const formRef = useRef<HTMLFormElement>(null);
+  
+  const { visibleColumns, isColumnVisible, toggleColumn, toggleableColumns, resetToDefaults, showAll, hideAll } = useColumnVisibility('bom', BOM_COLUMNS);
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [boms, setBoms] = useState<BillOfMaterial[]>([]);
@@ -803,6 +819,14 @@ const BillOfMaterials = () => {
             <h1 className="font-semibold">Bill of Materials</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <ColumnToggle
+              columns={toggleableColumns}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <Button onClick={handleOpenDialog} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               New BoM
@@ -817,6 +841,7 @@ const BillOfMaterials = () => {
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          isColumnVisible={isColumnVisible}
         />
       </main>
 
