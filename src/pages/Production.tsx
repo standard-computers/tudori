@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Kbd } from '@/components/ui/kbd';
 import {
   Select,
   SelectContent,
@@ -649,171 +651,181 @@ const Production = () => {
           </DialogHeader>
 
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Order Number</Label>
-                  <Input value={formData.order_number} disabled className="bg-muted" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                    disabled={isViewMode}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUSES.map(status => (
-                        <SelectItem key={status} value={status}>
-                          {status.replace('_', ' ')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <Tabs defaultValue="details" className="flex flex-col flex-1 overflow-hidden">
+              <TabsList className="shrink-0 mx-6">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
 
-              <div className="space-y-2">
-                <Label>Bill of Materials *</Label>
-                <Select
-                  value={formData.bom_id}
-                  onValueChange={handleBomChange}
-                  disabled={isViewMode || isEditing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a Bill of Materials" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {boms.length === 0 ? (
-                      <SelectItem value="_none" disabled>
-                        No active BOMs found
-                      </SelectItem>
-                    ) : (
-                      boms.map(bom => (
-                        <SelectItem key={bom.id} value={bom.id}>
-                          {bom.bom_id} - {bom.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedBom && (
-                <div className="p-3 bg-muted rounded-md space-y-1">
-                  <p className="text-sm">
-                    <span className="font-medium">Output:</span> {selectedBom.product?.product_id} - {selectedBom.product?.name}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Yields:</span> {selectedBom.output_quantity} per batch
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Production Location *</Label>
-                <Select
-                  value={formData.location_id}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, location_id: value }))}
-                  disabled={isViewMode}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a production-enabled location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {productionLocations.length === 0 ? (
-                      <SelectItem value="_none" disabled>
-                        No production-enabled locations found
-                      </SelectItem>
-                    ) : (
-                      productionLocations.map(location => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.location_id} - {location.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Batches to Produce</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={formData.quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                    disabled={isViewMode}
-                  />
-                  {selectedBom && (
-                    <p className="text-xs text-muted-foreground">
-                      Total output: {formData.quantity * selectedBom.output_quantity} units
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Scheduled Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.scheduled_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
-                    disabled={isViewMode}
-                  />
-                </div>
-              </div>
-
-              {bomItems.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Required Components</Label>
-                  <div className="border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableCell className="font-medium">Component</TableCell>
-                          <TableCell className="font-medium w-32">Per Batch</TableCell>
-                          <TableCell className="font-medium w-32">Total Required</TableCell>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {bomItems.map(item => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              {item.product?.product_id} - {item.product?.name}
-                            </TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell className="font-medium">
-                              {item.quantity * formData.quantity}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <TabsContent value="details" className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Order Number</Label>
+                      <Input value={formData.order_number} disabled className="bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                        disabled={isViewMode}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map(status => (
+                            <SelectItem key={status} value={status}>
+                              {status.replace('_', ' ')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  disabled={isViewMode}
-                  rows={3}
-                />
+                  <div className="space-y-2">
+                    <Label>Bill of Materials *</Label>
+                    <Select
+                      value={formData.bom_id}
+                      onValueChange={handleBomChange}
+                      disabled={isViewMode || isEditing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a Bill of Materials" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {boms.length === 0 ? (
+                          <SelectItem value="_none" disabled>
+                            No active BOMs found
+                          </SelectItem>
+                        ) : (
+                          boms.map(bom => (
+                            <SelectItem key={bom.id} value={bom.id}>
+                              {bom.bom_id} - {bom.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedBom && (
+                    <div className="p-3 bg-muted rounded-md space-y-1">
+                      <p className="text-sm">
+                        <span className="font-medium">Output:</span> {selectedBom.product?.product_id} - {selectedBom.product?.name}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Yields:</span> {selectedBom.output_quantity} per batch
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Production Location *</Label>
+                    <Select
+                      value={formData.location_id}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, location_id: value }))}
+                      disabled={isViewMode}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a production-enabled location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {productionLocations.length === 0 ? (
+                          <SelectItem value="_none" disabled>
+                            No production-enabled locations found
+                          </SelectItem>
+                        ) : (
+                          productionLocations.map(location => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.location_id} - {location.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Batches to Produce</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={formData.quantity}
+                        onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                        disabled={isViewMode}
+                      />
+                      {selectedBom && (
+                        <p className="text-xs text-muted-foreground">
+                          Total output: {formData.quantity * selectedBom.output_quantity} units
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Scheduled Date</Label>
+                      <Input
+                        type="date"
+                        value={formData.scheduled_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
+                        disabled={isViewMode}
+                      />
+                    </div>
+                  </div>
+
+                  {bomItems.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Required Components</Label>
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableCell className="font-medium">Component</TableCell>
+                              <TableCell className="font-medium w-32">Per Batch</TableCell>
+                              <TableCell className="font-medium w-32">Total Required</TableCell>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {bomItems.map(item => (
+                              <TableRow key={item.id}>
+                                <TableCell>
+                                  {item.product?.product_id} - {item.product?.name}
+                                </TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell className="font-medium">
+                                  {item.quantity * formData.quantity}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="notes" className="mt-4">
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      disabled={isViewMode}
+                      rows={6}
+                      placeholder="Add any additional notes about this production order..."
+                    />
+                  </div>
+                </TabsContent>
               </div>
-            </div>
+            </Tabs>
 
             {!isViewMode && (
-              <DialogFooter className="shrink-0">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
+              <DialogFooter className="shrink-0 px-6 pb-6">
                 <Button type="submit">
                   {isEditing ? 'Update' : 'Create'}
+                  <Kbd>⌘S</Kbd>
                 </Button>
               </DialogFooter>
             )}
