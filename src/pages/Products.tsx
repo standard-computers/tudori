@@ -83,6 +83,7 @@ interface Product {
   is_batched: boolean;
   min_shelf_life_days: number | null;
   keep_inventory: boolean;
+  is_consumable: boolean;
   width: number | null;
   length: number | null;
   height: number | null;
@@ -515,6 +516,7 @@ const Products = () => {
     is_batched: false,
     min_shelf_life_days: '',
     keep_inventory: true,
+    is_consumable: false,
     width: '',
     length: '',
     height: '',
@@ -560,7 +562,7 @@ const Products = () => {
   // Export columns definition
   const EXPORT_COLUMNS = [
     'product_id', 'name', 'sku', 'description', 'category', 'price', 'unit',
-    'vendor_name', 'is_batched', 'min_shelf_life_days', 'keep_inventory',
+    'vendor_name', 'is_batched', 'min_shelf_life_days', 'keep_inventory', 'is_consumable',
     'width', 'width_uom', 'length', 'length_uom', 'height', 'height_uom', 'weight', 'weight_uom'
   ];
 
@@ -585,6 +587,7 @@ const Products = () => {
       is_batched: p.is_batched ? 'Yes' : 'No',
       min_shelf_life_days: p.min_shelf_life_days ?? '',
       keep_inventory: p.keep_inventory ? 'Yes' : 'No',
+      is_consumable: p.is_consumable ? 'Yes' : 'No',
       width: p.width ?? '',
       width_uom: p.width_uom || 'in',
       length: p.length ?? '',
@@ -617,6 +620,7 @@ const Products = () => {
       is_batched: 'No',
       min_shelf_life_days: '',
       keep_inventory: 'Yes',
+      is_consumable: 'No',
       width: '',
       width_uom: 'in',
       length: '',
@@ -675,6 +679,7 @@ const Products = () => {
             is_batched: row.is_batched?.toString().toLowerCase() === 'yes',
             min_shelf_life_days: row.min_shelf_life_days ? parseInt(row.min_shelf_life_days) : null,
             keep_inventory: row.keep_inventory?.toString().toLowerCase() !== 'no',
+            is_consumable: row.is_consumable?.toString().toLowerCase() === 'yes',
             width: row.width ? parseFloat(row.width) : null,
             width_uom: row.width_uom?.toString() || 'in',
             length: row.length ? parseFloat(row.length) : null,
@@ -869,6 +874,7 @@ const Products = () => {
       is_batched: false,
       min_shelf_life_days: '',
       keep_inventory: true,
+      is_consumable: false,
       width: '',
       length: '',
       height: '',
@@ -915,6 +921,7 @@ const Products = () => {
       is_batched: product.is_batched || false,
       min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
       keep_inventory: product.keep_inventory ?? true,
+      is_consumable: product.is_consumable || false,
       width: product.width?.toString() || '',
       length: product.length?.toString() || '',
       height: product.height?.toString() || '',
@@ -1198,6 +1205,7 @@ const Products = () => {
           is_batched: formData.is_batched,
           min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
           keep_inventory: formData.keep_inventory,
+          is_consumable: formData.is_consumable,
           width: formData.width ? parseFloat(formData.width) : null,
           length: formData.length ? parseFloat(formData.length) : null,
           height: formData.height ? parseFloat(formData.height) : null,
@@ -1231,6 +1239,7 @@ const Products = () => {
           is_batched: formData.is_batched,
           min_shelf_life_days: formData.is_batched && formData.min_shelf_life_days ? parseInt(formData.min_shelf_life_days) : null,
           keep_inventory: formData.keep_inventory,
+          is_consumable: formData.is_consumable,
           width: formData.width ? parseFloat(formData.width) : null,
           length: formData.length ? parseFloat(formData.length) : null,
           height: formData.height ? parseFloat(formData.height) : null,
@@ -1454,6 +1463,7 @@ const Products = () => {
                           is_batched: product.is_batched || false,
                           min_shelf_life_days: product.min_shelf_life_days?.toString() || '',
                           keep_inventory: product.keep_inventory ?? true,
+                          is_consumable: product.is_consumable || false,
                           width: product.width?.toString() || '',
                           length: product.length?.toString() || '',
                           height: product.height?.toString() || '',
@@ -2210,6 +2220,28 @@ const Products = () => {
                         {!formData.keep_inventory && (
                           <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
                             When disabled, receiving this product will not create a Goods Receipt or add to inventory. The delivery/PO will simply be marked as delivered.
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="is_consumable" className="text-base">Consumable</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Allow partial/fractional quantities for orders and withdrawals
+                            </p>
+                          </div>
+                          <Switch
+                            id="is_consumable"
+                            checked={formData.is_consumable}
+                            onCheckedChange={(checked) => setFormData({ ...formData, is_consumable: checked })}
+                          />
+                        </div>
+                        
+                        {formData.is_consumable && (
+                          <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                            Useful for raw materials like fabric, liquids, or bulk goods that can be ordered and issued in partial quantities (e.g., 2.5 meters, 0.75 liters).
                           </p>
                         )}
                       </div>
