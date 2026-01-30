@@ -33,9 +33,8 @@ export function ColumnToggle({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Columns3 className="w-4 h-4 mr-2" />
-          Columns
+        <Button variant="outline" size="icon" className="h-8 w-8">
+          <Columns3 className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
