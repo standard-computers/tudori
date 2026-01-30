@@ -251,6 +251,27 @@ const Planning = () => {
         .select('product_id, quantity')
         .eq('location_id', locationId);
 
+      // Get outstanding requisitions for this location (draft, pending, approved - not yet converted to PO)
+      const { data: outstandingReqs } = await supabase
+        .from('requisitions')
+        .select(`
+          id,
+          requisition_id,
+          requisition_items(product_id, quantity)
+        `)
+        .eq('company_id', companyId!)
+        .eq('location_id', locationId)
+        .in('status', ['draft', 'pending', 'approved']);
+
+      // Build a map of already requisitioned quantities
+      const requisitionedMap = new Map<string, number>();
+      outstandingReqs?.forEach(req => {
+        (req.requisition_items as any[])?.forEach(item => {
+          const current = requisitionedMap.get(item.product_id) || 0;
+          requisitionedMap.set(item.product_id, current + item.quantity);
+        });
+      });
+
       // Build requirement map
       const requirementMap = new Map<string, {
         productId: string;
@@ -378,12 +399,13 @@ const Planning = () => {
         }
       });
 
-      // Calculate shortfalls (including safety stock)
+      // Calculate shortfalls (including safety stock, minus already requisitioned)
       const shortfallList: InventoryShortfall[] = [];
       requirementMap.forEach((req) => {
         const currentStock = inventoryMap.get(req.productId) || 0;
-        // Shortfall = required + safety stock - current stock
-        const shortfall = req.totalRequired + req.safetyStock - currentStock;
+        const alreadyRequisitioned = requisitionedMap.get(req.productId) || 0;
+        // Shortfall = required + safety stock - current stock - already requisitioned
+        const shortfall = req.totalRequired + req.safetyStock - currentStock - alreadyRequisitioned;
         
         if (shortfall > 0) {
           shortfallList.push({
@@ -465,41 +487,66 @@ const Planning = () => {
     if (requisitionItems.length === 0) return;
 
     try {
-      // Get next requisition ID
-      const { data: nextId } = await supabase.rpc('get_next_requisition_id', {
-        p_company_id: companyId!,
+      // Group items by vendor
+      const itemsByVendor = new Map<string | null, RequisitionItem[]>();
+      requisitionItems.forEach(item => {
+        const vendorKey = item.vendorId || null;
+        const existing = itemsByVendor.get(vendorKey) || [];
+        existing.push(item);
+        itemsByVendor.set(vendorKey, existing);
       });
 
-      // Create the requisition
-      const { data: requisition, error: reqError } = await supabase
-        .from('requisitions')
-        .insert({
-          company_id: companyId!,
-          requisition_id: nextId || `REQ-${Date.now()}`,
-          location_id: selectedLocation!.id,
-          status: 'draft',
-          notes: `Auto-generated from Planning for ${selectedLocation!.name}`,
-        })
-        .select('id, requisition_id')
-        .single();
+      const createdReqs: string[] = [];
 
-      if (reqError) throw reqError;
+      // Create a separate requisition for each vendor
+      for (const [vendorId, items] of itemsByVendor) {
+        // Get next requisition ID
+        const { data: nextId } = await supabase.rpc('get_next_requisition_id', {
+          p_company_id: companyId!,
+        });
 
-      // Add requisition items
-      const itemsToInsert = requisitionItems.map(item => ({
-        requisition_id: requisition.id,
-        product_id: item.productId,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-      }));
+        const vendorName = vendorId 
+          ? shortfalls.find(s => s.vendorId === vendorId)?.vendorName || 'Vendor'
+          : 'No Vendor';
 
-      const { error: itemsError } = await supabase
-        .from('requisition_items')
-        .insert(itemsToInsert);
+        // Create the requisition with vendor_id
+        const { data: requisition, error: reqError } = await supabase
+          .from('requisitions')
+          .insert({
+            company_id: companyId!,
+            requisition_id: nextId || `REQ-${Date.now()}`,
+            location_id: selectedLocation!.id,
+            vendor_id: vendorId,
+            status: 'draft',
+            notes: `Auto-generated from Planning for ${selectedLocation!.name}`,
+          })
+          .select('id, requisition_id')
+          .single();
 
-      if (itemsError) throw itemsError;
+        if (reqError) throw reqError;
 
-      toast.success(`Requisition ${requisition.requisition_id} created with ${requisitionItems.length} items`);
+        // Add requisition items
+        const itemsToInsert = items.map(item => ({
+          requisition_id: requisition.id,
+          product_id: item.productId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('requisition_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+
+        createdReqs.push(requisition.requisition_id);
+      }
+
+      if (createdReqs.length === 1) {
+        toast.success(`Requisition ${createdReqs[0]} created with ${requisitionItems.length} items`);
+      } else {
+        toast.success(`Created ${createdReqs.length} requisitions: ${createdReqs.join(', ')}`);
+      }
 
       
       setIsReqDialogOpen(false);
