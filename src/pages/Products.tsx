@@ -94,7 +94,7 @@ interface Product {
   weight_uom: string | null;
   status: string;
   image_url: string | null;
-  vendors?: { name: string } | null;
+  vendors?: { name: string; vendor_id: string } | null;
 }
 
 const PRODUCT_STATUSES: { value: ProductStatus; label: string; color: string }[] = [
@@ -452,7 +452,7 @@ const ProductTable = ({
                       <TableCell>{product.category || '-'}</TableCell>
                     )}
                     {isColumnVisible('vendor_id') && (
-                      <TableCell className="font-mono text-sm">{product.vendor_id || '-'}</TableCell>
+                      <TableCell className="font-mono text-sm">{product.vendors?.vendor_id || '-'}</TableCell>
                     )}
                     {isColumnVisible('vendor') && (
                       <TableCell>{product.vendors?.name || '-'}</TableCell>
@@ -769,7 +769,7 @@ const Products = () => {
       // Refetch products
       const { data: refreshedData } = await supabase
         .from('products')
-        .select('*, vendors(name)')
+        .select('*, vendors(name, vendor_id)')
         .eq('company_id', companyId!)
         .order('product_id');
       setProducts(refreshedData || []);
@@ -828,7 +828,7 @@ const Products = () => {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('*, vendors(name)')
+      .select('*, vendors(name, vendor_id)')
       .eq('company_id', companyId!)
       .order('product_id');
 
@@ -1498,7 +1498,7 @@ const Products = () => {
                       onFetch={async (id) => {
                         const { data } = await supabase
                           .from('products')
-                          .select('*, vendors(name)')
+                          .select('*, vendors(name, vendor_id)')
                           .eq('company_id', companyId!)
                           .eq('product_id', id)
                           .maybeSingle();
