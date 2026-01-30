@@ -56,8 +56,17 @@ import { cn } from '@/lib/utils';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { SafetyStockTab } from '@/components/products/SafetyStockTab';
 import { toast } from 'sonner';
 import { useExcel } from '@/hooks/use-excel';
+
+interface SafetyStock {
+  id?: string;
+  location_id: string;
+  location_name: string;
+  location_code: string;
+  safety_stock_quantity: number;
+}
 
 type ProductStatus = 'active' | 'do_not_buy' | 'discontinued';
 
@@ -524,6 +533,7 @@ const Products = () => {
   const [aiDescription, setAiDescription] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [safetyStocks, setSafetyStocks] = useState<SafetyStock[]>([]);
 
   // Column visibility
   const {
@@ -876,6 +886,7 @@ const Products = () => {
     setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
     setComponents([]);
     setNewComponent({ product_id: '', quantity: '1' });
+    setSafetyStocks([]);
     setActiveTab('general');
     setIsEditing(false);
     setEditingId(null);
@@ -924,8 +935,31 @@ const Products = () => {
       fetchProductUoms(product.id),
       fetchProductComponents(product.id),
       fetchAvailableComponents(product.id),
+      fetchSafetyStocks(product.id),
     ]);
     setIsDialogOpen(true);
+  };
+
+  const fetchSafetyStocks = async (productId: string) => {
+    const { data, error } = await supabase
+      .from('product_safety_stock')
+      .select('id, location_id, safety_stock_quantity, location:locations(name, location_id)')
+      .eq('product_id', productId);
+
+    if (error) {
+      console.error('Failed to load safety stocks:', error);
+      return;
+    }
+
+    setSafetyStocks(
+      (data || []).map((s: any) => ({
+        id: s.id,
+        location_id: s.location_id,
+        location_name: s.location?.name || '',
+        location_code: s.location?.location_id || '',
+        safety_stock_quantity: s.safety_stock_quantity,
+      }))
+    );
   };
 
   const handleDelete = async (id: string) => {
@@ -1278,6 +1312,26 @@ const Products = () => {
           }
         }
       }
+
+      // Save Safety Stocks
+      await supabase.from('product_safety_stock').delete().eq('product_id', productId);
+      
+      if (safetyStocks.length > 0) {
+        const safetyStockInserts = safetyStocks.map(s => ({
+          product_id: productId,
+          location_id: s.location_id,
+          safety_stock_quantity: s.safety_stock_quantity,
+        }));
+
+        const { error: ssError } = await supabase
+          .from('product_safety_stock')
+          .insert(safetyStockInserts);
+
+        if (ssError) {
+          console.error('Failed to save safety stocks:', ssError);
+          toast.error('Product saved but failed to save some safety stock levels');
+        }
+      }
     }
 
     toast.success(isEditing ? 'Product updated' : 'Product created');
@@ -1440,13 +1494,14 @@ const Products = () => {
                   
                   <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-5' : 'grid-cols-4'}`}>
+                    <TabsList className={`grid w-full ${formData.category === 'Finished Goods' ? 'grid-cols-6' : 'grid-cols-5'}`}>
                       <TabsTrigger value="general">General</TabsTrigger>
                       <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
-                      <TabsTrigger value="uom">Units of Measure</TabsTrigger>
+                      <TabsTrigger value="uom">UoM</TabsTrigger>
                       {formData.category === 'Finished Goods' && (
                         <TabsTrigger value="components">Components</TabsTrigger>
                       )}
+                      <TabsTrigger value="safety-stock">Safety Stock</TabsTrigger>
                       <TabsTrigger value="controls">Controls</TabsTrigger>
                     </TabsList>
                     
@@ -2193,6 +2248,16 @@ const Products = () => {
                           </div>
                         )}
                       </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="safety-stock">
+                      <SafetyStockTab
+                        productId={editingId}
+                        companyId={companyId!}
+                        isEditing={isEditing}
+                        safetyStocks={safetyStocks}
+                        setSafetyStocks={setSafetyStocks}
+                      />
                     </TabsContent>
                   </Tabs>
                   </div>
