@@ -52,6 +52,7 @@ const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: 'vendor_id', label: 'ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'contact_name', label: 'Contact', defaultVisible: true },
   { key: 'email', label: 'Email', defaultVisible: true },
   { key: 'phone', label: 'Phone', defaultVisible: true },
@@ -69,6 +70,7 @@ interface Vendor {
   vendor_id: string;
   name: string;
   type: string;
+  status: string;
   contact_name: string | null;
   email: string | null;
   phone: string | null;
@@ -81,6 +83,13 @@ interface Vendor {
   website: string | null;
   notes: string | null;
 }
+
+type VendorStatus = 'active' | 'blocked';
+
+const VENDOR_STATUSES: { value: VendorStatus; label: string; color: string }[] = [
+  { value: 'active', label: 'Active', color: 'bg-success' },
+  { value: 'blocked', label: 'Blocked', color: 'bg-destructive' },
+];
 
 const VENDOR_TYPES = ['Supplier', 'Manufacturer', 'Distributor', 'Contractor', 'Service Provider', 'Consultant'];
 
@@ -167,6 +176,17 @@ const VendorTable = ({
                   onSort={handleSort}
                   filterValue={filters['type']}
                   onFilter={(value) => setFilter('type', value)}
+                />
+              )}
+              {isColumnVisible('status') && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['status']}
+                  onFilter={(value) => setFilter('status', value)}
                 />
               )}
               {isColumnVisible('contact_name') && (
@@ -300,6 +320,18 @@ const VendorTable = ({
                   {isColumnVisible('type') && (
                     <TableCell>{vendor.type}</TableCell>
                   )}
+                  {isColumnVisible('status') && (
+                    <TableCell>
+                      {(() => {
+                        const statusConfig = VENDOR_STATUSES.find(s => s.value === vendor.status) || VENDOR_STATUSES[0];
+                        return (
+                          <Badge className={`${statusConfig.color} text-white`}>
+                            {statusConfig.label}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                  )}
                   {isColumnVisible('contact_name') && (
                     <TableCell>{vendor.contact_name || '-'}</TableCell>
                   )}
@@ -401,6 +433,7 @@ const Vendors = () => {
     vendor_id: '',
     name: '',
     type: 'Supplier',
+    status: 'active' as VendorStatus,
     contact_name: '',
     email: '',
     phone: '',
@@ -491,6 +524,7 @@ const Vendors = () => {
       vendor_id: nextVendorId,
       name: '',
       type: 'Supplier',
+      status: 'active',
       contact_name: '',
       email: '',
       phone: '',
@@ -521,6 +555,7 @@ const Vendors = () => {
       vendor_id: vendor.vendor_id,
       name: vendor.name,
       type: vendor.type,
+      status: (vendor.status as VendorStatus) || 'active',
       contact_name: vendor.contact_name || '',
       email: vendor.email || '',
       phone: vendor.phone || '',
@@ -563,6 +598,7 @@ const Vendors = () => {
         .update({
           name: formData.name,
           type: formData.type,
+          status: formData.status,
           contact_name: formData.contact_name || null,
           email: formData.email || null,
           phone: formData.phone || null,
@@ -591,6 +627,7 @@ const Vendors = () => {
           vendor_id: formData.vendor_id,
           name: formData.name,
           type: formData.type,
+          status: formData.status,
           contact_name: formData.contact_name || null,
           email: formData.email || null,
           phone: formData.phone || null,
@@ -794,35 +831,58 @@ const Vendors = () => {
                         </Select>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Vendor Name *</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Acme Supplies Inc."
-                          required
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={handleAILookup}
-                          disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
-                          title="Look up company info with AI"
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => setFormData({ ...formData, status: value as VendorStatus })}
                         >
-                          {isLookingUp ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Search className="w-4 h-4" />
-                          )}
-                        </Button>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VENDOR_STATUSES.map((status) => (
+                              <SelectItem key={status.value} value={status.value}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                                  {status.label}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Click the search icon to auto-fill contact info using AI
-                      </p>
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Vendor Name *</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Acme Supplies Inc."
+                            required
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={handleAILookup}
+                            disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
+                            title="Look up company info with AI"
+                          >
+                            {isLookingUp ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Search className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Click the search icon to auto-fill contact info using AI
+                        </p>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -988,7 +1048,7 @@ const Vendors = () => {
           </DialogHeader>
           {viewingVendor && (
             <div className="space-y-4 px-6 pb-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-xs">Vendor ID</Label>
                   <p className="font-mono">{viewingVendor.vendor_id}</p>
@@ -996,6 +1056,17 @@ const Vendors = () => {
                 <div>
                   <Label className="text-muted-foreground text-xs">Type</Label>
                   <p>{viewingVendor.type}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Status</Label>
+                  {(() => {
+                    const statusConfig = VENDOR_STATUSES.find(s => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
+                    return (
+                      <Badge className={`${statusConfig.color} text-white`}>
+                        {statusConfig.label}
+                      </Badge>
+                    );
+                  })()}
                 </div>
               </div>
               <div>
