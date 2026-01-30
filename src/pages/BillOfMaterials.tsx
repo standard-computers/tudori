@@ -867,6 +867,7 @@ const BillOfMaterials = () => {
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="components">Components ({bomItems.length})</TabsTrigger>
                 <TabsTrigger value="steps">Steps ({bomSteps.length})</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
 
               <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -939,15 +940,6 @@ const BillOfMaterials = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Notes</Label>
-                    <Textarea
-                      value={formData.notes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                      disabled={isViewMode}
-                      rows={3}
-                    />
-                  </div>
                 </TabsContent>
 
                 <TabsContent value="components" className="mt-4 space-y-4">
@@ -1143,6 +1135,19 @@ const BillOfMaterials = () => {
                         )}
                       </TableBody>
                     </Table>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="notes" className="mt-4">
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      disabled={isViewMode}
+                      rows={6}
+                      placeholder="Add any additional notes about this Bill of Materials..."
+                    />
                   </div>
                 </TabsContent>
               </div>
