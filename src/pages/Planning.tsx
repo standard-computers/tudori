@@ -63,6 +63,7 @@ interface InventoryShortfall {
   vendorId: string | null;
   vendorName: string | null;
   totalRequired: number;
+  safetyStock: number;
   currentStock: number;
   shortfall: number;
   salesOrders: string[];
@@ -228,9 +229,21 @@ const Planning = () => {
         vendorId: string | null;
         vendorName: string | null;
         totalRequired: number;
+        safetyStock: number;
         salesOrders: string[];
         productionOrders: string[];
       }>();
+
+      // Get safety stock levels for this location
+      const { data: safetyStocks } = await supabase
+        .from('product_safety_stock')
+        .select('product_id, safety_stock_quantity')
+        .eq('location_id', locationId);
+
+      const safetyStockMap = new Map<string, number>();
+      safetyStocks?.forEach(ss => {
+        safetyStockMap.set(ss.product_id, ss.safety_stock_quantity);
+      });
 
       // Add sales order requirements
       salesOrderItems?.forEach(so => {
@@ -246,6 +259,7 @@ const Planning = () => {
             vendorId: product.vendor_id,
             vendorName: product.vendor?.name || null,
             totalRequired: 0,
+            safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
             productionOrders: [],
           };
@@ -275,6 +289,7 @@ const Planning = () => {
             vendorId: product.vendor_id,
             vendorName: product.vendor?.name || null,
             totalRequired: 0,
+            safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
             productionOrders: [],
           };
@@ -295,11 +310,12 @@ const Planning = () => {
         inventoryMap.set(inv.product_id, current + inv.quantity);
       });
 
-      // Calculate shortfalls
+      // Calculate shortfalls (including safety stock)
       const shortfallList: InventoryShortfall[] = [];
       requirementMap.forEach((req) => {
         const currentStock = inventoryMap.get(req.productId) || 0;
-        const shortfall = req.totalRequired - currentStock;
+        // Shortfall = required + safety stock - current stock
+        const shortfall = req.totalRequired + req.safetyStock - currentStock;
         
         if (shortfall > 0) {
           shortfallList.push({
@@ -547,9 +563,10 @@ const Planning = () => {
                     </TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead>Vendor</TableHead>
-                    <TableHead className="w-28 text-right">Required</TableHead>
-                    <TableHead className="w-28 text-right">In Stock</TableHead>
-                    <TableHead className="w-28 text-right">Shortfall</TableHead>
+                    <TableHead className="w-24 text-right">Required</TableHead>
+                    <TableHead className="w-24 text-right">Safety</TableHead>
+                    <TableHead className="w-24 text-right">In Stock</TableHead>
+                    <TableHead className="w-24 text-right">Shortfall</TableHead>
                     <TableHead>Source Orders</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -573,6 +590,9 @@ const Planning = () => {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {item.totalRequired} {item.unit || ''}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {item.safetyStock > 0 ? item.safetyStock : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {item.currentStock} {item.unit || ''}

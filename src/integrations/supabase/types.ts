@@ -1970,6 +1970,48 @@ export type Database = {
           },
         ]
       }
+      product_safety_stock: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          product_id: string
+          safety_stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          product_id: string
+          safety_stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          product_id?: string
+          safety_stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_safety_stock_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_safety_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_uoms: {
         Row: {
           abbreviation: string | null
