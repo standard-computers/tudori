@@ -784,6 +784,12 @@ const BillOfMaterials = () => {
     }
   };
 
+  // Output product options for searchable select
+  const outputProductOptions: SearchableSelectOption[] = products.map(p => ({
+    value: p.id,
+    label: `${p.product_id} - ${p.name}`,
+  }));
+
   // Component options for searchable select
   const componentOptions: SearchableSelectOption[] = products
     .filter(p => p.id !== formData.product_id) // Exclude output product
@@ -911,22 +917,13 @@ const BillOfMaterials = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Output Product *</Label>
-                      <Select
+                      <SearchableSelect
+                        options={outputProductOptions}
                         value={formData.product_id}
                         onValueChange={(value) => setFormData(prev => ({ ...prev, product_id: value }))}
+                        placeholder="Select output product"
                         disabled={isViewMode || isEditing}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select output product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map(product => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.product_id} - {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Output Quantity</Label>
