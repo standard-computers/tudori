@@ -2177,6 +2177,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_batched: boolean
+          is_consumable: boolean
           keep_inventory: boolean
           length: number | null
           length_uom: string | null
@@ -2204,6 +2205,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_batched?: boolean
+          is_consumable?: boolean
           keep_inventory?: boolean
           length?: number | null
           length_uom?: string | null
@@ -2231,6 +2233,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_batched?: boolean
+          is_consumable?: boolean
           keep_inventory?: boolean
           length?: number | null
           length_uom?: string | null
