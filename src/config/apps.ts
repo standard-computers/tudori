@@ -56,7 +56,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Vendors', icon: Building, color: 'text-red-500', description: 'Suppliers & partners', path: '/vendors' },
   { name: 'Customers', icon: Users, color: 'text-violet-500', description: 'CRM & contacts', path: '/customers' },
   { name: 'Products', icon: Package, color: 'text-amber-500', description: 'Product catalog', path: '/products' },
-  { name: 'Analytics', icon: BarChart3, color: 'text-pink-500', description: 'Reports & insights', path: null },
+  { name: 'Analytics', icon: BarChart3, color: 'text-pink-500', description: 'Reports & insights', path: '/analytics' },
   { name: 'Invoices', icon: FileText, color: 'text-cyan-500', description: 'Billing & payments', path: '/invoices' },
   { name: 'Credit Memos', icon: Minus, color: 'text-green-500', description: 'Account credits', path: '/credit-memos' },
   { name: 'Debit Memos', icon: Plus, color: 'text-red-500', description: 'Account debits', path: '/debit-memos' },
