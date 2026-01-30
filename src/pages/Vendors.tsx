@@ -55,9 +55,12 @@ const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: 'contact_name', label: 'Contact', defaultVisible: true },
   { key: 'email', label: 'Email', defaultVisible: true },
   { key: 'phone', label: 'Phone', defaultVisible: true },
-  { key: 'city', label: 'City', defaultVisible: false },
-  { key: 'state', label: 'State', defaultVisible: false },
-  { key: 'website', label: 'Website', defaultVisible: false },
+  { key: 'address_line1', label: 'Address', defaultVisible: true },
+  { key: 'city', label: 'City', defaultVisible: true },
+  { key: 'state', label: 'State', defaultVisible: true },
+  { key: 'postal_code', label: 'Postal Code', defaultVisible: true },
+  { key: 'country', label: 'Country', defaultVisible: true },
+  { key: 'website', label: 'Website', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
@@ -105,6 +108,7 @@ const VendorTable = ({
   } = useTableSort(vendors, 'vendor_id', 'asc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColumnCount = VENDOR_COLUMNS.filter(c => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -198,6 +202,17 @@ const VendorTable = ({
                   onFilter={(value) => setFilter('phone', value)}
                 />
               )}
+              {isColumnVisible('address_line1') && (
+                <SortableTableHead
+                  label="Address"
+                  sortKey="address_line1"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['address_line1']}
+                  onFilter={(value) => setFilter('address_line1', value)}
+                />
+              )}
               {isColumnVisible('city') && (
                 <SortableTableHead
                   label="City"
@@ -220,6 +235,28 @@ const VendorTable = ({
                   onFilter={(value) => setFilter('state', value)}
                 />
               )}
+              {isColumnVisible('postal_code') && (
+                <SortableTableHead
+                  label="Postal Code"
+                  sortKey="postal_code"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['postal_code']}
+                  onFilter={(value) => setFilter('postal_code', value)}
+                />
+              )}
+              {isColumnVisible('country') && (
+                <SortableTableHead
+                  label="Country"
+                  sortKey="country"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['country']}
+                  onFilter={(value) => setFilter('country', value)}
+                />
+              )}
               {isColumnVisible('website') && (
                 <SortableTableHead
                   label="Website"
@@ -231,21 +268,23 @@ const VendorTable = ({
                   onFilter={(value) => setFilter('website', value)}
                 />
               )}
-              <SortableTableHead
-                label="Actions"
-                sortKey=""
-                currentSortKey=""
-                currentSortDirection={null}
-                onSort={() => {}}
-                filterable={false}
-                className="w-24"
-              />
+              {isColumnVisible('actions') && (
+                <SortableTableHead
+                  label="Actions"
+                  sortKey=""
+                  currentSortKey=""
+                  currentSortDirection={null}
+                  onSort={() => {}}
+                  filterable={false}
+                  className="w-24"
+                />
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="text-center py-8 text-muted-foreground">
                   No vendors match your filters
                 </TableCell>
               </TableRow>
@@ -270,46 +309,57 @@ const VendorTable = ({
                   {isColumnVisible('phone') && (
                     <TableCell>{vendor.phone || '-'}</TableCell>
                   )}
+                  {isColumnVisible('address_line1') && (
+                    <TableCell>{vendor.address_line1 || '-'}</TableCell>
+                  )}
                   {isColumnVisible('city') && (
                     <TableCell>{vendor.city || '-'}</TableCell>
                   )}
                   {isColumnVisible('state') && (
                     <TableCell>{vendor.state || '-'}</TableCell>
                   )}
+                  {isColumnVisible('postal_code') && (
+                    <TableCell>{vendor.postal_code || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('country') && (
+                    <TableCell>{vendor.country || '-'}</TableCell>
+                  )}
                   {isColumnVisible('website') && (
                     <TableCell>{vendor.website || '-'}</TableCell>
                   )}
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onView(vendor)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEdit(vendor)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => onDelete(vendor.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
+                  {isColumnVisible('actions') && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onView(vendor)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(vendor)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(vendor.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
