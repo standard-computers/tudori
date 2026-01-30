@@ -44,6 +44,7 @@ import POS from "./pages/POS";
 import TimeClock from "./pages/TimeClock";
 import Production from "./pages/Production";
 import BillOfMaterials from "./pages/BillOfMaterials";
+import Planning from "./pages/Planning";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
@@ -97,6 +98,7 @@ const App = () => (
                   <Route path="/time-clock" element={<TimeClock />} />
                   <Route path="/production" element={<Production />} />
                   <Route path="/bill-of-materials" element={<BillOfMaterials />} />
+                  <Route path="/planning" element={<Planning />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
