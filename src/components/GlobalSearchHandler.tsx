@@ -29,6 +29,7 @@ const LIST_VIEW_ROUTES = [
   '/debit-memos',
   '/employees',
   '/teams',
+  '/bill-of-materials',
 ];
 
 /**
