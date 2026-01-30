@@ -188,6 +188,7 @@ const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'sku', label: 'SKU', defaultVisible: true },
   { key: 'category', label: 'Category', defaultVisible: true },
+  { key: 'vendor_id', label: 'Vendor ID', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
   { key: 'price', label: 'Price', defaultVisible: true },
   { key: 'unit', label: 'Unit', defaultVisible: true },
@@ -300,6 +301,17 @@ const ProductTable = ({
                   onSort={handleSort}
                   filterValue={filters['category']}
                   onFilter={(value) => setFilter('category', value)}
+                />
+              )}
+              {isColumnVisible('vendor_id') && (
+                <SortableTableHead
+                  label="Vendor ID"
+                  sortKey="vendor_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['vendor_id']}
+                  onFilter={(value) => setFilter('vendor_id', value)}
                 />
               )}
               {isColumnVisible('vendor') && (
@@ -421,7 +433,14 @@ const ProductTable = ({
                 return (
                   <TableRow key={product.id}>
                     {isColumnVisible('product_id') && (
-                      <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <button
+                          onClick={() => onView(product)}
+                          className="text-primary hover:underline focus:outline-none"
+                        >
+                          {product.product_id}
+                        </button>
+                      </TableCell>
                     )}
                     {isColumnVisible('name') && (
                       <TableCell className="font-medium">{product.name}</TableCell>
@@ -431,6 +450,9 @@ const ProductTable = ({
                     )}
                     {isColumnVisible('category') && (
                       <TableCell>{product.category || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('vendor_id') && (
+                      <TableCell className="font-mono text-sm">{product.vendor_id || '-'}</TableCell>
                     )}
                     {isColumnVisible('vendor') && (
                       <TableCell>{product.vendors?.name || '-'}</TableCell>
