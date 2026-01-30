@@ -30,6 +30,8 @@ const LIST_VIEW_ROUTES = [
   '/employees',
   '/teams',
   '/bill-of-materials',
+  '/planning',
+  '/production',
 ];
 
 /**
