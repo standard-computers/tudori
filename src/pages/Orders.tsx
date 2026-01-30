@@ -2523,7 +2523,15 @@ function OrdersTable({
                     onCheckedChange={(checked) => handleSelectRow(order.id, !!checked)}
                   />
                 </TableCell>
-                <TableCell className="font-mono">{order.po_number}</TableCell>
+                <TableCell className="font-mono">
+                  <button
+                    type="button"
+                    onClick={() => onViewOrder(order)}
+                    className="text-primary hover:underline cursor-pointer"
+                  >
+                    {order.po_number}
+                  </button>
+                </TableCell>
                 <TableCell>
                   <Badge className={`${statusColors[order.status]} text-white`}>
                     {order.status}
