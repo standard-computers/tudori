@@ -1124,9 +1124,6 @@ const BillOfMaterials = () => {
 
             {!isViewMode && (
               <DialogFooter className="shrink-0 px-6 pb-6">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
                 <Button type="submit">
                   {isEditing ? 'Update' : 'Create'}
                 </Button>
