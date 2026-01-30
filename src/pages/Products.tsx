@@ -2341,9 +2341,6 @@ const Products = () => {
                   </div>
                   
                   <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
                     <Button 
                       type="submit" 
                       disabled={isProductIdInUse || !!isSkuInUse}
