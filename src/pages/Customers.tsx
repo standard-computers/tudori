@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
@@ -61,15 +63,28 @@ interface Customer {
 
 const CUSTOMER_TYPES = ['Business', 'Individual', 'Government', 'Non-Profit', 'Educational', 'Reseller'];
 
+// Column definitions for Customers table
+const CUSTOMER_COLUMNS: ColumnDefinition[] = [
+  { key: 'customer_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'contact_name', label: 'Contact', defaultVisible: true },
+  { key: 'email', label: 'Email', defaultVisible: true },
+  { key: 'phone', label: 'Phone', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
 // Separated table component with sorting/filtering
 const CustomerTable = ({
   customers,
   onEdit,
   onDelete,
+  isColumnVisible,
 }: {
   customers: Customer[];
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
@@ -81,6 +96,7 @@ const CustomerTable = ({
   } = useTableSort(customers, 'customer_id', 'asc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColumnCount = CUSTOMER_COLUMNS.filter(c => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -107,106 +123,134 @@ const CustomerTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="ID"
-                sortKey="customer_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['customer_id']}
-                onFilter={(value) => setFilter('customer_id', value)}
-                className="w-24"
-              />
-              <SortableTableHead
-                label="Name"
-                sortKey="name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['name']}
-                onFilter={(value) => setFilter('name', value)}
-              />
-              <SortableTableHead
-                label="Type"
-                sortKey="type"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['type']}
-                onFilter={(value) => setFilter('type', value)}
-              />
-              <SortableTableHead
-                label="Contact"
-                sortKey="contact_name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['contact_name']}
-                onFilter={(value) => setFilter('contact_name', value)}
-              />
-              <SortableTableHead
-                label="Email"
-                sortKey="email"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['email']}
-                onFilter={(value) => setFilter('email', value)}
-              />
-              <SortableTableHead
-                label="Phone"
-                sortKey="phone"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['phone']}
-                onFilter={(value) => setFilter('phone', value)}
-              />
-              <SortableTableHead
-                label="Actions"
-                sortKey=""
-                currentSortKey=""
-                currentSortDirection={null}
-                onSort={() => {}}
-                filterable={false}
-                className="w-24"
-              />
+              {isColumnVisible('customer_id') && (
+                <SortableTableHead
+                  label="ID"
+                  sortKey="customer_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['customer_id']}
+                  onFilter={(value) => setFilter('customer_id', value)}
+                  className="w-24"
+                />
+              )}
+              {isColumnVisible('name') && (
+                <SortableTableHead
+                  label="Name"
+                  sortKey="name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['name']}
+                  onFilter={(value) => setFilter('name', value)}
+                />
+              )}
+              {isColumnVisible('type') && (
+                <SortableTableHead
+                  label="Type"
+                  sortKey="type"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['type']}
+                  onFilter={(value) => setFilter('type', value)}
+                />
+              )}
+              {isColumnVisible('contact_name') && (
+                <SortableTableHead
+                  label="Contact"
+                  sortKey="contact_name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['contact_name']}
+                  onFilter={(value) => setFilter('contact_name', value)}
+                />
+              )}
+              {isColumnVisible('email') && (
+                <SortableTableHead
+                  label="Email"
+                  sortKey="email"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['email']}
+                  onFilter={(value) => setFilter('email', value)}
+                />
+              )}
+              {isColumnVisible('phone') && (
+                <SortableTableHead
+                  label="Phone"
+                  sortKey="phone"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['phone']}
+                  onFilter={(value) => setFilter('phone', value)}
+                />
+              )}
+              {isColumnVisible('actions') && (
+                <SortableTableHead
+                  label="Actions"
+                  sortKey=""
+                  currentSortKey=""
+                  currentSortDirection={null}
+                  onSort={() => {}}
+                  filterable={false}
+                  className="w-24"
+                />
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="text-center py-8 text-muted-foreground">
                   No customers match your filters
                 </TableCell>
               </TableRow>
             ) : (
               sortedAndFilteredData.map((customer) => (
                 <TableRow key={customer.id}>
-                  <TableCell className="font-mono text-sm">{customer.customer_id}</TableCell>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>{customer.type}</TableCell>
-                  <TableCell>{customer.contact_name || '-'}</TableCell>
-                  <TableCell>{customer.email || '-'}</TableCell>
-                  <TableCell>{customer.phone || '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(customer)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(customer.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {isColumnVisible('customer_id') && (
+                    <TableCell className="font-mono text-sm">{customer.customer_id}</TableCell>
+                  )}
+                  {isColumnVisible('name') && (
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                  )}
+                  {isColumnVisible('type') && (
+                    <TableCell>{customer.type}</TableCell>
+                  )}
+                  {isColumnVisible('contact_name') && (
+                    <TableCell>{customer.contact_name || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('email') && (
+                    <TableCell>{customer.email || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('phone') && (
+                    <TableCell>{customer.phone || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('actions') && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(customer)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(customer.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -227,6 +271,16 @@ const Customers = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+
+  // Column visibility
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('customers', CUSTOMER_COLUMNS);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -477,6 +531,14 @@ const Customers = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={CUSTOMER_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled('customer')}
                 exportEnabled={isExportEnabled('customer')}
@@ -732,6 +794,7 @@ const Customers = () => {
             customers={customers}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            isColumnVisible={isColumnVisible}
           />
         )}
       </main>

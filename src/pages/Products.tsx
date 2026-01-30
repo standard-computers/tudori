@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
@@ -138,6 +140,18 @@ const WEIGHT_UOMS = [
   { value: 'ton', label: 'ton - Tons' },
 ];
 
+// Column definitions for Products table
+const PRODUCT_COLUMNS: ColumnDefinition[] = [
+  { key: 'product_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'sku', label: 'SKU', defaultVisible: true },
+  { key: 'category', label: 'Category', defaultVisible: true },
+  { key: 'vendor', label: 'Vendor', defaultVisible: true },
+  { key: 'price', label: 'Price', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
 // Separated table component with sorting/filtering
 const ProductTable = ({
   products,
@@ -145,12 +159,14 @@ const ProductTable = ({
   onDelete,
   onView,
   onFilteredDataChange,
+  isColumnVisible,
 }: {
   products: Product[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onView: (product: Product) => void;
   onFilteredDataChange?: (data: Product[]) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
@@ -167,6 +183,7 @@ const ProductTable = ({
   }, [sortedAndFilteredData, onFilteredDataChange]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColumnCount = PRODUCT_COLUMNS.filter(c => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -193,86 +210,102 @@ const ProductTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="ID"
-                sortKey="product_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product_id']}
-                onFilter={(value) => setFilter('product_id', value)}
-                className="w-24"
-              />
-              <SortableTableHead
-                label="Name"
-                sortKey="name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['name']}
-                onFilter={(value) => setFilter('name', value)}
-              />
-              <SortableTableHead
-                label="SKU"
-                sortKey="sku"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['sku']}
-                onFilter={(value) => setFilter('sku', value)}
-              />
-              <SortableTableHead
-                label="Category"
-                sortKey="category"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['category']}
-                onFilter={(value) => setFilter('category', value)}
-              />
-              <SortableTableHead
-                label="Vendor"
-                sortKey="vendors.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['vendors.name']}
-                onFilter={(value) => setFilter('vendors.name', value)}
-              />
-              <SortableTableHead
-                label="Price"
-                sortKey="price"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['price']}
-                onFilter={(value) => setFilter('price', value)}
-                className="text-right"
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['status']}
-                onFilter={(value) => setFilter('status', value)}
-              />
-              <SortableTableHead
-                label="Actions"
-                sortKey=""
-                currentSortKey=""
-                currentSortDirection={null}
-                onSort={() => {}}
-                filterable={false}
-                className="w-24"
-              />
+              {isColumnVisible('product_id') && (
+                <SortableTableHead
+                  label="ID"
+                  sortKey="product_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product_id']}
+                  onFilter={(value) => setFilter('product_id', value)}
+                  className="w-24"
+                />
+              )}
+              {isColumnVisible('name') && (
+                <SortableTableHead
+                  label="Name"
+                  sortKey="name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['name']}
+                  onFilter={(value) => setFilter('name', value)}
+                />
+              )}
+              {isColumnVisible('sku') && (
+                <SortableTableHead
+                  label="SKU"
+                  sortKey="sku"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['sku']}
+                  onFilter={(value) => setFilter('sku', value)}
+                />
+              )}
+              {isColumnVisible('category') && (
+                <SortableTableHead
+                  label="Category"
+                  sortKey="category"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['category']}
+                  onFilter={(value) => setFilter('category', value)}
+                />
+              )}
+              {isColumnVisible('vendor') && (
+                <SortableTableHead
+                  label="Vendor"
+                  sortKey="vendors.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['vendors.name']}
+                  onFilter={(value) => setFilter('vendors.name', value)}
+                />
+              )}
+              {isColumnVisible('price') && (
+                <SortableTableHead
+                  label="Price"
+                  sortKey="price"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['price']}
+                  onFilter={(value) => setFilter('price', value)}
+                  className="text-right"
+                />
+              )}
+              {isColumnVisible('status') && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['status']}
+                  onFilter={(value) => setFilter('status', value)}
+                />
+              )}
+              {isColumnVisible('actions') && (
+                <SortableTableHead
+                  label="Actions"
+                  sortKey=""
+                  currentSortKey=""
+                  currentSortDirection={null}
+                  onSort={() => {}}
+                  filterable={false}
+                  className="w-24"
+                />
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="text-center py-8 text-muted-foreground">
                   No products match your filters
                 </TableCell>
               </TableRow>
@@ -281,55 +314,71 @@ const ProductTable = ({
                 const statusConfig = PRODUCT_STATUSES.find(s => s.value === product.status) || PRODUCT_STATUSES[0];
                 return (
                   <TableRow key={product.id}>
-                    <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.sku || '-'}</TableCell>
-                    <TableCell>{product.category || '-'}</TableCell>
-                    <TableCell>{product.vendors?.name || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      {product.price ? `$${product.price.toFixed(2)}` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${statusConfig.color} text-white`}>
-                        {statusConfig.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onView(product)}
-                          title="View product"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onEdit(product)}>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onView(product)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => onDelete(product.id)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+                    {isColumnVisible('product_id') && (
+                      <TableCell className="font-mono text-sm">{product.product_id}</TableCell>
+                    )}
+                    {isColumnVisible('name') && (
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                    )}
+                    {isColumnVisible('sku') && (
+                      <TableCell>{product.sku || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('category') && (
+                      <TableCell>{product.category || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('vendor') && (
+                      <TableCell>{product.vendors?.name || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('price') && (
+                      <TableCell className="text-right">
+                        {product.price ? `$${product.price.toFixed(2)}` : '-'}
+                      </TableCell>
+                    )}
+                    {isColumnVisible('status') && (
+                      <TableCell>
+                        <Badge className={`${statusConfig.color} text-white`}>
+                          {statusConfig.label}
+                        </Badge>
+                      </TableCell>
+                    )}
+                    {isColumnVisible('actions') && (
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onView(product)}
+                            title="View product"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => onEdit(product)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onView(product)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => onDelete(product.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })
@@ -388,6 +437,17 @@ const Products = () => {
   const [aiDescription, setAiDescription] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+
+  // Column visibility
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('products', PRODUCT_COLUMNS);
+
 
   const { plainVendorOptions } = useVendorSources(companyId);
   const { exportToExcel, readExcel } = useExcel();
@@ -1162,6 +1222,14 @@ const Products = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={PRODUCT_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled('product')}
                 exportEnabled={isExportEnabled('product')}
@@ -2082,6 +2150,7 @@ const Products = () => {
             onDelete={handleDelete}
             onView={handleEdit}
             onFilteredDataChange={handleFilteredDataChange}
+            isColumnVisible={isColumnVisible}
           />
         )}
       </main>
