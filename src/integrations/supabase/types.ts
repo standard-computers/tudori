@@ -3126,6 +3126,7 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           state: string | null
+          status: string
           type: string
           updated_at: string
           vendor_id: string
@@ -3146,6 +3147,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           state?: string | null
+          status?: string
           type?: string
           updated_at?: string
           vendor_id: string
@@ -3166,6 +3168,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           state?: string | null
+          status?: string
           type?: string
           updated_at?: string
           vendor_id?: string

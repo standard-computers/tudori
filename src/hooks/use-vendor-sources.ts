@@ -6,6 +6,7 @@ interface Vendor {
   id: string;
   name: string;
   vendor_id: string;
+  status: string;
 }
 
 interface Location {
@@ -54,8 +55,9 @@ export function useVendorSources(companyId: string | null, options?: UseVendorSo
       const [vendorsResult, locationsResult] = await Promise.all([
         supabase
           .from('vendors')
-          .select('id, name, vendor_id')
+          .select('id, name, vendor_id, status')
           .eq('company_id', companyId)
+          .eq('status', 'active') // Only fetch active vendors
           .order('name'),
         locationsQuery.order('name'),
       ]);
