@@ -691,7 +691,6 @@ const Tasks = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveTask}>{editingTask ? 'Update' : 'Create'}</Button>
           </DialogFooter>
         </DialogContent>
@@ -730,7 +729,6 @@ const Tasks = () => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPullDialogOpen(false)}>Cancel</Button>
             <Button onClick={handlePullDeliveries} disabled={pendingDeliveries.length === 0}>
               Pull {pendingDeliveries.length} Deliveries
             </Button>
