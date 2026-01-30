@@ -509,7 +509,12 @@ const Planning = () => {
           ? shortfalls.find(s => s.vendorId === vendorId)?.vendorName || 'Vendor'
           : 'No Vendor';
 
-        // Create the requisition with vendor_id
+        // Calculate total amount for this requisition
+        const totalAmount = items.reduce((sum, item) => {
+          return sum + (item.quantity * (item.unitPrice || 0));
+        }, 0);
+
+        // Create the requisition with vendor_id and total_amount
         const { data: requisition, error: reqError } = await supabase
           .from('requisitions')
           .insert({
@@ -517,6 +522,7 @@ const Planning = () => {
             requisition_id: nextId || `REQ-${Date.now()}`,
             location_id: selectedLocation!.id,
             vendor_id: vendorId,
+            total_amount: totalAmount,
             status: 'draft',
             notes: `Auto-generated from Planning for ${selectedLocation!.name}`,
           })
