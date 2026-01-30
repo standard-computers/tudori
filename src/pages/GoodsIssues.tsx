@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { postGoodsIssue } from '@/lib/inventory-posting';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,6 +88,17 @@ interface Customer {
 }
 
 const ISSUE_STATUSES = ['pending', 'posted', 'cancelled'];
+
+// Column definitions for Goods Issues table
+const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
+  { key: 'issue_number', label: 'Issue #', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'sales_order', label: 'SO', defaultVisible: true },
+  { key: 'issue_date', label: 'Date', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const getStatusColor = (status: string) => {
   switch (status) {

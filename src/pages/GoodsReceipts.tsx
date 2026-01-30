@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { postGoodsReceipt } from '@/lib/inventory-posting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,6 +94,18 @@ interface Delivery {
 }
 
 const RECEIPT_STATUSES = ['pending', 'posted', 'cancelled'];
+
+// Column definitions for Goods Receipts table
+const GOODS_RECEIPT_COLUMNS: ColumnDefinition[] = [
+  { key: 'receipt_number', label: 'Receipt #', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'vendor', label: 'Vendor', defaultVisible: true },
+  { key: 'delivery', label: 'Delivery', defaultVisible: true },
+  { key: 'purchase_order', label: 'PO', defaultVisible: true },
+  { key: 'receipt_date', label: 'Date', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const getStatusColor = (status: string) => {
   switch (status) {

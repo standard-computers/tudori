@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -72,6 +74,19 @@ interface Team {
 }
 
 const STATUSES = ['active', 'inactive', 'on_leave'];
+
+// Column definitions for Employees table
+const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
+  { key: 'employee_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'email', label: 'Email', defaultVisible: true },
+  { key: 'phone', label: 'Phone', defaultVisible: true },
+  { key: 'job_title', label: 'Job Title', defaultVisible: true },
+  { key: 'department', label: 'Department', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'wage', label: 'Wage', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const EmployeeTable = ({
   employees,

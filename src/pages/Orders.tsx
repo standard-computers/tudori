@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -196,6 +198,17 @@ interface Company {
   country: string;
   phone: string | null;
 }
+
+// Column definitions for Purchase Orders table
+const ORDER_COLUMNS: ColumnDefinition[] = [
+  { key: 'po_number', label: 'PO #', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'vendor', label: 'Vendor', defaultVisible: true },
+  { key: 'location', label: 'Ship To', defaultVisible: true },
+  { key: 'total_amount', label: 'Total', defaultVisible: true },
+  { key: 'order_date', label: 'Date', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const Orders = () => {
   const navigate = useNavigate();

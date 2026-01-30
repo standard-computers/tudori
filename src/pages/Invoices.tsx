@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -94,6 +96,18 @@ const statusColors: Record<string, string> = {
   paid: 'bg-green-500',
   cancelled: 'bg-red-500',
 };
+
+// Column definitions for Invoices table
+const INVOICE_COLUMNS: ColumnDefinition[] = [
+  { key: 'invoice_number', label: 'Invoice #', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'account', label: 'Account', defaultVisible: true },
+  { key: 'reference', label: 'Reference', defaultVisible: true },
+  { key: 'invoice_date', label: 'Invoice Date', defaultVisible: true },
+  { key: 'due_date', label: 'Due Date', defaultVisible: true },
+  { key: 'amount', label: 'Amount', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const Invoices = () => {
   const navigate = useNavigate();
