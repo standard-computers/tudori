@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -98,6 +100,16 @@ interface Bin {
 }
 
 const STATUSES = ['active', 'inactive'];
+
+// Column definitions for Bill of Materials table
+const BOM_COLUMNS: ColumnDefinition[] = [
+  { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'product', label: 'Output Product', defaultVisible: true },
+  { key: 'output_quantity', label: 'Output Qty', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const getStatusColor = (status: string) => {
   switch (status) {

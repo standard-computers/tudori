@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,6 +90,16 @@ interface Location {
   name: string;
   location_id: string;
 }
+
+// Column definitions for Ledgers table
+const LEDGER_COLUMNS: ColumnDefinition[] = [
+  { key: 'ledger_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'balance', label: 'Balance', defaultVisible: true },
+  { key: 'is_active', label: 'Active', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const Ledgers = () => {
   const navigate = useNavigate();

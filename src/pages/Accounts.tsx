@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +82,18 @@ interface Location {
   name: string;
   location_id: string;
 }
+
+// Column definitions for Accounts table
+const ACCOUNT_COLUMNS: ColumnDefinition[] = [
+  { key: 'account_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'vendor', label: 'Vendor', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'is_active', label: 'Active', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 const Accounts = () => {
   const navigate = useNavigate();

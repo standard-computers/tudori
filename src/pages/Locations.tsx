@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +82,22 @@ interface LocationUser {
 }
 
 const LOCATION_TYPES = ['Warehouse', 'Store', 'Office', 'Distribution Center', 'Manufacturing', 'Showroom'];
+
+// Column definitions for Locations table
+const LOCATION_COLUMNS: ColumnDefinition[] = [
+  { key: 'location_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'address_line1', label: 'Address', defaultVisible: true },
+  { key: 'city', label: 'City', defaultVisible: true },
+  { key: 'state', label: 'State', defaultVisible: true },
+  { key: 'postal_code', label: 'Postal Code', defaultVisible: true },
+  { key: 'country', label: 'Country', defaultVisible: true },
+  { key: 'is_internal_vendor', label: 'Internal Vendor', defaultVisible: true },
+  { key: 'is_pos_enabled', label: 'POS', defaultVisible: true },
+  { key: 'is_production_enabled', label: 'Production', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 // Separated table component with sorting/filtering
 const LocationTable = ({

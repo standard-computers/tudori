@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,6 +53,20 @@ import { format } from 'date-fns';
 
 // Statuses that prevent editing
 const NON_EDITABLE_STATUSES = ['delivered', 'shipped', 'in_transit'];
+
+// Column definitions for Deliveries table
+const DELIVERY_COLUMNS: ColumnDefinition[] = [
+  { key: 'delivery_id', label: 'ID', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'purchase_order', label: 'PO', defaultVisible: true },
+  { key: 'vendor', label: 'Vendor', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'expected_date', label: 'Expected', defaultVisible: true },
+  { key: 'delivered_date', label: 'Delivered', defaultVisible: true },
+  { key: 'tracking_number', label: 'Tracking #', defaultVisible: true },
+  { key: 'carrier', label: 'Carrier', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 interface Delivery {
   id: string;
