@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,11 +60,28 @@ interface InventoryItem {
   } | null;
 }
 
+
+// Column definitions for Inventory table
+const INVENTORY_COLUMNS: ColumnDefinition[] = [
+  { key: 'product_id', label: 'Product ID', defaultVisible: true },
+  { key: 'product_name', label: 'Product Name', defaultVisible: true },
+  { key: 'sku', label: 'SKU', defaultVisible: true },
+  { key: 'category', label: 'Category', defaultVisible: true },
+  { key: 'area', label: 'Area', defaultVisible: true },
+  { key: 'bin', label: 'Bin', defaultVisible: true },
+  { key: 'quantity', label: 'Quantity', defaultVisible: true },
+  { key: 'unit', label: 'Unit', defaultVisible: true },
+  { key: 'min', label: 'Min', defaultVisible: true },
+  { key: 'max', label: 'Max', defaultVisible: true },
+];
+
 // Separated table component with sorting/filtering
 const InventoryTable = ({
   inventory,
+  isColumnVisible,
 }: {
   inventory: InventoryItem[];
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
@@ -74,6 +93,7 @@ const InventoryTable = ({
   } = useTableSort(inventory, 'product.product_id', 'asc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColumnCount = INVENTORY_COLUMNS.filter(c => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -100,106 +120,126 @@ const InventoryTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="Product ID"
-                sortKey="product.product_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product.product_id']}
-                onFilter={(value) => setFilter('product.product_id', value)}
-                className="w-28"
-              />
-              <SortableTableHead
-                label="Product Name"
-                sortKey="product.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product.name']}
-                onFilter={(value) => setFilter('product.name', value)}
-              />
-              <SortableTableHead
-                label="SKU"
-                sortKey="product.sku"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product.sku']}
-                onFilter={(value) => setFilter('product.sku', value)}
-              />
-              <SortableTableHead
-                label="Category"
-                sortKey="product.category"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product.category']}
-                onFilter={(value) => setFilter('product.category', value)}
-              />
-              <SortableTableHead
-                label="Area"
-                sortKey="bin.area.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['bin.area.name']}
-                onFilter={(value) => setFilter('bin.area.name', value)}
-              />
-              <SortableTableHead
-                label="Bin"
-                sortKey="bin.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['bin.name']}
-                onFilter={(value) => setFilter('bin.name', value)}
-              />
-              <SortableTableHead
-                label="Quantity"
-                sortKey="quantity"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['quantity']}
-                onFilter={(value) => setFilter('quantity', value)}
-                className="text-right"
-              />
-              <SortableTableHead
-                label="Unit"
-                sortKey="product.unit"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['product.unit']}
-                onFilter={(value) => setFilter('product.unit', value)}
-              />
-              <SortableTableHead
-                label="Min"
-                sortKey="min_quantity"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['min_quantity']}
-                onFilter={(value) => setFilter('min_quantity', value)}
-                className="text-right"
-              />
-              <SortableTableHead
-                label="Max"
-                sortKey="max_quantity"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['max_quantity']}
-                onFilter={(value) => setFilter('max_quantity', value)}
-                className="text-right"
-              />
+              {isColumnVisible('product_id') && (
+                <SortableTableHead
+                  label="Product ID"
+                  sortKey="product.product_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product.product_id']}
+                  onFilter={(value) => setFilter('product.product_id', value)}
+                  className="w-28"
+                />
+              )}
+              {isColumnVisible('product_name') && (
+                <SortableTableHead
+                  label="Product Name"
+                  sortKey="product.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product.name']}
+                  onFilter={(value) => setFilter('product.name', value)}
+                />
+              )}
+              {isColumnVisible('sku') && (
+                <SortableTableHead
+                  label="SKU"
+                  sortKey="product.sku"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product.sku']}
+                  onFilter={(value) => setFilter('product.sku', value)}
+                />
+              )}
+              {isColumnVisible('category') && (
+                <SortableTableHead
+                  label="Category"
+                  sortKey="product.category"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product.category']}
+                  onFilter={(value) => setFilter('product.category', value)}
+                />
+              )}
+              {isColumnVisible('area') && (
+                <SortableTableHead
+                  label="Area"
+                  sortKey="bin.area.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['bin.area.name']}
+                  onFilter={(value) => setFilter('bin.area.name', value)}
+                />
+              )}
+              {isColumnVisible('bin') && (
+                <SortableTableHead
+                  label="Bin"
+                  sortKey="bin.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['bin.name']}
+                  onFilter={(value) => setFilter('bin.name', value)}
+                />
+              )}
+              {isColumnVisible('quantity') && (
+                <SortableTableHead
+                  label="Quantity"
+                  sortKey="quantity"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['quantity']}
+                  onFilter={(value) => setFilter('quantity', value)}
+                  className="text-right"
+                />
+              )}
+              {isColumnVisible('unit') && (
+                <SortableTableHead
+                  label="Unit"
+                  sortKey="product.unit"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['product.unit']}
+                  onFilter={(value) => setFilter('product.unit', value)}
+                />
+              )}
+              {isColumnVisible('min') && (
+                <SortableTableHead
+                  label="Min"
+                  sortKey="min_quantity"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['min_quantity']}
+                  onFilter={(value) => setFilter('min_quantity', value)}
+                  className="text-right"
+                />
+              )}
+              {isColumnVisible('max') && (
+                <SortableTableHead
+                  label="Max"
+                  sortKey="max_quantity"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['max_quantity']}
+                  onFilter={(value) => setFilter('max_quantity', value)}
+                  className="text-right"
+                />
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="text-center py-8 text-muted-foreground">
                   No inventory items match your filters
                 </TableCell>
               </TableRow>
@@ -210,20 +250,40 @@ const InventoryTable = ({
                 
                 return (
                   <TableRow key={item.id}>
-                    <TableCell className="font-mono text-sm">{item.product?.product_id || '-'}</TableCell>
-                    <TableCell className="font-medium">{item.product?.name || '-'}</TableCell>
-                    <TableCell>{item.product?.sku || '-'}</TableCell>
-                    <TableCell>{item.product?.category || '-'}</TableCell>
-                    <TableCell>{item.bin?.area?.name || '-'}</TableCell>
-                    <TableCell>{item.bin?.name || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <span className={isLow ? 'text-destructive font-medium' : isHigh ? 'text-warning font-medium' : ''}>
-                        {item.quantity}
-                      </span>
-                    </TableCell>
-                    <TableCell>{item.product?.unit || 'each'}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '-'}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '-'}</TableCell>
+                    {isColumnVisible('product_id') && (
+                      <TableCell className="font-mono text-sm">{item.product?.product_id || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('product_name') && (
+                      <TableCell className="font-medium">{item.product?.name || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('sku') && (
+                      <TableCell>{item.product?.sku || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('category') && (
+                      <TableCell>{item.product?.category || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('area') && (
+                      <TableCell>{item.bin?.area?.name || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('bin') && (
+                      <TableCell>{item.bin?.name || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('quantity') && (
+                      <TableCell className="text-right">
+                        <span className={isLow ? 'text-destructive font-medium' : isHigh ? 'text-warning font-medium' : ''}>
+                          {item.quantity}
+                        </span>
+                      </TableCell>
+                    )}
+                    {isColumnVisible('unit') && (
+                      <TableCell>{item.product?.unit || 'each'}</TableCell>
+                    )}
+                    {isColumnVisible('min') && (
+                      <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '-'}</TableCell>
+                    )}
+                    {isColumnVisible('max') && (
+                      <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '-'}</TableCell>
+                    )}
                   </TableRow>
                 );
               })
@@ -244,6 +304,16 @@ const Inventory = () => {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Column visibility
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('inventory', INVENTORY_COLUMNS);
 
   useEffect(() => {
     setTransaction('inv');
@@ -378,7 +448,15 @@ const Inventory = () => {
               <h1 className="text-xl font-semibold">Inventory</h1>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ColumnToggle
+              columns={INVENTORY_COLUMNS}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Select a location" />
@@ -427,7 +505,7 @@ const Inventory = () => {
                 No inventory at this location
               </div>
             ) : (
-              <InventoryTable inventory={inventory} />
+              <InventoryTable inventory={inventory} isColumnVisible={isColumnVisible} />
             )}
           </div>
         )}
