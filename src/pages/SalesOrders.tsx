@@ -1118,9 +1118,6 @@ const SalesOrders = () => {
           </div>
 
           <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button onClick={handleCreateOrder} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Create Order
