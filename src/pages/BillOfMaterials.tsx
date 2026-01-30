@@ -44,6 +44,7 @@ import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
 interface BillOfMaterial {
@@ -1151,6 +1152,7 @@ const BillOfMaterials = () => {
               <DialogFooter className="shrink-0 px-6 pb-6">
                 <Button type="submit">
                   {isEditing ? 'Update' : 'Create'}
+                  <Kbd>⌘S</Kbd>
                 </Button>
               </DialogFooter>
             )}
