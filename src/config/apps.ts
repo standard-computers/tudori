@@ -69,7 +69,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Teams', icon: Users2, color: 'text-teal-500', description: 'Team management', path: '/teams' },
   { name: 'Calendar', icon: Calendar, color: 'text-indigo-500', description: 'Events & scheduling', path: null },
   { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: '/tasks' },
-  { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: null },
+  { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: '/messages' },
   { name: 'Users', icon: UserCog, color: 'text-purple-500', description: 'Team & access control', path: '/users' },
   { name: 'Configuration', icon: Cog, color: 'text-emerald-500', description: 'System configuration', path: '/configuration' },
   { name: 'Settings', icon: Settings, color: 'text-slate-500', description: 'Company settings', path: '/settings' },
