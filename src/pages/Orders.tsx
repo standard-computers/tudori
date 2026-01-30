@@ -1873,6 +1873,7 @@ const Orders = () => {
                     <Select
                       value={viewOrder.status}
                       onValueChange={(value) => handleUpdateStatus(viewOrder.id, value)}
+                      disabled={viewOrder.status === 'shipped' || viewOrder.status === 'delivered'}
                     >
                       <SelectTrigger>
                         <SelectValue />
