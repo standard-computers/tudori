@@ -71,6 +71,12 @@ const CUSTOMER_COLUMNS: ColumnDefinition[] = [
   { key: 'contact_name', label: 'Contact', defaultVisible: true },
   { key: 'email', label: 'Email', defaultVisible: true },
   { key: 'phone', label: 'Phone', defaultVisible: true },
+  { key: 'address_line1', label: 'Address', defaultVisible: true },
+  { key: 'city', label: 'City', defaultVisible: true },
+  { key: 'state', label: 'State', defaultVisible: true },
+  { key: 'postal_code', label: 'Postal Code', defaultVisible: true },
+  { key: 'country', label: 'Country', defaultVisible: true },
+  { key: 'website', label: 'Website', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
@@ -190,6 +196,72 @@ const CustomerTable = ({
                   onFilter={(value) => setFilter('phone', value)}
                 />
               )}
+              {isColumnVisible('address_line1') && (
+                <SortableTableHead
+                  label="Address"
+                  sortKey="address_line1"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['address_line1']}
+                  onFilter={(value) => setFilter('address_line1', value)}
+                />
+              )}
+              {isColumnVisible('city') && (
+                <SortableTableHead
+                  label="City"
+                  sortKey="city"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['city']}
+                  onFilter={(value) => setFilter('city', value)}
+                />
+              )}
+              {isColumnVisible('state') && (
+                <SortableTableHead
+                  label="State"
+                  sortKey="state"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['state']}
+                  onFilter={(value) => setFilter('state', value)}
+                />
+              )}
+              {isColumnVisible('postal_code') && (
+                <SortableTableHead
+                  label="Postal Code"
+                  sortKey="postal_code"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['postal_code']}
+                  onFilter={(value) => setFilter('postal_code', value)}
+                />
+              )}
+              {isColumnVisible('country') && (
+                <SortableTableHead
+                  label="Country"
+                  sortKey="country"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['country']}
+                  onFilter={(value) => setFilter('country', value)}
+                />
+              )}
+              {isColumnVisible('website') && (
+                <SortableTableHead
+                  label="Website"
+                  sortKey="website"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['website']}
+                  onFilter={(value) => setFilter('website', value)}
+                />
+              )}
               {isColumnVisible('actions') && (
                 <SortableTableHead
                   label="Actions"
@@ -230,6 +302,24 @@ const CustomerTable = ({
                   )}
                   {isColumnVisible('phone') && (
                     <TableCell>{customer.phone || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('address_line1') && (
+                    <TableCell>{customer.address_line1 || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('city') && (
+                    <TableCell>{customer.city || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('state') && (
+                    <TableCell>{customer.state || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('postal_code') && (
+                    <TableCell>{customer.postal_code || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('country') && (
+                    <TableCell>{customer.country || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('website') && (
+                    <TableCell>{customer.website || '-'}</TableCell>
                   )}
                   {isColumnVisible('actions') && (
                     <TableCell>

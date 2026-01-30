@@ -148,6 +148,11 @@ const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: 'category', label: 'Category', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
   { key: 'price', label: 'Price', defaultVisible: true },
+  { key: 'unit', label: 'Unit', defaultVisible: true },
+  { key: 'width', label: 'Width', defaultVisible: true },
+  { key: 'length', label: 'Length', defaultVisible: true },
+  { key: 'height', label: 'Height', defaultVisible: true },
+  { key: 'weight', label: 'Weight', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
@@ -278,6 +283,65 @@ const ProductTable = ({
                   className="text-right"
                 />
               )}
+              {isColumnVisible('unit') && (
+                <SortableTableHead
+                  label="Unit"
+                  sortKey="unit"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['unit']}
+                  onFilter={(value) => setFilter('unit', value)}
+                />
+              )}
+              {isColumnVisible('width') && (
+                <SortableTableHead
+                  label="Width"
+                  sortKey="width"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['width']}
+                  onFilter={(value) => setFilter('width', value)}
+                  className="text-right"
+                />
+              )}
+              {isColumnVisible('length') && (
+                <SortableTableHead
+                  label="Length"
+                  sortKey="length"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['length']}
+                  onFilter={(value) => setFilter('length', value)}
+                  className="text-right"
+                />
+              )}
+              {isColumnVisible('height') && (
+                <SortableTableHead
+                  label="Height"
+                  sortKey="height"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['height']}
+                  onFilter={(value) => setFilter('height', value)}
+                  className="text-right"
+                />
+              )}
+              {isColumnVisible('weight') && (
+                <SortableTableHead
+                  label="Weight"
+                  sortKey="weight"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['weight']}
+                  onFilter={(value) => setFilter('weight', value)}
+                  className="text-right"
+                />
+              )}
               {isColumnVisible('status') && (
                 <SortableTableHead
                   label="Status"
@@ -332,6 +396,29 @@ const ProductTable = ({
                     {isColumnVisible('price') && (
                       <TableCell className="text-right">
                         {product.price ? `$${product.price.toFixed(2)}` : '-'}
+                      </TableCell>
+                    )}
+                    {isColumnVisible('unit') && (
+                      <TableCell>{product.unit || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('width') && (
+                      <TableCell className="text-right">
+                        {product.width ? `${product.width} ${product.width_uom || ''}`.trim() : '-'}
+                      </TableCell>
+                    )}
+                    {isColumnVisible('length') && (
+                      <TableCell className="text-right">
+                        {product.length ? `${product.length} ${product.length_uom || ''}`.trim() : '-'}
+                      </TableCell>
+                    )}
+                    {isColumnVisible('height') && (
+                      <TableCell className="text-right">
+                        {product.height ? `${product.height} ${product.height_uom || ''}`.trim() : '-'}
+                      </TableCell>
+                    )}
+                    {isColumnVisible('weight') && (
+                      <TableCell className="text-right">
+                        {product.weight ? `${product.weight} ${product.weight_uom || ''}`.trim() : '-'}
                       </TableCell>
                     )}
                     {isColumnVisible('status') && (
