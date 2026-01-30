@@ -205,9 +205,6 @@ export function NewConversationDialog({ open, onOpenChange, onConversationCreate
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
           <Button onClick={handleCreate} disabled={loading || selectedUsers.length === 0}>
             {loading ? "Creating..." : "Start Chat"}
           </Button>
