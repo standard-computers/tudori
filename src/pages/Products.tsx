@@ -129,7 +129,39 @@ interface Vendor {
 }
 
 const PRODUCT_CATEGORIES = ['Raw Materials', 'Components', 'Finished Goods', 'Packaging', 'Equipment', 'Supplies', 'Services'];
-const PRODUCT_UNITS = ['each', 'box', 'case', 'pallet', 'kg', 'lb', 'liter', 'gallon', 'meter', 'foot', 'roll', 'bag', 'bundle', 'sheet'];
+
+// Base UOM options - shared with UoMs tab abbreviation selector
+const BASE_UOM_OPTIONS = [
+  { value: 'EA', label: 'EA - Each' },
+  { value: 'PC', label: 'PC - Piece' },
+  { value: 'CS', label: 'CS - Case' },
+  { value: 'CTN', label: 'CTN - Carton' },
+  { value: 'BX', label: 'BX - Box' },
+  { value: 'PK', label: 'PK - Pack' },
+  { value: 'PLA', label: 'PLA - Pallet' },
+  { value: 'DZ', label: 'DZ - Dozen' },
+  { value: 'KG', label: 'KG - Kilogram' },
+  { value: 'LB', label: 'LB - Pound' },
+  { value: 'OZ', label: 'OZ - Ounce' },
+  { value: 'G', label: 'G - Gram' },
+  { value: 'L', label: 'L - Liter' },
+  { value: 'ML', label: 'ML - Milliliter' },
+  { value: 'GAL', label: 'GAL - Gallon' },
+  { value: 'QT', label: 'QT - Quart' },
+  { value: 'FT', label: 'FT - Foot' },
+  { value: 'IN', label: 'IN - Inch' },
+  { value: 'M', label: 'M - Meter' },
+  { value: 'CM', label: 'CM - Centimeter' },
+  { value: 'RL', label: 'RL - Roll' },
+  { value: 'SET', label: 'SET - Set' },
+  { value: 'BAG', label: 'BAG - Bag' },
+  { value: 'BTL', label: 'BTL - Bottle' },
+  { value: 'CAN', label: 'CAN - Can' },
+  { value: 'JAR', label: 'JAR - Jar' },
+  { value: 'TUB', label: 'TUB - Tub' },
+  { value: 'BDL', label: 'BDL - Bundle' },
+  { value: 'PR', label: 'PR - Pair' },
+];
 
 // Dimension UoM options
 const DIMENSION_UOMS = [
@@ -512,7 +544,7 @@ const Products = () => {
     description: '',
     category: '',
     price: '',
-    unit: 'each',
+    unit: 'EA',
     is_batched: false,
     min_shelf_life_days: '',
     keep_inventory: true,
@@ -870,7 +902,7 @@ const Products = () => {
       description: '',
       category: '',
       price: '',
-      unit: 'each',
+      unit: 'EA',
       is_batched: false,
       min_shelf_life_days: '',
       keep_inventory: true,
@@ -1650,21 +1682,43 @@ const Products = () => {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="unit">Base Unit of Measure</Label>
-                          <Select
-                            value={formData.unit}
-                            onValueChange={(value) => setFormData({ ...formData, unit: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PRODUCT_UNITS.map((unit) => (
-                                <SelectItem key={unit} value={unit}>
-                                  {unit}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between font-normal"
+                              >
+                                {formData.unit ? (BASE_UOM_OPTIONS.find(u => u.value === formData.unit)?.label || formData.unit) : "Select UOM..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search UOM..." />
+                                <CommandList>
+                                  <CommandEmpty>No UOM found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {BASE_UOM_OPTIONS.map((uom) => (
+                                      <CommandItem
+                                        key={uom.value}
+                                        value={uom.label}
+                                        onSelect={() => setFormData({ ...formData, unit: uom.value })}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            formData.unit === uom.value ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {uom.label}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1993,37 +2047,7 @@ const Products = () => {
                                   <CommandList>
                                     <CommandEmpty>No UOM found.</CommandEmpty>
                                     <CommandGroup>
-                                      {[
-                                        { value: 'EA', label: 'EA - Each' },
-                                        { value: 'PC', label: 'PC - Piece' },
-                                        { value: 'CS', label: 'CS - Case' },
-                                        { value: 'CTN', label: 'CTN - Carton' },
-                                        { value: 'BX', label: 'BX - Box' },
-                                        { value: 'PK', label: 'PK - Pack' },
-                                        { value: 'PLA', label: 'PLA - Pallet' },
-                                        { value: 'DZ', label: 'DZ - Dozen' },
-                                        { value: 'KG', label: 'KG - Kilogram' },
-                                        { value: 'LB', label: 'LB - Pound' },
-                                        { value: 'OZ', label: 'OZ - Ounce' },
-                                        { value: 'G', label: 'G - Gram' },
-                                        { value: 'L', label: 'L - Liter' },
-                                        { value: 'ML', label: 'ML - Milliliter' },
-                                        { value: 'GAL', label: 'GAL - Gallon' },
-                                        { value: 'QT', label: 'QT - Quart' },
-                                        { value: 'FT', label: 'FT - Foot' },
-                                        { value: 'IN', label: 'IN - Inch' },
-                                        { value: 'M', label: 'M - Meter' },
-                                        { value: 'CM', label: 'CM - Centimeter' },
-                                        { value: 'RL', label: 'RL - Roll' },
-                                        { value: 'SET', label: 'SET - Set' },
-                                        { value: 'BAG', label: 'BAG - Bag' },
-                                        { value: 'BTL', label: 'BTL - Bottle' },
-                                        { value: 'CAN', label: 'CAN - Can' },
-                                        { value: 'JAR', label: 'JAR - Jar' },
-                                        { value: 'TUB', label: 'TUB - Tub' },
-                                        { value: 'BDL', label: 'BDL - Bundle' },
-                                        { value: 'PR', label: 'PR - Pair' },
-                                      ].map((uom) => (
+                                      {BASE_UOM_OPTIONS.map((uom) => (
                                         <CommandItem
                                           key={uom.value}
                                           value={uom.label}
