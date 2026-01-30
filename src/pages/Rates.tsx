@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -38,6 +40,14 @@ import { Kbd } from '@/components/ui/kbd';
 import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
+const RATE_COLUMNS: ColumnDefinition[] = [
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'rate', label: 'Rate', defaultVisible: true },
+  { key: 'description', label: 'Description', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
 interface TaxRate {
   id: string;
   name: string;
@@ -55,6 +65,16 @@ const Rates = () => {
   const [loading, setLoading] = useState(true);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Column visibility
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('rates', RATE_COLUMNS);
   
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -284,6 +304,14 @@ const Rates = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={RATE_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled('tax_rate')}
                 exportEnabled={isExportEnabled('tax_rate')}
@@ -318,29 +346,37 @@ const Rates = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
+                  {isColumnVisible('name') && <TableHead>Name</TableHead>}
+                  {isColumnVisible('rate') && <TableHead className="text-right">Rate</TableHead>}
+                  {isColumnVisible('description') && <TableHead>Description</TableHead>}
+                  {isColumnVisible('status') && <TableHead>Status</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {taxRates.map((rate) => (
                   <TableRow key={rate.id}>
-                    <TableCell className="font-medium">
-                      {rate.name}
-                      {rate.is_default && (
-                        <Badge variant="secondary" className="ml-2">Default</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{rate.rate}%</TableCell>
-                    <TableCell className="text-muted-foreground">{rate.description || '-'}</TableCell>
-                    <TableCell>
-                      <Badge className={rate.is_active ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'}>
-                        {rate.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
+                    {isColumnVisible('name') && (
+                      <TableCell className="font-medium">
+                        {rate.name}
+                        {rate.is_default && (
+                          <Badge variant="secondary" className="ml-2">Default</Badge>
+                        )}
+                      </TableCell>
+                    )}
+                    {isColumnVisible('rate') && (
+                      <TableCell className="text-right font-mono">{rate.rate}%</TableCell>
+                    )}
+                    {isColumnVisible('description') && (
+                      <TableCell className="text-muted-foreground">{rate.description || '-'}</TableCell>
+                    )}
+                    {isColumnVisible('status') && (
+                      <TableCell>
+                        <Badge className={rate.is_active ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'}>
+                          {rate.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button

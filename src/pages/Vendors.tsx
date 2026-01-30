@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
@@ -46,6 +48,19 @@ import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 
+const VENDOR_COLUMNS: ColumnDefinition[] = [
+  { key: 'vendor_id', label: 'ID', defaultVisible: true },
+  { key: 'name', label: 'Name', defaultVisible: true },
+  { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'contact_name', label: 'Contact', defaultVisible: true },
+  { key: 'email', label: 'Email', defaultVisible: true },
+  { key: 'phone', label: 'Phone', defaultVisible: true },
+  { key: 'city', label: 'City', defaultVisible: false },
+  { key: 'state', label: 'State', defaultVisible: false },
+  { key: 'website', label: 'Website', defaultVisible: false },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
 interface Vendor {
   id: string;
   vendor_id: string;
@@ -72,11 +87,13 @@ const VendorTable = ({
   onView,
   onEdit,
   onDelete,
+  isColumnVisible,
 }: {
   vendors: Vendor[];
   onView: (vendor: Vendor) => void;
   onEdit: (vendor: Vendor) => void;
   onDelete: (id: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
@@ -114,61 +131,106 @@ const VendorTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="ID"
-                sortKey="vendor_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['vendor_id']}
-                onFilter={(value) => setFilter('vendor_id', value)}
-                className="w-24"
-              />
-              <SortableTableHead
-                label="Name"
-                sortKey="name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['name']}
-                onFilter={(value) => setFilter('name', value)}
-              />
-              <SortableTableHead
-                label="Type"
-                sortKey="type"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['type']}
-                onFilter={(value) => setFilter('type', value)}
-              />
-              <SortableTableHead
-                label="Contact"
-                sortKey="contact_name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['contact_name']}
-                onFilter={(value) => setFilter('contact_name', value)}
-              />
-              <SortableTableHead
-                label="Email"
-                sortKey="email"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['email']}
-                onFilter={(value) => setFilter('email', value)}
-              />
-              <SortableTableHead
-                label="Phone"
-                sortKey="phone"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['phone']}
-                onFilter={(value) => setFilter('phone', value)}
-              />
+              {isColumnVisible('vendor_id') && (
+                <SortableTableHead
+                  label="ID"
+                  sortKey="vendor_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['vendor_id']}
+                  onFilter={(value) => setFilter('vendor_id', value)}
+                  className="w-24"
+                />
+              )}
+              {isColumnVisible('name') && (
+                <SortableTableHead
+                  label="Name"
+                  sortKey="name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['name']}
+                  onFilter={(value) => setFilter('name', value)}
+                />
+              )}
+              {isColumnVisible('type') && (
+                <SortableTableHead
+                  label="Type"
+                  sortKey="type"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['type']}
+                  onFilter={(value) => setFilter('type', value)}
+                />
+              )}
+              {isColumnVisible('contact_name') && (
+                <SortableTableHead
+                  label="Contact"
+                  sortKey="contact_name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['contact_name']}
+                  onFilter={(value) => setFilter('contact_name', value)}
+                />
+              )}
+              {isColumnVisible('email') && (
+                <SortableTableHead
+                  label="Email"
+                  sortKey="email"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['email']}
+                  onFilter={(value) => setFilter('email', value)}
+                />
+              )}
+              {isColumnVisible('phone') && (
+                <SortableTableHead
+                  label="Phone"
+                  sortKey="phone"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['phone']}
+                  onFilter={(value) => setFilter('phone', value)}
+                />
+              )}
+              {isColumnVisible('city') && (
+                <SortableTableHead
+                  label="City"
+                  sortKey="city"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['city']}
+                  onFilter={(value) => setFilter('city', value)}
+                />
+              )}
+              {isColumnVisible('state') && (
+                <SortableTableHead
+                  label="State"
+                  sortKey="state"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['state']}
+                  onFilter={(value) => setFilter('state', value)}
+                />
+              )}
+              {isColumnVisible('website') && (
+                <SortableTableHead
+                  label="Website"
+                  sortKey="website"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['website']}
+                  onFilter={(value) => setFilter('website', value)}
+                />
+              )}
               <SortableTableHead
                 label="Actions"
                 sortKey=""
@@ -183,19 +245,40 @@ const VendorTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   No vendors match your filters
                 </TableCell>
               </TableRow>
             ) : (
               sortedAndFilteredData.map((vendor) => (
                 <TableRow key={vendor.id}>
-                  <TableCell className="font-mono text-sm">{vendor.vendor_id}</TableCell>
-                  <TableCell className="font-medium">{vendor.name}</TableCell>
-                  <TableCell>{vendor.type}</TableCell>
-                  <TableCell>{vendor.contact_name || '-'}</TableCell>
-                  <TableCell>{vendor.email || '-'}</TableCell>
-                  <TableCell>{vendor.phone || '-'}</TableCell>
+                  {isColumnVisible('vendor_id') && (
+                    <TableCell className="font-mono text-sm">{vendor.vendor_id}</TableCell>
+                  )}
+                  {isColumnVisible('name') && (
+                    <TableCell className="font-medium">{vendor.name}</TableCell>
+                  )}
+                  {isColumnVisible('type') && (
+                    <TableCell>{vendor.type}</TableCell>
+                  )}
+                  {isColumnVisible('contact_name') && (
+                    <TableCell>{vendor.contact_name || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('email') && (
+                    <TableCell>{vendor.email || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('phone') && (
+                    <TableCell>{vendor.phone || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('city') && (
+                    <TableCell>{vendor.city || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('state') && (
+                    <TableCell>{vendor.state || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('website') && (
+                    <TableCell>{vendor.website || '-'}</TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button
@@ -251,6 +334,16 @@ const Vendors = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState('0001');
   const [isLookingUp, setIsLookingUp] = useState(false);
+  
+  // Column visibility
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('vendors', VENDOR_COLUMNS);
   
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -542,6 +635,14 @@ const Vendors = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={VENDOR_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled('vendor')}
                 exportEnabled={isExportEnabled('vendor')}
@@ -821,6 +922,7 @@ const Vendors = () => {
             }}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            isColumnVisible={isColumnVisible}
           />
         )}
       </main>
