@@ -1462,9 +1462,13 @@ const Products = () => {
                   <div className="flex items-start gap-1 absolute top-4 right-16">
                     <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
                       <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="opacity-70 hover:opacity-100" title="AI Autofill">
+                        <button
+                          type="button"
+                          className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          title="AI Autofill"
+                        >
                           <Wand2 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-80" align="end">
                         <div className="space-y-3">
