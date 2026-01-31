@@ -625,17 +625,32 @@ const Orders = () => {
       'Total': Number(viewOrder.subtotal || 0).toFixed(2),
     } as any);
     
-    if (viewTaxRates.length > 0) {
-      viewTaxRates.forEach(vt => {
-        const rateDisplay = (vt.tax_rate as any).rate_type === 'flat' 
-          ? `$${vt.tax_rate.rate.toFixed(2)}` 
-          : `${vt.tax_rate.rate}%`;
+    // Add percentage-based taxes
+    const percentTaxes = viewTaxRates.filter(vt => (vt.tax_rate as any).rate_type !== 'flat');
+    const flatFees = viewTaxRates.filter(vt => (vt.tax_rate as any).rate_type === 'flat');
+    
+    if (percentTaxes.length > 0) {
+      percentTaxes.forEach(vt => {
         data.push({
           'Line #': '',
           'Product ID': '',
           'Product Name': '',
           'Quantity': '',
-          'Unit Price': `${vt.tax_rate.name} (${rateDisplay}):`,
+          'Unit Price': `${vt.tax_rate.name} (${vt.tax_rate.rate}%):`,
+          'Total': Number(vt.tax_amount || 0).toFixed(2),
+        } as any);
+      });
+    }
+    
+    // Add flat fees after taxes
+    if (flatFees.length > 0) {
+      flatFees.forEach(vt => {
+        data.push({
+          'Line #': '',
+          'Product ID': '',
+          'Product Name': '',
+          'Quantity': '',
+          'Unit Price': `${vt.tax_rate.name} (Fee):`,
           'Total': Number(vt.tax_amount || 0).toFixed(2),
         } as any);
       });
@@ -1677,22 +1692,34 @@ const Orders = () => {
                   <span className="text-muted-foreground">Subtotal:</span>
                   <span className="font-mono">${calculateTotal().toFixed(2)}</span>
                 </div>
-                {selectedTaxRates.map((sr) => (
+                {/* Percentage-based taxes */}
+                {selectedTaxRates.filter(sr => sr.rate_type === 'percent').map((sr) => (
                   <div key={sr.tax_rate_id} className="flex justify-end gap-8 text-sm">
                     <span className="text-muted-foreground">
-                      {sr.name} ({sr.rate_type === 'flat' ? `$${sr.rate.toFixed(2)}` : `${sr.rate}%`}):
+                      {sr.name} ({sr.rate}%):
                     </span>
                     <span className="font-mono">
-                      ${(sr.rate_type === 'flat' ? sr.rate : calculateTotal() * sr.rate / 100).toFixed(2)}
+                      ${(calculateTotal() * sr.rate / 100).toFixed(2)}
                     </span>
                   </div>
                 ))}
-                {selectedTaxRates.length === 0 && (
+                {selectedTaxRates.filter(sr => sr.rate_type === 'percent').length === 0 && (
                   <div className="flex justify-end gap-8 text-sm">
                     <span className="text-muted-foreground">Tax:</span>
                     <span className="font-mono">$0.00</span>
                   </div>
                 )}
+                {/* Flat fees - shown after taxes */}
+                {selectedTaxRates.filter(sr => sr.rate_type === 'flat').map((sr) => (
+                  <div key={sr.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                    <span className="text-muted-foreground">
+                      {sr.name} (Fee):
+                    </span>
+                    <span className="font-mono">
+                      ${sr.rate.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
                 <div className="flex justify-end gap-8 text-base font-semibold">
                   <span>Total:</span>
                   <span className="font-mono">${calculateGrandTotal().toFixed(2)}</span>
@@ -2052,20 +2079,30 @@ const Orders = () => {
                       <span className="text-muted-foreground">Subtotal:</span>
                       <span className="font-mono">${Number(viewOrder.subtotal || 0).toFixed(2)}</span>
                     </div>
-                    {viewTaxRates.map((vt) => (
+                    {/* Percentage-based taxes */}
+                    {viewTaxRates.filter(vt => (vt.tax_rate as any).rate_type !== 'flat').map((vt) => (
                       <div key={vt.tax_rate_id} className="flex justify-end gap-8 text-sm">
                         <span className="text-muted-foreground">
-                          {vt.tax_rate.name} ({(vt.tax_rate as any).rate_type === 'flat' ? `$${vt.tax_rate.rate.toFixed(2)}` : `${vt.tax_rate.rate}%`}):
+                          {vt.tax_rate.name} ({vt.tax_rate.rate}%):
                         </span>
                         <span className="font-mono">${Number(vt.tax_amount || 0).toFixed(2)}</span>
                       </div>
                     ))}
-                    {viewTaxRates.length === 0 && (
+                    {viewTaxRates.filter(vt => (vt.tax_rate as any).rate_type !== 'flat').length === 0 && (
                       <div className="flex justify-end gap-8 text-sm">
                         <span className="text-muted-foreground">Tax:</span>
                         <span className="font-mono">$0.00</span>
                       </div>
                     )}
+                    {/* Flat fees - shown after taxes */}
+                    {viewTaxRates.filter(vt => (vt.tax_rate as any).rate_type === 'flat').map((vt) => (
+                      <div key={vt.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                        <span className="text-muted-foreground">
+                          {vt.tax_rate.name} (Fee):
+                        </span>
+                        <span className="font-mono">${Number(vt.tax_amount || 0).toFixed(2)}</span>
+                      </div>
+                    ))}
                     <div className="flex justify-end gap-8 text-base font-semibold">
                       <span>Total:</span>
                       <span className="font-mono">${Number(viewOrder.total_amount || 0).toFixed(2)}</span>
