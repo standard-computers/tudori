@@ -210,6 +210,16 @@ const SalesOrders = () => {
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
   const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
 
+  // Column visibility for table
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('sales_orders', SALES_ORDER_COLUMNS);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -780,6 +790,14 @@ const SalesOrders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={SALES_ORDER_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <Button onClick={handleCreateClick} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
                 Create SO
@@ -808,7 +826,8 @@ const SalesOrders = () => {
           <SalesOrdersTable 
             orders={orders} 
             onViewOrder={handleViewOrder} 
-            onDeleteOrder={handleDeleteOrder} 
+            onDeleteOrder={handleDeleteOrder}
+            isColumnVisible={isColumnVisible}
           />
         )}
       </main>
@@ -1470,10 +1489,12 @@ function SalesOrdersTable({
   orders,
   onViewOrder,
   onDeleteOrder,
+  isColumnVisible,
 }: {
   orders: SalesOrder[];
   onViewOrder: (order: SalesOrder) => void;
   onDeleteOrder: (id: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }) {
   const {
     sortConfig,
@@ -1484,46 +1505,25 @@ function SalesOrdersTable({
     sortedAndFilteredData,
   } = useTableSort(orders, 'so_number', 'desc');
 
-  const {
-    visibleColumns,
-    isColumnVisible,
-    toggleColumn,
-    resetToDefaults,
-    showAll,
-    hideAll,
-  } = useColumnVisibility('sales_orders', SALES_ORDER_COLUMNS);
-
   const hasFilters = Object.values(filters).some((v) => v);
 
   return (
     <div className="space-y-0">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="flex items-center gap-2 flex-wrap">
-          {hasFilters && (
-            <>
-              <span className="text-sm text-muted-foreground">Active filters:</span>
-              {Object.entries(filters).map(([key, value]) =>
-                value ? (
-                  <Badge key={key} variant="secondary">
-                    {key}: {value}
-                  </Badge>
-                ) : null
-              )}
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                Clear all
-              </Button>
-            </>
+      {hasFilters && (
+        <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-b">
+          <span className="text-sm text-muted-foreground">Active filters:</span>
+          {Object.entries(filters).map(([key, value]) =>
+            value ? (
+              <Badge key={key} variant="secondary">
+                {key}: {value}
+              </Badge>
+            ) : null
           )}
+          <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+            Clear all
+          </Button>
         </div>
-        <ColumnToggle
-          columns={SALES_ORDER_COLUMNS}
-          visibleColumns={visibleColumns}
-          onToggleColumn={toggleColumn}
-          onResetToDefaults={resetToDefaults}
-          onShowAll={showAll}
-          onHideAll={hideAll}
-        />
-      </div>
+      )}
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
