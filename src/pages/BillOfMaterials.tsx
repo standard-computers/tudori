@@ -1019,7 +1019,7 @@ const BillOfMaterials = () => {
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>
               {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
@@ -1033,8 +1033,8 @@ const BillOfMaterials = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
+          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
               <TabsList className="shrink-0 mx-6">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="components">Components ({bomItems.length})</TabsTrigger>
@@ -1042,7 +1042,7 @@ const BillOfMaterials = () => {
                 <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
 
-              <div className="flex-1 px-6 pb-6">
+              <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
                 <TabsContent value="details" className="mt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
