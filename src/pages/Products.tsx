@@ -896,7 +896,6 @@ const Products = () => {
       .from('products')
       .select('id, product_id, name')
       .eq('company_id', companyId!)
-      .neq('category', 'Finished Goods')
       .order('name');
 
     if (error) {
