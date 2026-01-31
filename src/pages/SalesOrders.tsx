@@ -53,6 +53,7 @@ interface TaxRate {
   id: string;
   name: string;
   rate: number;
+  rate_type: string;
   is_default: boolean;
 }
 
@@ -60,6 +61,7 @@ interface SelectedTaxRate {
   tax_rate_id: string;
   name: string;
   rate: number;
+  rate_type: string;
 }
 
 interface SalesOrder {
@@ -337,7 +339,7 @@ const SalesOrders = () => {
   const fetchTaxRates = async () => {
     const { data } = await supabase
       .from('tax_rates')
-      .select('id, name, rate, is_default')
+      .select('id, name, rate, rate_type, is_default')
       .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name');
@@ -346,7 +348,7 @@ const SalesOrders = () => {
     // Set default tax rate in selected rates
     const defaultRate = data?.find(r => r.is_default);
     if (defaultRate) {
-      setSelectedTaxRates([{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }]);
+      setSelectedTaxRates([{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate, rate_type: defaultRate.rate_type || 'percent' }]);
     }
   };
 
@@ -427,7 +429,7 @@ const SalesOrders = () => {
     const defaultRate = taxRates.find(r => r.is_default);
     setFormData({ customer_id: '', location_id: '', bill_to_location_id: '', ledger_id: '', notes: '' });
     setOrderItems([]);
-    setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate }] : []);
+    setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate, rate_type: defaultRate.rate_type || 'percent' }] : []);
     setIsCreateDialogOpen(true);
   };
 
@@ -462,11 +464,21 @@ const SalesOrders = () => {
   };
 
   const calculateTotalTaxRate = () => {
-    return selectedTaxRates.reduce((sum, r) => sum + r.rate, 0);
+    // Only sum percentage rates
+    return selectedTaxRates.filter(r => r.rate_type === 'percent').reduce((sum, r) => sum + r.rate, 0);
   };
 
   const calculateTax = () => {
-    return calculateTotal() * (calculateTotalTaxRate() / 100);
+    const subtotal = calculateTotal();
+    let tax = 0;
+    selectedTaxRates.forEach(r => {
+      if (r.rate_type === 'flat') {
+        tax += r.rate;
+      } else {
+        tax += subtotal * (r.rate / 100);
+      }
+    });
+    return tax;
   };
 
   const calculateGrandTotal = () => {
@@ -476,7 +488,7 @@ const SalesOrders = () => {
   const addTaxRate = (taxRateId: string) => {
     const rate = taxRates.find(r => r.id === taxRateId);
     if (rate && !selectedTaxRates.find(sr => sr.tax_rate_id === taxRateId)) {
-      setSelectedTaxRates([...selectedTaxRates, { tax_rate_id: rate.id, name: rate.name, rate: rate.rate }]);
+      setSelectedTaxRates([...selectedTaxRates, { tax_rate_id: rate.id, name: rate.name, rate: rate.rate, rate_type: rate.rate_type || 'percent' }]);
     }
   };
 
@@ -655,6 +667,7 @@ const SalesOrders = () => {
       tax_rate_id: vt.tax_rate_id,
       name: vt.tax_rate.name,
       rate: vt.tax_rate.rate,
+      rate_type: (vt.tax_rate as any).rate_type || 'percent',
     })));
     setIsEditingTaxRates(true);
   };
@@ -662,7 +675,7 @@ const SalesOrders = () => {
   const addEditTaxRate = (taxRateId: string) => {
     const rate = taxRates.find(r => r.id === taxRateId);
     if (rate && !editTaxRates.find(er => er.tax_rate_id === taxRateId)) {
-      setEditTaxRates([...editTaxRates, { tax_rate_id: rate.id, name: rate.name, rate: rate.rate }]);
+      setEditTaxRates([...editTaxRates, { tax_rate_id: rate.id, name: rate.name, rate: rate.rate, rate_type: rate.rate_type || 'percent' }]);
     }
   };
 
@@ -1011,8 +1024,12 @@ const SalesOrders = () => {
                 </div>
                 {selectedTaxRates.map((sr) => (
                   <div key={sr.tax_rate_id} className="flex justify-end gap-8 text-sm">
-                    <span className="text-muted-foreground">{sr.name} ({sr.rate}%):</span>
-                    <span className="font-mono">${(calculateTotal() * sr.rate / 100).toFixed(2)}</span>
+                    <span className="text-muted-foreground">
+                      {sr.name} ({sr.rate_type === 'flat' ? `$${sr.rate.toFixed(2)}` : `${sr.rate}%`}):
+                    </span>
+                    <span className="font-mono">
+                      ${(sr.rate_type === 'flat' ? sr.rate : calculateTotal() * sr.rate / 100).toFixed(2)}
+                    </span>
                   </div>
                 ))}
                 {selectedTaxRates.length === 0 && (
@@ -1039,7 +1056,7 @@ const SalesOrders = () => {
                     <SelectContent>
                       {availableTaxRates.map((rate) => (
                         <SelectItem key={rate.id} value={rate.id}>
-                          {rate.name} ({rate.rate}%)
+                          {rate.name} ({rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1055,7 +1072,7 @@ const SalesOrders = () => {
                 <div className="flex flex-wrap gap-2">
                   {selectedTaxRates.map((sr) => (
                     <Badge key={sr.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
-                      {sr.name} ({sr.rate}%)
+                      {sr.name} ({sr.rate_type === 'flat' ? `$${sr.rate.toFixed(2)}` : `${sr.rate}%`})
                       <button
                         type="button"
                         onClick={() => removeTaxRate(sr.tax_rate_id)}
@@ -1068,9 +1085,11 @@ const SalesOrders = () => {
                 </div>
               )}
 
-              <div className="text-sm text-muted-foreground">
-                Combined tax rate: {calculateTotalTaxRate().toFixed(2)}%
-              </div>
+              {selectedTaxRates.some(r => r.rate_type === 'percent') && (
+                <div className="text-sm text-muted-foreground">
+                  Combined percentage rate: {calculateTotalTaxRate().toFixed(2)}%
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="availability" className="space-y-4 mt-4">
@@ -1319,7 +1338,9 @@ const SalesOrders = () => {
                     </div>
                     {viewTaxRates.map((vt) => (
                       <div key={vt.tax_rate_id} className="flex justify-end gap-8 text-sm">
-                        <span className="text-muted-foreground">{vt.tax_rate.name} ({vt.tax_rate.rate}%):</span>
+                        <span className="text-muted-foreground">
+                          {vt.tax_rate.name} ({(vt.tax_rate as any).rate_type === 'flat' ? `$${vt.tax_rate.rate.toFixed(2)}` : `${vt.tax_rate.rate}%`}):
+                        </span>
                         <span className="font-mono">${Number(vt.tax_amount || 0).toFixed(2)}</span>
                       </div>
                     ))}
@@ -1359,7 +1380,7 @@ const SalesOrders = () => {
                             <SelectContent>
                               {availableEditTaxRates.map((rate) => (
                                 <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.name} ({rate.rate}%)
+                                  {rate.name} ({rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1373,7 +1394,7 @@ const SalesOrders = () => {
                         <div className="flex flex-wrap gap-2">
                           {editTaxRates.map((er) => (
                             <Badge key={er.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
-                              {er.name} ({er.rate}%)
+                              {er.name} ({er.rate_type === 'flat' ? `$${er.rate.toFixed(2)}` : `${er.rate}%`})
                               <button
                                 type="button"
                                 onClick={() => removeEditTaxRate(er.tax_rate_id)}
@@ -1402,7 +1423,7 @@ const SalesOrders = () => {
                       <div className="flex flex-wrap gap-2">
                         {viewTaxRates.map((vt) => (
                           <Badge key={vt.tax_rate_id} variant="outline">
-                            {vt.tax_rate.name} ({vt.tax_rate.rate}%)
+                            {vt.tax_rate.name} ({(vt.tax_rate as any).rate_type === 'flat' ? `$${vt.tax_rate.rate.toFixed(2)}` : `${vt.tax_rate.rate}%`})
                           </Badge>
                         ))}
                       </div>
