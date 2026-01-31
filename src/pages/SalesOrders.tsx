@@ -753,13 +753,56 @@ const SalesOrders = () => {
     }
   };
 
-  const handleDeleteOrder = async (id: string) => {
+  const handleDeleteOrder = async (order: SalesOrder) => {
+    // Check if status prevents deletion
+    const restrictedStatuses = ['confirmed', 'shipped', 'delivered'];
+    if (restrictedStatuses.includes(order.status)) {
+      toast.error(`Cannot delete sales order with status "${order.status}"`);
+      return;
+    }
+
+    // Check for linked outbound deliveries
+    const { data: linkedDeliveries } = await supabase
+      .from('outbound_deliveries')
+      .select('delivery_number')
+      .eq('sales_order_id', order.id)
+      .limit(1);
+
+    if (linkedDeliveries && linkedDeliveries.length > 0) {
+      toast.error(`Cannot delete: Sales order is linked to outbound delivery ${linkedDeliveries[0].delivery_number}`);
+      return;
+    }
+
+    // Check for linked goods issues
+    const { data: linkedGoodsIssues } = await supabase
+      .from('goods_issues')
+      .select('issue_number')
+      .eq('sales_order_id', order.id)
+      .limit(1);
+
+    if (linkedGoodsIssues && linkedGoodsIssues.length > 0) {
+      toast.error(`Cannot delete: Sales order is linked to goods issue ${linkedGoodsIssues[0].issue_number}`);
+      return;
+    }
+
+    // Check for linked invoices
+    const { data: linkedInvoices } = await supabase
+      .from('invoices')
+      .select('invoice_number')
+      .eq('sales_order_id', order.id)
+      .limit(1);
+
+    if (linkedInvoices && linkedInvoices.length > 0) {
+      toast.error(`Cannot delete: Sales order is linked to invoice ${linkedInvoices[0].invoice_number}`);
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this sales order?')) return;
 
     const { error } = await supabase
       .from('sales_orders' as any)
       .delete()
-      .eq('id', id);
+      .eq('id', order.id);
 
     if (error) {
       toast.error('Failed to delete sales order');
@@ -1497,7 +1540,7 @@ function SalesOrdersTable({
 }: {
   orders: SalesOrder[];
   onViewOrder: (order: SalesOrder) => void;
-  onDeleteOrder: (id: string) => void;
+  onDeleteOrder: (order: SalesOrder) => void;
   isColumnVisible: (key: string) => boolean;
 }) {
   const {
@@ -1649,13 +1692,15 @@ function SalesOrdersTable({
                           <Eye className="w-4 h-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onDeleteOrder(order.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
+                        {!['confirmed', 'shipped', 'delivered'].includes(order.status) && (
+                          <DropdownMenuItem
+                            onClick={() => onDeleteOrder(order)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
