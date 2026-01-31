@@ -42,7 +42,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical, Copy } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical, Copy, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
@@ -347,6 +348,7 @@ const BillOfMaterials = () => {
   });
   const [newStepItem, setNewStepItem] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -1465,7 +1467,7 @@ const BillOfMaterials = () => {
                         <TableRow>
                           <TableCell className="font-medium w-12">#</TableCell>
                           <TableCell className="font-medium">Step</TableCell>
-                          <TableCell className="font-medium">Components</TableCell>
+                          <TableCell className="font-medium w-24">Components</TableCell>
                           <TableCell className="font-medium">Location</TableCell>
                           <TableCell className="font-medium">Bin</TableCell>
                           <TableCell className="font-medium w-20">Duration</TableCell>
@@ -1480,65 +1482,111 @@ const BillOfMaterials = () => {
                             </TableCell>
                           </TableRow>
                         ) : (
-                          bomSteps.map(step => (
-                            <TableRow key={step.step_number}>
-                              <TableCell className="font-mono text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <GripVertical className="w-3 h-3 text-muted-foreground/50" />
-                                  {step.step_number}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{step.name}</div>
-                                  {step.description && (
-                                    <div className="text-sm text-muted-foreground">{step.description}</div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {step.items && step.items.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {step.items.map(item => (
-                                      <Badge key={item.product_id} variant="outline" className="text-xs">
-                                        {item.product?.product_id}: {item.quantity}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell>{step.location?.name || '-'}</TableCell>
-                              <TableCell>{step.bin ? `${step.bin.bin_id} - ${step.bin.name}` : '-'}</TableCell>
-                              <TableCell>
-                                {step.estimated_duration_minutes ? `${step.estimated_duration_minutes} min` : '-'}
-                              </TableCell>
-                              {!isViewMode && (
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleEditStep(bomSteps.findIndex(s => s.step_number === step.step_number))}
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleRemoveStep(step.step_number)}
-                                      className="text-destructive hover:text-destructive"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          ))
+                          bomSteps.map(step => {
+                            const isExpanded = expandedSteps.has(step.step_number);
+                            const hasItems = step.items && step.items.length > 0;
+                            const toggleExpanded = () => {
+                              if (!hasItems) return;
+                              setExpandedSteps(prev => {
+                                const next = new Set(prev);
+                                if (next.has(step.step_number)) {
+                                  next.delete(step.step_number);
+                                } else {
+                                  next.add(step.step_number);
+                                }
+                                return next;
+                              });
+                            };
+
+                            return (
+                              <Collapsible key={step.step_number} open={isExpanded} onOpenChange={() => hasItems && toggleExpanded()} asChild>
+                                <>
+                                  <TableRow 
+                                    className={`${hasItems ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                                    onClick={toggleExpanded}
+                                  >
+                                    <TableCell className="font-mono text-sm text-muted-foreground">
+                                      <div className="flex items-center gap-1">
+                                        <GripVertical className="w-3 h-3 text-muted-foreground/50" />
+                                        {step.step_number}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div>
+                                        <div className="font-medium">{step.name}</div>
+                                        {step.description && (
+                                          <div className="text-sm text-muted-foreground">{step.description}</div>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                      {hasItems ? (
+                                        <CollapsibleTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-7 px-2 gap-1">
+                                            <span className="text-xs">{step.items!.length} item{step.items!.length !== 1 ? 's' : ''}</span>
+                                            <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                          </Button>
+                                        </CollapsibleTrigger>
+                                      ) : (
+                                        <span className="text-muted-foreground text-sm">-</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>{step.location?.name || '-'}</TableCell>
+                                    <TableCell>{step.bin ? `${step.bin.bin_id} - ${step.bin.name}` : '-'}</TableCell>
+                                    <TableCell>
+                                      {step.estimated_duration_minutes ? `${step.estimated_duration_minutes} min` : '-'}
+                                    </TableCell>
+                                    {!isViewMode && (
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEditStep(bomSteps.findIndex(s => s.step_number === step.step_number))}
+                                          >
+                                            <Pencil className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleRemoveStep(step.step_number)}
+                                            className="text-destructive hover:text-destructive"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    )}
+                                  </TableRow>
+                                  <CollapsibleContent asChild>
+                                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                      <TableCell colSpan={isViewMode ? 6 : 7} className="py-2">
+                                        <div className="pl-8">
+                                          <div className="text-xs font-medium text-muted-foreground mb-2">Components Used:</div>
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                            {step.items?.map(item => (
+                                              <div key={item.product_id} className="flex items-center justify-between bg-background rounded px-3 py-2 border">
+                                                <div className="min-w-0">
+                                                  <div className="font-medium text-sm truncate">{item.product?.name || 'Unknown'}</div>
+                                                  <div className="text-xs text-muted-foreground">{item.product?.product_id}</div>
+                                                </div>
+                                                <div className="ml-3 text-right shrink-0">
+                                                  <div className="font-semibold">{item.quantity}</div>
+                                                  <div className="text-xs text-muted-foreground">{item.product?.unit || 'units'}</div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  </CollapsibleContent>
+                                </>
+                              </Collapsible>
+                            );
+                          })
                         )}
                       </TableBody>
                     </Table>
