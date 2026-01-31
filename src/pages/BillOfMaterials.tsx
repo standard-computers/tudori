@@ -1113,31 +1113,25 @@ const BillOfMaterials = () => {
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-3xl max-h-[85vh]'}`}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader className="shrink-0">
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle>
-                  {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
-                </DialogTitle>
-                <DialogDescription>
-                  {isViewMode 
-                    ? 'View BoM details' 
-                    : isEditing 
-                      ? 'Update BoM details' 
-                      : 'Define the components and steps needed to produce a product'}
-                </DialogDescription>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 -mt-1 mr-6"
-                onClick={() => setIsMaximized(!isMaximized)}
-              >
-                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-            </div>
+            <DialogTitle>
+              {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
+            </DialogTitle>
+            <DialogDescription>
+              {isViewMode 
+                ? 'View BoM details' 
+                : isEditing 
+                  ? 'Update BoM details' 
+                  : 'Define the components and steps needed to produce a product'}
+            </DialogDescription>
           </DialogHeader>
 
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
