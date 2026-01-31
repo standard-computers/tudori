@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical, Copy, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical, Copy, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { Badge } from '@/components/ui/badge';
@@ -372,6 +372,7 @@ const BillOfMaterials = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextBomId, setNextBomId] = useState('BOM-0001');
   const [activeTab, setActiveTab] = useState('details');
@@ -1112,18 +1113,31 @@ const BillOfMaterials = () => {
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-3xl max-h-[85vh]'}`}>
           <DialogHeader className="shrink-0">
-            <DialogTitle>
-              {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
-            </DialogTitle>
-            <DialogDescription>
-              {isViewMode 
-                ? 'View BoM details' 
-                : isEditing 
-                  ? 'Update BoM details' 
-                  : 'Define the components and steps needed to produce a product'}
-            </DialogDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>
+                  {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
+                </DialogTitle>
+                <DialogDescription>
+                  {isViewMode 
+                    ? 'View BoM details' 
+                    : isEditing 
+                      ? 'Update BoM details' 
+                      : 'Define the components and steps needed to produce a product'}
+                </DialogDescription>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -mt-1 mr-6"
+                onClick={() => setIsMaximized(!isMaximized)}
+              >
+                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </div>
           </DialogHeader>
 
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
