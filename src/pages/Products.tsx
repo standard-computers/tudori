@@ -1459,7 +1459,7 @@ const Products = () => {
                   {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
                 {!isEditing && (
-                  <div className="flex items-start gap-1 absolute top-4 right-16">
+                  <div className="flex items-start gap-3 absolute top-4 right-[4.5rem]">
                     <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
                       <PopoverTrigger asChild>
                         <button
