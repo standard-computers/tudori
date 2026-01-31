@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +30,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
@@ -40,7 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -60,6 +61,7 @@ interface ProductionOrder {
   product?: { name: string; product_id: string };
   location?: { name: string; location_id: string };
   bom?: { name: string; bom_id: string; output_quantity: number };
+  total_duration?: number; // Total estimated minutes from BOM steps
 }
 
 interface BillOfMaterial {
@@ -84,6 +86,25 @@ interface BomItem {
   quantity: number;
   product?: { name: string; product_id: string };
 }
+
+interface InventoryRecord {
+  id: string;
+  product_id: string;
+  quantity: number;
+  bin_id: string | null;
+  product?: { name: string; product_id: string };
+  bin?: { name: string; bin_id: string } | null;
+}
+
+// Format duration in hours and minutes
+const formatDuration = (minutes: number | undefined | null): string => {
+  if (!minutes) return '-';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${mins}m`;
+};
 
 const STATUSES = ['pending', 'in_progress', 'completed', 'cancelled'];
 
@@ -193,6 +214,16 @@ const ProductionOrderTable = ({
                 className="w-32"
               />
               <SortableTableHead
+                label="Duration"
+                sortKey="total_duration"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['total_duration']}
+                onFilter={(value) => setFilter('total_duration', value)}
+                className="w-28"
+              />
+              <SortableTableHead
                 label="Scheduled"
                 sortKey="scheduled_date"
                 currentSortKey={sortConfig.key}
@@ -216,7 +247,7 @@ const ProductionOrderTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No production orders found
                 </TableCell>
               </TableRow>
@@ -231,6 +262,14 @@ const ProductionOrderTable = ({
                     <Badge className={getStatusColor(order.status)}>
                       {order.status.replace('_', ' ')}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {order.total_duration ? (
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatDuration(order.total_duration)}</span>
+                      </div>
+                    ) : '-'}
                   </TableCell>
                   <TableCell>
                     {order.scheduled_date ? format(new Date(order.scheduled_date), 'MMM d, yyyy') : '-'}
@@ -284,6 +323,8 @@ const Production = () => {
   const [boms, setBoms] = useState<BillOfMaterial[]>([]);
   const [bomItems, setBomItems] = useState<BomItem[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+  const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
+  const [bomDurations, setBomDurations] = useState<Record<string, number>>({});
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -371,7 +412,33 @@ const Production = () => {
       toast.error('Failed to load production orders');
       return;
     }
-    setOrders(data || []);
+
+    // Fetch bom_steps durations for all unique bom_ids
+    const bomIds = [...new Set((data || []).filter(o => o.bom_id).map(o => o.bom_id))];
+    if (bomIds.length > 0) {
+      const { data: stepsData } = await supabase
+        .from('bom_steps')
+        .select('bom_id, estimated_duration_minutes')
+        .in('bom_id', bomIds);
+
+      // Sum durations by bom_id
+      const durations: Record<string, number> = {};
+      (stepsData || []).forEach(step => {
+        if (step.bom_id && step.estimated_duration_minutes) {
+          durations[step.bom_id] = (durations[step.bom_id] || 0) + step.estimated_duration_minutes;
+        }
+      });
+      setBomDurations(durations);
+
+      // Add durations to orders
+      const ordersWithDuration = (data || []).map(order => ({
+        ...order,
+        total_duration: order.bom_id ? durations[order.bom_id] || 0 : 0,
+      }));
+      setOrders(ordersWithDuration);
+    } else {
+      setOrders(data || []);
+    }
   };
 
   const fetchBoms = async () => {
@@ -432,6 +499,64 @@ const Production = () => {
       setBomItems([]);
     }
   };
+
+  // Fetch inventory for selected production location
+  const fetchLocationInventory = async (locationId: string) => {
+    const { data } = await supabase
+      .from('inventory')
+      .select(`
+        id,
+        product_id,
+        quantity,
+        bin_id,
+        product:products(name, product_id),
+        bin:bins(name, bin_id)
+      `)
+      .eq('location_id', locationId)
+      .gt('quantity', 0)
+      .order('product_id');
+    setLocationInventory((data as any) || []);
+  };
+
+  // Effect to fetch inventory when location changes in dialog
+  useEffect(() => {
+    if (isDialogOpen && formData.location_id) {
+      fetchLocationInventory(formData.location_id);
+    } else {
+      setLocationInventory([]);
+    }
+  }, [isDialogOpen, formData.location_id]);
+
+  // Calculate availability for BOM items
+  const itemAvailability = useMemo(() => {
+    const availability: Record<string, { available: number; required: number; sufficient: boolean }> = {};
+    
+    // Aggregate inventory by product
+    const inventoryByProduct: Record<string, number> = {};
+    locationInventory.forEach(inv => {
+      inventoryByProduct[inv.product_id] = (inventoryByProduct[inv.product_id] || 0) + inv.quantity;
+    });
+    
+    // Check each BOM item
+    bomItems.forEach(item => {
+      if (item.product_id) {
+        const available = inventoryByProduct[item.product_id] || 0;
+        const required = item.quantity * formData.quantity;
+        availability[item.product_id] = {
+          available,
+          required,
+          sufficient: available >= required,
+        };
+      }
+    });
+    
+    return availability;
+  }, [locationInventory, bomItems, formData.quantity]);
+
+  // Check if any BOM item has stock issues
+  const hasStockIssue = useMemo(() => {
+    return Object.values(itemAvailability).some(a => !a.sufficient);
+  }, [itemAvailability]);
 
   const resetForm = () => {
     setFormData({
@@ -654,6 +779,14 @@ const Production = () => {
             <Tabs defaultValue="details" className="flex flex-col flex-1 overflow-hidden">
               <TabsList className="shrink-0 mx-6">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="availability" className="relative">
+                  Availability
+                  {hasStockIssue && bomItems.length > 0 && formData.location_id && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                      !
+                    </span>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
 
@@ -719,6 +852,12 @@ const Production = () => {
                       <p className="text-sm">
                         <span className="font-medium">Yields:</span> {selectedBom.output_quantity} per batch
                       </p>
+                      {bomDurations[selectedBom.id] && (
+                        <p className="text-sm flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span className="font-medium">Est. Duration:</span> {formatDuration(bomDurations[selectedBom.id])}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -803,6 +942,63 @@ const Production = () => {
                         </Table>
                       </div>
                     </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="availability" className="mt-4 space-y-4">
+                  {!formData.location_id ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                      Select a production location to view component availability
+                    </p>
+                  ) : bomItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                      Select a Bill of Materials to see component availability
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Component</TableHead>
+                          <TableHead className="text-right">Required</TableHead>
+                          <TableHead className="text-right">Available</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bomItems.map(item => {
+                          const availability = itemAvailability[item.product_id];
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div>
+                                  <span className="font-medium">{item.product?.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">{item.product?.product_id}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right font-mono">{availability?.required || 0}</TableCell>
+                              <TableCell className="text-right font-mono">{availability?.available || 0}</TableCell>
+                              <TableCell className="text-right">
+                                {availability?.sufficient ? (
+                                  <Badge variant="default" className="bg-primary text-primary-foreground">
+                                    <Check className="w-3 h-3 mr-1" />
+                                    In Stock
+                                  </Badge>
+                                ) : (availability?.available || 0) > 0 ? (
+                                  <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                                    Partial ({availability?.available})
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive">
+                                    <X className="w-3 h-3 mr-1" />
+                                    Out of Stock
+                                  </Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   )}
                 </TabsContent>
 
