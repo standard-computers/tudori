@@ -42,7 +42,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, ClipboardList, GripVertical, Copy } from 'lucide-react';
+import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -941,27 +942,87 @@ const BillOfMaterials = () => {
 
                 <TabsContent value="components" className="mt-4 space-y-4">
                   {!isViewMode && (
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <SearchableSelect
-                          options={componentOptions}
-                          value={newItem.product_id}
-                          onValueChange={(value) => setNewItem(prev => ({ ...prev, product_id: value }))}
-                          placeholder="Select component product"
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <SearchableSelect
+                            options={componentOptions}
+                            value={newItem.product_id}
+                            onValueChange={(value) => setNewItem(prev => ({ ...prev, product_id: value }))}
+                            placeholder="Select component product"
+                          />
+                        </div>
+                        <Input
+                          type="number"
+                          min={0.01}
+                          step={0.01}
+                          value={newItem.quantity}
+                          onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))}
+                          className="w-24"
+                          placeholder="Qty"
+                        />
+                        <Button type="button" variant="outline" onClick={handleAddItem}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex justify-end">
+                        <CopyFromIdDialog<BomItem[]>
+                          onFetch={async (productId: string) => {
+                            // Find product by product_id
+                            const product = products.find(p => p.product_id.toLowerCase() === productId.toLowerCase());
+                            if (!product) {
+                              toast.error(`Product not found with ID: ${productId}`);
+                              return null;
+                            }
+
+                            // Fetch product components
+                            const { data: components, error } = await supabase
+                              .from('product_components')
+                              .select(`
+                                component_product_id,
+                                quantity,
+                                component:products!product_components_component_product_id_fkey(id, product_id, name, unit)
+                              `)
+                              .eq('parent_product_id', product.id);
+
+                            if (error) {
+                              console.error('Error fetching product components:', error);
+                              return null;
+                            }
+
+                            if (!components || components.length === 0) {
+                              toast.error(`Product ${productId} has no components defined`);
+                              return null;
+                            }
+
+                            // Map to BomItem format
+                            const bomItemsFromProduct: BomItem[] = components.map((comp: any) => ({
+                              product_id: comp.component_product_id,
+                              quantity: comp.quantity,
+                              notes: null,
+                              product: comp.component ? {
+                                product_id: comp.component.product_id,
+                                name: comp.component.name,
+                                unit: comp.component.unit,
+                              } : undefined,
+                            }));
+
+                            return bomItemsFromProduct;
+                          }}
+                          onApply={(copiedItems) => {
+                            // Merge with existing items, avoiding duplicates
+                            setBomItems(prev => {
+                              const existingIds = new Set(prev.map(item => item.product_id));
+                              const newItems = copiedItems.filter(item => !existingIds.has(item.product_id));
+                              if (newItems.length < copiedItems.length) {
+                                toast.info(`${copiedItems.length - newItems.length} duplicate component(s) skipped`);
+                              }
+                              return [...prev, ...newItems];
+                            });
+                          }}
+                          idLabel="Product ID"
                         />
                       </div>
-                      <Input
-                        type="number"
-                        min={0.01}
-                        step={0.01}
-                        value={newItem.quantity}
-                        onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))}
-                        className="w-24"
-                        placeholder="Qty"
-                      />
-                      <Button type="button" variant="outline" onClick={handleAddItem}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
                     </div>
                   )}
                   <div className="border rounded-md">
