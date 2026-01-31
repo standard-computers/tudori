@@ -1033,8 +1033,8 @@ const BillOfMaterials = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
+          <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
               <TabsList className="shrink-0 mx-6">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="components">Components ({bomItems.length})</TabsTrigger>
