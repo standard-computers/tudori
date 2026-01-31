@@ -369,6 +369,48 @@ export type Database = {
           },
         ]
       }
+      bom_step_items: {
+        Row: {
+          bom_step_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          bom_step_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          bom_step_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_step_items_bom_step_id_fkey"
+            columns: ["bom_step_id"]
+            isOneToOne: false
+            referencedRelation: "bom_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_step_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bom_steps: {
         Row: {
           bin_id: string | null

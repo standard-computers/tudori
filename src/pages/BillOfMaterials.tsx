@@ -68,6 +68,14 @@ interface BomItem {
   product?: { name: string; product_id: string; unit: string | null };
 }
 
+interface BomStepItem {
+  id?: string;
+  product_id: string;
+  quantity: number;
+  notes: string | null;
+  product?: { name: string; product_id: string; unit: string | null };
+}
+
 interface BomStep {
   id?: string;
   step_number: number;
@@ -78,6 +86,7 @@ interface BomStep {
   estimated_duration_minutes: number | null;
   location?: { name: string };
   bin?: { name: string; bin_id: string };
+  items?: BomStepItem[];
 }
 
 interface Product {
@@ -313,13 +322,15 @@ const BillOfMaterials = () => {
   const [bomItems, setBomItems] = useState<BomItem[]>([]);
   const [bomSteps, setBomSteps] = useState<BomStep[]>([]);
   const [newItem, setNewItem] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
-  const [newStep, setNewStep] = useState<{ name: string; description: string; location_id: string; bin_id: string; duration: string }>({
+  const [newStep, setNewStep] = useState<{ name: string; description: string; location_id: string; bin_id: string; duration: string; items: { product_id: string; quantity: string }[] }>({
     name: '',
     description: '',
     location_id: '',
     bin_id: '',
     duration: '',
+    items: [],
   });
+  const [newStepItem, setNewStepItem] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -490,7 +501,27 @@ const BillOfMaterials = () => {
       .order('step_number');
 
     if (!error && data) {
-      setBomSteps(data as unknown as BomStep[]);
+      // Fetch step items for each step
+      const stepsWithItems = await Promise.all(
+        data.map(async (step) => {
+          const { data: items } = await supabase
+            .from('bom_step_items')
+            .select(`
+              id,
+              product_id,
+              quantity,
+              notes,
+              product:products(product_id, name, unit)
+            `)
+            .eq('bom_step_id', step.id);
+          
+          return {
+            ...step,
+            items: (items || []) as unknown as BomStepItem[],
+          };
+        })
+      );
+      setBomSteps(stepsWithItems as unknown as BomStep[]);
     } else {
       setBomSteps([]);
     }
@@ -511,7 +542,8 @@ const BillOfMaterials = () => {
     setBomItems([]);
     setBomSteps([]);
     setNewItem({ product_id: '', quantity: '1' });
-    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '' });
+    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '', items: [] });
+    setNewStepItem({ product_id: '', quantity: '1' });
     setActiveTab('details');
   };
 
@@ -600,6 +632,39 @@ const BillOfMaterials = () => {
     setBomItems(bomItems.filter(item => item.product_id !== productId));
   };
 
+  const handleAddStepItem = () => {
+    if (!newStepItem.product_id || !newStepItem.quantity) return;
+    
+    const product = products.find(p => p.id === newStepItem.product_id);
+    if (!product) return;
+
+    // Check if component exists in BOM items
+    const bomItem = bomItems.find(item => item.product_id === newStepItem.product_id);
+    if (!bomItem) {
+      toast.error('This product is not in the BOM components list');
+      return;
+    }
+
+    // Check if already added to this step
+    if (newStep.items.some(item => item.product_id === newStepItem.product_id)) {
+      toast.error('This component is already added to this step');
+      return;
+    }
+
+    setNewStep(prev => ({
+      ...prev,
+      items: [...prev.items, { product_id: newStepItem.product_id, quantity: newStepItem.quantity }],
+    }));
+    setNewStepItem({ product_id: '', quantity: '1' });
+  };
+
+  const handleRemoveStepItem = (productId: string) => {
+    setNewStep(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.product_id !== productId),
+    }));
+  };
+
   const handleAddStep = () => {
     if (!newStep.name.trim()) {
       toast.error('Please enter a step name');
@@ -622,6 +687,21 @@ const BillOfMaterials = () => {
     const location = locations.find(l => l.id === newStep.location_id);
     const bin = allBins.find(b => b.id === newStep.bin_id);
 
+    // Convert step items with product info
+    const stepItems: BomStepItem[] = newStep.items.map(item => {
+      const product = products.find(p => p.id === item.product_id);
+      return {
+        product_id: item.product_id,
+        quantity: parseFloat(item.quantity) || 1,
+        notes: null,
+        product: product ? {
+          product_id: product.product_id,
+          name: product.name,
+          unit: product.unit,
+        } : undefined,
+      };
+    });
+
     setBomSteps([...bomSteps, {
       step_number: nextStepNumber,
       name: newStep.name,
@@ -631,8 +711,9 @@ const BillOfMaterials = () => {
       estimated_duration_minutes: newStep.duration ? parseInt(newStep.duration) : null,
       location: location ? { name: location.name } : undefined,
       bin: bin ? { name: bin.name, bin_id: bin.bin_id } : undefined,
+      items: stepItems,
     }]);
-    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '' });
+    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '', items: [] });
   };
 
   const handleRemoveStep = (stepNumber: number) => {
@@ -718,11 +799,35 @@ const BillOfMaterials = () => {
             estimated_duration_minutes: step.estimated_duration_minutes,
           }));
 
-          const { error: stepsError } = await supabase
+          const { data: insertedSteps, error: stepsError } = await supabase
             .from('bom_steps')
-            .insert(stepsToInsert);
+            .insert(stepsToInsert)
+            .select('id, step_number');
 
           if (stepsError) throw stepsError;
+
+          // Insert step items for each step
+          const allStepItems: { bom_step_id: string; product_id: string; quantity: number; notes: string | null }[] = [];
+          insertedSteps?.forEach(insertedStep => {
+            const originalStep = bomSteps.find(s => s.step_number === insertedStep.step_number);
+            if (originalStep?.items) {
+              originalStep.items.forEach(item => {
+                allStepItems.push({
+                  bom_step_id: insertedStep.id,
+                  product_id: item.product_id,
+                  quantity: item.quantity,
+                  notes: item.notes,
+                });
+              });
+            }
+          });
+
+          if (allStepItems.length > 0) {
+            const { error: stepItemsError } = await supabase
+              .from('bom_step_items')
+              .insert(allStepItems);
+            if (stepItemsError) throw stepItemsError;
+          }
         }
 
         toast.success('Bill of materials updated');
@@ -767,11 +872,35 @@ const BillOfMaterials = () => {
             estimated_duration_minutes: step.estimated_duration_minutes,
           }));
 
-          const { error: stepsError } = await supabase
+          const { data: insertedSteps, error: stepsError } = await supabase
             .from('bom_steps')
-            .insert(stepsToInsert);
+            .insert(stepsToInsert)
+            .select('id, step_number');
 
           if (stepsError) throw stepsError;
+
+          // Insert step items for each step
+          const allStepItems: { bom_step_id: string; product_id: string; quantity: number; notes: string | null }[] = [];
+          insertedSteps?.forEach(insertedStep => {
+            const originalStep = bomSteps.find(s => s.step_number === insertedStep.step_number);
+            if (originalStep?.items) {
+              originalStep.items.forEach(item => {
+                allStepItems.push({
+                  bom_step_id: insertedStep.id,
+                  product_id: item.product_id,
+                  quantity: item.quantity,
+                  notes: item.notes,
+                });
+              });
+            }
+          });
+
+          if (allStepItems.length > 0) {
+            const { error: stepItemsError } = await supabase
+              .from('bom_step_items')
+              .insert(allStepItems);
+            if (stepItemsError) throw stepItemsError;
+          }
         }
 
         toast.success('Bill of materials created');
@@ -810,6 +939,42 @@ const BillOfMaterials = () => {
     value: b.id,
     label: `${b.bin_id} - ${b.name}`,
   }));
+
+  // Step component options - only show components from BOM items
+  const stepComponentOptions: SearchableSelectOption[] = bomItems.map(item => ({
+    value: item.product_id,
+    label: `${item.product?.product_id} - ${item.product?.name}`,
+  }));
+
+  // Calculate unaccounted components (components not fully allocated to steps)
+  const getUnaccountedComponents = () => {
+    const allocatedQuantities: Record<string, number> = {};
+    
+    // Sum up allocated quantities across all steps
+    bomSteps.forEach(step => {
+      step.items?.forEach(item => {
+        allocatedQuantities[item.product_id] = (allocatedQuantities[item.product_id] || 0) + item.quantity;
+      });
+    });
+
+    // Also count items pending in the new step form
+    newStep.items.forEach(item => {
+      allocatedQuantities[item.product_id] = (allocatedQuantities[item.product_id] || 0) + (parseFloat(item.quantity) || 0);
+    });
+
+    // Compare with BOM items
+    return bomItems.map(bomItem => {
+      const allocated = allocatedQuantities[bomItem.product_id] || 0;
+      const remaining = bomItem.quantity - allocated;
+      return {
+        ...bomItem,
+        allocated,
+        remaining,
+      };
+    }).filter(item => item.remaining !== 0);
+  };
+
+  const unaccountedComponents = getUnaccountedComponents();
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -1072,6 +1237,32 @@ const BillOfMaterials = () => {
                 </TabsContent>
 
                 <TabsContent value="steps" className="mt-4 space-y-4">
+                  {/* Unaccounted Components Summary */}
+                  {bomItems.length > 0 && (
+                    <div className={`p-3 rounded-md border ${unaccountedComponents.length === 0 ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' : unaccountedComponents.some(c => c.remaining > 0) ? 'bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800' : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium">Component Allocation</span>
+                        {unaccountedComponents.length === 0 ? (
+                          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">All Allocated</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">{unaccountedComponents.length} Unaccounted</Badge>
+                        )}
+                      </div>
+                      {unaccountedComponents.length > 0 && (
+                        <div className="text-xs space-y-1">
+                          {unaccountedComponents.map(item => (
+                            <div key={item.product_id} className="flex justify-between items-center">
+                              <span>{item.product?.product_id} - {item.product?.name}</span>
+                              <span className={item.remaining > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}>
+                                {item.remaining > 0 ? `+${item.remaining}` : item.remaining} {item.product?.unit || 'units'} {item.remaining > 0 ? 'unassigned' : 'over-allocated'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {!isViewMode && (
                     <div className="space-y-3 p-4 border rounded-md bg-muted/30">
                       <div className="grid grid-cols-2 gap-3">
@@ -1127,6 +1318,55 @@ const BillOfMaterials = () => {
                           />
                         </div>
                       </div>
+
+                      {/* Step Components Section */}
+                      <div className="space-y-2 pt-2 border-t">
+                        <Label className="text-xs">Components Used in This Step</Label>
+                        {bomItems.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Add components in the Components tab first</p>
+                        ) : (
+                          <>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <SearchableSelect
+                                  options={stepComponentOptions.filter(opt => !newStep.items.some(i => i.product_id === opt.value))}
+                                  value={newStepItem.product_id}
+                                  onValueChange={(value) => setNewStepItem(prev => ({ ...prev, product_id: value }))}
+                                  placeholder="Select component"
+                                />
+                              </div>
+                              <Input
+                                type="number"
+                                min={0.01}
+                                step={0.01}
+                                value={newStepItem.quantity}
+                                onChange={(e) => setNewStepItem(prev => ({ ...prev, quantity: e.target.value }))}
+                                className="w-20"
+                                placeholder="Qty"
+                              />
+                              <Button type="button" variant="outline" size="icon" onClick={handleAddStepItem} disabled={!newStepItem.product_id}>
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            {newStep.items.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {newStep.items.map(item => {
+                                  const product = products.find(p => p.id === item.product_id);
+                                  return (
+                                    <Badge key={item.product_id} variant="secondary" className="text-xs flex items-center gap-1">
+                                      {product?.product_id}: {item.quantity} {product?.unit || ''}
+                                      <button type="button" onClick={() => handleRemoveStepItem(item.product_id)} className="ml-1 hover:text-destructive">
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
                       <Button type="button" variant="outline" onClick={handleAddStep} className="w-full">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Step
@@ -1140,6 +1380,7 @@ const BillOfMaterials = () => {
                         <TableRow>
                           <TableCell className="font-medium w-12">#</TableCell>
                           <TableCell className="font-medium">Step</TableCell>
+                          <TableCell className="font-medium">Components</TableCell>
                           <TableCell className="font-medium">Location</TableCell>
                           <TableCell className="font-medium">Bin</TableCell>
                           <TableCell className="font-medium w-20">Duration</TableCell>
@@ -1149,7 +1390,7 @@ const BillOfMaterials = () => {
                       <TableBody>
                         {bomSteps.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={isViewMode ? 5 : 6} className="text-center py-4 text-muted-foreground">
+                            <TableCell colSpan={isViewMode ? 6 : 7} className="text-center py-4 text-muted-foreground">
                               No steps added
                             </TableCell>
                           </TableRow>
@@ -1169,6 +1410,19 @@ const BillOfMaterials = () => {
                                     <div className="text-sm text-muted-foreground">{step.description}</div>
                                   )}
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                {step.items && step.items.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {step.items.map(item => (
+                                      <Badge key={item.product_id} variant="outline" className="text-xs">
+                                        {item.product?.product_id}: {item.quantity}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
                               </TableCell>
                               <TableCell>{step.location?.name || '-'}</TableCell>
                               <TableCell>{step.bin ? `${step.bin.bin_id} - ${step.bin.name}` : '-'}</TableCell>
