@@ -1449,7 +1449,7 @@ const Products = () => {
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
-              <DialogContent className="sm:max-w-[650px] max-h-[85vh] flex flex-col overflow-hidden">
+              <DialogContent className="sm:max-w-[900px] max-h-[85vh] flex flex-col overflow-hidden">
                 {!isEditing && (
                   <div className="flex items-start gap-1 absolute top-4 right-12">
                     <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
