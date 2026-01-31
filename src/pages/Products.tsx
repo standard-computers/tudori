@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2, MoreHorizontal, Eye, Upload, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Pencil, Trash2, AlertCircle, X, Check, ChevronsUpDown, Wand2, Loader2, MoreHorizontal, Eye, Upload, ImageIcon, Maximize2, Minimize2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -550,6 +550,7 @@ const Products = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextProductId, setNextProductId] = useState('0001');
   const [activeTab, setActiveTab] = useState('general');
@@ -1449,9 +1450,16 @@ const Products = () => {
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
-              <DialogContent className="sm:max-w-[900px] max-h-[85vh] flex flex-col overflow-hidden">
+              <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[900px] max-h-[85vh]'}`}>
+                <button
+                  type="button"
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                >
+                  {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
                 {!isEditing && (
-                  <div className="flex items-start gap-1 absolute top-4 right-12">
+                  <div className="flex items-start gap-1 absolute top-4 right-16">
                     <Popover open={aiPopoverOpen} onOpenChange={setAiPopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="ghost" size="icon" className="opacity-70 hover:opacity-100" title="AI Autofill">
