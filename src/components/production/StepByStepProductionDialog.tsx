@@ -1,0 +1,520 @@
+import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Check, X, AlertTriangle, ChevronRight, MapPin, Clock, Package } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface BomStep {
+  id: string;
+  step_number: number;
+  name: string;
+  description: string | null;
+  estimated_duration_minutes: number | null;
+  location_id: string | null;
+  bin_id: string | null;
+  location?: { name: string; location_id: string } | null;
+  bin?: { name: string; bin_id: string } | null;
+}
+
+interface BomStepItem {
+  id: string;
+  bom_step_id: string;
+  product_id: string;
+  quantity: number;
+  product?: { name: string; product_id: string };
+}
+
+interface InventoryRecord {
+  id: string;
+  product_id: string;
+  quantity: number;
+  bin_id: string | null;
+}
+
+interface StepByStepProductionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  orderId: string;
+  orderNumber: string;
+  bomId: string;
+  locationId: string;
+  quantity: number; // Number of batches
+  companyId: string;
+  onComplete: () => void;
+}
+
+export function StepByStepProductionDialog({
+  open,
+  onOpenChange,
+  orderId,
+  orderNumber,
+  bomId,
+  locationId,
+  quantity,
+  companyId,
+  onComplete,
+}: StepByStepProductionDialogProps) {
+  const [steps, setSteps] = useState<BomStep[]>([]);
+  const [stepItems, setStepItems] = useState<Record<string, BomStepItem[]>>({});
+  const [binInventory, setBinInventory] = useState<Record<string, InventoryRecord[]>>({});
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  const currentStep = steps[currentStepIndex];
+  const progress = steps.length > 0 ? (completedSteps.size / steps.length) * 100 : 0;
+
+  // Fetch steps and their items when dialog opens
+  useEffect(() => {
+    if (open && bomId) {
+      fetchStepsAndItems();
+    } else {
+      // Reset state when dialog closes
+      setSteps([]);
+      setStepItems({});
+      setBinInventory({});
+      setCurrentStepIndex(0);
+      setCompletedSteps(new Set());
+    }
+  }, [open, bomId]);
+
+  // Fetch bin inventory when current step changes
+  useEffect(() => {
+    if (currentStep?.bin_id) {
+      fetchBinInventory(currentStep.bin_id);
+    }
+  }, [currentStep?.bin_id]);
+
+  const fetchStepsAndItems = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch steps
+      const { data: stepsData, error: stepsError } = await supabase
+        .from('bom_steps')
+        .select(`
+          id,
+          step_number,
+          name,
+          description,
+          estimated_duration_minutes,
+          location_id,
+          bin_id,
+          location:locations(name, location_id),
+          bin:bins(name, bin_id)
+        `)
+        .eq('bom_id', bomId)
+        .order('step_number');
+
+      if (stepsError) throw stepsError;
+      setSteps((stepsData as any) || []);
+
+      // Fetch all step items
+      if (stepsData && stepsData.length > 0) {
+        const stepIds = stepsData.map(s => s.id);
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('bom_step_items')
+          .select(`
+            id,
+            bom_step_id,
+            product_id,
+            quantity,
+            product:products(name, product_id)
+          `)
+          .in('bom_step_id', stepIds);
+
+        if (itemsError) throw itemsError;
+
+        // Group items by step_id
+        const itemsByStep: Record<string, BomStepItem[]> = {};
+        (itemsData || []).forEach((item: any) => {
+          if (!itemsByStep[item.bom_step_id]) {
+            itemsByStep[item.bom_step_id] = [];
+          }
+          itemsByStep[item.bom_step_id].push(item);
+        });
+        setStepItems(itemsByStep);
+
+        // Fetch initial bin inventory for first step
+        if (stepsData[0]?.bin_id) {
+          fetchBinInventory(stepsData[0].bin_id);
+        }
+      }
+    } catch (error: any) {
+      toast.error('Failed to load production steps');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchBinInventory = async (binId: string) => {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('id, product_id, quantity, bin_id')
+      .eq('bin_id', binId)
+      .gt('quantity', 0);
+
+    if (!error && data) {
+      setBinInventory(prev => ({ ...prev, [binId]: data }));
+    }
+  };
+
+  // Get items for current step with availability status
+  const currentStepItemsWithAvailability = useMemo(() => {
+    if (!currentStep) return [];
+    
+    const items = stepItems[currentStep.id] || [];
+    const inventory = currentStep.bin_id ? (binInventory[currentStep.bin_id] || []) : [];
+    
+    return items.map(item => {
+      const required = item.quantity * quantity;
+      const available = inventory
+        .filter(inv => inv.product_id === item.product_id)
+        .reduce((sum, inv) => sum + inv.quantity, 0);
+      
+      return {
+        ...item,
+        required,
+        available,
+        sufficient: available >= required,
+      };
+    });
+  }, [currentStep, stepItems, binInventory, quantity]);
+
+  // Check if current step can proceed
+  const canProceed = useMemo(() => {
+    if (!currentStep) return false;
+    
+    // If no items for this step, allow proceeding
+    const items = stepItems[currentStep.id] || [];
+    if (items.length === 0) return true;
+    
+    // If no bin assigned, allow proceeding (manual handling)
+    if (!currentStep.bin_id) return true;
+    
+    // Check all items have sufficient inventory in the bin
+    return currentStepItemsWithAvailability.every(item => item.sufficient);
+  }, [currentStep, stepItems, currentStepItemsWithAvailability]);
+
+  const handleConfirmStep = async () => {
+    if (!currentStep) return;
+    
+    setIsLoading(true);
+    try {
+      const items = stepItems[currentStep.id] || [];
+      
+      // Perform goods withdrawal for each item if there's a bin
+      if (currentStep.bin_id && items.length > 0) {
+        for (const item of items) {
+          const requiredQty = item.quantity * quantity;
+          
+          // Get inventory records for this product in this bin
+          const { data: invRecords } = await supabase
+            .from('inventory')
+            .select('id, quantity')
+            .eq('bin_id', currentStep.bin_id)
+            .eq('product_id', item.product_id)
+            .gt('quantity', 0)
+            .order('quantity', { ascending: false });
+          
+          if (!invRecords || invRecords.length === 0) {
+            throw new Error(`No inventory found for ${item.product?.name || 'product'} in bin`);
+          }
+          
+          // Deduct from inventory records
+          let remainingToDeduct = requiredQty;
+          for (const inv of invRecords) {
+            if (remainingToDeduct <= 0) break;
+            
+            const deductAmount = Math.min(inv.quantity, remainingToDeduct);
+            const newQuantity = inv.quantity - deductAmount;
+            
+            if (newQuantity === 0) {
+              await supabase.from('inventory').delete().eq('id', inv.id);
+            } else {
+              await supabase
+                .from('inventory')
+                .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+                .eq('id', inv.id);
+            }
+            
+            remainingToDeduct -= deductAmount;
+          }
+        }
+        
+        // Refresh bin inventory
+        await fetchBinInventory(currentStep.bin_id);
+      }
+      
+      // Mark step as completed
+      setCompletedSteps(prev => new Set([...prev, currentStep.id]));
+      
+      // Move to next step or complete
+      if (currentStepIndex < steps.length - 1) {
+        setCurrentStepIndex(prev => prev + 1);
+        toast.success(`Step ${currentStep.step_number} completed`);
+      } else {
+        // All steps completed - update order status
+        await supabase
+          .from('production_orders')
+          .update({ 
+            status: 'completed',
+            completed_date: new Date().toISOString().split('T')[0],
+          })
+          .eq('id', orderId);
+        
+        toast.success('Production order completed!');
+        onComplete();
+        onOpenChange(false);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to confirm step');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+      setShowConfirmDialog(false);
+    }
+  };
+
+  const handleSkipStep = () => {
+    if (currentStepIndex < steps.length - 1) {
+      // Mark as completed but don't withdraw materials
+      setCompletedSteps(prev => new Set([...prev, currentStep.id]));
+      setCurrentStepIndex(prev => prev + 1);
+      toast.info(`Skipped step ${currentStep?.step_number}`);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Production: {orderNumber}
+            </DialogTitle>
+            <DialogDescription>
+              Complete each step to finish production. Materials will be withdrawn from the designated bin.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoading && steps.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <span className="text-muted-foreground">Loading steps...</span>
+            </div>
+          ) : steps.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <AlertTriangle className="w-8 h-8 text-muted-foreground" />
+              <p className="text-muted-foreground">No steps defined for this Bill of Materials</p>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+            </div>
+          ) : (
+            <>
+              {/* Progress */}
+              <div className="space-y-2 px-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Step {currentStepIndex + 1} of {steps.length}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {completedSteps.size} completed
+                  </span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+
+              {/* Step details */}
+              {currentStep && (
+                <div className="space-y-4 mt-4">
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          Step {currentStep.step_number}: {currentStep.name}
+                        </h3>
+                        {currentStep.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {currentStep.description}
+                          </p>
+                        )}
+                      </div>
+                      {currentStep.estimated_duration_minutes && (
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {currentStep.estimated_duration_minutes}m
+                        </Badge>
+                      )}
+                    </div>
+
+                    {currentStep.bin && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>
+                          {currentStep.location?.name || 'Unknown Location'} → 
+                          <span className="font-mono ml-1">{currentStep.bin.bin_id}</span> ({currentStep.bin.name})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Materials required */}
+                  {currentStepItemsWithAvailability.length > 0 ? (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Materials Required</h4>
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Material</TableHead>
+                              <TableHead className="text-right w-24">Required</TableHead>
+                              <TableHead className="text-right w-24">In Bin</TableHead>
+                              <TableHead className="text-right w-24">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {currentStepItemsWithAvailability.map(item => (
+                              <TableRow key={item.id}>
+                                <TableCell>
+                                  <span className="font-medium">{item.product?.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {item.product?.product_id}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right font-mono">{item.required}</TableCell>
+                                <TableCell className="text-right font-mono">{item.available}</TableCell>
+                                <TableCell className="text-right">
+                                  {item.sufficient ? (
+                                    <Badge variant="default" className="bg-primary text-primary-foreground">
+                                      <Check className="w-3 h-3 mr-1" />
+                                      Ready
+                                    </Badge>
+                                  ) : item.available > 0 ? (
+                                    <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                                      Partial
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive">
+                                      <X className="w-3 h-3 mr-1" />
+                                      Missing
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      
+                      {!canProceed && (
+                        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                          <AlertTriangle className="w-4 h-4 text-destructive" />
+                          <span className="text-sm text-destructive">
+                            Insufficient materials in the designated bin. Move inventory to proceed.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
+                      No materials assigned to this step
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button 
+                  variant="ghost" 
+                  onClick={handleSkipStep}
+                  disabled={isLoading || currentStepIndex >= steps.length - 1}
+                >
+                  Skip Step
+                </Button>
+                <Button 
+                  onClick={() => setShowConfirmDialog(true)}
+                  disabled={isLoading || !canProceed}
+                >
+                  {currentStepIndex < steps.length - 1 ? (
+                    <>
+                      Confirm & Next
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </>
+                  ) : (
+                    <>
+                      Complete Production
+                      <Check className="w-4 h-4 ml-1" />
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Step Completion</AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentStepItemsWithAvailability.length > 0 ? (
+                <>
+                  This will withdraw the following materials from bin{' '}
+                  <span className="font-mono font-medium">{currentStep?.bin?.bin_id}</span>:
+                  <ul className="mt-2 space-y-1">
+                    {currentStepItemsWithAvailability.map(item => (
+                      <li key={item.id} className="text-sm">
+                        • {item.product?.name}: <span className="font-mono">{item.required}</span> units
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <>Mark step "{currentStep?.name}" as completed?</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmStep} disabled={isLoading}>
+              {isLoading ? 'Processing...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

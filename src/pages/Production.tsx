@@ -41,10 +41,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { StepByStepProductionDialog } from '@/components/production/StepByStepProductionDialog';
 
 interface ProductionOrder {
   id: string;
@@ -123,11 +124,15 @@ const ProductionOrderTable = ({
   onView,
   onEdit,
   onDelete,
+  onStart,
+  onStartForeground,
 }: {
   orders: ProductionOrder[];
   onView: (order: ProductionOrder) => void;
   onEdit: (order: ProductionOrder) => void;
   onDelete: (id: string) => void;
+  onStart: (order: ProductionOrder) => void;
+  onStartForeground: (order: ProductionOrder) => void;
 }) => {
   const {
     sortConfig,
@@ -286,6 +291,24 @@ const ProductionOrderTable = ({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {order.status === 'pending' && (
+                            <>
+                              <DropdownMenuItem onClick={() => onStart(order)}>
+                                <Play className="w-4 h-4 mr-2" />
+                                Start
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onStartForeground(order)}>
+                                <PlayCircle className="w-4 h-4 mr-2" />
+                                Start in Foreground
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {order.status === 'in_progress' && (
+                            <DropdownMenuItem onClick={() => onStartForeground(order)}>
+                              <PlayCircle className="w-4 h-4 mr-2" />
+                              Continue in Foreground
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => onEdit(order)}>
                             <Pencil className="w-4 h-4 mr-2" />
                             Edit
@@ -331,6 +354,8 @@ const Production = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextOrderNumber, setNextOrderNumber] = useState('PRO-0001');
+  const [foregroundOrder, setForegroundOrder] = useState<ProductionOrder | null>(null);
+  const [isForegroundDialogOpen, setIsForegroundDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     order_number: '',
@@ -638,6 +663,42 @@ const Production = () => {
     fetchOrders();
   };
 
+  const handleStart = async (order: ProductionOrder) => {
+    const { error } = await supabase
+      .from('production_orders')
+      .update({ status: 'in_progress' })
+      .eq('id', order.id);
+
+    if (error) {
+      toast.error('Failed to start production order');
+      return;
+    }
+    toast.success('Production order started');
+    fetchOrders();
+  };
+
+  const handleStartForeground = (order: ProductionOrder) => {
+    if (!order.bom_id) {
+      toast.error('This order has no Bill of Materials assigned');
+      return;
+    }
+    // Update status to in_progress if pending
+    if (order.status === 'pending') {
+      supabase
+        .from('production_orders')
+        .update({ status: 'in_progress' })
+        .eq('id', order.id)
+        .then(() => fetchOrders());
+    }
+    setForegroundOrder(order);
+    setIsForegroundDialogOpen(true);
+  };
+
+  const handleForegroundComplete = () => {
+    setForegroundOrder(null);
+    fetchOrders();
+  };
+
   const handleBomChange = async (bomId: string) => {
     setFormData(prev => ({ ...prev, bom_id: bomId }));
     await fetchBomItems(bomId);
@@ -757,6 +818,8 @@ const Production = () => {
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onStart={handleStart}
+          onStartForeground={handleStartForeground}
         />
       </main>
 
@@ -1028,6 +1091,21 @@ const Production = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Step-by-step production dialog */}
+      {foregroundOrder && companyId && (
+        <StepByStepProductionDialog
+          open={isForegroundDialogOpen}
+          onOpenChange={setIsForegroundDialogOpen}
+          orderId={foregroundOrder.id}
+          orderNumber={foregroundOrder.order_number}
+          bomId={foregroundOrder.bom_id || ''}
+          locationId={foregroundOrder.location_id}
+          quantity={foregroundOrder.quantity}
+          companyId={companyId}
+          onComplete={handleForegroundComplete}
+        />
+      )}
     </div>
   );
 };
