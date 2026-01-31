@@ -58,6 +58,7 @@ interface BillOfMaterial {
   notes: string | null;
   created_at: string;
   product?: { name: string; product_id: string };
+  steps_count?: number;
 }
 
 interface BomItem {
@@ -118,6 +119,7 @@ const BOM_COLUMNS: ColumnDefinition[] = [
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'product', label: 'Output Product', defaultVisible: true },
   { key: 'output_quantity', label: 'Output Qty', defaultVisible: true },
+  { key: 'steps_count', label: 'Steps', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
@@ -225,6 +227,18 @@ const BomTable = ({
                   className="w-24"
                 />
               )}
+              {isColumnVisible('steps_count') && (
+                <SortableTableHead
+                  label="Steps"
+                  sortKey="steps_count"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['steps_count']}
+                  onFilter={(value) => setFilter('steps_count', value)}
+                  className="w-20"
+                />
+              )}
               {isColumnVisible('status') && (
                 <SortableTableHead
                   label="Status"
@@ -262,6 +276,7 @@ const BomTable = ({
                   {isColumnVisible('name') && <TableCell className="font-medium">{bom.name}</TableCell>}
                   {isColumnVisible('product') && <TableCell>{bom.product?.product_id} - {bom.product?.name}</TableCell>}
                   {isColumnVisible('output_quantity') && <TableCell>{bom.output_quantity}</TableCell>}
+                  {isColumnVisible('steps_count') && <TableCell>{bom.steps_count ?? 0}</TableCell>}
                   {isColumnVisible('status') && (
                     <TableCell>
                       <Badge className={getStatusColor(bom.status)}>
@@ -331,6 +346,7 @@ const BillOfMaterials = () => {
     items: [],
   });
   const [newStepItem, setNewStepItem] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
+  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -409,7 +425,30 @@ const BillOfMaterials = () => {
       toast.error('Failed to load bills of materials');
       return;
     }
-    setBoms(data || []);
+
+    // Fetch step counts for each BOM
+    if (data && data.length > 0) {
+      const bomIds = data.map(b => b.id);
+      const { data: stepCounts } = await supabase
+        .from('bom_steps')
+        .select('bom_id')
+        .in('bom_id', bomIds);
+
+      // Count steps per BOM
+      const countsMap: Record<string, number> = {};
+      stepCounts?.forEach(s => {
+        countsMap[s.bom_id] = (countsMap[s.bom_id] || 0) + 1;
+      });
+
+      // Merge counts into BOMs
+      const bomsWithCounts = data.map(bom => ({
+        ...bom,
+        steps_count: countsMap[bom.id] || 0,
+      }));
+      setBoms(bomsWithCounts);
+    } else {
+      setBoms(data || []);
+    }
   };
 
   const fetchProducts = async () => {
@@ -544,6 +583,7 @@ const BillOfMaterials = () => {
     setNewItem({ product_id: '', quantity: '1' });
     setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '', items: [] });
     setNewStepItem({ product_id: '', quantity: '1' });
+    setEditingStepIndex(null);
     setActiveTab('details');
   };
 
@@ -680,10 +720,6 @@ const BillOfMaterials = () => {
       }
     }
 
-    const nextStepNumber = bomSteps.length > 0 
-      ? Math.max(...bomSteps.map(s => s.step_number)) + 1 
-      : 1;
-
     const location = locations.find(l => l.id === newStep.location_id);
     const bin = allBins.find(b => b.id === newStep.bin_id);
 
@@ -702,8 +738,8 @@ const BillOfMaterials = () => {
       };
     });
 
-    setBomSteps([...bomSteps, {
-      step_number: nextStepNumber,
+    const newStepData: BomStep = {
+      step_number: editingStepIndex !== null ? bomSteps[editingStepIndex].step_number : (bomSteps.length > 0 ? Math.max(...bomSteps.map(s => s.step_number)) + 1 : 1),
       name: newStep.name,
       description: newStep.description || null,
       location_id: newStep.location_id || null,
@@ -712,8 +748,41 @@ const BillOfMaterials = () => {
       location: location ? { name: location.name } : undefined,
       bin: bin ? { name: bin.name, bin_id: bin.bin_id } : undefined,
       items: stepItems,
-    }]);
+    };
+
+    if (editingStepIndex !== null) {
+      // Update existing step
+      const updatedSteps = [...bomSteps];
+      updatedSteps[editingStepIndex] = { ...updatedSteps[editingStepIndex], ...newStepData };
+      setBomSteps(updatedSteps);
+      setEditingStepIndex(null);
+      toast.success('Step updated');
+    } else {
+      // Add new step
+      setBomSteps([...bomSteps, newStepData]);
+    }
     setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '', items: [] });
+  };
+
+  const handleEditStep = (index: number) => {
+    const step = bomSteps[index];
+    setNewStep({
+      name: step.name,
+      description: step.description || '',
+      location_id: step.location_id || '',
+      bin_id: step.bin_id || '',
+      duration: step.estimated_duration_minutes?.toString() || '',
+      items: step.items?.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity.toString(),
+      })) || [],
+    });
+    setEditingStepIndex(index);
+  };
+
+  const handleCancelEditStep = () => {
+    setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '', items: [] });
+    setEditingStepIndex(null);
   };
 
   const handleRemoveStep = (stepNumber: number) => {
@@ -1367,10 +1436,26 @@ const BillOfMaterials = () => {
                         )}
                       </div>
 
-                      <Button type="button" variant="outline" onClick={handleAddStep} className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Step
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={handleAddStep} className="flex-1">
+                          {editingStepIndex !== null ? (
+                            <>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Update Step
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Step
+                            </>
+                          )}
+                        </Button>
+                        {editingStepIndex !== null && (
+                          <Button type="button" variant="ghost" onClick={handleCancelEditStep}>
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -1384,7 +1469,7 @@ const BillOfMaterials = () => {
                           <TableCell className="font-medium">Location</TableCell>
                           <TableCell className="font-medium">Bin</TableCell>
                           <TableCell className="font-medium w-20">Duration</TableCell>
-                          {!isViewMode && <TableCell className="font-medium w-16" />}
+                          {!isViewMode && <TableCell className="font-medium w-24" />}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1431,15 +1516,25 @@ const BillOfMaterials = () => {
                               </TableCell>
                               {!isViewMode && (
                                 <TableCell>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveStep(step.step_number)}
-                                    className="text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEditStep(bomSteps.findIndex(s => s.step_number === step.step_number))}
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemoveStep(step.step_number)}
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               )}
                             </TableRow>
