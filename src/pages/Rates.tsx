@@ -37,12 +37,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const RATE_COLUMNS: ColumnDefinition[] = [
   { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'rate', label: 'Rate', defaultVisible: true },
+  { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'rate', label: 'Rate/Amount', defaultVisible: true },
   { key: 'description', label: 'Description', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
@@ -52,6 +60,7 @@ interface TaxRate {
   id: string;
   name: string;
   rate: number;
+  rate_type: string;
   description: string | null;
   is_default: boolean;
   is_active: boolean;
@@ -95,6 +104,7 @@ const Rates = () => {
   const [formData, setFormData] = useState({
     name: '',
     rate: '',
+    rate_type: 'percent' as 'percent' | 'flat',
     description: '',
     is_default: false,
     is_active: true,
@@ -161,6 +171,7 @@ const Rates = () => {
     setFormData({
       name: '',
       rate: '',
+      rate_type: 'percent',
       description: '',
       is_default: false,
       is_active: true,
@@ -176,6 +187,7 @@ const Rates = () => {
     setFormData({
       name: rate.name,
       rate: rate.rate.toString(),
+      rate_type: (rate.rate_type as 'percent' | 'flat') || 'percent',
       description: rate.description || '',
       is_default: rate.is_default,
       is_active: rate.is_active,
@@ -190,8 +202,13 @@ const Rates = () => {
     }
 
     const rateValue = parseFloat(formData.rate);
-    if (isNaN(rateValue) || rateValue < 0 || rateValue > 100) {
-      toast.error('Please enter a valid rate between 0 and 100');
+    if (isNaN(rateValue) || rateValue < 0) {
+      toast.error('Please enter a valid positive number');
+      return;
+    }
+    
+    if (formData.rate_type === 'percent' && rateValue > 100) {
+      toast.error('Percentage rate cannot exceed 100%');
       return;
     }
 
@@ -214,6 +231,7 @@ const Rates = () => {
           .update({
             name: formData.name.trim(),
             rate: rateValue,
+            rate_type: formData.rate_type,
             description: formData.description.trim() || null,
             is_default: formData.is_default,
             is_active: formData.is_active,
@@ -221,7 +239,7 @@ const Rates = () => {
           .eq('id', editingRate.id);
 
         if (error) throw error;
-        toast.success('Tax rate updated');
+        toast.success('Rate updated');
       } else {
         // Create new
         const { error } = await supabase
@@ -230,20 +248,21 @@ const Rates = () => {
             company_id: companyId,
             name: formData.name.trim(),
             rate: rateValue,
+            rate_type: formData.rate_type,
             description: formData.description.trim() || null,
             is_default: formData.is_default,
             is_active: formData.is_active,
           });
 
         if (error) throw error;
-        toast.success('Tax rate created');
+        toast.success('Rate created');
       }
 
       setIsDialogOpen(false);
       fetchTaxRates();
     } catch (error: any) {
-      console.error('Error saving tax rate:', error);
-      toast.error(error.message || 'Failed to save tax rate');
+      console.error('Error saving rate:', error);
+      toast.error(error.message || 'Failed to save rate');
     } finally {
       setIsSubmitting(false);
     }
@@ -347,7 +366,8 @@ const Rates = () => {
               <TableHeader>
                 <TableRow>
                   {isColumnVisible('name') && <TableHead>Name</TableHead>}
-                  {isColumnVisible('rate') && <TableHead className="text-right">Rate</TableHead>}
+                  {isColumnVisible('type') && <TableHead>Type</TableHead>}
+                  {isColumnVisible('rate') && <TableHead className="text-right">Rate/Amount</TableHead>}
                   {isColumnVisible('description') && <TableHead>Description</TableHead>}
                   {isColumnVisible('status') && <TableHead>Status</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
@@ -364,8 +384,21 @@ const Rates = () => {
                         )}
                       </TableCell>
                     )}
+                    {isColumnVisible('type') && (
+                      <TableCell>
+                        <Badge variant="outline" className="gap-1">
+                          {rate.rate_type === 'flat' ? (
+                            <><DollarSign className="w-3 h-3" /> Flat</>
+                          ) : (
+                            <><Percent className="w-3 h-3" /> Percent</>
+                          )}
+                        </Badge>
+                      </TableCell>
+                    )}
                     {isColumnVisible('rate') && (
-                      <TableCell className="text-right font-mono">{rate.rate}%</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`}
+                      </TableCell>
                     )}
                     {isColumnVisible('description') && (
                       <TableCell className="text-muted-foreground">{rate.description || '-'}</TableCell>
@@ -419,9 +452,9 @@ const Rates = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingRate ? 'Edit Tax Rate' : 'Add Tax Rate'}</DialogTitle>
+            <DialogTitle>{editingRate ? 'Edit Rate' : 'Add Rate'}</DialogTitle>
             <DialogDescription>
-              {editingRate ? 'Update the tax rate details' : 'Create a new tax rate for purchase orders'}
+              {editingRate ? 'Update the rate details' : 'Create a new rate for orders'}
             </DialogDescription>
           </DialogHeader>
           
@@ -432,21 +465,49 @@ const Rates = () => {
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Standard Tax, VAT, GST"
+                placeholder="e.g., Standard Tax, VAT, Shipping Fee"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rate">Rate (%) *</Label>
+              <Label htmlFor="rate_type">Rate Type *</Label>
+              <Select
+                value={formData.rate_type}
+                onValueChange={(value: 'percent' | 'flat') => setFormData({ ...formData, rate_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percent">
+                    <div className="flex items-center gap-2">
+                      <Percent className="w-4 h-4" />
+                      Percentage
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="flat">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Flat Amount
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rate">
+                {formData.rate_type === 'percent' ? 'Rate (%) *' : 'Amount ($) *'}
+              </Label>
               <Input
                 id="rate"
                 type="number"
                 step="0.01"
                 min="0"
-                max="100"
+                max={formData.rate_type === 'percent' ? '100' : undefined}
                 value={formData.rate}
                 onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                placeholder="e.g., 10"
+                placeholder={formData.rate_type === 'percent' ? 'e.g., 10' : 'e.g., 25.00'}
               />
             </div>
 
