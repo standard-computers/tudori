@@ -78,9 +78,9 @@ interface SalesOrder {
   order_date: string;
   expected_delivery_date: string | null;
   created_at: string;
-  customer?: { name: string } | null;
-  location?: { name: string } | null;
-  bill_to_location?: { name: string } | null;
+  customer?: { id: string; name: string; customer_id: string; email?: string; phone?: string; address_line1?: string; city?: string; state?: string; postal_code?: string } | null;
+  location?: { id: string; name: string; location_id: string; address_line1?: string; city?: string; state?: string; postal_code?: string } | null;
+  bill_to_location?: { id: string; name: string; location_id: string; address_line1?: string; city?: string; state?: string; postal_code?: string } | null;
   ledger?: { name: string } | null;
   tax_rate?: { name: string; rate: number } | null;
   applied_tax_rates?: { tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[];
@@ -193,6 +193,7 @@ const SalesOrders = () => {
   // View dialog state
   const [viewOrder, setViewOrder] = useState<SalesOrder | null>(null);
   const [viewItems, setViewItems] = useState<SalesOrderItem[]>([]);
+  const [detailView, setDetailView] = useState<{ type: 'customer' | 'location'; data: any } | null>(null);
   
   // Create dialog form state
   const [formData, setFormData] = useState({
@@ -250,9 +251,9 @@ const SalesOrders = () => {
       .from('sales_orders' as any)
       .select(`
         *,
-        customer:customers(name),
-        location:locations!sales_orders_location_id_fkey(name),
-        bill_to_location:locations!sales_orders_bill_to_location_id_fkey(name),
+        customer:customers(id, name, customer_id, email, phone, address_line1, city, state, postal_code),
+        location:locations!sales_orders_location_id_fkey(id, name, location_id, address_line1, city, state, postal_code),
+        bill_to_location:locations!sales_orders_bill_to_location_id_fkey(id, name, location_id, address_line1, city, state, postal_code),
         ledger:ledgers(name),
         tax_rate:tax_rates(name, rate)
       `)
@@ -1165,15 +1166,45 @@ const SalesOrders = () => {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Customer</Label>
-                  <p className="mt-1 font-medium">{viewOrder.customer?.name || '-'}</p>
+                  {viewOrder.customer ? (
+                    <button
+                      type="button"
+                      onClick={() => setDetailView({ type: 'customer', data: viewOrder.customer })}
+                      className="mt-1 font-medium text-primary hover:underline text-left"
+                    >
+                      {viewOrder.customer.customer_id} - {viewOrder.customer.name}
+                    </button>
+                  ) : (
+                    <p className="mt-1 font-medium">-</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Ship From</Label>
-                  <p className="mt-1">{viewOrder.location?.name || '-'}</p>
+                  {viewOrder.location ? (
+                    <button
+                      type="button"
+                      onClick={() => setDetailView({ type: 'location', data: viewOrder.location })}
+                      className="mt-1 text-primary hover:underline text-left"
+                    >
+                      {viewOrder.location.location_id} - {viewOrder.location.name}
+                    </button>
+                  ) : (
+                    <p className="mt-1">-</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Bill From</Label>
-                  <p className="mt-1">{viewOrder.bill_to_location?.name || '-'}</p>
+                  {viewOrder.bill_to_location ? (
+                    <button
+                      type="button"
+                      onClick={() => setDetailView({ type: 'location', data: viewOrder.bill_to_location })}
+                      className="mt-1 text-primary hover:underline text-left"
+                    >
+                      {viewOrder.bill_to_location.location_id} - {viewOrder.bill_to_location.name}
+                    </button>
+                  ) : (
+                    <p className="mt-1">-</p>
+                  )}
                 </div>
               </div>
 
@@ -1356,8 +1387,78 @@ const SalesOrders = () => {
             </div>
           )}
 
-          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Detail View Dialog (Customer/Location) */}
+      <Dialog open={!!detailView} onOpenChange={(open) => !open && setDetailView(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {detailView?.type === 'customer' ? 'Customer Details' : 'Location Details'}
+            </DialogTitle>
+          </DialogHeader>
+          {detailView?.type === 'customer' && detailView.data && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Customer ID</Label>
+                  <p className="font-mono text-sm">{detailView.data.customer_id}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailView.data.name}</p>
+                </div>
+              </div>
+              {detailView.data.email && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <p className="text-sm">{detailView.data.email}</p>
+                </div>
+              )}
+              {detailView.data.phone && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Phone</Label>
+                  <p className="text-sm">{detailView.data.phone}</p>
+                </div>
+              )}
+              {detailView.data.address_line1 && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <p className="text-sm">
+                    {detailView.data.address_line1}
+                    {detailView.data.city && `, ${detailView.data.city}`}
+                    {detailView.data.state && `, ${detailView.data.state}`}
+                    {detailView.data.postal_code && ` ${detailView.data.postal_code}`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          {detailView?.type === 'location' && detailView.data && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Location ID</Label>
+                  <p className="font-mono text-sm">{detailView.data.location_id}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="font-medium">{detailView.data.name}</p>
+                </div>
+              </div>
+              {detailView.data.address_line1 && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <p className="text-sm">
+                    {detailView.data.address_line1}
+                    {detailView.data.city && `, ${detailView.data.city}`}
+                    {detailView.data.state && `, ${detailView.data.state}`}
+                    {detailView.data.postal_code && ` ${detailView.data.postal_code}`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -1383,124 +1484,177 @@ function SalesOrdersTable({
     sortedAndFilteredData,
   } = useTableSort(orders, 'so_number', 'desc');
 
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility('sales_orders', SALES_ORDER_COLUMNS);
+
   const hasFilters = Object.values(filters).some((v) => v);
 
   return (
-    <div className="space-y-4">
-      {hasFilters && (
+    <div className="space-y-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-muted-foreground">Active filters:</span>
-          {Object.entries(filters).map(([key, value]) =>
-            value ? (
-              <Badge key={key} variant="secondary">
-                {key}: {value}
-              </Badge>
-            ) : null
+          {hasFilters && (
+            <>
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {Object.entries(filters).map(([key, value]) =>
+                value ? (
+                  <Badge key={key} variant="secondary">
+                    {key}: {value}
+                  </Badge>
+                ) : null
+              )}
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                Clear all
+              </Button>
+            </>
           )}
-          <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-            Clear all
-          </Button>
         </div>
-      )}
+        <ColumnToggle
+          columns={SALES_ORDER_COLUMNS}
+          visibleColumns={visibleColumns}
+          onToggleColumn={toggleColumn}
+          onResetToDefaults={resetToDefaults}
+          onShowAll={showAll}
+          onHideAll={hideAll}
+        />
+      </div>
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="SO #"
-                sortKey="so_number"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['so_number']}
-                onFilter={(v) => setFilter('so_number', v)}
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['status']}
-                onFilter={(v) => setFilter('status', v)}
-              />
-              <SortableTableHead
-                label="Customer"
-                sortKey="customer.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['customer.name']}
-                onFilter={(v) => setFilter('customer.name', v)}
-              />
-              <SortableTableHead
-                label="Ship From"
-                sortKey="location.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['location.name']}
-                onFilter={(v) => setFilter('location.name', v)}
-              />
-              <SortableTableHead
-                label="Total"
-                sortKey="total_amount"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                label="Date"
-                sortKey="order_date"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-              />
-              <TableHead className="w-[50px]"></TableHead>
+              {isColumnVisible('so_number') && (
+                <SortableTableHead
+                  label="SO #"
+                  sortKey="so_number"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['so_number']}
+                  onFilter={(v) => setFilter('so_number', v)}
+                />
+              )}
+              {isColumnVisible('status') && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['status']}
+                  onFilter={(v) => setFilter('status', v)}
+                />
+              )}
+              {isColumnVisible('customer') && (
+                <SortableTableHead
+                  label="Customer"
+                  sortKey="customer.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['customer.name']}
+                  onFilter={(v) => setFilter('customer.name', v)}
+                />
+              )}
+              {isColumnVisible('location') && (
+                <SortableTableHead
+                  label="Ship From"
+                  sortKey="location.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['location.name']}
+                  onFilter={(v) => setFilter('location.name', v)}
+                />
+              )}
+              {isColumnVisible('total_amount') && (
+                <SortableTableHead
+                  label="Total"
+                  sortKey="total_amount"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                />
+              )}
+              {isColumnVisible('order_date') && (
+                <SortableTableHead
+                  label="Date"
+                  sortKey="order_date"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                />
+              )}
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.map((order) => (
-              <TableRow
-                key={order.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => onViewOrder(order)}
-              >
-                <TableCell className="font-medium">{order.so_number}</TableCell>
+              <TableRow key={order.id}>
+                {isColumnVisible('so_number') && (
+                  <TableCell className="font-mono text-sm">
+                    <button
+                      onClick={() => onViewOrder(order)}
+                      className="text-primary hover:underline focus:outline-none"
+                    >
+                      {order.so_number}
+                    </button>
+                  </TableCell>
+                )}
+                {isColumnVisible('status') && (
+                  <TableCell>
+                    <Badge className={`${statusColors[order.status] || 'bg-gray-500'} text-white`}>
+                      {order.status}
+                    </Badge>
+                  </TableCell>
+                )}
+                {isColumnVisible('customer') && (
+                  <TableCell>{order.customer?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('location') && (
+                  <TableCell>{order.location?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('total_amount') && (
+                  <TableCell className="font-mono">
+                    ${Number(order.total_amount || 0).toFixed(2)}
+                  </TableCell>
+                )}
+                {isColumnVisible('order_date') && (
+                  <TableCell>
+                    {new Date(order.order_date).toLocaleDateString()}
+                  </TableCell>
+                )}
                 <TableCell>
-                  <Badge className={`${statusColors[order.status] || 'bg-gray-500'} text-white`}>
-                    {order.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{order.customer?.name || '-'}</TableCell>
-                <TableCell>{order.location?.name || '-'}</TableCell>
-                <TableCell className="font-mono">
-                  ${Number(order.total_amount || 0).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  {new Date(order.order_date).toLocaleDateString()}
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onViewOrder(order)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onDeleteOrder(order.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewOrder(order)}>
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onViewOrder(order)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDeleteOrder(order.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
