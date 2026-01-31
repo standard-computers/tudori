@@ -653,7 +653,7 @@ const SalesOrders = () => {
       .select(`
         tax_rate_id,
         tax_amount,
-        tax_rate:tax_rates(name, rate)
+        tax_rate:tax_rates(name, rate, rate_type)
       `)
       .eq('sales_order_id', order.id);
 
@@ -698,8 +698,14 @@ const SalesOrders = () => {
 
       // Calculate new totals
       const subtotal = viewOrder.subtotal || 0;
-      const totalTaxRate = editTaxRates.reduce((sum, r) => sum + r.rate, 0);
-      const taxAmount = subtotal * (totalTaxRate / 100);
+      let taxAmount = 0;
+      editTaxRates.forEach(r => {
+        if (r.rate_type === 'flat') {
+          taxAmount += r.rate;
+        } else {
+          taxAmount += subtotal * (r.rate / 100);
+        }
+      });
       const totalAmount = subtotal + taxAmount;
 
       // Insert new tax rates
@@ -707,7 +713,7 @@ const SalesOrders = () => {
         const taxRatesToInsert = editTaxRates.map(er => ({
           sales_order_id: viewOrder.id,
           tax_rate_id: er.tax_rate_id,
-          tax_amount: subtotal * (er.rate / 100),
+          tax_amount: er.rate_type === 'flat' ? er.rate : subtotal * (er.rate / 100),
         }));
 
         await supabase
@@ -728,8 +734,8 @@ const SalesOrders = () => {
       // Refresh view
       setViewTaxRates(editTaxRates.map(er => ({
         tax_rate_id: er.tax_rate_id,
-        tax_amount: subtotal * (er.rate / 100),
-        tax_rate: { name: er.name, rate: er.rate },
+        tax_amount: er.rate_type === 'flat' ? er.rate : subtotal * (er.rate / 100),
+        tax_rate: { name: er.name, rate: er.rate, rate_type: er.rate_type },
       })));
       setViewOrder({ ...viewOrder, tax_amount: taxAmount, total_amount: totalAmount });
       setIsEditingTaxRates(false);
