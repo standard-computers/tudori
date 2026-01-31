@@ -1019,7 +1019,7 @@ const BillOfMaterials = () => {
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-y-auto">
           <DialogHeader className="shrink-0">
             <DialogTitle>
               {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
@@ -1042,7 +1042,7 @@ const BillOfMaterials = () => {
                 <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
 
-              <div className="flex-1 overflow-y-auto px-6 pb-6">
+              <div className="flex-1 px-6 pb-6">
                 <TabsContent value="details" className="mt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
