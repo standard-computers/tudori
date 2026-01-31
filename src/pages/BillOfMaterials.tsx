@@ -60,6 +60,7 @@ interface BillOfMaterial {
   created_at: string;
   product?: { name: string; product_id: string };
   steps_count?: number;
+  total_duration?: number;
 }
 
 interface BomItem {
@@ -121,6 +122,7 @@ const BOM_COLUMNS: ColumnDefinition[] = [
   { key: 'product', label: 'Output Product', defaultVisible: true },
   { key: 'output_quantity', label: 'Output Qty', defaultVisible: true },
   { key: 'steps_count', label: 'Steps', defaultVisible: true },
+  { key: 'total_duration', label: 'Duration', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
@@ -240,6 +242,18 @@ const BomTable = ({
                   className="w-20"
                 />
               )}
+              {isColumnVisible('total_duration') && (
+                <SortableTableHead
+                  label="Duration"
+                  sortKey="total_duration"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['total_duration']}
+                  onFilter={(value) => setFilter('total_duration', value)}
+                  className="w-24"
+                />
+              )}
               {isColumnVisible('status') && (
                 <SortableTableHead
                   label="Status"
@@ -278,6 +292,11 @@ const BomTable = ({
                   {isColumnVisible('product') && <TableCell>{bom.product?.product_id} - {bom.product?.name}</TableCell>}
                   {isColumnVisible('output_quantity') && <TableCell>{bom.output_quantity}</TableCell>}
                   {isColumnVisible('steps_count') && <TableCell>{bom.steps_count ?? 0}</TableCell>}
+                  {isColumnVisible('total_duration') && (
+                    <TableCell>
+                      {bom.total_duration ? `${bom.total_duration} min` : '-'}
+                    </TableCell>
+                  )}
                   {isColumnVisible('status') && (
                     <TableCell>
                       <Badge className={getStatusColor(bom.status)}>
@@ -428,26 +447,29 @@ const BillOfMaterials = () => {
       return;
     }
 
-    // Fetch step counts for each BOM
+    // Fetch step counts and durations for each BOM
     if (data && data.length > 0) {
       const bomIds = data.map(b => b.id);
-      const { data: stepCounts } = await supabase
+      const { data: steps } = await supabase
         .from('bom_steps')
-        .select('bom_id')
+        .select('bom_id, estimated_duration_minutes')
         .in('bom_id', bomIds);
 
-      // Count steps per BOM
+      // Count steps and sum durations per BOM
       const countsMap: Record<string, number> = {};
-      stepCounts?.forEach(s => {
+      const durationsMap: Record<string, number> = {};
+      steps?.forEach(s => {
         countsMap[s.bom_id] = (countsMap[s.bom_id] || 0) + 1;
+        durationsMap[s.bom_id] = (durationsMap[s.bom_id] || 0) + (s.estimated_duration_minutes || 0);
       });
 
-      // Merge counts into BOMs
-      const bomsWithCounts = data.map(bom => ({
+      // Merge counts and durations into BOMs
+      const bomsWithData = data.map(bom => ({
         ...bom,
         steps_count: countsMap[bom.id] || 0,
+        total_duration: durationsMap[bom.id] || 0,
       }));
-      setBoms(bomsWithCounts);
+      setBoms(bomsWithData);
     } else {
       setBoms(data || []);
     }
