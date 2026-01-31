@@ -185,6 +185,7 @@ const statusColors: Record<string, string> = {
   shipped: 'bg-purple-500',
   delivered: 'bg-green-500',
   cancelled: 'bg-red-500',
+  backorder: 'bg-orange-500',
 };
 
 interface Company {
@@ -968,13 +969,16 @@ const Orders = () => {
       const taxAmount = calculateTax();
       const totalAmount = calculateGrandTotal();
 
+      // Determine order status - backorder if no availability for internal transfers
+      const orderStatus = hasStockIssue && sourceLocationId ? 'backorder' : 'draft';
+
       // Create purchase order - ensure empty strings become null for UUID fields
       const { data: order, error: orderError } = await supabase
         .from('purchase_orders')
         .insert({
           company_id: companyId!,
           po_number: poNumber,
-          status: 'draft',
+          status: orderStatus,
           vendor_id: actualVendorId,
           source_location_id: sourceLocationId,
           location_id: formData.location_id || null,

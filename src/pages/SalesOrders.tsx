@@ -138,6 +138,7 @@ const statusColors: Record<string, string> = {
   shipped: 'bg-purple-500',
   delivered: 'bg-green-500',
   cancelled: 'bg-red-500',
+  backorder: 'bg-orange-500',
 };
 
 // Column definitions for Sales Orders table
@@ -553,13 +554,16 @@ const SalesOrders = () => {
       const shipFromLocationId = shipFromParsed?.type === 'location' ? shipFromParsed.id : null;
       const shipFromVendorId = shipFromParsed?.type === 'vendor' ? shipFromParsed.id : null;
 
+      // Determine order status - backorder if no availability at ship from location
+      const orderStatus = hasStockIssue && shipFromLocationId ? 'backorder' : 'draft';
+
       // Create sales order
       const { data: order, error: orderError } = await supabase
         .from('sales_orders' as any)
         .insert({
           company_id: companyId,
           so_number: soNumber,
-          status: 'draft',
+          status: orderStatus,
           customer_id: formData.customer_id || null,
           location_id: shipFromLocationId,
           bill_to_location_id: formData.bill_to_location_id || null,
