@@ -717,35 +717,34 @@ const Transportation = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="h-16 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold">Transportation</h1>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="h-16 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <TabsList>
+                <TabsTrigger value="carriers" className="gap-2">
+                  <Truck className="h-4 w-4" />
+                  Carriers
+                </TabsTrigger>
+                <TabsTrigger value="routes" className="gap-2">
+                  <Route className="h-4 w-4" />
+                  Routes
+                </TabsTrigger>
+                <TabsTrigger value="assignments" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Assignments
+                </TabsTrigger>
+              </TabsList>
+              <h1 className="text-xl font-semibold">Transportation</h1>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="p-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="carriers" className="gap-2">
-              <Truck className="h-4 w-4" />
-              Carriers
-            </TabsTrigger>
-            <TabsTrigger value="routes" className="gap-2">
-              <Route className="h-4 w-4" />
-              Routes
-            </TabsTrigger>
-            <TabsTrigger value="assignments" className="gap-2">
-              <Users className="h-4 w-4" />
-              Assignments
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="carriers" className="mt-4">
+        <div className="p-4">
+          <TabsContent value="carriers" className="mt-0">
             <div className="flex justify-between items-center mb-4">
               <p className="text-sm text-muted-foreground">
                 Manage shipping carriers and logistics partners
@@ -1034,10 +1033,9 @@ const Transportation = () => {
               </TableBody>
             </Table>
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
 
-      {/* Carrier Dialog */}
+        {/* Carrier Dialog */}
       <Dialog open={isCarrierDialogOpen} onOpenChange={setIsCarrierDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
@@ -1417,6 +1415,7 @@ const Transportation = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </Tabs>
     </div>
   );
 };
