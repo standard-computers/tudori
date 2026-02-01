@@ -274,8 +274,28 @@ export function StepByStepProductionDialog({
       
       // Perform goods withdrawal for each item if there's a bin
       if (currentStep.bin_id && items.length > 0) {
+        // Get product prices for cost calculation
+        const productIds = items.map(i => i.product_id);
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, price')
+          .in('id', productIds);
+        
+        const productPrices = new Map(products?.map(p => [p.id, p.price || 0]) || []);
+        
+        // Find or get the location's ledger for posting transactions
+        const { data: ledger } = await supabase
+          .from('ledgers')
+          .select('id')
+          .eq('location_id', locationId)
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+        
         for (const item of items) {
           const requiredQty = item.quantity * quantity;
+          const unitCost = productPrices.get(item.product_id) || 0;
+          const totalCost = requiredQty * unitCost;
           
           // Get inventory records for this product in this bin
           const { data: invRecords } = await supabase
@@ -309,6 +329,40 @@ export function StepByStepProductionDialog({
             
             remainingToDeduct -= deductAmount;
           }
+          
+          // Create ledger transaction for the cost (negative = consumption)
+          let ledgerTransactionId: string | null = null;
+          if (ledger && totalCost > 0) {
+            const { data: txn } = await supabase
+              .from('ledger_transactions')
+              .insert({
+                ledger_id: ledger.id,
+                transaction_type: 'production_consumption',
+                reference_id: orderId,
+                reference_number: orderNumber,
+                amount: -totalCost,
+                description: `Production consumption: ${item.product?.name} x${requiredQty} for ${orderNumber} Step ${currentStep.step_number}`,
+                transaction_date: new Date().toISOString(),
+              })
+              .select('id')
+              .single();
+            
+            ledgerTransactionId = txn?.id || null;
+          }
+          
+          // Record the consumption
+          await supabase
+            .from('production_order_consumptions')
+            .insert({
+              production_order_id: orderId,
+              bom_step_id: currentStep.id,
+              product_id: item.product_id,
+              quantity: requiredQty,
+              unit_cost: unitCost,
+              total_cost: totalCost,
+              bin_id: currentStep.bin_id,
+              ledger_transaction_id: ledgerTransactionId,
+            });
         }
         
         // Refresh bin inventory
