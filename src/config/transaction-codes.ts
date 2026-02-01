@@ -41,6 +41,7 @@ export const TRANSACTION_CODES: TransactionCode[] = [
   { code: 'configuration', name: 'Configuration', description: 'System configuration', path: '/configuration' },
   { code: 'settings', name: 'Settings', description: 'Company settings', path: '/settings' },
   { code: 'data_explorer', name: 'Data Explorer', description: 'Browse database tables', path: '/data-explorer' },
+  { code: 'transportation', name: 'Transportation', description: 'Carriers & logistics', path: '/transportation' },
 ];
 
 // Map app names to transaction codes
