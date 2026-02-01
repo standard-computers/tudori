@@ -1,15 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft } from "lucide-react";
+import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft, Trash2, Download, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { useStatusMessage } from "@/hooks/use-status-message";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-
+import { Checkbox } from "@/components/ui/checkbox";
+import { useExcel } from "@/hooks/use-excel";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 const AVAILABLE_TABLES = [
   "accounts",
   "areas",
@@ -76,12 +79,18 @@ interface TableTab {
   isLoading: boolean;
   recordCount: number;
   searchTerm: string;
+  selectedRows: Set<number>;
+  sortKey: string | null;
+  sortDirection: 'asc' | 'desc' | null;
+  columnFilters: Record<string, string>;
 }
 
 export default function DataExplorer() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const status = useStatusMessage();
+  const { exportToExcel } = useExcel();
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tabs, setTabs] = useState<TableTab[]>([]);
@@ -137,6 +146,10 @@ export default function DataExplorer() {
       isLoading: true,
       recordCount: 0,
       searchTerm: "",
+      selectedRows: new Set(),
+      sortKey: null,
+      sortDirection: null,
+      columnFilters: {},
     };
 
     setTabs(prev => [...prev, newTab]);
@@ -181,15 +194,145 @@ export default function DataExplorer() {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, searchTerm } : t));
   };
 
+  const handleSort = (tabId: string, columnKey: string) => {
+    setTabs(prev => prev.map(t => {
+      if (t.id !== tabId) return t;
+      let newDirection: 'asc' | 'desc' | null = 'asc';
+      if (t.sortKey === columnKey) {
+        if (t.sortDirection === 'asc') newDirection = 'desc';
+        else if (t.sortDirection === 'desc') newDirection = null;
+      }
+      return { 
+        ...t, 
+        sortKey: newDirection ? columnKey : null, 
+        sortDirection: newDirection,
+        selectedRows: new Set() 
+      };
+    }));
+  };
+
+  const setColumnFilter = (tabId: string, column: string, value: string) => {
+    setTabs(prev => prev.map(t => {
+      if (t.id !== tabId) return t;
+      const newFilters = { ...t.columnFilters };
+      if (value) {
+        newFilters[column] = value;
+      } else {
+        delete newFilters[column];
+      }
+      return { ...t, columnFilters: newFilters, selectedRows: new Set() };
+    }));
+  };
+
+  const toggleRowSelection = (tabId: string, rowIndex: number) => {
+    setTabs(prev => prev.map(t => {
+      if (t.id !== tabId) return t;
+      const newSelected = new Set(t.selectedRows);
+      if (newSelected.has(rowIndex)) {
+        newSelected.delete(rowIndex);
+      } else {
+        newSelected.add(rowIndex);
+      }
+      return { ...t, selectedRows: newSelected };
+    }));
+  };
+
+  const toggleAllSelection = (tabId: string, filteredData: Record<string, unknown>[]) => {
+    setTabs(prev => prev.map(t => {
+      if (t.id !== tabId) return t;
+      const allSelected = t.selectedRows.size === filteredData.length && filteredData.length > 0;
+      return { ...t, selectedRows: allSelected ? new Set() : new Set(filteredData.map((_, i) => i)) };
+    }));
+  };
+
+  const handleDeleteSelected = async (tab: TableTab, filteredData: Record<string, unknown>[]) => {
+    const selectedData = Array.from(tab.selectedRows).map(i => filteredData[i]).filter(Boolean);
+    if (selectedData.length === 0) return;
+
+    setIsDeleting(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const row of selectedData) {
+      const id = row.id as string;
+      if (!id) {
+        errorCount++;
+        continue;
+      }
+      const { error } = await supabase.from(tab.tableName as "accounts").delete().eq("id", id);
+      if (error) {
+        errorCount++;
+      } else {
+        successCount++;
+      }
+    }
+
+    setIsDeleting(false);
+    
+    if (successCount > 0) {
+      status.success(`Deleted ${successCount} record(s)`);
+      refreshTab(tab.id);
+    }
+    if (errorCount > 0) {
+      status.error(`Failed to delete ${errorCount} record(s)`);
+    }
+    
+    setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, selectedRows: new Set() } : t));
+  };
+
+  const handleExportSelected = async (tab: TableTab, filteredData: Record<string, unknown>[]) => {
+    const selectedData = Array.from(tab.selectedRows).map(i => filteredData[i]).filter(Boolean);
+    if (selectedData.length === 0) return;
+
+    await exportToExcel(selectedData, `${tab.tableName}_export.xlsx`, tab.tableName);
+    status.success(`Exported ${selectedData.length} record(s)`);
+  };
+
   const activeTab = tabs.find(t => t.id === activeTabId);
 
   const getFilteredData = (tab: TableTab) => {
-    if (!tab.searchTerm) return tab.data;
-    return tab.data.filter((row) =>
-      Object.values(row).some((value) =>
-        String(value).toLowerCase().includes(tab.searchTerm.toLowerCase())
-      )
-    );
+    let result = [...tab.data];
+    
+    // Apply column filters
+    Object.entries(tab.columnFilters).forEach(([col, filterValue]) => {
+      if (filterValue) {
+        result = result.filter(row => {
+          const cellValue = row[col];
+          if (cellValue === null || cellValue === undefined) return false;
+          return String(cellValue).toLowerCase().includes(filterValue.toLowerCase());
+        });
+      }
+    });
+    
+    // Apply global search
+    if (tab.searchTerm) {
+      result = result.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value).toLowerCase().includes(tab.searchTerm.toLowerCase())
+        )
+      );
+    }
+    
+    // Apply sorting
+    if (tab.sortKey && tab.sortDirection) {
+      result.sort((a, b) => {
+        const aVal = a[tab.sortKey!];
+        const bVal = b[tab.sortKey!];
+        
+        if (aVal === null || aVal === undefined) return tab.sortDirection === 'asc' ? 1 : -1;
+        if (bVal === null || bVal === undefined) return tab.sortDirection === 'asc' ? -1 : 1;
+        
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return tab.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        
+        const aStr = String(aVal).toLowerCase();
+        const bStr = String(bVal).toLowerCase();
+        return tab.sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      });
+    }
+    
+    return result;
   };
 
   const formatCellValue = (value: unknown): string => {
@@ -234,6 +377,38 @@ export default function DataExplorer() {
             <Button variant="outline" size="icon" onClick={() => refreshTab(activeTab.id)} disabled={activeTab.isLoading}>
               <RefreshCw className={cn("h-4 w-4", activeTab.isLoading && "animate-spin")} />
             </Button>
+            
+            {activeTab.selectedRows.size > 0 && (
+              <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={isDeleting}>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete ({activeTab.selectedRows.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Records</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete {activeTab.selectedRows.size} record(s)? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteSelected(activeTab, getFilteredData(activeTab))}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" size="sm" onClick={() => handleExportSelected(activeTab, getFilteredData(activeTab))}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Export ({activeTab.selectedRows.size})
+                </Button>
+              </>
+            )}
+            
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -321,28 +496,94 @@ export default function DataExplorer() {
                 <p className="text-lg">No records found in {activeTab.tableName}</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow>
-                    {activeTab.columns.map((col) => (
-                      <TableHead key={col} className="font-medium">
-                        {col}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {getFilteredData(activeTab).map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      {activeTab.columns.map((col) => (
-                        <TableCell key={col} className="max-w-[300px] truncate" title={formatCellValue(row[col])}>
-                          {formatCellValue(row[col])}
-                        </TableCell>
+              (() => {
+                const filteredData = getFilteredData(activeTab);
+                const allSelected = activeTab.selectedRows.size === filteredData.length && filteredData.length > 0;
+                return (
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allSelected}
+                            onCheckedChange={() => toggleAllSelection(activeTab.id, filteredData)}
+                          />
+                        </TableHead>
+                        {activeTab.columns.map((col) => (
+                          <TableHead key={col} className="font-medium">
+                            <div className="flex flex-col gap-1">
+                              <button
+                                onClick={() => handleSort(activeTab.id, col)}
+                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              >
+                                <span>{col}</span>
+                                {activeTab.sortKey === col && (
+                                  activeTab.sortDirection === 'asc' 
+                                    ? <ArrowUp className="h-3 w-3" /> 
+                                    : <ArrowDown className="h-3 w-3" />
+                                )}
+                              </button>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className={cn(
+                                      "h-6 px-1 justify-start",
+                                      activeTab.columnFilters[col] && "text-primary"
+                                    )}
+                                  >
+                                    <Filter className="h-3 w-3 mr-1" />
+                                    {activeTab.columnFilters[col] || "Filter"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2" align="start">
+                                  <Input
+                                    placeholder={`Filter ${col}...`}
+                                    value={activeTab.columnFilters[col] || ""}
+                                    onChange={(e) => setColumnFilter(activeTab.id, col, e.target.value)}
+                                    className="h-8"
+                                  />
+                                  {activeTab.columnFilters[col] && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full mt-1"
+                                      onClick={() => setColumnFilter(activeTab.id, col, "")}
+                                    >
+                                      Clear
+                                    </Button>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.map((row, rowIndex) => (
+                        <TableRow 
+                          key={rowIndex}
+                          className={cn(activeTab.selectedRows.has(rowIndex) && "bg-muted/50")}
+                        >
+                          <TableCell className="w-10">
+                            <Checkbox
+                              checked={activeTab.selectedRows.has(rowIndex)}
+                              onCheckedChange={() => toggleRowSelection(activeTab.id, rowIndex)}
+                            />
+                          </TableCell>
+                          {activeTab.columns.map((col) => (
+                            <TableCell key={col} className="max-w-[300px] truncate" title={formatCellValue(row[col])}>
+                              {formatCellValue(row[col])}
+                            </TableCell>
+                          ))}
+                        </TableRow>
                       ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    </TableBody>
+                  </Table>
+                );
+              })()
             )}
           </div>
         </div>
