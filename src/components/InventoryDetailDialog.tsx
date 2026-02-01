@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -64,6 +64,12 @@ interface InventoryDetailDialogProps {
   onUpdated: () => void;
 }
 
+interface PackagingUnitOption {
+  id: string;
+  pu_number: string;
+  product_name?: string;
+}
+
 export const InventoryDetailDialog = ({
   open,
   onOpenChange,
@@ -73,6 +79,7 @@ export const InventoryDetailDialog = ({
 }: InventoryDetailDialogProps) => {
   const [isPutAwayMode, setIsPutAwayMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
+  const [isChangePUMode, setIsChangePUMode] = useState(false);
   const [bins, setBins] = useState<Bin[]>([]);
   const [selectedBinId, setSelectedBinId] = useState<string>('');
   const [putAwayQuantity, setPutAwayQuantity] = useState<number>(0);
@@ -82,16 +89,21 @@ export const InventoryDetailDialog = ({
   const [isExploding, setIsExploding] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
+  const [isChangingPU, setIsChangingPU] = useState(false);
   const [siblingPUItems, setSiblingPUItems] = useState<InventoryItem[]>([]);
   const [showPUConfirmDialog, setShowPUConfirmDialog] = useState(false);
   const [pendingMoveAction, setPendingMoveAction] = useState<'manual' | 'auto' | 'move' | null>(null);
+  const [availablePUs, setAvailablePUs] = useState<PackagingUnitOption[]>([]);
+  const [selectedPUId, setSelectedPUId] = useState<string>('');
 
   useEffect(() => {
     if (open && item) {
       setIsPutAwayMode(false);
       setIsMoveMode(false);
+      setIsChangePUMode(false);
       setPutAwayQuantity(item.quantity);
       setSelectedBinId('');
+      setSelectedPUId('');
       fetchBins();
     }
   }, [open, item, locationId]);
@@ -118,6 +130,88 @@ export const InventoryDetailDialog = ({
       .order('bin_id');
 
     setBins(binsData || []);
+  };
+
+  const fetchAvailablePUs = async () => {
+    if (!item?.product?.company_id) return;
+    
+    // Fetch PUs for this company (optionally filter by same product or show all)
+    const { data: pus } = await supabase
+      .from('packaging_units')
+      .select(`
+        id, 
+        pu_number, 
+        product:products(name)
+      `)
+      .eq('company_id', item.product.company_id)
+      .eq('status', 'active')
+      .order('pu_number');
+    
+    const options: PackagingUnitOption[] = (pus || []).map((pu: any) => ({
+      id: pu.id,
+      pu_number: pu.pu_number,
+      product_name: pu.product?.name,
+    }));
+    
+    setAvailablePUs(options);
+  };
+
+  const handleInitiateChangePU = async () => {
+    if (!item) return;
+    await fetchAvailablePUs();
+    setIsChangePUMode(true);
+  };
+
+  const handleChangePU = async () => {
+    if (!item) return;
+    
+    setIsChangingPU(true);
+    try {
+      // selectedPUId can be 'new' for creating a new PU, or an existing PU id
+      let newPUId: string | null = null;
+      
+      if (selectedPUId === 'new') {
+        // Create a new PU
+        if (!item.product?.company_id) {
+          throw new Error('Missing company information');
+        }
+        const result = await createPackagingUnit(
+          item.product.company_id,
+          item.product_id,
+          item.quantity
+        );
+        if (!result) {
+          throw new Error('Failed to create packaging unit');
+        }
+        newPUId = result.id;
+        toast.success(`Created and assigned new PU: ${result.pu_number}`);
+      } else if (selectedPUId === 'none') {
+        // Remove PU assignment
+        newPUId = null;
+        toast.success('Removed PU assignment');
+      } else {
+        // Assign existing PU
+        newPUId = selectedPUId;
+        const selectedPU = availablePUs.find(p => p.id === selectedPUId);
+        toast.success(`Changed PU to: ${selectedPU?.pu_number}`);
+      }
+      
+      // Update the inventory record with the new PU
+      const { error } = await supabase
+        .from('inventory')
+        .update({ pu_id: newPUId, updated_at: new Date().toISOString() })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Change PU error:', error);
+      toast.error('Failed to change PU');
+    } finally {
+      setIsChangingPU(false);
+    }
   };
 
   // Check for sibling inventory items that share the same PU
@@ -656,10 +750,12 @@ export const InventoryDetailDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5" />
-            {isMoveMode ? 'Move Inventory' : isPutAwayMode ? 'Put Away Inventory' : 'Inventory Details'}
+            {isChangePUMode ? 'Change Packaging Unit' : isMoveMode ? 'Move Inventory' : isPutAwayMode ? 'Put Away Inventory' : 'Inventory Details'}
           </DialogTitle>
           <DialogDescription>
-            {isMoveMode
+            {isChangePUMode
+              ? 'Select a new packaging unit for this inventory'
+              : isMoveMode
               ? 'Select destination bin for this inventory'
               : isPutAwayMode
               ? 'Confirm quantity and select destination bin'
@@ -667,7 +763,59 @@ export const InventoryDetailDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        {!isPutAwayMode && !isMoveMode ? (
+        {isChangePUMode ? (
+          <div className="space-y-4 px-6 py-4">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="w-4 h-4" />
+                <span className="font-medium">{item.product?.name}</span>
+              </div>
+              <p className="text-xs text-muted-foreground font-mono">
+                {item.product?.product_id} {item.product?.sku && `• ${item.product.sku}`}
+              </p>
+              {item.packaging_unit?.pu_number && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Current PU: <span className="font-mono">{item.packaging_unit.pu_number}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>New Packaging Unit</Label>
+              <Select value={selectedPUId} onValueChange={setSelectedPUId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a packaging unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">
+                    <span className="flex items-center gap-2">
+                      <Tag className="w-3 h-3" />
+                      Create New PU
+                    </span>
+                  </SelectItem>
+                  {item.pu_id && (
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">Remove PU Assignment</span>
+                    </SelectItem>
+                  )}
+                  {availablePUs
+                    .filter(pu => pu.id !== item.pu_id)
+                    .map((pu) => (
+                      <SelectItem key={pu.id} value={pu.id}>
+                        <span className="font-mono">{pu.pu_number}</span>
+                        {pu.product_name && (
+                          <span className="text-muted-foreground ml-2">({pu.product_name})</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Select an existing PU, create a new one, or remove the current assignment.
+              </p>
+            </div>
+          </div>
+        ) : !isPutAwayMode && !isMoveMode ? (
           <div className="space-y-4 px-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -863,6 +1011,13 @@ export const InventoryDetailDialog = ({
                   Move
                 </Button>
               )}
+              <Button 
+                variant="secondary" 
+                onClick={handleInitiateChangePU}
+              >
+                <Replace className="w-4 h-4 mr-2" />
+                Change PU
+              </Button>
               {canExplode && (
                 <Button 
                   variant="secondary" 
@@ -879,6 +1034,19 @@ export const InventoryDetailDialog = ({
                   Put Away
                 </Button>
               )}
+            </>
+          ) : isChangePUMode ? (
+            <>
+              <Button variant="outline" onClick={() => setIsChangePUMode(false)}>
+                Back
+              </Button>
+              <Button
+                onClick={handleChangePU}
+                disabled={isChangingPU || !selectedPUId}
+              >
+                <Replace className="w-4 h-4 mr-2" />
+                {isChangingPU ? 'Changing...' : 'Confirm Change'}
+              </Button>
             </>
           ) : isMoveMode ? (
             <>
