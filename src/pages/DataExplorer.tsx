@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const AVAILABLE_TABLES = [
   "accounts",
   "areas",
+  "audit_log",
   "bill_of_materials",
   "bin_products",
   "bins",
@@ -46,26 +47,29 @@ const AVAILABLE_TABLES = [
   "locations",
   "messages",
   "outbound_deliveries",
-  "outbound_delivery_items",
   "packaging_units",
-  "pos_transactions",
-  "pos_transaction_items",
-  "product_sources",
-  "products",
+  "product_components",
+  "product_safety_stock",
+  "product_uoms",
   "production_order_consumptions",
+  "production_order_items",
   "production_orders",
+  "products",
   "profiles",
   "purchase_order_items",
+  "purchase_order_tax_rates",
   "purchase_orders",
   "requisition_items",
   "requisitions",
-  "safety_stock",
   "sales_order_items",
+  "sales_order_tax_rates",
   "sales_orders",
   "tasks",
+  "tax_rates",
   "team_members",
   "teams",
-  "timesheets",
+  "time_punches",
+  "user_preferences",
   "user_roles",
   "user_transaction_access",
   "vendors",
@@ -91,6 +95,7 @@ export default function DataExplorer() {
   const status = useStatusMessage();
   const { exportToExcel } = useExcel();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [hasITRole, setHasITRole] = useState(false);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tabs, setTabs] = useState<TableTab[]>([]);
@@ -101,6 +106,32 @@ export default function DataExplorer() {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
+
+  // Check if user has IT role for delete permissions
+  useEffect(() => {
+    const checkITRole = async () => {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (!profile?.company_id) return;
+      
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("company_id", profile.company_id)
+        .in("role", ["it", "owner", "admin"]);
+      
+      setHasITRole(roleData && roleData.length > 0);
+    };
+    
+    checkITRole();
+  }, [user]);
 
   const fetchTableData = async (tableName: string): Promise<{ data: Record<string, unknown>[]; columns: string[]; count: number }> => {
     try {
@@ -380,28 +411,30 @@ export default function DataExplorer() {
             
             {activeTab.selectedRows.size > 0 && (
               <>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isDeleting}>
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete ({activeTab.selectedRows.size})
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Records</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete {activeTab.selectedRows.size} record(s)? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDeleteSelected(activeTab, getFilteredData(activeTab))}>
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {hasITRole && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={isDeleting}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete ({activeTab.selectedRows.size})
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Records</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete {activeTab.selectedRows.size} record(s)? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteSelected(activeTab, getFilteredData(activeTab))}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 <Button variant="outline" size="sm" onClick={() => handleExportSelected(activeTab, getFilteredData(activeTab))}>
                   <Download className="h-4 w-4 mr-1" />
                   Export ({activeTab.selectedRows.size})
