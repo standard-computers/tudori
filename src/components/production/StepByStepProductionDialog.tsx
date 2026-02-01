@@ -604,7 +604,7 @@ export function StepByStepProductionDialog({
           ) : (
             <>
               {/* Scrollable content area */}
-              <div className="flex-1 overflow-y-auto min-h-0 space-y-4 px-1">
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-4 p-4">
                 {/* Progress */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
