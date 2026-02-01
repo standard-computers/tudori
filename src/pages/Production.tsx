@@ -465,10 +465,10 @@ const Production = () => {
       });
       setBomDurations(durations);
 
-      // Add durations to orders
+      // Add durations to orders (BOM duration × quantity)
       const ordersWithDuration = (data || []).map(order => ({
         ...order,
-        total_duration: order.bom_id ? durations[order.bom_id] || 0 : 0,
+        total_duration: order.bom_id ? (durations[order.bom_id] || 0) * order.quantity : 0,
       }));
       setOrders(ordersWithDuration);
     } else {
