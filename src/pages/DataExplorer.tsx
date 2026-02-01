@@ -511,7 +511,7 @@ export default function DataExplorer() {
                         </TableHead>
                         {activeTab.columns.map((col) => (
                           <TableHead key={col} className="font-medium">
-                            <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleSort(activeTab.id, col)}
                                 className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -527,14 +527,13 @@ export default function DataExplorer() {
                                 <PopoverTrigger asChild>
                                   <Button 
                                     variant="ghost" 
-                                    size="sm" 
+                                    size="icon"
                                     className={cn(
-                                      "h-6 px-1 justify-start",
+                                      "h-6 w-6",
                                       activeTab.columnFilters[col] && "text-primary"
                                     )}
                                   >
-                                    <Filter className="h-3 w-3 mr-1" />
-                                    {activeTab.columnFilters[col] || "Filter"}
+                                    <Filter className="h-3 w-3" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-48 p-2" align="start">
