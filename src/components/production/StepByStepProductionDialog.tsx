@@ -147,6 +147,166 @@ export function StepByStepProductionDialog({
       .eq('id', orderId);
   };
 
+  // Perform goods receipt for finished goods when production completes
+  const performFinishedGoodsReceipt = async () => {
+    // Get BOM details to find output product and quantity
+    const { data: bom } = await supabase
+      .from('bill_of_materials')
+      .select('product_id, output_quantity')
+      .eq('id', bomId)
+      .single();
+
+    if (!bom) {
+      throw new Error('Failed to load BOM details');
+    }
+
+    // Get the product price for ledger transaction
+    const { data: product } = await supabase
+      .from('products')
+      .select('id, price, product_id, name')
+      .eq('id', bom.product_id)
+      .single();
+
+    if (!product) {
+      throw new Error('Failed to load product details');
+    }
+
+    // Calculate total output quantity (BOM output * batches)
+    const totalOutputQty = bom.output_quantity * quantity;
+    const unitPrice = product.price || 0;
+    const totalValue = totalOutputQty * unitPrice;
+
+    // Get the final step's bin for inventory placement
+    const finalStep = steps[steps.length - 1];
+    const targetBinId = finalStep?.bin_id || null;
+
+    // Generate goods receipt number
+    const { data: grConfig } = await supabase
+      .from('document_id_config')
+      .select('prefix, num_digits, starting_number')
+      .eq('company_id', companyId)
+      .eq('document_type', 'goods_receipt')
+      .single();
+
+    const { count: grCount } = await supabase
+      .from('goods_receipts')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId);
+
+    const grNumber = grConfig
+      ? `${grConfig.prefix || ''}${String((grConfig.starting_number || 1) + (grCount || 0)).padStart(grConfig.num_digits || 4, '0')}`
+      : `GR-${String((grCount || 0) + 1).padStart(4, '0')}`;
+
+    // Create goods receipt
+    const { data: goodsReceipt, error: grError } = await supabase
+      .from('goods_receipts')
+      .insert({
+        receipt_number: grNumber,
+        company_id: companyId,
+        location_id: locationId,
+        status: 'posted',
+        notes: `Production output from ${orderNumber}`,
+      })
+      .select('id')
+      .single();
+
+    if (grError || !goodsReceipt) {
+      throw new Error('Failed to create goods receipt');
+    }
+
+    // Create goods receipt item
+    await supabase
+      .from('goods_receipt_items')
+      .insert({
+        goods_receipt_id: goodsReceipt.id,
+        product_id: bom.product_id,
+        quantity: totalOutputQty,
+        bin_id: targetBinId,
+        notes: `Finished goods from production order ${orderNumber}`,
+      });
+
+    // Add to inventory
+    if (targetBinId) {
+      // Check if inventory record exists for this product/bin
+      const { data: existingInv } = await supabase
+        .from('inventory')
+        .select('id, quantity')
+        .eq('product_id', bom.product_id)
+        .eq('bin_id', targetBinId)
+        .eq('location_id', locationId)
+        .single();
+
+      if (existingInv) {
+        await supabase
+          .from('inventory')
+          .update({ 
+            quantity: existingInv.quantity + totalOutputQty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingInv.id);
+      } else {
+        await supabase
+          .from('inventory')
+          .insert({
+            product_id: bom.product_id,
+            location_id: locationId,
+            bin_id: targetBinId,
+            quantity: totalOutputQty,
+          });
+      }
+    } else {
+      // No bin - add to location inventory without bin
+      const { data: existingInv } = await supabase
+        .from('inventory')
+        .select('id, quantity')
+        .eq('product_id', bom.product_id)
+        .eq('location_id', locationId)
+        .is('bin_id', null)
+        .single();
+
+      if (existingInv) {
+        await supabase
+          .from('inventory')
+          .update({ 
+            quantity: existingInv.quantity + totalOutputQty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingInv.id);
+      } else {
+        await supabase
+          .from('inventory')
+          .insert({
+            product_id: bom.product_id,
+            location_id: locationId,
+            quantity: totalOutputQty,
+          });
+      }
+    }
+
+    // Create positive ledger transaction for finished goods value
+    const { data: ledger } = await supabase
+      .from('ledgers')
+      .select('id')
+      .eq('location_id', locationId)
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+
+    if (ledger && totalValue > 0) {
+      await supabase
+        .from('ledger_transactions')
+        .insert({
+          ledger_id: ledger.id,
+          transaction_type: 'production_output',
+          reference_id: orderId,
+          reference_number: orderNumber,
+          amount: totalValue,
+          description: `Production output: ${product.name} x${totalOutputQty} from ${orderNumber}`,
+          transaction_date: new Date().toISOString(),
+        });
+    }
+  };
+
   // Fetch bin inventory when current step changes
   useEffect(() => {
     if (currentStep?.bin_id) {
@@ -379,7 +539,10 @@ export function StepByStepProductionDialog({
         setCurrentStepIndex(prev => prev + 1);
         toast.success(`Step ${currentStep.step_number} completed`);
       } else {
-        // All steps completed - update order status
+        // All steps completed - perform goods receipt for finished goods
+        await performFinishedGoodsReceipt();
+        
+        // Update order status
         await supabase
           .from('production_orders')
           .update({ 
