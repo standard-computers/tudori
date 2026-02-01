@@ -47,6 +47,7 @@ import BillOfMaterials from "./pages/BillOfMaterials";
 import Planning from "./pages/Planning";
 import Messages from "./pages/Messages";
 import Analytics from "./pages/Analytics";
+import DataExplorer from "./pages/DataExplorer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -102,6 +103,7 @@ const App = () => (
                   <Route path="/planning" element={<Planning />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/data-explorer" element={<DataExplorer />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
