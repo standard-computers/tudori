@@ -349,24 +349,17 @@ const Transportation = () => {
   };
 
   const getNextCarrierId = async (): Promise<string> => {
-    if (!companyId) return 'CAR-001';
+    if (!companyId) return 'CAR-0001';
     
-    const { data } = await supabase
-      .from('carriers')
-      .select('carrier_id')
-      .eq('company_id', companyId)
-      .order('carrier_id', { ascending: false })
-      .limit(1);
+    const { data, error } = await supabase.rpc('generate_carrier_id', {
+      p_company_id: companyId
+    });
 
-    if (data && data.length > 0) {
-      const lastId = data[0].carrier_id;
-      const match = lastId.match(/(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10) + 1;
-        return `CAR-${String(num).padStart(3, '0')}`;
-      }
+    if (error || !data) {
+      console.error('Failed to generate carrier ID:', error);
+      return 'CAR-0001';
     }
-    return 'CAR-001';
+    return data;
   };
 
   const openNewCarrierDialog = async () => {
@@ -479,24 +472,17 @@ const Transportation = () => {
 
   // Route functions
   const getNextRouteId = async (): Promise<string> => {
-    if (!companyId) return 'RTE-001';
+    if (!companyId) return 'RTE-0001';
     
-    const { data } = await supabase
-      .from('routes')
-      .select('route_id')
-      .eq('company_id', companyId)
-      .order('route_id', { ascending: false })
-      .limit(1);
+    const { data, error } = await supabase.rpc('generate_route_id', {
+      p_company_id: companyId
+    });
 
-    if (data && data.length > 0) {
-      const lastId = data[0].route_id;
-      const match = lastId.match(/(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10) + 1;
-        return `RTE-${String(num).padStart(3, '0')}`;
-      }
+    if (error || !data) {
+      console.error('Failed to generate route ID:', error);
+      return 'RTE-0001';
     }
-    return 'RTE-001';
+    return data;
   };
 
   const openNewRouteDialog = async () => {
@@ -600,24 +586,17 @@ const Transportation = () => {
 
   // Assignment functions
   const getNextAssignmentId = async (): Promise<string> => {
-    if (!companyId) return 'ASN-001';
+    if (!companyId) return 'ASN-0001';
     
-    const { data } = await supabase
-      .from('assignments')
-      .select('assignment_id')
-      .eq('company_id', companyId)
-      .order('assignment_id', { ascending: false })
-      .limit(1);
+    const { data, error } = await supabase.rpc('generate_assignment_id', {
+      p_company_id: companyId
+    });
 
-    if (data && data.length > 0) {
-      const lastId = data[0].assignment_id;
-      const match = lastId.match(/(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10) + 1;
-        return `ASN-${String(num).padStart(3, '0')}`;
-      }
+    if (error || !data) {
+      console.error('Failed to generate assignment ID:', error);
+      return 'ASN-0001';
     }
-    return 'ASN-001';
+    return data;
   };
 
   const openNewAssignmentDialog = async () => {
