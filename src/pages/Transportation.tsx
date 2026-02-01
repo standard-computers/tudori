@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,13 +95,15 @@ interface Assignment {
   id: string;
   assignment_id: string;
   product_id: string;
-  vendor_id: string;
+  vendor_id: string | null;
+  source_location_id: string | null;
   destination_location_id: string;
   priority: number;
   is_active: boolean;
   notes: string | null;
   product?: { id: string; product_id: string; name: string } | null;
   vendor?: { id: string; vendor_id: string; name: string } | null;
+  source_location?: { id: string; location_id: string; name: string } | null;
   destination_location?: { id: string; location_id: string; name: string } | null;
 }
 
@@ -159,12 +162,15 @@ const Transportation = () => {
   const [assignmentForm, setAssignmentForm] = useState({
     assignment_id: '',
     product_id: '',
-    vendor_id: '',
+    source_value: '', // Combined value: 'vendor:{id}' or 'location:{id}'
     destination_location_id: '',
     priority: 1,
     is_active: true,
     notes: '',
   });
+
+  // Use vendor sources hook for assignment vendor/location selection
+  const { vendorOptions, parseVendorValue } = useVendorSources(companyId, { includeAllLocations: true });
 
   const {
     sortConfig,
@@ -198,7 +204,7 @@ const Transportation = () => {
     if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_location_id && routeForm.destination_location_id) {
       handleSaveRoute();
     }
-    if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.vendor_id && assignmentForm.destination_location_id) {
+    if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.source_value && assignmentForm.destination_location_id) {
       handleSaveAssignment();
     }
   }, isCarrierDialogOpen || isRouteDialogOpen || isAssignmentDialogOpen);
@@ -336,7 +342,8 @@ const Transportation = () => {
         *,
         product:products(id, product_id, name),
         vendor:vendors(id, vendor_id, name),
-        destination_location:locations(id, location_id, name)
+        source_location:locations!assignments_source_location_id_fkey(id, location_id, name),
+        destination_location:locations!assignments_destination_location_id_fkey(id, location_id, name)
       `)
       .eq('company_id', companyId)
       .order('assignment_id');
@@ -604,7 +611,7 @@ const Transportation = () => {
     setAssignmentForm({
       assignment_id: nextId,
       product_id: '',
-      vendor_id: '',
+      source_value: '',
       destination_location_id: '',
       priority: 1,
       is_active: true,
@@ -615,10 +622,18 @@ const Transportation = () => {
   };
 
   const openEditAssignmentDialog = (assignment: Assignment) => {
+    // Determine the combined source value based on whether it's a vendor or location
+    let sourceValue = '';
+    if (assignment.vendor_id) {
+      sourceValue = `vendor:${assignment.vendor_id}`;
+    } else if (assignment.source_location_id) {
+      sourceValue = `location:${assignment.source_location_id}`;
+    }
+
     setAssignmentForm({
       assignment_id: assignment.assignment_id,
       product_id: assignment.product_id,
-      vendor_id: assignment.vendor_id,
+      source_value: sourceValue,
       destination_location_id: assignment.destination_location_id,
       priority: assignment.priority,
       is_active: assignment.is_active,
@@ -629,13 +644,21 @@ const Transportation = () => {
   };
 
   const handleSaveAssignment = async () => {
-    if (!companyId || !assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.vendor_id || !assignmentForm.destination_location_id) return;
+    if (!companyId || !assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.source_value || !assignmentForm.destination_location_id) return;
+
+    // Parse the combined source value
+    const parsed = parseVendorValue(assignmentForm.source_value);
+    if (!parsed) {
+      toast.error('Invalid source selection');
+      return;
+    }
 
     const assignmentData = {
       company_id: companyId,
       assignment_id: assignmentForm.assignment_id,
       product_id: assignmentForm.product_id,
-      vendor_id: assignmentForm.vendor_id,
+      vendor_id: parsed.type === 'vendor' ? parsed.id : null,
+      source_location_id: parsed.type === 'location' ? parsed.id : null,
       destination_location_id: assignmentForm.destination_location_id,
       priority: assignmentForm.priority,
       is_active: assignmentForm.is_active,
@@ -957,7 +980,7 @@ const Transportation = () => {
                     onFilter={(value) => setAssignmentFilter('assignment_id', value)}
                   />
                   <TableHead>Product</TableHead>
-                  <TableHead>Vendor</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Destination Location</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Active</TableHead>
@@ -979,7 +1002,11 @@ const Transportation = () => {
                         {assignment.product ? `${assignment.product.product_id} - ${assignment.product.name}` : '-'}
                       </TableCell>
                       <TableCell>
-                        {assignment.vendor ? `${assignment.vendor.vendor_id} - ${assignment.vendor.name}` : '-'}
+                        {assignment.vendor 
+                          ? `${assignment.vendor.vendor_id} - ${assignment.vendor.name}` 
+                          : assignment.source_location 
+                            ? `${assignment.source_location.location_id} - ${assignment.source_location.name}`
+                            : '-'}
                       </TableCell>
                       <TableCell>
                         {assignment.destination_location?.name || '-'}
@@ -1342,12 +1369,12 @@ const Transportation = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Vendor *</Label>
+                <Label>Source (Vendor / Location) *</Label>
                 <SearchableSelect
-                  options={vendors.map((v) => ({ value: v.id, label: `${v.vendor_id} - ${v.name}` }))}
-                  value={assignmentForm.vendor_id}
-                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, vendor_id: value })}
-                  placeholder="Select vendor"
+                  options={vendorOptions}
+                  value={assignmentForm.source_value}
+                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, source_value: value })}
+                  placeholder="Select vendor or location"
                 />
               </div>
 
@@ -1386,7 +1413,7 @@ const Transportation = () => {
           <DialogFooter className="shrink-0">
             <Button
               onClick={handleSaveAssignment}
-              disabled={!assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.vendor_id || !assignmentForm.destination_location_id}
+              disabled={!assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.source_value || !assignmentForm.destination_location_id}
             >
               {editingAssignment ? 'Update' : 'Create'}
               <Kbd>⌘S</Kbd>
