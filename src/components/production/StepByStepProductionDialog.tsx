@@ -417,8 +417,8 @@ export function StepByStepProductionDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
               Production: {orderNumber}
@@ -429,130 +429,133 @@ export function StepByStepProductionDialog({
           </DialogHeader>
 
           {isLoading && steps.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12 flex-1">
               <span className="text-muted-foreground">Loading steps...</span>
             </div>
           ) : steps.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
+            <div className="flex flex-col items-center justify-center py-12 gap-2 flex-1">
               <AlertTriangle className="w-8 h-8 text-muted-foreground" />
               <p className="text-muted-foreground">No steps defined for this Bill of Materials</p>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
             </div>
           ) : (
             <>
-              {/* Progress */}
-              <div className="space-y-2 px-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Step {currentStepIndex + 1} of {steps.length}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {completedSteps.size} completed
-                  </span>
+              {/* Scrollable content area */}
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-4 px-1">
+                {/* Progress */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Step {currentStepIndex + 1} of {steps.length}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {completedSteps.size} completed
+                    </span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
                 </div>
-                <Progress value={progress} className="h-2" />
-              </div>
 
-              {/* Step details */}
-              {currentStep && (
-                <div className="space-y-4 mt-4">
-                  <div className="p-4 border rounded-lg space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          Step {currentStep.step_number}: {currentStep.name}
-                        </h3>
-                        {currentStep.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {currentStep.description}
-                          </p>
+                {/* Step details */}
+                {currentStep && (
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            Step {currentStep.step_number}: {currentStep.name}
+                          </h3>
+                          {currentStep.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {currentStep.description}
+                            </p>
+                          )}
+                        </div>
+                        {currentStep.estimated_duration_minutes && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {currentStep.estimated_duration_minutes}m
+                          </Badge>
                         )}
                       </div>
-                      {currentStep.estimated_duration_minutes && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {currentStep.estimated_duration_minutes}m
-                        </Badge>
-                      )}
-                    </div>
 
-                    {currentStep.bin && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <span>
-                          {currentStep.location?.name || 'Unknown Location'} → 
-                          <span className="font-mono ml-1">{currentStep.bin.bin_id}</span> ({currentStep.bin.name})
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Materials required */}
-                  {currentStepItemsWithAvailability.length > 0 ? (
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-sm">Materials Required</h4>
-                      <div className="border rounded-md">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Material</TableHead>
-                              <TableHead className="text-right w-24">Required</TableHead>
-                              <TableHead className="text-right w-24">In Bin</TableHead>
-                              <TableHead className="text-right w-24">Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {currentStepItemsWithAvailability.map(item => (
-                              <TableRow key={item.id}>
-                                <TableCell>
-                                  <span className="font-medium">{item.product?.name}</span>
-                                  <span className="text-xs text-muted-foreground ml-2">
-                                    {item.product?.product_id}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="text-right font-mono">{item.required}</TableCell>
-                                <TableCell className="text-right font-mono">{item.available}</TableCell>
-                                <TableCell className="text-right">
-                                  {item.sufficient ? (
-                                    <Badge variant="default" className="bg-primary text-primary-foreground">
-                                      <Check className="w-3 h-3 mr-1" />
-                                      Ready
-                                    </Badge>
-                                  ) : item.available > 0 ? (
-                                    <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                                      Partial
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="destructive">
-                                      <X className="w-3 h-3 mr-1" />
-                                      Missing
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                      
-                      {!canProceed && (
-                        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                          <AlertTriangle className="w-4 h-4 text-destructive" />
-                          <span className="text-sm text-destructive">
-                            Insufficient materials in the designated bin. Move inventory to proceed.
+                      {currentStep.bin && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          <span>
+                            {currentStep.location?.name || 'Unknown Location'} → 
+                            <span className="font-mono ml-1">{currentStep.bin.bin_id}</span> ({currentStep.bin.name})
                           </span>
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
-                      No materials assigned to this step
-                    </div>
-                  )}
-                </div>
-              )}
 
-              <DialogFooter className="gap-2 sm:gap-0">
+                    {/* Materials required */}
+                    {currentStepItemsWithAvailability.length > 0 ? (
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm">Materials Required</h4>
+                        <div className="border rounded-md">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Material</TableHead>
+                                <TableHead className="text-right w-24">Required</TableHead>
+                                <TableHead className="text-right w-24">In Bin</TableHead>
+                                <TableHead className="text-right w-24">Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {currentStepItemsWithAvailability.map(item => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <span className="font-medium">{item.product?.name}</span>
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                      {item.product?.product_id}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-right font-mono">{item.required}</TableCell>
+                                  <TableCell className="text-right font-mono">{item.available}</TableCell>
+                                  <TableCell className="text-right">
+                                    {item.sufficient ? (
+                                      <Badge variant="default" className="bg-primary text-primary-foreground">
+                                        <Check className="w-3 h-3 mr-1" />
+                                        Ready
+                                      </Badge>
+                                    ) : item.available > 0 ? (
+                                      <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                                        Partial
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="destructive">
+                                        <X className="w-3 h-3 mr-1" />
+                                        Missing
+                                      </Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        
+                        {!canProceed && (
+                          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                            <AlertTriangle className="w-4 h-4 text-destructive" />
+                            <span className="text-sm text-destructive">
+                              Insufficient materials in the designated bin. Move inventory to proceed.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
+                        No materials assigned to this step
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex-shrink-0 gap-2 sm:gap-0 pt-4 border-t">
                 <Button 
                   variant="ghost" 
                   onClick={handleSkipStep}
