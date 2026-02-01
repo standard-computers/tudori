@@ -43,6 +43,7 @@ const DOCUMENT_TYPES = [
   { value: 'ledger', label: 'Ledger', prefix_placeholder: 'LED-', icon: Book },
   { value: 'vendor', label: 'Vendor', prefix_placeholder: 'VND-', icon: Users },
   { value: 'customer', label: 'Customer', prefix_placeholder: 'CUS-', icon: UserCheck },
+  { value: 'employee', label: 'Employee', prefix_placeholder: 'EMP-', icon: UserCheck },
   { value: 'product', label: 'Product', prefix_placeholder: 'PRD-', icon: Package },
   { value: 'location', label: 'Location', prefix_placeholder: 'LOC-', icon: MapPin },
 ];
