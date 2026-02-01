@@ -178,6 +178,14 @@ interface PackagingUnit {
   product_id: string;
 }
 
+interface ProductUom {
+  id: string;
+  product_id: string;
+  name: string;
+  abbreviation: string | null;
+  conversion_factor: number;
+}
+
 interface InventoryRecord {
   id: string;
   product_id: string;
@@ -303,6 +311,7 @@ const Orders = () => {
   });
   const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number; pu_id: string | null }[]>([]);
   const [packagingUnits, setPackagingUnits] = useState<PackagingUnit[]>([]);
+  const [productUoms, setProductUoms] = useState<ProductUom[]>([]);
   const [selectedTaxRates, setSelectedTaxRates] = useState<SelectedTaxRate[]>([]);
   const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
@@ -329,6 +338,7 @@ const Orders = () => {
       fetchLocations();
       fetchProducts();
       fetchPackagingUnits();
+      fetchProductUoms();
       fetchTaxRates();
       fetchLedgers();
       fetchAllVendors();
@@ -456,6 +466,22 @@ const Orders = () => {
       .select('id, pu_number, quantity, product_id')
       .eq('company_id', companyId);
     setPackagingUnits(data || []);
+  };
+
+  const fetchProductUoms = async () => {
+    // Fetch product UOMs for all products in the company
+    const { data: productIds } = await supabase
+      .from('products')
+      .select('id')
+      .eq('company_id', companyId);
+    
+    if (productIds && productIds.length > 0) {
+      const { data } = await supabase
+        .from('product_uoms')
+        .select('id, product_id, name, abbreviation, conversion_factor')
+        .in('product_id', productIds.map(p => p.id));
+      setProductUoms(data || []);
+    }
   };
 
   const fetchTaxRates = async () => {
@@ -909,10 +935,10 @@ const Orders = () => {
     setOrderItems(newItems);
   };
 
-  // Get UOM options for a product (base unit + packaging units)
+  // Get UOM options for a product (base unit + product UOMs)
   const getUomOptions = (productId: string) => {
     const product = products.find(p => p.id === productId);
-    const productPUs = packagingUnits.filter(pu => pu.product_id === productId);
+    const uoms = productUoms.filter(uom => uom.product_id === productId);
     
     const options: { value: string; label: string }[] = [];
     
@@ -923,9 +949,12 @@ const Orders = () => {
       options.push({ value: 'base', label: 'EA' });
     }
     
-    // Add packaging units
-    productPUs.forEach(pu => {
-      options.push({ value: pu.id, label: `${pu.pu_number} (${pu.quantity})` });
+    // Add product UOMs
+    uoms.forEach(uom => {
+      const label = uom.abbreviation 
+        ? `${uom.name} (${uom.abbreviation}) - ${uom.conversion_factor}x`
+        : `${uom.name} - ${uom.conversion_factor}x`;
+      options.push({ value: `uom:${uom.id}`, label });
     });
     
     return options;
