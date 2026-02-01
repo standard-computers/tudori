@@ -78,6 +78,32 @@ interface RouteRecord {
   carrier?: { id: string; carrier_id: string; name: string } | null;
 }
 
+interface Product {
+  id: string;
+  product_id: string;
+  name: string;
+}
+
+interface Vendor {
+  id: string;
+  vendor_id: string;
+  name: string;
+}
+
+interface Assignment {
+  id: string;
+  assignment_id: string;
+  product_id: string;
+  vendor_id: string;
+  destination_location_id: string;
+  priority: number;
+  is_active: boolean;
+  notes: string | null;
+  product?: { id: string; product_id: string; name: string } | null;
+  vendor?: { id: string; vendor_id: string; name: string } | null;
+  destination_location?: { id: string; location_id: string; name: string } | null;
+}
+
 const Transportation = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -88,6 +114,9 @@ const Transportation = () => {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [routes, setRoutes] = useState<RouteRecord[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Carrier dialog state
@@ -124,6 +153,19 @@ const Transportation = () => {
     notes: '',
   });
 
+  // Assignment dialog state
+  const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [assignmentForm, setAssignmentForm] = useState({
+    assignment_id: '',
+    product_id: '',
+    vendor_id: '',
+    destination_location_id: '',
+    priority: 1,
+    is_active: true,
+    notes: '',
+  });
+
   const {
     sortConfig,
     filters,
@@ -140,6 +182,14 @@ const Transportation = () => {
     sortedAndFilteredData: sortedRoutes,
   } = useTableSort<RouteRecord>(routes, 'route_id', 'asc');
 
+  const {
+    sortConfig: assignmentSortConfig,
+    filters: assignmentFilters,
+    handleSort: handleAssignmentSort,
+    setFilter: setAssignmentFilter,
+    sortedAndFilteredData: sortedAssignments,
+  } = useTableSort<Assignment>(assignments, 'assignment_id', 'asc');
+
   // Keyboard shortcut for save
   useSaveShortcut(() => {
     if (isCarrierDialogOpen && carrierForm.carrier_id && carrierForm.name) {
@@ -148,7 +198,10 @@ const Transportation = () => {
     if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_location_id && routeForm.destination_location_id) {
       handleSaveRoute();
     }
-  }, isCarrierDialogOpen || isRouteDialogOpen);
+    if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.vendor_id && assignmentForm.destination_location_id) {
+      handleSaveAssignment();
+    }
+  }, isCarrierDialogOpen || isRouteDialogOpen || isAssignmentDialogOpen);
 
   // Set transaction code for status bar
   useEffect(() => {
@@ -156,10 +209,12 @@ const Transportation = () => {
       setTransaction(editingCarrier ? 'trn/carrier/edit' : 'trn/carrier/new');
     } else if (isRouteDialogOpen) {
       setTransaction(editingRoute ? 'trn/route/edit' : 'trn/route/new');
+    } else if (isAssignmentDialogOpen) {
+      setTransaction(editingAssignment ? 'trn/assignment/edit' : 'trn/assignment/new');
     } else {
       setTransaction('trn');
     }
-  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, setTransaction]);
+  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, isAssignmentDialogOpen, editingAssignment, setTransaction]);
 
   // Fetch company ID from profile
   useEffect(() => {
@@ -185,6 +240,9 @@ const Transportation = () => {
       fetchCarriers();
       fetchLocations();
       fetchRoutes();
+      fetchProducts();
+      fetchVendors();
+      fetchAssignments();
     }
   }, [companyId]);
 
@@ -238,6 +296,55 @@ const Transportation = () => {
       console.error('Failed to load routes:', error);
     } else {
       setRoutes(data || []);
+    }
+  };
+
+  const fetchProducts = async () => {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, product_id, name')
+      .eq('company_id', companyId)
+      .order('name');
+
+    if (!error && data) {
+      setProducts(data);
+    }
+  };
+
+  const fetchVendors = async () => {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from('vendors')
+      .select('id, vendor_id, name')
+      .eq('company_id', companyId)
+      .order('name');
+
+    if (!error && data) {
+      setVendors(data);
+    }
+  };
+
+  const fetchAssignments = async () => {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from('assignments')
+      .select(`
+        *,
+        product:products(id, product_id, name),
+        vendor:vendors(id, vendor_id, name),
+        destination_location:locations(id, location_id, name)
+      `)
+      .eq('company_id', companyId)
+      .order('assignment_id');
+
+    if (error) {
+      console.error('Failed to load assignments:', error);
+    } else {
+      setAssignments(data || []);
     }
   };
 
@@ -491,6 +598,119 @@ const Transportation = () => {
     }
   };
 
+  // Assignment functions
+  const getNextAssignmentId = async (): Promise<string> => {
+    if (!companyId) return 'ASN-001';
+    
+    const { data } = await supabase
+      .from('assignments')
+      .select('assignment_id')
+      .eq('company_id', companyId)
+      .order('assignment_id', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      const lastId = data[0].assignment_id;
+      const match = lastId.match(/(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10) + 1;
+        return `ASN-${String(num).padStart(3, '0')}`;
+      }
+    }
+    return 'ASN-001';
+  };
+
+  const openNewAssignmentDialog = async () => {
+    const nextId = await getNextAssignmentId();
+    setAssignmentForm({
+      assignment_id: nextId,
+      product_id: '',
+      vendor_id: '',
+      destination_location_id: '',
+      priority: 1,
+      is_active: true,
+      notes: '',
+    });
+    setEditingAssignment(null);
+    setIsAssignmentDialogOpen(true);
+  };
+
+  const openEditAssignmentDialog = (assignment: Assignment) => {
+    setAssignmentForm({
+      assignment_id: assignment.assignment_id,
+      product_id: assignment.product_id,
+      vendor_id: assignment.vendor_id,
+      destination_location_id: assignment.destination_location_id,
+      priority: assignment.priority,
+      is_active: assignment.is_active,
+      notes: assignment.notes || '',
+    });
+    setEditingAssignment(assignment);
+    setIsAssignmentDialogOpen(true);
+  };
+
+  const handleSaveAssignment = async () => {
+    if (!companyId || !assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.vendor_id || !assignmentForm.destination_location_id) return;
+
+    const assignmentData = {
+      company_id: companyId,
+      assignment_id: assignmentForm.assignment_id,
+      product_id: assignmentForm.product_id,
+      vendor_id: assignmentForm.vendor_id,
+      destination_location_id: assignmentForm.destination_location_id,
+      priority: assignmentForm.priority,
+      is_active: assignmentForm.is_active,
+      notes: assignmentForm.notes || null,
+    };
+
+    if (editingAssignment) {
+      const { error } = await supabase
+        .from('assignments')
+        .update(assignmentData)
+        .eq('id', editingAssignment.id);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Assignment updated');
+        setIsAssignmentDialogOpen(false);
+        fetchAssignments();
+      }
+    } else {
+      const { error } = await supabase
+        .from('assignments')
+        .insert(assignmentData);
+
+      if (error) {
+        if (error.message.includes('duplicate')) {
+          toast.error('This product-vendor-location assignment already exists');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.success('Assignment created');
+        setIsAssignmentDialogOpen(false);
+        fetchAssignments();
+      }
+    }
+  };
+
+  const handleDeleteAssignment = async (assignment: Assignment) => {
+    if (!confirm(`Delete assignment "${assignment.assignment_id}"?`)) return;
+
+    const { error } = await supabase
+      .from('assignments')
+      .delete()
+      .eq('id', assignment.id);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Assignment deleted');
+      fetchAssignments();
+    }
+  };
+
   if (authLoading || !user) {
     return null;
   }
@@ -736,12 +956,83 @@ const Transportation = () => {
           </TabsContent>
 
           <TabsContent value="assignments" className="mt-4">
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              <div className="text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Assignments configuration coming soon</p>
-              </div>
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-sm text-muted-foreground">
+                Assign vendors to fulfill products at specific locations
+              </p>
+              <Button onClick={openNewAssignmentDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Assignment
+              </Button>
             </div>
+
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <SortableTableHead
+                    label="Assignment ID"
+                    sortKey="assignment_id"
+                    currentSortKey={assignmentSortConfig.key}
+                    currentSortDirection={assignmentSortConfig.direction}
+                    onSort={handleAssignmentSort}
+                    filterValue={assignmentFilters['assignment_id'] || ''}
+                    onFilter={(value) => setAssignmentFilter('assignment_id', value)}
+                  />
+                  <TableHead>Product</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Destination Location</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedAssignments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No assignments configured. Create your first assignment to define vendor fulfillment.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedAssignments.map((assignment) => (
+                    <TableRow key={assignment.id}>
+                      <TableCell className="font-mono">{assignment.assignment_id}</TableCell>
+                      <TableCell>
+                        {assignment.product ? `${assignment.product.product_id} - ${assignment.product.name}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {assignment.vendor ? `${assignment.vendor.vendor_id} - ${assignment.vendor.name}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {assignment.destination_location?.name || '-'}
+                      </TableCell>
+                      <TableCell>{assignment.priority}</TableCell>
+                      <TableCell>
+                        <Checkbox checked={assignment.is_active} disabled />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditAssignmentDialog(assignment)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteAssignment(assignment)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </TabsContent>
         </Tabs>
       </div>
@@ -1023,6 +1314,104 @@ const Transportation = () => {
               disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id}
             >
               {editingRoute ? 'Update' : 'Create'}
+              <Kbd>⌘S</Kbd>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assignment Dialog */}
+      <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{editingAssignment ? 'Edit Assignment' : 'New Assignment'}</DialogTitle>
+            <DialogDescription>
+              {editingAssignment ? 'Update assignment configuration' : 'Assign a vendor to fulfill a product at a location'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 px-6">
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="assignment_id">Assignment ID *</Label>
+                  <Input
+                    id="assignment_id"
+                    value={assignmentForm.assignment_id}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, assignment_id: e.target.value })}
+                    disabled={!!editingAssignment}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assignment_priority">Priority</Label>
+                  <Input
+                    id="assignment_priority"
+                    type="number"
+                    min={1}
+                    value={assignmentForm.priority}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, priority: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Product *</Label>
+                <SearchableSelect
+                  options={products.map((p) => ({ value: p.id, label: `${p.product_id} - ${p.name}` }))}
+                  value={assignmentForm.product_id}
+                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, product_id: value })}
+                  placeholder="Select product"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Vendor *</Label>
+                <SearchableSelect
+                  options={vendors.map((v) => ({ value: v.id, label: `${v.vendor_id} - ${v.name}` }))}
+                  value={assignmentForm.vendor_id}
+                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, vendor_id: value })}
+                  placeholder="Select vendor"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Destination Location *</Label>
+                <SearchableSelect
+                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
+                  value={assignmentForm.destination_location_id}
+                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, destination_location_id: value })}
+                  placeholder="Select destination location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignment_notes">Notes</Label>
+                <Input
+                  id="assignment_notes"
+                  value={assignmentForm.notes}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="assignment_is_active"
+                  checked={assignmentForm.is_active}
+                  onCheckedChange={(checked) =>
+                    setAssignmentForm({ ...assignmentForm, is_active: checked as boolean })
+                  }
+                />
+                <Label htmlFor="assignment_is_active">Active</Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0">
+            <Button
+              onClick={handleSaveAssignment}
+              disabled={!assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.vendor_id || !assignmentForm.destination_location_id}
+            >
+              {editingAssignment ? 'Update' : 'Create'}
               <Kbd>⌘S</Kbd>
             </Button>
           </DialogFooter>
