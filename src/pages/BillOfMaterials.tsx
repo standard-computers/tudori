@@ -7,6 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -341,6 +344,144 @@ const BomTable = ({
   );
 };
 
+// Sortable Step Row Component
+const SortableStepRow = ({
+  step,
+  index,
+  isViewMode,
+  isExpanded,
+  onToggleExpanded,
+  onEdit,
+  onRemove,
+}: {
+  step: BomStep;
+  index: number;
+  isViewMode: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: step.step_number.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const hasItems = step.items && step.items.length > 0;
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={onToggleExpanded} asChild>
+      <>
+        <TableRow
+          ref={setNodeRef}
+          style={style}
+          className={`${hasItems ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+          onClick={onToggleExpanded}
+        >
+          <TableCell className="font-mono text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              {!isViewMode && (
+                <button
+                  type="button"
+                  {...attributes}
+                  {...listeners}
+                  className="cursor-grab active:cursor-grabbing touch-none"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <GripVertical className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
+                </button>
+              )}
+              {isViewMode && <GripVertical className="w-3 h-3 text-muted-foreground/50" />}
+              {step.step_number}
+            </div>
+          </TableCell>
+          <TableCell>
+            <div>
+              <div className="font-medium">{step.name}</div>
+              {step.description && (
+                <div className="text-sm text-muted-foreground">{step.description}</div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell onClick={(e) => e.stopPropagation()}>
+            {hasItems ? (
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 px-2 gap-1">
+                  <span className="text-xs">{step.items!.length} item{step.items!.length !== 1 ? 's' : ''}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+            ) : (
+              <span className="text-muted-foreground text-sm">-</span>
+            )}
+          </TableCell>
+          <TableCell>{step.location?.name || '-'}</TableCell>
+          <TableCell>{step.bin ? `${step.bin.bin_id} - ${step.bin.name}` : '-'}</TableCell>
+          <TableCell>
+            {step.estimated_duration_minutes ? `${step.estimated_duration_minutes} min` : '-'}
+          </TableCell>
+          {!isViewMode && (
+            <TableCell onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onEdit}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onRemove}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </TableCell>
+          )}
+        </TableRow>
+        <CollapsibleContent asChild>
+          <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableCell colSpan={isViewMode ? 6 : 7} className="py-2">
+              <div className="pl-8">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Components Used:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {step.items?.map(item => (
+                    <div key={item.product_id} className="flex items-center justify-between bg-background rounded px-3 py-2 border">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">{item.product?.name || 'Unknown'}</div>
+                        <div className="text-xs text-muted-foreground">{item.product?.product_id}</div>
+                      </div>
+                      <div className="ml-3 text-right shrink-0">
+                        <div className="font-semibold">{item.quantity}</div>
+                        <div className="text-xs text-muted-foreground">{item.product?.unit || 'units'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TableCell>
+          </TableRow>
+        </CollapsibleContent>
+      </>
+    </Collapsible>
+  );
+};
+
 const BillOfMaterials = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -368,6 +509,38 @@ const BillOfMaterials = () => {
   const [newStepItem, setNewStepItem] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+
+  // Sensors for step drag and drop
+  const stepSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle step reordering
+  const handleStepDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setBomSteps((items) => {
+        const oldIndex = items.findIndex((item) => item.step_number.toString() === active.id);
+        const newIndex = items.findIndex((item) => item.step_number.toString() === over.id);
+        
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        
+        // Update step numbers to reflect new order
+        return reordered.map((step, index) => ({
+          ...step,
+          step_number: index + 1,
+        }));
+      });
+    }
+  };
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -1492,134 +1665,64 @@ const BillOfMaterials = () => {
                   )}
 
                   <div className="border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableCell className="font-medium w-12">#</TableCell>
-                          <TableCell className="font-medium">Step</TableCell>
-                          <TableCell className="font-medium w-24">Components</TableCell>
-                          <TableCell className="font-medium">Location</TableCell>
-                          <TableCell className="font-medium">Bin</TableCell>
-                          <TableCell className="font-medium w-20">Duration</TableCell>
-                          {!isViewMode && <TableCell className="font-medium w-24" />}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {bomSteps.length === 0 ? (
+                    <DndContext
+                      sensors={stepSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleStepDragEnd}
+                    >
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={isViewMode ? 6 : 7} className="text-center py-4 text-muted-foreground">
-                              No steps added
-                            </TableCell>
+                            <TableCell className="font-medium w-12">#</TableCell>
+                            <TableCell className="font-medium">Step</TableCell>
+                            <TableCell className="font-medium w-24">Components</TableCell>
+                            <TableCell className="font-medium">Location</TableCell>
+                            <TableCell className="font-medium">Bin</TableCell>
+                            <TableCell className="font-medium w-20">Duration</TableCell>
+                            {!isViewMode && <TableCell className="font-medium w-24" />}
                           </TableRow>
-                        ) : (
-                          bomSteps.map(step => {
-                            const isExpanded = expandedSteps.has(step.step_number);
-                            const hasItems = step.items && step.items.length > 0;
-                            const toggleExpanded = () => {
-                              if (!hasItems) return;
-                              setExpandedSteps(prev => {
-                                const next = new Set(prev);
-                                if (next.has(step.step_number)) {
-                                  next.delete(step.step_number);
-                                } else {
-                                  next.add(step.step_number);
-                                }
-                                return next;
-                              });
-                            };
-
-                            return (
-                              <Collapsible key={step.step_number} open={isExpanded} onOpenChange={() => hasItems && toggleExpanded()} asChild>
-                                <>
-                                  <TableRow 
-                                    className={`${hasItems ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                                    onClick={toggleExpanded}
-                                  >
-                                    <TableCell className="font-mono text-sm text-muted-foreground">
-                                      <div className="flex items-center gap-1">
-                                        <GripVertical className="w-3 h-3 text-muted-foreground/50" />
-                                        {step.step_number}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div>
-                                        <div className="font-medium">{step.name}</div>
-                                        {step.description && (
-                                          <div className="text-sm text-muted-foreground">{step.description}</div>
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                      {hasItems ? (
-                                        <CollapsibleTrigger asChild>
-                                          <Button variant="ghost" size="sm" className="h-7 px-2 gap-1">
-                                            <span className="text-xs">{step.items!.length} item{step.items!.length !== 1 ? 's' : ''}</span>
-                                            <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                          </Button>
-                                        </CollapsibleTrigger>
-                                      ) : (
-                                        <span className="text-muted-foreground text-sm">-</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>{step.location?.name || '-'}</TableCell>
-                                    <TableCell>{step.bin ? `${step.bin.bin_id} - ${step.bin.name}` : '-'}</TableCell>
-                                    <TableCell>
-                                      {step.estimated_duration_minutes ? `${step.estimated_duration_minutes} min` : '-'}
-                                    </TableCell>
-                                    {!isViewMode && (
-                                      <TableCell onClick={(e) => e.stopPropagation()}>
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEditStep(bomSteps.findIndex(s => s.step_number === step.step_number))}
-                                          >
-                                            <Pencil className="w-4 h-4" />
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleRemoveStep(step.step_number)}
-                                            className="text-destructive hover:text-destructive"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                    )}
-                                  </TableRow>
-                                  <CollapsibleContent asChild>
-                                    <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                      <TableCell colSpan={isViewMode ? 6 : 7} className="py-2">
-                                        <div className="pl-8">
-                                          <div className="text-xs font-medium text-muted-foreground mb-2">Components Used:</div>
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                            {step.items?.map(item => (
-                                              <div key={item.product_id} className="flex items-center justify-between bg-background rounded px-3 py-2 border">
-                                                <div className="min-w-0">
-                                                  <div className="font-medium text-sm truncate">{item.product?.name || 'Unknown'}</div>
-                                                  <div className="text-xs text-muted-foreground">{item.product?.product_id}</div>
-                                                </div>
-                                                <div className="ml-3 text-right shrink-0">
-                                                  <div className="font-semibold">{item.quantity}</div>
-                                                  <div className="text-xs text-muted-foreground">{item.product?.unit || 'units'}</div>
-                                                </div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  </CollapsibleContent>
-                                </>
-                              </Collapsible>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {bomSteps.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={isViewMode ? 6 : 7} className="text-center py-4 text-muted-foreground">
+                                No steps added
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            <SortableContext
+                              items={bomSteps.map(s => s.step_number.toString())}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {bomSteps.map((step, index) => (
+                                <SortableStepRow
+                                  key={step.step_number}
+                                  step={step}
+                                  index={index}
+                                  isViewMode={isViewMode}
+                                  isExpanded={expandedSteps.has(step.step_number)}
+                                  onToggleExpanded={() => {
+                                    const hasItems = step.items && step.items.length > 0;
+                                    if (!hasItems) return;
+                                    setExpandedSteps(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(step.step_number)) {
+                                        next.delete(step.step_number);
+                                      } else {
+                                        next.add(step.step_number);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  onEdit={() => handleEditStep(index)}
+                                  onRemove={() => handleRemoveStep(step.step_number)}
+                                />
+                              ))}
+                            </SortableContext>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </DndContext>
                   </div>
                 </TabsContent>
 
