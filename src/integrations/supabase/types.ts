@@ -2089,6 +2089,84 @@ export type Database = {
           },
         ]
       }
+      production_order_consumptions: {
+        Row: {
+          bin_id: string | null
+          bom_step_id: string
+          consumed_at: string
+          created_at: string
+          id: string
+          ledger_transaction_id: string | null
+          product_id: string
+          production_order_id: string
+          quantity: number
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          bin_id?: string | null
+          bom_step_id: string
+          consumed_at?: string
+          created_at?: string
+          id?: string
+          ledger_transaction_id?: string | null
+          product_id: string
+          production_order_id: string
+          quantity?: number
+          total_cost?: number
+          unit_cost?: number
+        }
+        Update: {
+          bin_id?: string | null
+          bom_step_id?: string
+          consumed_at?: string
+          created_at?: string
+          id?: string
+          ledger_transaction_id?: string | null
+          product_id?: string
+          production_order_id?: string
+          quantity?: number
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_order_consumptions_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_consumptions_bom_step_id_fkey"
+            columns: ["bom_step_id"]
+            isOneToOne: false
+            referencedRelation: "bom_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_consumptions_ledger_transaction_id_fkey"
+            columns: ["ledger_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_consumptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_order_consumptions_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_order_items: {
         Row: {
           consumed_quantity: number
