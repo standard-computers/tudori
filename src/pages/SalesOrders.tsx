@@ -46,7 +46,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, DollarSign, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen } from 'lucide-react';
+import { ArrowLeft, DollarSign, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TaxRate {
@@ -174,6 +174,7 @@ const SalesOrders = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -900,7 +901,14 @@ const SalesOrders = () => {
 
       {/* Create SO Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader>
             <DialogTitle>Create Sales Order</DialogTitle>
             <DialogDescription>
@@ -1233,7 +1241,14 @@ const SalesOrders = () => {
 
       {/* View Order Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader>
             <DialogTitle>Sales Order {viewOrder?.so_number}</DialogTitle>
             <DialogDescription>
