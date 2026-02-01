@@ -2302,14 +2302,17 @@ export type Database = {
           is_batched: boolean
           is_consumable: boolean
           keep_inventory: boolean
+          lead_time_days: number | null
           length: number | null
           length_uom: string | null
+          manufacture_time_days: number | null
           min_shelf_life_days: number | null
           name: string
           price: number | null
           product_id: string
           sku: string | null
           status: string
+          transport_time_days: number | null
           unit: string | null
           updated_at: string
           vendor_id: string | null
@@ -2330,14 +2333,17 @@ export type Database = {
           is_batched?: boolean
           is_consumable?: boolean
           keep_inventory?: boolean
+          lead_time_days?: number | null
           length?: number | null
           length_uom?: string | null
+          manufacture_time_days?: number | null
           min_shelf_life_days?: number | null
           name: string
           price?: number | null
           product_id: string
           sku?: string | null
           status?: string
+          transport_time_days?: number | null
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null
@@ -2358,14 +2364,17 @@ export type Database = {
           is_batched?: boolean
           is_consumable?: boolean
           keep_inventory?: boolean
+          lead_time_days?: number | null
           length?: number | null
           length_uom?: string | null
+          manufacture_time_days?: number | null
           min_shelf_life_days?: number | null
           name?: string
           price?: number | null
           product_id?: string
           sku?: string | null
           status?: string
+          transport_time_days?: number | null
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null

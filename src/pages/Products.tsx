@@ -94,6 +94,9 @@ interface Product {
   weight_uom: string | null;
   status: string;
   image_url: string | null;
+  transport_time_days: number | null;
+  manufacture_time_days: number | null;
+  lead_time_days: number | null;
   vendors?: { name: string; vendor_id: string } | null;
 }
 
@@ -582,6 +585,9 @@ const Products = () => {
     weight_uom: 'lb',
     status: 'active',
     image_url: '',
+    transport_time_days: '',
+    manufacture_time_days: '',
+    lead_time_days: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -939,6 +945,9 @@ const Products = () => {
       weight_uom: 'lb',
       status: 'active',
       image_url: '',
+      transport_time_days: '',
+      manufacture_time_days: '',
+      lead_time_days: '',
     });
     setImageFile(null);
     setImagePreview(null);
@@ -986,6 +995,9 @@ const Products = () => {
       weight_uom: product.weight_uom || 'lb',
       status: product.status || 'active',
       image_url: product.image_url || '',
+      transport_time_days: product.transport_time_days?.toString() || '',
+      manufacture_time_days: product.manufacture_time_days?.toString() || '',
+      lead_time_days: product.lead_time_days?.toString() || '',
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
@@ -1270,6 +1282,9 @@ const Products = () => {
           weight_uom: formData.weight_uom || 'lb',
           status: formData.status,
           image_url: imageUrl,
+          transport_time_days: formData.transport_time_days ? parseInt(formData.transport_time_days) : null,
+          manufacture_time_days: formData.manufacture_time_days ? parseInt(formData.manufacture_time_days) : null,
+          lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
         } as any)
         .eq('id', editingId);
 
@@ -1303,6 +1318,9 @@ const Products = () => {
           height_uom: formData.height_uom || 'in',
           weight_uom: formData.weight_uom || 'lb',
           status: formData.status,
+          transport_time_days: formData.transport_time_days ? parseInt(formData.transport_time_days) : null,
+          manufacture_time_days: formData.manufacture_time_days ? parseInt(formData.manufacture_time_days) : null,
+          lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
         } as any)
         .select('id')
         .single();
@@ -2255,8 +2273,51 @@ const Products = () => {
                     <TabsContent value="controls" className="space-y-4 mt-4">
                       <div className="bg-muted/50 rounded-lg p-4 mb-4">
                         <p className="text-sm text-muted-foreground">
-                          Configure batch management and shelf life tracking for this product.
+                          Configure lead times and inventory controls for this product.
                         </p>
+                      </div>
+                      
+                      {/* Lead Times */}
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <h4 className="font-medium text-sm">Lead Times (days)</h4>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="transport_time_days">Transport Time</Label>
+                            <Input
+                              id="transport_time_days"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={formData.transport_time_days}
+                              onChange={(e) => setFormData({ ...formData, transport_time_days: e.target.value })}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="manufacture_time_days">Manufacture Time</Label>
+                            <Input
+                              id="manufacture_time_days"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={formData.manufacture_time_days}
+                              onChange={(e) => setFormData({ ...formData, manufacture_time_days: e.target.value })}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lead_time_days">General Lead Time</Label>
+                            <Input
+                              id="lead_time_days"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={formData.lead_time_days}
+                              onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
                       </div>
                       
                       <div className="border rounded-lg p-4 space-y-4">
