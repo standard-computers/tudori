@@ -11,6 +11,7 @@ import { StatusBar } from "@/components/StatusBar";
 import { CommandSearch } from "@/components/CommandSearch";
 import { GlobalSearchHandler } from "@/components/GlobalSearchHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemeSync } from "@/components/ThemeSync";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -62,6 +63,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <ThemeSync />
             <SearchProvider>
               <StatusBarProvider>
                 <GlobalSearchHandler />
