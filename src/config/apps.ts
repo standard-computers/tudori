@@ -77,4 +77,5 @@ export const defaultApps: AppTile[] = [
   { name: 'Configuration', icon: Cog, color: 'text-emerald-500', description: 'System configuration', path: '/configuration' },
   { name: 'Settings', icon: Settings, color: 'text-slate-500', description: 'Company settings', path: '/settings' },
   { name: 'Data Explorer', icon: Database, color: 'text-cyan-500', description: 'Browse database tables', path: '/data-explorer' },
+  { name: 'Transportation', icon: Truck, color: 'text-amber-500', description: 'Carriers & logistics', path: '/transportation' },
 ];

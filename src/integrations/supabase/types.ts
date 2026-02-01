@@ -516,6 +516,77 @@ export type Database = {
           },
         ]
       }
+      carriers: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          carrier_id: string
+          city: string | null
+          company_id: string
+          contact_name: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          carrier_id: string
+          city?: string | null
+          company_id: string
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          carrier_id?: string
+          city?: string | null
+          company_id?: string
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carriers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address_line1: string

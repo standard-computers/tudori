@@ -49,6 +49,7 @@ import Planning from "./pages/Planning";
 import Messages from "./pages/Messages";
 import Analytics from "./pages/Analytics";
 import DataExplorer from "./pages/DataExplorer";
+import Transportation from "./pages/Transportation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,7 @@ const App = () => (
                   <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
                   <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                   <Route path="/data-explorer" element={<ProtectedRoute><DataExplorer /></ProtectedRoute>} />
+                  <Route path="/transportation" element={<ProtectedRoute><Transportation /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
