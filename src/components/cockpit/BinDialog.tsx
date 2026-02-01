@@ -91,6 +91,7 @@ interface BinDialogProps {
   getNextBinId: (areaId: string) => string;
   onSaved: () => void;
   companyId: string | null;
+  onDelete?: (id: string) => void;
 }
 
 export interface BinDialogRef {
@@ -115,7 +116,7 @@ const WEIGHT_UOMS = [
 ];
 
 const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
-  ({ open, onOpenChange, editingBin, areas, getNextBinId, onSaved, companyId }, ref) => {
+  ({ open, onOpenChange, editingBin, areas, getNextBinId, onSaved, companyId, onDelete }, ref) => {
     const [formData, setFormData] = useState({
       bin_id: '',
       name: '',
@@ -832,10 +833,20 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             </Tabs>
 
             <DialogFooter className="shrink-0 px-6 py-4 border-t">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-                <Kbd>Esc</Kbd>
-              </Button>
+              {editingBin && onDelete && (
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  onClick={() => {
+                    onDelete(editingBin.id);
+                    onOpenChange(false);
+                  }}
+                  className="mr-auto"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              )}
               <Button type="submit">
                 {editingBin ? 'Save Changes' : 'Create'}
                 <Kbd className="ml-2">⌘S</Kbd>
