@@ -916,6 +916,17 @@ const Orders = () => {
     setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0, pu_id: null }]);
   };
 
+  // Helper to get conversion factor for a UOM selection
+  const getUomConversionFactor = (uomValue: string | null): number => {
+    if (!uomValue || uomValue === 'base') return 1;
+    if (uomValue.startsWith('uom:')) {
+      const uomId = uomValue.substring(4);
+      const uom = productUoms.find(u => u.id === uomId);
+      return uom?.conversion_factor || 1;
+    }
+    return 1;
+  };
+
   const updateOrderItem = (index: number, field: string, value: string | number | null) => {
     const newItems = [...orderItems];
     if (field === 'product_id') {
@@ -928,7 +939,19 @@ const Orders = () => {
       };
     } else if (field === 'pu_id') {
       // 'base' represents the product's base unit (null in database)
-      newItems[index] = { ...newItems[index], pu_id: value === 'base' ? null : value as string | null };
+      const uomValue = value === 'base' ? null : value as string | null;
+      const product = products.find(p => p.id === newItems[index].product_id);
+      const basePrice = product?.price || 0;
+      const conversionFactor = getUomConversionFactor(value as string);
+      
+      // Calculate unit price based on conversion factor (e.g., Bag of 250 = 250 * base price)
+      const unitPrice = basePrice * conversionFactor;
+      
+      newItems[index] = { 
+        ...newItems[index], 
+        pu_id: uomValue,
+        unit_price: unitPrice
+      };
     } else {
       newItems[index] = { ...newItems[index], [field]: value as string | number };
     }
