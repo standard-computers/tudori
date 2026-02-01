@@ -155,9 +155,9 @@ const UserSettings = () => {
     }
   }, [user]);
 
-  // Fetch preferences after profile is loaded (need company_id for access check)
+  // Fetch preferences after profile AND access data are loaded
   useEffect(() => {
-    if (user && profile.company_id !== null) {
+    if (user && profile.company_id && !accessLoading) {
       fetchPreferences();
     }
   }, [user, profile.company_id, accessLoading]);
