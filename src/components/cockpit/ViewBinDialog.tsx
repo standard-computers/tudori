@@ -107,31 +107,27 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
       <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[600px] max-h-[85vh]'}`}>
         <button
           type="button"
+          onClick={onEdit}
+          className="absolute right-16 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
           onClick={() => setIsMaximized(!isMaximized)}
           className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
         >
           {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
         <DialogHeader>
-          <div className="flex items-center justify-between pr-14">
-            <div>
-              <DialogTitle className="flex items-center gap-2">
-                <span className="font-mono">{bin.bin_id}</span>
-                <span className="text-muted-foreground font-normal">—</span>
-                <span>{bin.name}</span>
-              </DialogTitle>
-              <DialogDescription>
-                {area ? `${area.area_id} - ${area.name}` : 'Storage bin details and inventory'}
-              </DialogDescription>
-            </div>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-          </div>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="font-mono">{bin.bin_id}</span>
+            <span className="text-muted-foreground font-normal">—</span>
+            <span>{bin.name}</span>
+          </DialogTitle>
+          <DialogDescription>
+            {area ? `${area.area_id} - ${area.name}` : 'Storage bin details and inventory'}
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
@@ -211,23 +207,23 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
                   <h4 className="text-sm font-medium text-muted-foreground">Controls</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${bin.allow_put_away ? 'bg-green-500' : 'bg-muted'}`} />
+                      <div className={`w-2 h-2 rounded-full ${bin.allow_put_away ? 'bg-green-500' : 'bg-destructive'}`} />
                       <span>Put Away</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${bin.allow_auto_put_away ? 'bg-green-500' : 'bg-muted'}`} />
+                      <div className={`w-2 h-2 rounded-full ${bin.allow_auto_put_away ? 'bg-green-500' : 'bg-destructive'}`} />
                       <span>Auto Put Away</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${bin.allow_picking ? 'bg-green-500' : 'bg-muted'}`} />
+                      <div className={`w-2 h-2 rounded-full ${bin.allow_picking ? 'bg-green-500' : 'bg-destructive'}`} />
                       <span>Picking</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${bin.allow_auto_picking ? 'bg-green-500' : 'bg-muted'}`} />
+                      <div className={`w-2 h-2 rounded-full ${bin.allow_auto_picking ? 'bg-green-500' : 'bg-destructive'}`} />
                       <span>Auto Picking</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${bin.is_production_enabled ? 'bg-green-500' : 'bg-muted'}`} />
+                      <div className={`w-2 h-2 rounded-full ${bin.is_production_enabled ? 'bg-green-500' : 'bg-destructive'}`} />
                       <span>Production</span>
                     </div>
                   </div>
