@@ -34,7 +34,8 @@ import {
 } from '@/components/ui/select';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { ArrowLeft, Plus, Pencil, Trash2, Truck, Route, Users } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Truck, Route, Users, ArrowRight } from 'lucide-react';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
 
@@ -56,6 +57,27 @@ interface Carrier {
   is_active: boolean;
 }
 
+interface Location {
+  id: string;
+  location_id: string;
+  name: string;
+}
+
+interface RouteRecord {
+  id: string;
+  route_id: string;
+  name: string;
+  source_location_id: string;
+  destination_location_id: string;
+  carrier_id: string | null;
+  priority: number;
+  is_active: boolean;
+  notes: string | null;
+  source_location?: { id: string; location_id: string; name: string } | null;
+  destination_location?: { id: string; location_id: string; name: string } | null;
+  carrier?: { id: string; carrier_id: string; name: string } | null;
+}
+
 const Transportation = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -64,6 +86,8 @@ const Transportation = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('carriers');
   const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [routes, setRoutes] = useState<RouteRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Carrier dialog state
@@ -86,6 +110,20 @@ const Transportation = () => {
     is_active: true,
   });
 
+  // Route dialog state
+  const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
+  const [editingRoute, setEditingRoute] = useState<RouteRecord | null>(null);
+  const [routeForm, setRouteForm] = useState({
+    route_id: '',
+    name: '',
+    source_location_id: '',
+    destination_location_id: '',
+    carrier_id: '',
+    priority: 1,
+    is_active: true,
+    notes: '',
+  });
+
   const {
     sortConfig,
     filters,
@@ -94,21 +132,34 @@ const Transportation = () => {
     sortedAndFilteredData: sortedCarriers,
   } = useTableSort<Carrier>(carriers, 'carrier_id', 'asc');
 
+  const {
+    sortConfig: routeSortConfig,
+    filters: routeFilters,
+    handleSort: handleRouteSort,
+    setFilter: setRouteFilter,
+    sortedAndFilteredData: sortedRoutes,
+  } = useTableSort<RouteRecord>(routes, 'route_id', 'asc');
+
   // Keyboard shortcut for save
   useSaveShortcut(() => {
     if (isCarrierDialogOpen && carrierForm.carrier_id && carrierForm.name) {
       handleSaveCarrier();
     }
-  }, isCarrierDialogOpen);
+    if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_location_id && routeForm.destination_location_id) {
+      handleSaveRoute();
+    }
+  }, isCarrierDialogOpen || isRouteDialogOpen);
 
   // Set transaction code for status bar
   useEffect(() => {
     if (isCarrierDialogOpen) {
       setTransaction(editingCarrier ? 'trn/carrier/edit' : 'trn/carrier/new');
+    } else if (isRouteDialogOpen) {
+      setTransaction(editingRoute ? 'trn/route/edit' : 'trn/route/new');
     } else {
       setTransaction('trn');
     }
-  }, [isCarrierDialogOpen, editingCarrier, setTransaction]);
+  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, setTransaction]);
 
   // Fetch company ID from profile
   useEffect(() => {
@@ -132,6 +183,8 @@ const Transportation = () => {
   useEffect(() => {
     if (companyId) {
       fetchCarriers();
+      fetchLocations();
+      fetchRoutes();
     }
   }, [companyId]);
 
@@ -151,6 +204,41 @@ const Transportation = () => {
       setCarriers(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchLocations = async () => {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, location_id, name')
+      .eq('company_id', companyId)
+      .order('name');
+
+    if (!error && data) {
+      setLocations(data);
+    }
+  };
+
+  const fetchRoutes = async () => {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from('routes')
+      .select(`
+        *,
+        source_location:locations!routes_source_location_id_fkey(id, location_id, name),
+        destination_location:locations!routes_destination_location_id_fkey(id, location_id, name),
+        carrier:carriers(id, carrier_id, name)
+      `)
+      .eq('company_id', companyId)
+      .order('route_id');
+
+    if (error) {
+      console.error('Failed to load routes:', error);
+    } else {
+      setRoutes(data || []);
+    }
   };
 
   const getNextCarrierId = async (): Promise<string> => {
@@ -279,6 +367,127 @@ const Transportation = () => {
     } else {
       toast.success('Carrier deleted');
       fetchCarriers();
+    }
+  };
+
+  // Route functions
+  const getNextRouteId = async (): Promise<string> => {
+    if (!companyId) return 'RTE-001';
+    
+    const { data } = await supabase
+      .from('routes')
+      .select('route_id')
+      .eq('company_id', companyId)
+      .order('route_id', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      const lastId = data[0].route_id;
+      const match = lastId.match(/(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10) + 1;
+        return `RTE-${String(num).padStart(3, '0')}`;
+      }
+    }
+    return 'RTE-001';
+  };
+
+  const openNewRouteDialog = async () => {
+    const nextId = await getNextRouteId();
+    setRouteForm({
+      route_id: nextId,
+      name: '',
+      source_location_id: '',
+      destination_location_id: '',
+      carrier_id: '',
+      priority: 1,
+      is_active: true,
+      notes: '',
+    });
+    setEditingRoute(null);
+    setIsRouteDialogOpen(true);
+  };
+
+  const openEditRouteDialog = (route: RouteRecord) => {
+    setRouteForm({
+      route_id: route.route_id,
+      name: route.name,
+      source_location_id: route.source_location_id,
+      destination_location_id: route.destination_location_id,
+      carrier_id: route.carrier_id || '',
+      priority: route.priority,
+      is_active: route.is_active,
+      notes: route.notes || '',
+    });
+    setEditingRoute(route);
+    setIsRouteDialogOpen(true);
+  };
+
+  const handleSaveRoute = async () => {
+    if (!companyId || !routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id) return;
+
+    if (routeForm.source_location_id === routeForm.destination_location_id) {
+      toast.error('Source and destination locations must be different');
+      return;
+    }
+
+    const routeData = {
+      company_id: companyId,
+      route_id: routeForm.route_id,
+      name: routeForm.name,
+      source_location_id: routeForm.source_location_id,
+      destination_location_id: routeForm.destination_location_id,
+      carrier_id: routeForm.carrier_id || null,
+      priority: routeForm.priority,
+      is_active: routeForm.is_active,
+      notes: routeForm.notes || null,
+    };
+
+    if (editingRoute) {
+      const { error } = await supabase
+        .from('routes')
+        .update(routeData)
+        .eq('id', editingRoute.id);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Route updated');
+        setIsRouteDialogOpen(false);
+        fetchRoutes();
+      }
+    } else {
+      const { error } = await supabase
+        .from('routes')
+        .insert(routeData);
+
+      if (error) {
+        if (error.message.includes('duplicate')) {
+          toast.error('A route between these locations already exists');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.success('Route created');
+        setIsRouteDialogOpen(false);
+        fetchRoutes();
+      }
+    }
+  };
+
+  const handleDeleteRoute = async (route: RouteRecord) => {
+    if (!confirm(`Delete route "${route.name}"?`)) return;
+
+    const { error } = await supabase
+      .from('routes')
+      .delete()
+      .eq('id', route.id);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Route deleted');
+      fetchRoutes();
     }
   };
 
@@ -439,12 +648,91 @@ const Transportation = () => {
           </TabsContent>
 
           <TabsContent value="routes" className="mt-4">
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              <div className="text-center">
-                <Route className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Routes configuration coming soon</p>
-              </div>
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-sm text-muted-foreground">
+                Define fulfillment routes between locations
+              </p>
+              <Button onClick={openNewRouteDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Route
+              </Button>
             </div>
+
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <SortableTableHead
+                    label="Route ID"
+                    sortKey="route_id"
+                    currentSortKey={routeSortConfig.key}
+                    currentSortDirection={routeSortConfig.direction}
+                    onSort={handleRouteSort}
+                    filterValue={routeFilters['route_id'] || ''}
+                    onFilter={(value) => setRouteFilter('route_id', value)}
+                  />
+                  <SortableTableHead
+                    label="Name"
+                    sortKey="name"
+                    currentSortKey={routeSortConfig.key}
+                    currentSortDirection={routeSortConfig.direction}
+                    onSort={handleRouteSort}
+                    filterValue={routeFilters['name'] || ''}
+                    onFilter={(value) => setRouteFilter('name', value)}
+                  />
+                  <TableHead>Source Location</TableHead>
+                  <TableHead></TableHead>
+                  <TableHead>Destination Location</TableHead>
+                  <TableHead>Carrier</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedRoutes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      No routes configured. Create your first route to define fulfillment paths.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedRoutes.map((route) => (
+                    <TableRow key={route.id}>
+                      <TableCell className="font-mono">{route.route_id}</TableCell>
+                      <TableCell className="font-medium">{route.name}</TableCell>
+                      <TableCell>{route.source_location?.name || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <ArrowRight className="h-4 w-4" />
+                      </TableCell>
+                      <TableCell>{route.destination_location?.name || '-'}</TableCell>
+                      <TableCell>{route.carrier?.name || '-'}</TableCell>
+                      <TableCell>{route.priority}</TableCell>
+                      <TableCell>
+                        <Checkbox checked={route.is_active} disabled />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditRouteDialog(route)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteRoute(route)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </TabsContent>
 
           <TabsContent value="assignments" className="mt-4">
@@ -620,6 +908,121 @@ const Transportation = () => {
               disabled={!carrierForm.carrier_id || !carrierForm.name}
             >
               {editingCarrier ? 'Update' : 'Create'}
+              <Kbd>⌘S</Kbd>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Route Dialog */}
+      <Dialog open={isRouteDialogOpen} onOpenChange={setIsRouteDialogOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{editingRoute ? 'Edit Route' : 'New Route'}</DialogTitle>
+            <DialogDescription>
+              {editingRoute ? 'Update route configuration' : 'Define a fulfillment path between locations'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 px-6">
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="route_id">Route ID *</Label>
+                  <Input
+                    id="route_id"
+                    value={routeForm.route_id}
+                    onChange={(e) => setRouteForm({ ...routeForm, route_id: e.target.value })}
+                    disabled={!!editingRoute}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <Input
+                    id="priority"
+                    type="number"
+                    min={1}
+                    value={routeForm.priority}
+                    onChange={(e) => setRouteForm({ ...routeForm, priority: parseInt(e.target.value) || 1 })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="route_name">Name *</Label>
+                <Input
+                  id="route_name"
+                  value={routeForm.name}
+                  onChange={(e) => setRouteForm({ ...routeForm, name: e.target.value })}
+                  placeholder="e.g., Warehouse to Store A"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Source Location *</Label>
+                <SearchableSelect
+                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
+                  value={routeForm.source_location_id}
+                  onValueChange={(value) => setRouteForm({ ...routeForm, source_location_id: value })}
+                  placeholder="Select source location"
+                />
+              </div>
+
+              <div className="flex justify-center">
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Destination Location *</Label>
+                <SearchableSelect
+                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
+                  value={routeForm.destination_location_id}
+                  onValueChange={(value) => setRouteForm({ ...routeForm, destination_location_id: value })}
+                  placeholder="Select destination location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Preferred Carrier</Label>
+                <SearchableSelect
+                  options={[
+                    { value: '', label: 'None' },
+                    ...carriers.filter(c => c.is_active).map((c) => ({ value: c.id, label: `${c.carrier_id} - ${c.name}` }))
+                  ]}
+                  value={routeForm.carrier_id}
+                  onValueChange={(value) => setRouteForm({ ...routeForm, carrier_id: value })}
+                  placeholder="Select carrier (optional)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="route_notes">Notes</Label>
+                <Input
+                  id="route_notes"
+                  value={routeForm.notes}
+                  onChange={(e) => setRouteForm({ ...routeForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="route_is_active"
+                  checked={routeForm.is_active}
+                  onCheckedChange={(checked) =>
+                    setRouteForm({ ...routeForm, is_active: checked as boolean })
+                  }
+                />
+                <Label htmlFor="route_is_active">Active</Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0">
+            <Button
+              onClick={handleSaveRoute}
+              disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id}
+            >
+              {editingRoute ? 'Update' : 'Create'}
               <Kbd>⌘S</Kbd>
             </Button>
           </DialogFooter>
