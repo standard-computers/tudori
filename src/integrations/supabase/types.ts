@@ -3722,6 +3722,12 @@ export type Database = {
       }
     }
     Functions: {
+      generate_assignment_id: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
+      generate_carrier_id: { Args: { p_company_id: string }; Returns: string }
+      generate_route_id: { Args: { p_company_id: string }; Returns: string }
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
       get_next_bom_id: { Args: { p_company_id: string }; Returns: string }
       get_next_credit_memo_number: {

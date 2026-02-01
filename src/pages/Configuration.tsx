@@ -46,6 +46,9 @@ const DOCUMENT_TYPES = [
   { value: 'employee', label: 'Employee', prefix_placeholder: 'EMP-', icon: UserCheck },
   { value: 'product', label: 'Product', prefix_placeholder: 'PRD-', icon: Package },
   { value: 'location', label: 'Location', prefix_placeholder: 'LOC-', icon: MapPin },
+  { value: 'carrier', label: 'Carrier', prefix_placeholder: 'CAR-', icon: Truck },
+  { value: 'route', label: 'Route', prefix_placeholder: 'RTE-', icon: Truck },
+  { value: 'assignment', label: 'Assignment', prefix_placeholder: 'ASN-', icon: Users },
 ];
 
 interface POAutomationSettings {
