@@ -724,6 +724,7 @@ const Transportation = () => {
               <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
+              <h1 className="text-xl font-semibold">Transportation</h1>
               <TabsList>
                 <TabsTrigger value="carriers" className="gap-2">
                   <Truck className="h-4 w-4" />
@@ -738,7 +739,6 @@ const Transportation = () => {
                   Assignments
                 </TabsTrigger>
               </TabsList>
-              <h1 className="text-xl font-semibold">Transportation</h1>
             </div>
           </div>
         </header>
