@@ -32,6 +32,7 @@ const LIST_VIEW_ROUTES = [
   '/bill-of-materials',
   '/planning',
   '/production',
+  '/data-explorer',
 ];
 
 /**
