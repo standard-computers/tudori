@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +27,7 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -98,6 +100,23 @@ const Planning = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [requisitionItems, setRequisitionItems] = useState<RequisitionItem[]>([]);
 
+  // Progress state for bulk creation
+  const [isCreating, setIsCreating] = useState(false);
+  const [createProgress, setCreateProgress] = useState({ current: 0, total: 0, currentAction: '' });
+  const [createResults, setCreateResults] = useState<{ success: string[]; failed: string[] }>({ success: [], failed: [] });
+
+  // Calculate number of requisitions that will be created (grouped by vendor)
+  const vendorGroups = useMemo(() => {
+    const groups = new Map<string | null, RequisitionItem[]>();
+    requisitionItems.forEach(item => {
+      const vendorKey = item.vendorId || null;
+      const existing = groups.get(vendorKey) || [];
+      existing.push(item);
+      groups.set(vendorKey, existing);
+    });
+    return groups;
+  }, [requisitionItems]);
+
   // Sorting and filtering for locations table
   const {
     sortConfig: locationsSortConfig,
@@ -115,6 +134,13 @@ const Planning = () => {
     setFilter: setShortfallsFilter,
     sortedAndFilteredData: sortedShortfalls,
   } = useTableSort<InventoryShortfall>(shortfalls, 'shortfall', 'desc');
+
+  // Keyboard shortcut for save (CTRL+S / CMD+S)
+  useSaveShortcut(() => {
+    if (isReqDialogOpen && requisitionItems.length > 0 && !isCreating) {
+      handleCreateRequisition();
+    }
+  }, isReqDialogOpen);
 
   useEffect(() => {
     if (selectedLocation) {
@@ -504,30 +530,48 @@ const Planning = () => {
   };
 
   const handleCreateRequisition = async () => {
-    if (requisitionItems.length === 0) return;
+    if (requisitionItems.length === 0 || isCreating) return;
 
-    try {
-      // Group items by vendor
-      const itemsByVendor = new Map<string | null, RequisitionItem[]>();
-      requisitionItems.forEach(item => {
-        const vendorKey = item.vendorId || null;
-        const existing = itemsByVendor.get(vendorKey) || [];
-        existing.push(item);
-        itemsByVendor.set(vendorKey, existing);
-      });
+    // Group items by vendor
+    const itemsByVendor = new Map<string | null, RequisitionItem[]>();
+    requisitionItems.forEach(item => {
+      const vendorKey = item.vendorId || null;
+      const existing = itemsByVendor.get(vendorKey) || [];
+      existing.push(item);
+      itemsByVendor.set(vendorKey, existing);
+    });
 
-      const createdReqs: string[] = [];
+    const total = itemsByVendor.size;
+    const showProgress = total > 1;
 
-      // Create a separate requisition for each vendor
-      for (const [vendorId, items] of itemsByVendor) {
+    if (showProgress) {
+      setIsCreating(true);
+      setCreateProgress({ current: 0, total, currentAction: 'Starting...' });
+      setCreateResults({ success: [], failed: [] });
+    }
+
+    const successList: string[] = [];
+    const failedList: string[] = [];
+
+    let index = 0;
+    for (const [vendorId, items] of itemsByVendor) {
+      const vendorName = vendorId 
+        ? shortfalls.find(s => s.vendorId === vendorId)?.vendorName || 'Vendor'
+        : 'No Vendor';
+
+      if (showProgress) {
+        setCreateProgress({
+          current: index + 1,
+          total,
+          currentAction: `Creating requisition for ${vendorName}...`,
+        });
+      }
+
+      try {
         // Get next requisition ID
         const { data: nextId } = await supabase.rpc('get_next_requisition_id', {
           p_company_id: companyId!,
         });
-
-        const vendorName = vendorId 
-          ? shortfalls.find(s => s.vendorId === vendorId)?.vendorName || 'Vendor'
-          : 'No Vendor';
 
         // Calculate total amount for this requisition
         const totalAmount = items.reduce((sum, item) => {
@@ -565,23 +609,36 @@ const Planning = () => {
 
         if (itemsError) throw itemsError;
 
-        createdReqs.push(requisition.requisition_id);
+        successList.push(`${requisition.requisition_id} (${vendorName})`);
+      } catch (error: any) {
+        failedList.push(`${vendorName}: ${error.message || 'Failed'}`);
       }
 
-      if (createdReqs.length === 1) {
-        toast.success(`Requisition ${createdReqs[0]} created with ${requisitionItems.length} items`);
-      } else {
-        toast.success(`Created ${createdReqs.length} requisitions: ${createdReqs.join(', ')}`);
-      }
+      index++;
+    }
 
+    if (showProgress) {
+      setCreateResults({ success: successList, failed: failedList });
+      setCreateProgress({ current: total, total, currentAction: 'Completed' });
       
+      // Brief delay to show completion, then close
+      setTimeout(() => {
+        setIsCreating(false);
+        setIsReqDialogOpen(false);
+        setSelectedItems(new Set());
+        fetchShortfallsForLocation(selectedLocation!.id);
+      }, 1500);
+    } else {
+      // Single requisition - use toast
+      if (successList.length > 0) {
+        toast.success(`Requisition created: ${successList[0]}`);
+      }
+      if (failedList.length > 0) {
+        toast.error(failedList[0]);
+      }
       setIsReqDialogOpen(false);
       setSelectedItems(new Set());
-      
-      // Refresh shortfalls
       await fetchShortfallsForLocation(selectedLocation!.id);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create requisition');
     }
   };
 
@@ -899,11 +956,73 @@ const Planning = () => {
           </div>
 
           <DialogFooter className="shrink-0 px-6 pb-6">
-            <Button onClick={handleCreateRequisition}>
-              Create Requisition
+            <Button onClick={handleCreateRequisition} disabled={isCreating}>
+              {vendorGroups.size > 1 
+                ? `Create ${vendorGroups.size} Requisitions`
+                : 'Create Requisition'
+              }
               <Kbd>⌘S</Kbd>
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Creation Progress Dialog */}
+      <Dialog open={isCreating} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Creating Requisitions</DialogTitle>
+            <DialogDescription>
+              Creating {createProgress.total} requisition(s) grouped by vendor
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-mono">{createProgress.current} / {createProgress.total}</span>
+              </div>
+              <Progress value={createProgress.total > 0 ? (createProgress.current / createProgress.total) * 100 : 0} className="h-2" />
+            </div>
+            
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {createProgress.currentAction !== 'Completed' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4 text-primary" />
+              )}
+              <span>{createProgress.currentAction}</span>
+            </div>
+
+            {createResults.success.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Created</Label>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {createResults.success.map((item, i) => (
+                    <div key={i} className="text-xs font-mono flex items-center gap-2 text-primary">
+                      <Check className="w-3 h-3" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {createResults.failed.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Failed</Label>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {createResults.failed.map((item, i) => (
+                    <div key={i} className="text-xs font-mono flex items-center gap-2 text-destructive">
+                      <X className="w-3 h-3" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
