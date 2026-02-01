@@ -3490,6 +3490,7 @@ export type Database = {
           hidden_tiles: string[] | null
           id: string
           open_apps_in_new_tab: boolean | null
+          theme: string | null
           updated_at: string
           user_id: string
         }
@@ -3499,6 +3500,7 @@ export type Database = {
           hidden_tiles?: string[] | null
           id?: string
           open_apps_in_new_tab?: boolean | null
+          theme?: string | null
           updated_at?: string
           user_id: string
         }
@@ -3508,6 +3510,7 @@ export type Database = {
           hidden_tiles?: string[] | null
           id?: string
           open_apps_in_new_tab?: boolean | null
+          theme?: string | null
           updated_at?: string
           user_id?: string
         }
