@@ -2891,6 +2891,80 @@ export type Database = {
           },
         ]
       }
+      routes: {
+        Row: {
+          carrier_id: string | null
+          company_id: string
+          created_at: string
+          destination_location_id: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          priority: number | null
+          route_id: string
+          source_location_id: string
+          updated_at: string
+        }
+        Insert: {
+          carrier_id?: string | null
+          company_id: string
+          created_at?: string
+          destination_location_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          priority?: number | null
+          route_id: string
+          source_location_id: string
+          updated_at?: string
+        }
+        Update: {
+          carrier_id?: string | null
+          company_id?: string
+          created_at?: string
+          destination_location_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          priority?: number | null
+          route_id?: string
+          source_location_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routes_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routes_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routes_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_order_items: {
         Row: {
           created_at: string
