@@ -5,34 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-
-// Transaction codes based on app tiles
-const TRANSACTION_CODES = [
-  { code: 'cockpit', name: 'Cockpit', description: 'Location dashboard' },
-  { code: 'sales_orders', name: 'Sales Orders', description: 'Customer orders' },
-  { code: 'inventory', name: 'Inventory', description: 'Stock management' },
-  { code: 'goods_receipts', name: 'Goods Receipts', description: 'Receive inventory' },
-  { code: 'goods_issues', name: 'Goods Issues', description: 'Issue inventory' },
-  { code: 'locations', name: 'Locations', description: 'Warehouses & stores' },
-  { code: 'vendors', name: 'Vendors', description: 'Suppliers & partners' },
-  { code: 'customers', name: 'Customers', description: 'CRM & contacts' },
-  { code: 'products', name: 'Products', description: 'Product catalog' },
-  { code: 'invoices', name: 'Invoices', description: 'Billing & payments' },
-  { code: 'credit_memos', name: 'Credit Memos', description: 'Account credits' },
-  { code: 'debit_memos', name: 'Debit Memos', description: 'Account debits' },
-  { code: 'accounts', name: 'Accounts', description: 'Customer & vendor accounts' },
-  { code: 'ledgers', name: 'Ledgers', description: 'Financial ledgers' },
-  { code: 'rates', name: 'Rates', description: 'Tax rates' },
-  { code: 'orders', name: 'Orders', description: 'Vendor orders' },
-  { code: 'requisitions', name: 'Requisitions', description: 'Purchase requests' },
-  { code: 'deliveries', name: 'Deliveries', description: 'Logistics & delivery' },
-  { code: 'employees', name: 'Employees', description: 'Staff directory' },
-  { code: 'teams', name: 'Teams', description: 'Team management' },
-  { code: 'tasks', name: 'Tasks', description: 'To-dos & projects' },
-  { code: 'users', name: 'Users', description: 'Team & access control' },
-  { code: 'configuration', name: 'Configuration', description: 'System configuration' },
-  { code: 'settings', name: 'Settings', description: 'Company settings' },
-];
+import { TRANSACTION_CODES } from '@/config/transaction-codes';
 
 interface TransactionAccessTabProps {
   userId: string;
