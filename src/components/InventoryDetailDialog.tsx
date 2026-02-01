@@ -177,17 +177,26 @@ export const InventoryDetailDialog = ({
       for (const invItem of itemsToMove) {
         const moveQuantity = invItem.id === item.id ? putAwayQuantity : invItem.quantity;
         
-        // Check if there's already inventory in the target bin for this product
-        const { data: existingBinInventory } = await supabase
+        // Check if there's already inventory in the target bin for this product WITH the same PU
+        // Only combine if both product_id and pu_id match to preserve separate packaging units
+        let query = supabase
           .from('inventory')
           .select('id, quantity')
           .eq('location_id', locationId)
           .eq('product_id', invItem.product_id)
-          .eq('bin_id', selectedBinId)
-          .maybeSingle();
+          .eq('bin_id', selectedBinId);
+        
+        // Match on pu_id - only combine if PUs are the same
+        if (invItem.pu_id) {
+          query = query.eq('pu_id', invItem.pu_id);
+        } else {
+          query = query.is('pu_id', null);
+        }
+        
+        const { data: existingBinInventory } = await query.maybeSingle();
 
         if (existingBinInventory) {
-          // Add to existing bin inventory
+          // Add to existing bin inventory (same product AND same PU)
           await supabase
             .from('inventory')
             .update({
@@ -196,7 +205,7 @@ export const InventoryDetailDialog = ({
             })
             .eq('id', existingBinInventory.id);
         } else {
-          // Create new inventory record in the bin
+          // Create new inventory record in the bin (different PU or no matching record)
           await supabase.from('inventory').insert({
             location_id: locationId,
             product_id: invItem.product_id,
@@ -317,17 +326,26 @@ export const InventoryDetailDialog = ({
         : [item];
 
       for (const invItem of itemsToMove) {
-        // Check if there's already inventory in the target bin for this product
-        const { data: existingBinInventory } = await supabase
+        // Check if there's already inventory in the target bin for this product WITH the same PU
+        // Only combine if both product_id and pu_id match to preserve separate packaging units
+        let query = supabase
           .from('inventory')
           .select('id, quantity')
           .eq('location_id', locationId)
           .eq('product_id', invItem.product_id)
-          .eq('bin_id', targetBinId)
-          .maybeSingle();
+          .eq('bin_id', targetBinId);
+        
+        // Match on pu_id - only combine if PUs are the same
+        if (invItem.pu_id) {
+          query = query.eq('pu_id', invItem.pu_id);
+        } else {
+          query = query.is('pu_id', null);
+        }
+        
+        const { data: existingBinInventory } = await query.maybeSingle();
 
         if (existingBinInventory) {
-          // Add to existing bin inventory
+          // Add to existing bin inventory (same product AND same PU)
           await supabase
             .from('inventory')
             .update({
@@ -336,7 +354,7 @@ export const InventoryDetailDialog = ({
             })
             .eq('id', existingBinInventory.id);
         } else {
-          // Create new inventory record in the bin
+          // Create new inventory record in the bin (different PU or no matching record)
           await supabase.from('inventory').insert({
             location_id: locationId,
             product_id: invItem.product_id,
@@ -424,17 +442,26 @@ export const InventoryDetailDialog = ({
       for (const invItem of itemsToMove) {
         const moveQuantity = invItem.id === item.id ? putAwayQuantity : invItem.quantity;
         
-        // Check if there's already inventory in the target bin for this product
-        const { data: existingBinInventory } = await supabase
+        // Check if there's already inventory in the target bin for this product WITH the same PU
+        // Only combine if both product_id and pu_id match to preserve separate packaging units
+        let query = supabase
           .from('inventory')
           .select('id, quantity')
           .eq('location_id', locationId)
           .eq('product_id', invItem.product_id)
-          .eq('bin_id', selectedBinId)
-          .maybeSingle();
+          .eq('bin_id', selectedBinId);
+        
+        // Match on pu_id - only combine if PUs are the same
+        if (invItem.pu_id) {
+          query = query.eq('pu_id', invItem.pu_id);
+        } else {
+          query = query.is('pu_id', null);
+        }
+        
+        const { data: existingBinInventory } = await query.maybeSingle();
 
         if (existingBinInventory) {
-          // Add to existing bin inventory
+          // Add to existing bin inventory (same product AND same PU)
           await supabase
             .from('inventory')
             .update({
@@ -443,7 +470,7 @@ export const InventoryDetailDialog = ({
             })
             .eq('id', existingBinInventory.id);
         } else {
-          // Create new inventory record in the bin
+          // Create new inventory record in the bin (different PU or no matching record)
           await supabase.from('inventory').insert({
             location_id: locationId,
             product_id: invItem.product_id,
