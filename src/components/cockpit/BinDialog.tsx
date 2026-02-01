@@ -36,7 +36,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
-import { ChevronsUpDown, Check, Plus, Trash2 } from 'lucide-react';
+import { ChevronsUpDown, Check, Plus, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -143,6 +143,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
     const [selectedProductId, setSelectedProductId] = useState<string>('');
     const [newProductQty, setNewProductQty] = useState<string>('');
     const [activeTab, setActiveTab] = useState('general');
+    const [isMaximized, setIsMaximized] = useState(false);
 
     useEffect(() => {
       if (open) {
@@ -344,7 +345,14 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[520px] max-h-[85vh] flex flex-col">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[520px] max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <form onSubmit={handleSubmit} className="flex flex-col h-full">
             <DialogHeader>
               <DialogTitle>{editingBin ? 'Edit Bin' : 'Add Bin'}</DialogTitle>
@@ -354,7 +362,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             </DialogHeader>
 
             {!editingBin && (
-              <div className="absolute right-12 top-4 z-10">
+              <div className="absolute right-16 top-4 z-10">
                 <CopyFromIdDialog<Bin>
                   onFetch={fetchBinForCopy}
                   onApply={applyBinCopy}

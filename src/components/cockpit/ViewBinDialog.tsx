@@ -11,7 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Boxes, Info } from 'lucide-react';
+import { Pencil, Boxes, Info, Maximize2, Minimize2 } from 'lucide-react';
 
 interface Bin {
   id: string;
@@ -64,6 +64,7 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
   const [activeTab, setActiveTab] = useState('details');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
     if (open && bin) {
@@ -104,9 +105,16 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[600px] max-h-[85vh]'}`}>
+        <button
+          type="button"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
         <DialogHeader>
-          <div className="flex items-center justify-between pr-8">
+          <div className="flex items-center justify-between pr-14">
             <div>
               <DialogTitle className="flex items-center gap-2">
                 <span className="font-mono">{bin.bin_id}</span>

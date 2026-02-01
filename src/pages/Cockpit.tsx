@@ -56,7 +56,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
@@ -198,6 +198,7 @@ const Cockpit = () => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [bins, setBins] = useState<Bin[]>([]);
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
+  const [isAreaMaximized, setIsAreaMaximized] = useState(false);
   const [isBinDialogOpen, setIsBinDialogOpen] = useState(false);
   const [isViewBinDialogOpen, setIsViewBinDialogOpen] = useState(false);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
@@ -1857,8 +1858,15 @@ const [areaFormData, setAreaFormData] = useState({
 
       {/* Area Dialog */}
       <Dialog open={isAreaDialogOpen} onOpenChange={setIsAreaDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <form ref={areaFormRef} onSubmit={handleAreaSubmit}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isAreaMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[500px] max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsAreaMaximized(!isAreaMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isAreaMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <form ref={areaFormRef} onSubmit={handleAreaSubmit} className="flex flex-col h-full">
             <DialogHeader>
               <DialogTitle>{editingArea ? 'Edit Area' : 'Add Area'}</DialogTitle>
               <DialogDescription>
@@ -1867,7 +1875,7 @@ const [areaFormData, setAreaFormData] = useState({
             </DialogHeader>
             
             {!editingArea && (
-              <div className="absolute right-12 top-4 z-10">
+              <div className="absolute right-16 top-4 z-10">
                 <CopyFromIdDialog<Area>
                   onFetch={fetchAreaForCopy}
                   onApply={applyAreaCopy}
