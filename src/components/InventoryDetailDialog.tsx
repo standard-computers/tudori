@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2 } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -51,6 +51,7 @@ interface Bin {
   id: string;
   bin_id: string;
   name: string;
+  allow_picking: boolean;
   allow_put_away: boolean;
   allow_auto_put_away: boolean;
 }
@@ -71,6 +72,7 @@ export const InventoryDetailDialog = ({
   onUpdated,
 }: InventoryDetailDialogProps) => {
   const [isPutAwayMode, setIsPutAwayMode] = useState(false);
+  const [isMoveMode, setIsMoveMode] = useState(false);
   const [bins, setBins] = useState<Bin[]>([]);
   const [selectedBinId, setSelectedBinId] = useState<string>('');
   const [putAwayQuantity, setPutAwayQuantity] = useState<number>(0);
@@ -79,13 +81,15 @@ export const InventoryDetailDialog = ({
   const [isAssigningPU, setIsAssigningPU] = useState(false);
   const [isExploding, setIsExploding] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const [siblingPUItems, setSiblingPUItems] = useState<InventoryItem[]>([]);
   const [showPUConfirmDialog, setShowPUConfirmDialog] = useState(false);
-  const [pendingMoveAction, setPendingMoveAction] = useState<'manual' | 'auto' | null>(null);
+  const [pendingMoveAction, setPendingMoveAction] = useState<'manual' | 'auto' | 'move' | null>(null);
 
   useEffect(() => {
     if (open && item) {
       setIsPutAwayMode(false);
+      setIsMoveMode(false);
       setPutAwayQuantity(item.quantity);
       setSelectedBinId('');
       fetchBins();
@@ -109,7 +113,7 @@ export const InventoryDetailDialog = ({
     // Then get bins for those areas
     const { data: binsData } = await supabase
       .from('bins')
-      .select('id, bin_id, name, allow_put_away, allow_auto_put_away')
+      .select('id, bin_id, name, allow_picking, allow_put_away, allow_auto_put_away')
       .in('area_id', areaIds)
       .order('bin_id');
 
@@ -369,6 +373,8 @@ export const InventoryDetailDialog = ({
       setIsPutAwayMode(true);
     } else if (pendingMoveAction === 'auto') {
       handleAutoPutAway();
+    } else if (pendingMoveAction === 'move') {
+      setIsMoveMode(true);
     }
     setPendingMoveAction(null);
   };
@@ -377,6 +383,107 @@ export const InventoryDetailDialog = ({
     setShowPUConfirmDialog(false);
     setSiblingPUItems([]);
     setPendingMoveAction(null);
+  };
+
+  const handleInitiateMove = async () => {
+    if (!item) return;
+    
+    // Check for siblings with same PU
+    if (item.pu_id) {
+      const siblings = await checkSiblingPUItems();
+      if (siblings.length > 0) {
+        setSiblingPUItems(siblings);
+        setPendingMoveAction('move');
+        setShowPUConfirmDialog(true);
+        return;
+      }
+    }
+    
+    setIsMoveMode(true);
+  };
+
+  const handleMove = async () => {
+    if (!item || !selectedBinId) {
+      toast.error('Please select a destination bin');
+      return;
+    }
+
+    if (putAwayQuantity <= 0 || putAwayQuantity > item.quantity) {
+      toast.error('Invalid quantity');
+      return;
+    }
+
+    setIsMoving(true);
+
+    try {
+      // Get all items to move (current item + siblings if they share PU)
+      const itemsToMove = siblingPUItems.length > 0 
+        ? [item, ...siblingPUItems] 
+        : [item];
+
+      for (const invItem of itemsToMove) {
+        const moveQuantity = invItem.id === item.id ? putAwayQuantity : invItem.quantity;
+        
+        // Check if there's already inventory in the target bin for this product
+        const { data: existingBinInventory } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('location_id', locationId)
+          .eq('product_id', invItem.product_id)
+          .eq('bin_id', selectedBinId)
+          .maybeSingle();
+
+        if (existingBinInventory) {
+          // Add to existing bin inventory
+          await supabase
+            .from('inventory')
+            .update({
+              quantity: existingBinInventory.quantity + moveQuantity,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingBinInventory.id);
+        } else {
+          // Create new inventory record in the bin
+          await supabase.from('inventory').insert({
+            location_id: locationId,
+            product_id: invItem.product_id,
+            bin_id: selectedBinId,
+            quantity: moveQuantity,
+            min_quantity: invItem.min_quantity,
+            max_quantity: invItem.max_quantity,
+            pu_id: invItem.pu_id,
+          });
+        }
+
+        // Update or delete the source inventory
+        const remainingQuantity = invItem.quantity - moveQuantity;
+        if (remainingQuantity > 0) {
+          await supabase
+            .from('inventory')
+            .update({
+              quantity: remainingQuantity,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', invItem.id);
+        } else {
+          await supabase.from('inventory').delete().eq('id', invItem.id);
+        }
+      }
+
+      const selectedBin = bins.find(b => b.id === selectedBinId);
+      const totalItems = siblingPUItems.length > 0 ? itemsToMove.length : 1;
+      toast.success(
+        `Moved ${totalItems > 1 ? `${totalItems} items (PU)` : `${putAwayQuantity} units`} to ${selectedBin?.bin_id || 'bin'}`
+      );
+      setSiblingPUItems([]);
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Move error:', error);
+      toast.error('Failed to move inventory');
+    } finally {
+      setIsMoving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -507,6 +614,14 @@ export const InventoryDetailDialog = ({
   const canPutAway = !item.bin_id;
   const hasPU = !!item.pu_id;
   const canExplode = item.quantity > 1;
+  
+  // Check if current bin allows picking (for Move button)
+  const currentBin = item.bin_id ? bins.find(b => b.id === item.bin_id) : null;
+  const canMove = !!item.bin_id && (currentBin?.allow_picking ?? true);
+  
+  // Filter bins for move mode - only show bins with put away enabled
+  const availableBinsForMove = bins.filter(b => b.allow_put_away && b.id !== item.bin_id);
+  const binsToShow = isMoveMode ? availableBinsForMove : bins;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -514,16 +629,18 @@ export const InventoryDetailDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5" />
-            {isPutAwayMode ? 'Put Away Inventory' : 'Inventory Details'}
+            {isMoveMode ? 'Move Inventory' : isPutAwayMode ? 'Put Away Inventory' : 'Inventory Details'}
           </DialogTitle>
           <DialogDescription>
-            {isPutAwayMode
+            {isMoveMode
+              ? 'Select destination bin for this inventory'
+              : isPutAwayMode
               ? 'Confirm quantity and select destination bin'
               : 'View inventory item details'}
           </DialogDescription>
         </DialogHeader>
 
-        {!isPutAwayMode ? (
+        {!isPutAwayMode && !isMoveMode ? (
           <div className="space-y-4 px-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -620,7 +737,7 @@ export const InventoryDetailDialog = ({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="put-away-qty">Quantity to Put Away</Label>
+              <Label htmlFor="put-away-qty">Quantity to {isMoveMode ? 'Move' : 'Put Away'}</Label>
               <Input
                 id="put-away-qty"
                 type="number"
@@ -641,7 +758,7 @@ export const InventoryDetailDialog = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Destination Bin</Label>
-                {bins.length > 0 && (
+                {bins.length > 0 && !isMoveMode && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -658,9 +775,11 @@ export const InventoryDetailDialog = ({
                   </Button>
                 )}
               </div>
-              {bins.length === 0 ? (
+              {binsToShow.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
-                  No bins available. Create bins in the Bins tab first.
+                  {isMoveMode 
+                    ? 'No bins with put away enabled available.'
+                    : 'No bins available. Create bins in the Bins tab first.'}
                 </p>
               ) : (
                 <Select value={selectedBinId} onValueChange={setSelectedBinId}>
@@ -668,7 +787,7 @@ export const InventoryDetailDialog = ({
                     <SelectValue placeholder="Select a bin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {bins.map((bin) => (
+                    {binsToShow.map((bin) => (
                       <SelectItem key={bin.id} value={bin.id}>
                         {bin.bin_id} - {bin.name}
                       </SelectItem>
@@ -681,7 +800,7 @@ export const InventoryDetailDialog = ({
         )}
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {!isPutAwayMode ? (
+          {!isPutAwayMode && !isMoveMode ? (
             <>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -706,6 +825,17 @@ export const InventoryDetailDialog = ({
                 </AlertDialogContent>
               </AlertDialog>
               <div className="flex-1" />
+              {item.bin_id && (
+                <Button 
+                  variant="secondary" 
+                  onClick={handleInitiateMove} 
+                  disabled={!canMove || availableBinsForMove.length === 0}
+                  title={!canMove ? 'Current bin does not allow picking' : undefined}
+                >
+                  <MoveRight className="w-4 h-4 mr-2" />
+                  Move
+                </Button>
+              )}
               {canExplode && (
                 <Button 
                   variant="secondary" 
@@ -722,6 +852,19 @@ export const InventoryDetailDialog = ({
                   Put Away
                 </Button>
               )}
+            </>
+          ) : isMoveMode ? (
+            <>
+              <Button variant="outline" onClick={() => { setIsMoveMode(false); setSiblingPUItems([]); }}>
+                Back
+              </Button>
+              <Button
+                onClick={handleMove}
+                disabled={isMoving || !selectedBinId || putAwayQuantity <= 0}
+              >
+                <MoveRight className="w-4 h-4 mr-2" />
+                {isMoving ? 'Moving...' : 'Confirm Move'}
+              </Button>
             </>
           ) : (
             <>
