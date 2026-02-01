@@ -23,6 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/SortableTableHead';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
@@ -95,6 +97,24 @@ const Planning = () => {
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [requisitionItems, setRequisitionItems] = useState<RequisitionItem[]>([]);
+
+  // Sorting and filtering for locations table
+  const {
+    sortConfig: locationsSortConfig,
+    filters: locationsFilters,
+    handleSort: handleLocationsSort,
+    setFilter: setLocationsFilter,
+    sortedAndFilteredData: sortedLocations,
+  } = useTableSort<LocationSummary>(locations, 'name', 'asc');
+
+  // Sorting and filtering for shortfalls table
+  const {
+    sortConfig: shortfallsSortConfig,
+    filters: shortfallsFilters,
+    handleSort: handleShortfallsSort,
+    setFilter: setShortfallsFilter,
+    sortedAndFilteredData: sortedShortfalls,
+  } = useTableSort<InventoryShortfall>(shortfalls, 'shortfall', 'desc');
 
   useEffect(() => {
     if (selectedLocation) {
@@ -603,21 +623,47 @@ const Planning = () => {
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="w-40 text-center">Sales Orders</TableHead>
-                  <TableHead className="w-40 text-center">Production Orders</TableHead>
+                  <SortableTableHead
+                    label="Location"
+                    sortKey="name"
+                    currentSortKey={locationsSortConfig.key}
+                    currentSortDirection={locationsSortConfig.direction}
+                    onSort={handleLocationsSort}
+                    filterValue={locationsFilters['name'] || ''}
+                    onFilter={(value) => setLocationsFilter('name', value)}
+                  />
+                  <SortableTableHead
+                    label="Sales Orders"
+                    sortKey="salesOrderCount"
+                    currentSortKey={locationsSortConfig.key}
+                    currentSortDirection={locationsSortConfig.direction}
+                    onSort={handleLocationsSort}
+                    filterValue={locationsFilters['salesOrderCount'] || ''}
+                    onFilter={(value) => setLocationsFilter('salesOrderCount', value)}
+                    className="w-40 text-center"
+                  />
+                  <SortableTableHead
+                    label="Production Orders"
+                    sortKey="productionOrderCount"
+                    currentSortKey={locationsSortConfig.key}
+                    currentSortDirection={locationsSortConfig.direction}
+                    onSort={handleLocationsSort}
+                    filterValue={locationsFilters['productionOrderCount'] || ''}
+                    onFilter={(value) => setLocationsFilter('productionOrderCount', value)}
+                    className="w-40 text-center"
+                  />
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {locations.length === 0 ? (
+                {sortedLocations.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                       No locations with outstanding orders
                     </TableCell>
                   </TableRow>
                 ) : (
-                  locations.map((location) => (
+                  sortedLocations.map((location) => (
                     <TableRow 
                       key={location.id} 
                       className="cursor-pointer hover:bg-muted/50"
@@ -680,21 +726,73 @@ const Planning = () => {
                   <TableRow>
                     <TableHead className="w-12">
                       <Checkbox
-                        checked={selectedItems.size === shortfalls.length}
+                        checked={selectedItems.size === shortfalls.length && shortfalls.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead className="w-24 text-right">Required</TableHead>
-                    <TableHead className="w-24 text-right">Safety</TableHead>
-                    <TableHead className="w-24 text-right">In Stock</TableHead>
-                    <TableHead className="w-24 text-right">Shortfall</TableHead>
+                    <SortableTableHead
+                      label="Product"
+                      sortKey="productName"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['productName'] || ''}
+                      onFilter={(value) => setShortfallsFilter('productName', value)}
+                    />
+                    <SortableTableHead
+                      label="Vendor"
+                      sortKey="vendorName"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['vendorName'] || ''}
+                      onFilter={(value) => setShortfallsFilter('vendorName', value)}
+                    />
+                    <SortableTableHead
+                      label="Required"
+                      sortKey="totalRequired"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['totalRequired'] || ''}
+                      onFilter={(value) => setShortfallsFilter('totalRequired', value)}
+                      className="w-24 text-right"
+                    />
+                    <SortableTableHead
+                      label="Safety"
+                      sortKey="safetyStock"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['safetyStock'] || ''}
+                      onFilter={(value) => setShortfallsFilter('safetyStock', value)}
+                      className="w-24 text-right"
+                    />
+                    <SortableTableHead
+                      label="In Stock"
+                      sortKey="currentStock"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['currentStock'] || ''}
+                      onFilter={(value) => setShortfallsFilter('currentStock', value)}
+                      className="w-24 text-right"
+                    />
+                    <SortableTableHead
+                      label="Shortfall"
+                      sortKey="shortfall"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['shortfall'] || ''}
+                      onFilter={(value) => setShortfallsFilter('shortfall', value)}
+                      className="w-24 text-right"
+                    />
                     <TableHead>Source Orders</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {shortfalls.map((item) => (
+                  {sortedShortfalls.map((item) => (
                     <TableRow key={item.productId}>
                       <TableCell>
                         <Checkbox
