@@ -154,6 +154,77 @@ export type Database = {
           },
         ]
       }
+      assignments: {
+        Row: {
+          assignment_id: string
+          company_id: string
+          created_at: string
+          destination_location_id: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          priority: number | null
+          product_id: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          assignment_id: string
+          company_id: string
+          created_at?: string
+          destination_location_id: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          priority?: number | null
+          product_id: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          assignment_id?: string
+          company_id?: string
+          created_at?: string
+          destination_location_id?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          priority?: number | null
+          product_id?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
