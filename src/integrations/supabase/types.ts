@@ -165,8 +165,9 @@ export type Database = {
           notes: string | null
           priority: number | null
           product_id: string
+          source_location_id: string | null
           updated_at: string
-          vendor_id: string
+          vendor_id: string | null
         }
         Insert: {
           assignment_id: string
@@ -178,8 +179,9 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           product_id: string
+          source_location_id?: string | null
           updated_at?: string
-          vendor_id: string
+          vendor_id?: string | null
         }
         Update: {
           assignment_id?: string
@@ -191,8 +193,9 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           product_id?: string
+          source_location_id?: string | null
           updated_at?: string
-          vendor_id?: string
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -214,6 +217,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
