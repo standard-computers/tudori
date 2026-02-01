@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAccess } from '@/hooks/use-transaction-access';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import { defaultApps, AppTile } from '@/config/apps';
+import { APP_NAME_TO_CODE } from '@/config/transaction-codes';
 
 interface AppPreference extends AppTile {
   visible: boolean;
@@ -42,6 +44,7 @@ interface UserProfile {
   first_name: string;
   last_name: string;
   avatar_url: string | null;
+  company_id: string | null;
 }
 
 interface SortableAppItemProps {
@@ -111,8 +114,11 @@ const UserSettings = () => {
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
   const [openInNewTab, setOpenInNewTab] = useState(false);
-  const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null });
+  const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null, company_id: null });
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Get transaction access for the user's company
+  const { hasAccess, loading: accessLoading } = useTransactionAccess(profile.company_id || undefined);
 
   // Set transaction on mount
   useEffect(() => {
@@ -145,20 +151,31 @@ const UserSettings = () => {
 
   useEffect(() => {
     if (user) {
-      fetchPreferences();
       fetchProfile();
     }
   }, [user]);
 
+  // Fetch preferences after profile is loaded (need company_id for access check)
+  useEffect(() => {
+    if (user && profile.company_id !== null) {
+      fetchPreferences();
+    }
+  }, [user, profile.company_id, accessLoading]);
+
   const fetchProfile = async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('first_name, last_name, avatar_url')
+      .select('first_name, last_name, avatar_url, company_id')
       .eq('user_id', user!.id)
       .single();
 
     if (data) {
-      setProfile(data);
+      setProfile({
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        avatar_url: data.avatar_url,
+        company_id: data.company_id,
+      });
     }
   };
 
@@ -172,22 +189,28 @@ const UserSettings = () => {
     const hiddenTiles = new Set((data?.hidden_tiles as string[]) || []);
     setOpenInNewTab(data?.open_apps_in_new_tab || false);
     
+    // Filter apps based on transaction access
+    const accessibleApps = defaultApps.filter(app => {
+      const code = APP_NAME_TO_CODE[app.name];
+      return code ? hasAccess(code) : true;
+    });
+    
     if (data?.dashboard_tile_order) {
       const orderedApps = data.dashboard_tile_order
         .map((name: string) => {
-          const app = defaultApps.find(a => a.name === name);
+          const app = accessibleApps.find(a => a.name === name);
           return app ? { ...app, visible: !hiddenTiles.has(name) } : null;
         })
         .filter(Boolean) as AppPreference[];
       
       const savedNames = new Set(data.dashboard_tile_order);
-      const newApps = defaultApps
+      const newApps = accessibleApps
         .filter(app => !savedNames.has(app.name))
         .map(app => ({ ...app, visible: !hiddenTiles.has(app.name) }));
       
       setApps([...orderedApps, ...newApps]);
     } else {
-      setApps(defaultApps.map(app => ({ ...app, visible: !hiddenTiles.has(app.name) })));
+      setApps(accessibleApps.map(app => ({ ...app, visible: !hiddenTiles.has(app.name) })));
     }
   };
 
