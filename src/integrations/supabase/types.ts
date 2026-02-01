@@ -2825,6 +2825,7 @@ export type Database = {
           created_at: string
           id: string
           product_id: string
+          pu_id: string | null
           quantity: number
           sales_order_id: string
           total_price: number | null
@@ -2834,6 +2835,7 @@ export type Database = {
           created_at?: string
           id?: string
           product_id: string
+          pu_id?: string | null
           quantity?: number
           sales_order_id: string
           total_price?: number | null
@@ -2843,6 +2845,7 @@ export type Database = {
           created_at?: string
           id?: string
           product_id?: string
+          pu_id?: string | null
           quantity?: number
           sales_order_id?: string
           total_price?: number | null
@@ -2854,6 +2857,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_items_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
             referencedColumns: ["id"]
           },
           {

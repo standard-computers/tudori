@@ -121,6 +121,15 @@ interface Product {
   name: string;
   product_id: string;
   price: number | null;
+  unit: string | null;
+}
+
+interface ProductUom {
+  id: string;
+  product_id: string;
+  name: string;
+  abbreviation: string | null;
+  conversion_factor: number;
 }
 
 interface InventoryRecord {
@@ -207,7 +216,8 @@ const SalesOrders = () => {
     ledger_id: '',
     notes: '',
   });
-  const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number }[]>([]);
+  const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number; pu_id: string | null }[]>([]);
+  const [productUoms, setProductUoms] = useState<ProductUom[]>([]);
   const [selectedTaxRates, setSelectedTaxRates] = useState<SelectedTaxRate[]>([]);
   const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
@@ -242,6 +252,7 @@ const SalesOrders = () => {
       fetchLocations();
       fetchCustomers();
       fetchProducts();
+      fetchProductUoms();
       fetchTaxRates();
       fetchLedgers();
     }
@@ -331,10 +342,26 @@ const SalesOrders = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price')
+      .select('id, name, product_id, price, unit')
       .eq('company_id', companyId)
       .order('name');
     setProducts(data || []);
+  };
+
+  const fetchProductUoms = async () => {
+    // Fetch product UOMs for all products in the company
+    const { data: productIds } = await supabase
+      .from('products')
+      .select('id')
+      .eq('company_id', companyId);
+    
+    if (productIds && productIds.length > 0) {
+      const { data } = await supabase
+        .from('product_uoms')
+        .select('id, product_id, name, abbreviation, conversion_factor')
+        .in('product_id', productIds.map(p => p.id));
+      setProductUoms(data || []);
+    }
   };
 
   const fetchTaxRates = async () => {
@@ -430,6 +457,7 @@ const SalesOrders = () => {
     const defaultRate = taxRates.find(r => r.is_default);
     setFormData({ customer_id: '', location_id: '', bill_to_location_id: '', ledger_id: '', notes: '' });
     setOrderItems([]);
+    setLocationInventory([]);
     setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate, rate_type: defaultRate.rate_type || 'percent' }] : []);
     setIsCreateDialogOpen(true);
   };
@@ -438,10 +466,46 @@ const SalesOrders = () => {
   useKeyboardShortcut('n', handleCreateClick);
 
   const addOrderItem = () => {
-    setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0 }]);
+    setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0, pu_id: null }]);
   };
 
-  const updateOrderItem = (index: number, field: string, value: string | number) => {
+  // Helper to get conversion factor for a UOM selection
+  const getUomConversionFactor = (uomValue: string | null): number => {
+    if (!uomValue || uomValue === 'base') return 1;
+    if (uomValue.startsWith('uom:')) {
+      const uomId = uomValue.substring(4);
+      const uom = productUoms.find(u => u.id === uomId);
+      return uom?.conversion_factor || 1;
+    }
+    return 1;
+  };
+
+  // Get UOM options for a product (base unit + product UOMs)
+  const getUomOptions = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    const uoms = productUoms.filter(uom => uom.product_id === productId);
+    
+    const options: { value: string; label: string }[] = [];
+    
+    // Add base unit first (use 'base' as value since Radix doesn't allow empty strings)
+    if (product?.unit) {
+      options.push({ value: 'base', label: product.unit });
+    } else {
+      options.push({ value: 'base', label: 'EA' });
+    }
+    
+    // Add product UOMs
+    uoms.forEach(uom => {
+      const label = uom.abbreviation 
+        ? `${uom.name} (${uom.abbreviation}) - ${uom.conversion_factor}x`
+        : `${uom.name} - ${uom.conversion_factor}x`;
+      options.push({ value: `uom:${uom.id}`, label });
+    });
+    
+    return options;
+  };
+
+  const updateOrderItem = (index: number, field: string, value: string | number | null) => {
     const newItems = [...orderItems];
     if (field === 'product_id') {
       const product = products.find(p => p.id === value);
@@ -449,9 +513,25 @@ const SalesOrders = () => {
         ...newItems[index],
         product_id: value as string,
         unit_price: product?.price || 0,
+        pu_id: null, // Reset UOM when product changes
+      };
+    } else if (field === 'pu_id') {
+      // 'base' represents the product's base unit (null in database)
+      const uomValue = value === 'base' ? null : value as string | null;
+      const product = products.find(p => p.id === newItems[index].product_id);
+      const basePrice = product?.price || 0;
+      const conversionFactor = getUomConversionFactor(value as string);
+      
+      // Calculate unit price based on conversion factor
+      const unitPrice = basePrice * conversionFactor;
+      
+      newItems[index] = { 
+        ...newItems[index], 
+        pu_id: uomValue,
+        unit_price: unitPrice
       };
     } else {
-      newItems[index] = { ...newItems[index], [field]: value };
+      newItems[index] = { ...newItems[index], [field]: value as string | number };
     }
     setOrderItems(newItems);
   };
@@ -985,48 +1065,85 @@ const SalesOrders = () => {
                   No items added yet. Click "Add Item" to start.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {orderItems.map((item, index) => (
-                    <div key={index} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <SearchableSelect
-                          options={productOptions}
-                          value={item.product_id}
-                          onValueChange={(value) => updateOrderItem(index, 'product_id', value)}
-                          placeholder="Select product"
-                        />
-                      </div>
-                      <div className="w-24">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                          placeholder="Qty"
-                        />
-                      </div>
-                      <div className="w-28">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.unit_price}
-                          onChange={(e) => updateOrderItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                          placeholder="Price"
-                        />
-                      </div>
-                      <div className="w-24 text-right font-mono text-sm pt-2">
-                        ${(item.quantity * item.unit_price).toFixed(2)}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOrderItem(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40%]">Product</TableHead>
+                        <TableHead className="w-[15%]">UOM</TableHead>
+                        <TableHead className="w-[12%] text-right">Qty</TableHead>
+                        <TableHead className="w-[15%] text-right">Unit Price</TableHead>
+                        <TableHead className="w-[13%] text-right">Total</TableHead>
+                        <TableHead className="w-[5%]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orderItems.map((item, index) => {
+                        const uomOptions = item.product_id ? getUomOptions(item.product_id) : [];
+                        return (
+                          <TableRow key={index}>
+                            <TableCell className="p-2">
+                              <SearchableSelect
+                                options={productOptions}
+                                value={item.product_id}
+                                onValueChange={(value) => updateOrderItem(index, 'product_id', value)}
+                                placeholder="Select product"
+                              />
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Select
+                                value={item.pu_id || 'base'}
+                                onValueChange={(value) => updateOrderItem(index, 'pu_id', value)}
+                                disabled={!item.product_id}
+                              >
+                                <SelectTrigger className="h-10">
+                                  <SelectValue placeholder="UOM" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {uomOptions.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                                className="text-right"
+                              />
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={item.unit_price}
+                                onChange={(e) => updateOrderItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                className="text-right"
+                              />
+                            </TableCell>
+                            <TableCell className="p-2 text-right font-mono">
+                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeOrderItem(index)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
 
