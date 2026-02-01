@@ -41,7 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -126,6 +126,8 @@ const ProductionOrderTable = ({
   onDelete,
   onStart,
   onStartForeground,
+  onConfirm,
+  onCompleteForeground,
 }: {
   orders: ProductionOrder[];
   onView: (order: ProductionOrder) => void;
@@ -133,6 +135,8 @@ const ProductionOrderTable = ({
   onDelete: (id: string) => void;
   onStart: (order: ProductionOrder) => void;
   onStartForeground: (order: ProductionOrder) => void;
+  onConfirm: (order: ProductionOrder) => void;
+  onCompleteForeground: (order: ProductionOrder) => void;
 }) => {
   const {
     sortConfig,
@@ -304,10 +308,16 @@ const ProductionOrderTable = ({
                             </>
                           )}
                           {order.status === 'in_progress' && (
-                            <DropdownMenuItem onClick={() => onStartForeground(order)}>
-                              <PlayCircle className="w-4 h-4 mr-2" />
-                              Continue in Foreground
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem onClick={() => onConfirm(order)}>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Confirm
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onCompleteForeground(order)}>
+                                <PlayCircle className="w-4 h-4 mr-2" />
+                                Complete in Foreground
+                              </DropdownMenuItem>
+                            </>
                           )}
                           <DropdownMenuItem onClick={() => onEdit(order)}>
                             <Pencil className="w-4 h-4 mr-2" />
@@ -699,6 +709,137 @@ const Production = () => {
     fetchOrders();
   };
 
+  const handleConfirm = async (order: ProductionOrder) => {
+    if (!order.bom_id) {
+      toast.error('This order has no Bill of Materials assigned');
+      return;
+    }
+
+    try {
+      // Fetch all steps for this BOM
+      const { data: stepsData, error: stepsError } = await supabase
+        .from('bom_steps')
+        .select(`
+          id,
+          bin_id,
+          step_number
+        `)
+        .eq('bom_id', order.bom_id)
+        .order('step_number');
+
+      if (stepsError) throw stepsError;
+      if (!stepsData || stepsData.length === 0) {
+        // No steps, just complete
+        await supabase
+          .from('production_orders')
+          .update({ 
+            status: 'completed',
+            completed_date: new Date().toISOString().split('T')[0],
+          })
+          .eq('id', order.id);
+        toast.success('Production order completed!');
+        fetchOrders();
+        return;
+      }
+
+      // Get completed steps
+      const { data: orderData } = await supabase
+        .from('production_orders')
+        .select('completed_step_ids')
+        .eq('id', order.id)
+        .single();
+
+      const completedStepIds = new Set(orderData?.completed_step_ids || []);
+      const remainingSteps = stepsData.filter(s => !completedStepIds.has(s.id));
+
+      // Fetch step items for remaining steps
+      const stepIds = remainingSteps.map(s => s.id);
+      const { data: stepItemsData } = await supabase
+        .from('bom_step_items')
+        .select('bom_step_id, product_id, quantity')
+        .in('bom_step_id', stepIds);
+
+      // Process each remaining step
+      for (const step of remainingSteps) {
+        const items = (stepItemsData || []).filter(i => i.bom_step_id === step.id);
+        
+        if (step.bin_id && items.length > 0) {
+          for (const item of items) {
+            const requiredQty = item.quantity * order.quantity;
+            
+            const { data: invRecords } = await supabase
+              .from('inventory')
+              .select('id, quantity')
+              .eq('bin_id', step.bin_id)
+              .eq('product_id', item.product_id)
+              .gt('quantity', 0)
+              .order('quantity', { ascending: false });
+
+            if (!invRecords || invRecords.length === 0) {
+              toast.error(`Insufficient inventory for step ${step.step_number}. Use "Complete in Foreground" to see details.`);
+              return;
+            }
+
+            // Check total available
+            const totalAvailable = invRecords.reduce((sum, inv) => sum + inv.quantity, 0);
+            if (totalAvailable < requiredQty) {
+              toast.error(`Insufficient inventory for step ${step.step_number}. Use "Complete in Foreground" to see details.`);
+              return;
+            }
+
+            // Deduct from inventory
+            let remainingToDeduct = requiredQty;
+            for (const inv of invRecords) {
+              if (remainingToDeduct <= 0) break;
+              
+              const deductAmount = Math.min(inv.quantity, remainingToDeduct);
+              const newQuantity = inv.quantity - deductAmount;
+              
+              if (newQuantity === 0) {
+                await supabase.from('inventory').delete().eq('id', inv.id);
+              } else {
+                await supabase
+                  .from('inventory')
+                  .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+                  .eq('id', inv.id);
+              }
+              
+              remainingToDeduct -= deductAmount;
+            }
+          }
+        }
+        
+        // Mark step as completed
+        completedStepIds.add(step.id);
+      }
+
+      // Update order as completed
+      await supabase
+        .from('production_orders')
+        .update({ 
+          status: 'completed',
+          completed_date: new Date().toISOString().split('T')[0],
+          completed_step_ids: Array.from(completedStepIds),
+        })
+        .eq('id', order.id);
+
+      toast.success('Production order completed!');
+      fetchOrders();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to confirm production order');
+      console.error(error);
+    }
+  };
+
+  const handleCompleteForeground = (order: ProductionOrder) => {
+    if (!order.bom_id) {
+      toast.error('This order has no Bill of Materials assigned');
+      return;
+    }
+    setForegroundOrder(order);
+    setIsForegroundDialogOpen(true);
+  };
+
   const handleBomChange = async (bomId: string) => {
     setFormData(prev => ({ ...prev, bom_id: bomId }));
     await fetchBomItems(bomId);
@@ -820,6 +961,8 @@ const Production = () => {
           onDelete={handleDelete}
           onStart={handleStart}
           onStartForeground={handleStartForeground}
+          onConfirm={handleConfirm}
+          onCompleteForeground={handleCompleteForeground}
         />
       </main>
 

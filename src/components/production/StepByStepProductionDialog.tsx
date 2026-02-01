@@ -69,6 +69,7 @@ interface StepByStepProductionDialogProps {
   quantity: number; // Number of batches
   companyId: string;
   onComplete: () => void;
+  initialCompletedStepIds?: string[]; // For resuming from where left off
 }
 
 export function StepByStepProductionDialog({
@@ -81,6 +82,7 @@ export function StepByStepProductionDialog({
   quantity,
   companyId,
   onComplete,
+  initialCompletedStepIds = [],
 }: StepByStepProductionDialogProps) {
   const [steps, setSteps] = useState<BomStep[]>([]);
   const [stepItems, setStepItems] = useState<Record<string, BomStepItem[]>>({});
@@ -106,6 +108,44 @@ export function StepByStepProductionDialog({
       setCompletedSteps(new Set());
     }
   }, [open, bomId]);
+
+  // Load completed steps from database when opening
+  useEffect(() => {
+    if (open && orderId) {
+      loadCompletedSteps();
+    }
+  }, [open, orderId]);
+
+  const loadCompletedSteps = async () => {
+    const { data } = await supabase
+      .from('production_orders')
+      .select('completed_step_ids')
+      .eq('id', orderId)
+      .single();
+    
+    if (data?.completed_step_ids && data.completed_step_ids.length > 0) {
+      setCompletedSteps(new Set(data.completed_step_ids));
+    } else if (initialCompletedStepIds.length > 0) {
+      setCompletedSteps(new Set(initialCompletedStepIds));
+    }
+  };
+
+  // Find first incomplete step when steps load
+  useEffect(() => {
+    if (steps.length > 0 && completedSteps.size > 0) {
+      const firstIncompleteIndex = steps.findIndex(s => !completedSteps.has(s.id));
+      if (firstIncompleteIndex !== -1 && firstIncompleteIndex !== currentStepIndex) {
+        setCurrentStepIndex(firstIncompleteIndex);
+      }
+    }
+  }, [steps, completedSteps]);
+
+  const saveCompletedSteps = async (stepIds: string[]) => {
+    await supabase
+      .from('production_orders')
+      .update({ completed_step_ids: stepIds })
+      .eq('id', orderId);
+  };
 
   // Fetch bin inventory when current step changes
   useEffect(() => {
@@ -276,7 +316,9 @@ export function StepByStepProductionDialog({
       }
       
       // Mark step as completed
-      setCompletedSteps(prev => new Set([...prev, currentStep.id]));
+      const newCompletedSteps = new Set([...completedSteps, currentStep.id]);
+      setCompletedSteps(newCompletedSteps);
+      await saveCompletedSteps(Array.from(newCompletedSteps));
       
       // Move to next step or complete
       if (currentStepIndex < steps.length - 1) {
@@ -305,10 +347,12 @@ export function StepByStepProductionDialog({
     }
   };
 
-  const handleSkipStep = () => {
+  const handleSkipStep = async () => {
     if (currentStepIndex < steps.length - 1) {
       // Mark as completed but don't withdraw materials
-      setCompletedSteps(prev => new Set([...prev, currentStep.id]));
+      const newCompletedSteps = new Set([...completedSteps, currentStep.id]);
+      setCompletedSteps(newCompletedSteps);
+      await saveCompletedSteps(Array.from(newCompletedSteps));
       setCurrentStepIndex(prev => prev + 1);
       toast.info(`Skipped step ${currentStep?.step_number}`);
     }

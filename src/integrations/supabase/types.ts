@@ -2136,6 +2136,7 @@ export type Database = {
           bom_id: string | null
           company_id: string
           completed_date: string | null
+          completed_step_ids: string[] | null
           created_at: string
           id: string
           location_id: string
@@ -2151,6 +2152,7 @@ export type Database = {
           bom_id?: string | null
           company_id: string
           completed_date?: string | null
+          completed_step_ids?: string[] | null
           created_at?: string
           id?: string
           location_id: string
@@ -2166,6 +2168,7 @@ export type Database = {
           bom_id?: string | null
           company_id?: string
           completed_date?: string | null
+          completed_step_ids?: string[] | null
           created_at?: string
           id?: string
           location_id?: string
