@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -125,10 +124,13 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
                 {area ? `${area.area_id} - ${area.name}` : 'Storage bin details and inventory'}
               </DialogDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={onEdit}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
           </div>
         </DialogHeader>
 
