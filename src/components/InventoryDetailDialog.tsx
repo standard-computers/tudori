@@ -975,7 +975,7 @@ export const InventoryDetailDialog = ({
         )}
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {!isPutAwayMode && !isMoveMode ? (
+          {!isPutAwayMode && !isMoveMode && !isChangePUMode ? (
             <>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
