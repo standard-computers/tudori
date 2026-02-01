@@ -17,6 +17,7 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
+import ViewBinDialog from '@/components/cockpit/ViewBinDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import {
@@ -55,7 +56,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
@@ -198,9 +199,11 @@ const Cockpit = () => {
   const [bins, setBins] = useState<Bin[]>([]);
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
   const [isBinDialogOpen, setIsBinDialogOpen] = useState(false);
+  const [isViewBinDialogOpen, setIsViewBinDialogOpen] = useState(false);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
+  const [viewingBin, setViewingBin] = useState<Bin | null>(null);
 const [areaFormData, setAreaFormData] = useState({ 
     area_id: '', 
     name: '', 
@@ -1585,11 +1588,19 @@ const [areaFormData, setAreaFormData] = useState({
                             <TableCell className="text-muted-foreground">{bin.capacity || '—'}</TableCell>
                             <TableCell>
                               <div className="flex gap-1 justify-end">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8" 
+                                  onClick={() => {
+                                    setViewingBin(bin);
+                                    setIsViewBinDialogOpen(true);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openBinDialog(bin)}>
                                   <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteBin(bin.id)}>
-                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -2054,6 +2065,24 @@ const [areaFormData, setAreaFormData] = useState({
         getNextBinId={getNextBinId}
         onSaved={fetchAreas}
         companyId={companyId}
+        onDelete={handleDeleteBin}
+      />
+
+      {/* View Bin Dialog */}
+      <ViewBinDialog
+        open={isViewBinDialogOpen}
+        onOpenChange={(open) => {
+          setIsViewBinDialogOpen(open);
+          if (!open) setViewingBin(null);
+        }}
+        bin={viewingBin}
+        area={areas.find(a => a.id === viewingBin?.area_id)}
+        onEdit={() => {
+          setIsViewBinDialogOpen(false);
+          if (viewingBin) {
+            openBinDialog(viewingBin);
+          }
+        }}
       />
 
       {/* Receive Delivery Dialog */}
