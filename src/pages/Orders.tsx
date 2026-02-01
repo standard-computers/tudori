@@ -53,6 +53,7 @@ import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pe
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 import jsPDF from 'jspdf';
 
 interface TaxRate {
@@ -2041,11 +2042,12 @@ const Orders = () => {
 
               {/* Tabs */}
               <Tabs defaultValue="items" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="items">Items</TabsTrigger>
                   <TabsTrigger value="rates">Rates</TabsTrigger>
                   <TabsTrigger value="assignment">Assignment</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="items" className="space-y-4 mt-4">
@@ -2237,6 +2239,21 @@ const Orders = () => {
                     <Label className="text-muted-foreground">Created Date</Label>
                     <p className="text-sm">{new Date(viewOrder.created_at).toLocaleDateString()}</p>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-4">
+                  <AuditHistoryTab 
+                    tableName="purchase_orders" 
+                    recordId={viewOrder.id}
+                    fieldLabels={{
+                      status: "Status",
+                      vendor_id: "Vendor",
+                      location_id: "Ship To Location",
+                      total_amount: "Total Amount",
+                      notes: "Notes",
+                      expected_delivery: "Expected Delivery",
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
