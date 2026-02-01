@@ -133,6 +133,27 @@ export default function DataExplorer() {
     checkITRole();
   }, [user]);
 
+  // F2 keyboard shortcut to close active tab
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2' && activeTabId) {
+        e.preventDefault();
+        setTabs(prev => {
+          const newTabs = prev.filter(t => t.id !== activeTabId);
+          if (newTabs.length > 0) {
+            setActiveTabId(newTabs[newTabs.length - 1].id);
+          } else {
+            setActiveTabId(null);
+          }
+          return newTabs;
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [activeTabId]);
+
   const fetchTableData = async (tableName: string): Promise<{ data: Record<string, unknown>[]; columns: string[]; count: number }> => {
     try {
       const { data: tableData, error, count } = await supabase
