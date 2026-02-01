@@ -10,6 +10,7 @@ import { SearchProvider } from "@/contexts/SearchContext";
 import { StatusBar } from "@/components/StatusBar";
 import { CommandSearch } from "@/components/CommandSearch";
 import { GlobalSearchHandler } from "@/components/GlobalSearchHandler";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -69,41 +70,42 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/users" element={<Users />} />
                   <Route path="/complete-profile" element={<CompleteProfile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/locations" element={<Locations />} />
-                  <Route path="/vendors" element={<Vendors />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/customers" element={<Customers />} />
-                  <Route path="/requisitions" element={<Requisitions />} />
-                  <Route path="/orders" element={<Orders />} />
-                  <Route path="/rates" element={<Rates />} />
                   <Route path="/user-settings" element={<UserSettings />} />
-                  <Route path="/cockpit" element={<Cockpit />} />
-                  <Route path="/deliveries" element={<Deliveries />} />
-                  <Route path="/ledgers" element={<Ledgers />} />
-                  <Route path="/sales-orders" element={<SalesOrders />} />
-                  <Route path="/accounts" element={<Accounts />} />
-                  <Route path="/accounts/:id" element={<AccountDetail />} />
-                  <Route path="/invoices" element={<Invoices />} />
-                  <Route path="/credit-memos" element={<CreditMemos />} />
-                  <Route path="/debit-memos" element={<DebitMemos />} />
-                  <Route path="/goods-receipts" element={<GoodsReceipts />} />
-                  <Route path="/goods-issues" element={<GoodsIssues />} />
-                  <Route path="/inventory" element={<Inventory />} />
-                  <Route path="/configuration" element={<Configuration />} />
-                  <Route path="/tasks" element={<Tasks />} />
-                  <Route path="/employees" element={<Employees />} />
-                  <Route path="/teams" element={<Teams />} />
-                  <Route path="/pos" element={<POS />} />
-                  <Route path="/time-clock" element={<TimeClock />} />
-                  <Route path="/production" element={<Production />} />
-                  <Route path="/bill-of-materials" element={<BillOfMaterials />} />
-                  <Route path="/planning" element={<Planning />} />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/data-explorer" element={<DataExplorer />} />
+                  {/* Protected routes - require transaction access */}
+                  <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/locations" element={<ProtectedRoute><Locations /></ProtectedRoute>} />
+                  <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
+                  <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+                  <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+                  <Route path="/requisitions" element={<ProtectedRoute><Requisitions /></ProtectedRoute>} />
+                  <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                  <Route path="/rates" element={<ProtectedRoute><Rates /></ProtectedRoute>} />
+                  <Route path="/cockpit" element={<ProtectedRoute><Cockpit /></ProtectedRoute>} />
+                  <Route path="/deliveries" element={<ProtectedRoute><Deliveries /></ProtectedRoute>} />
+                  <Route path="/ledgers" element={<ProtectedRoute><Ledgers /></ProtectedRoute>} />
+                  <Route path="/sales-orders" element={<ProtectedRoute><SalesOrders /></ProtectedRoute>} />
+                  <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
+                  <Route path="/accounts/:id" element={<ProtectedRoute><AccountDetail /></ProtectedRoute>} />
+                  <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+                  <Route path="/credit-memos" element={<ProtectedRoute><CreditMemos /></ProtectedRoute>} />
+                  <Route path="/debit-memos" element={<ProtectedRoute><DebitMemos /></ProtectedRoute>} />
+                  <Route path="/goods-receipts" element={<ProtectedRoute><GoodsReceipts /></ProtectedRoute>} />
+                  <Route path="/goods-issues" element={<ProtectedRoute><GoodsIssues /></ProtectedRoute>} />
+                  <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+                  <Route path="/configuration" element={<ProtectedRoute><Configuration /></ProtectedRoute>} />
+                  <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+                  <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+                  <Route path="/teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
+                  <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
+                  <Route path="/time-clock" element={<ProtectedRoute><TimeClock /></ProtectedRoute>} />
+                  <Route path="/production" element={<ProtectedRoute><Production /></ProtectedRoute>} />
+                  <Route path="/bill-of-materials" element={<ProtectedRoute><BillOfMaterials /></ProtectedRoute>} />
+                  <Route path="/planning" element={<ProtectedRoute><Planning /></ProtectedRoute>} />
+                  <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                  <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                  <Route path="/data-explorer" element={<ProtectedRoute><DataExplorer /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>

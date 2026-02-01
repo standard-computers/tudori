@@ -24,6 +24,8 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from "@dnd-kit/sortable";
 import { DraggableTile } from "@/components/DraggableTile";
 import { defaultApps, AppTile } from "@/config/apps";
+import { useTransactionAccess } from "@/hooks/use-transaction-access";
+import { APP_NAME_TO_CODE } from "@/config/transaction-codes";
 
 interface Profile {
   first_name: string;
@@ -44,6 +46,9 @@ const Dashboard = () => {
   const [apps, setApps] = useState<AppTile[]>([]);
   const [hiddenTiles, setHiddenTiles] = useState<Set<string>>(new Set());
   const [openAppsInNewTab, setOpenAppsInNewTab] = useState(false);
+  
+  // Transaction access control
+  const { hasAccess, loading: accessLoading } = useTransactionAccess(profile?.company_id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -162,7 +167,7 @@ const Dashboard = () => {
     navigate("/auth");
   };
 
-  if (loading) {
+  if (loading || accessLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -254,7 +259,14 @@ const Dashboard = () => {
           <SortableContext items={apps.map((app) => app.name)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {apps
-                .filter((app) => !hiddenTiles.has(app.name))
+                .filter((app) => {
+                  // Check hidden tiles preference
+                  if (hiddenTiles.has(app.name)) return false;
+                  // Check transaction access
+                  const code = APP_NAME_TO_CODE[app.name];
+                  if (code && !hasAccess(code)) return false;
+                  return true;
+                })
                 .map((app, index) => (
                   <DraggableTile
                     key={app.name}
