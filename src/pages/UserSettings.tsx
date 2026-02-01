@@ -182,12 +182,17 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-      .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab')
+      .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     const hiddenTiles = new Set((data?.hidden_tiles as string[]) || []);
     setOpenInNewTab(data?.open_apps_in_new_tab || false);
+    
+    // Apply saved theme
+    if (data?.theme) {
+      setTheme(data.theme);
+    }
     
     // Filter apps based on transaction access
     const accessibleApps = defaultApps.filter(app => {
@@ -257,6 +262,32 @@ const UserSettings = () => {
   const handleOpenInNewTabChange = async (checked: boolean) => {
     setOpenInNewTab(checked);
     await savePreferences(apps, checked);
+  };
+
+  const handleThemeChange = async (checked: boolean) => {
+    const newTheme = checked ? 'dark' : 'light';
+    setTheme(newTheme);
+    
+    if (!user) return;
+    
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('user_preferences')
+        .update({ theme: newTheme })
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('user_preferences')
+        .insert({ user_id: user.id, theme: newTheme });
+    }
+    
+    toast.success('Theme preference saved');
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -339,6 +370,10 @@ const UserSettings = () => {
               <User className="w-4 h-4" />
               General
             </TabsTrigger>
+            <TabsTrigger value="preferences" className="flex items-center gap-2">
+              <Sun className="w-4 h-4" />
+              Preferences
+            </TabsTrigger>
             <TabsTrigger value="apps" className="flex items-center gap-2">
               <LayoutGrid className="w-4 h-4" />
               Apps
@@ -389,6 +424,9 @@ const UserSettings = () => {
               </CardContent>
             </Card>
 
+          </TabsContent>
+
+          <TabsContent value="preferences" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Appearance</CardTitle>
@@ -412,7 +450,7 @@ const UserSettings = () => {
                   <Switch
                     id="dark-mode"
                     checked={theme === 'dark'}
-                    onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                    onCheckedChange={handleThemeChange}
                   />
                 </div>
               </CardContent>
