@@ -168,6 +168,14 @@ interface Product {
   price: number | null;
   vendor_id: string | null;
   status: string;
+  unit: string | null;
+}
+
+interface PackagingUnit {
+  id: string;
+  pu_number: string;
+  quantity: number;
+  product_id: string;
 }
 
 interface InventoryRecord {
@@ -293,7 +301,8 @@ const Orders = () => {
     ledger_id: '',
     notes: '',
   });
-  const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number }[]>([]);
+  const [orderItems, setOrderItems] = useState<{ product_id: string; quantity: number; unit_price: number; pu_id: string | null }[]>([]);
+  const [packagingUnits, setPackagingUnits] = useState<PackagingUnit[]>([]);
   const [selectedTaxRates, setSelectedTaxRates] = useState<SelectedTaxRate[]>([]);
   const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
@@ -319,6 +328,7 @@ const Orders = () => {
       fetchOrders();
       fetchLocations();
       fetchProducts();
+      fetchPackagingUnits();
       fetchTaxRates();
       fetchLedgers();
       fetchAllVendors();
@@ -433,11 +443,19 @@ const Orders = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id, status')
+      .select('id, name, product_id, price, vendor_id, status, unit')
       .eq('company_id', companyId)
       .eq('status', 'active') // Only fetch active products for purchase orders
       .order('name');
     setProducts(data || []);
+  };
+
+  const fetchPackagingUnits = async () => {
+    const { data } = await supabase
+      .from('packaging_units')
+      .select('id, pu_number, quantity, product_id')
+      .eq('company_id', companyId);
+    setPackagingUnits(data || []);
   };
 
   const fetchTaxRates = async () => {
@@ -869,10 +887,10 @@ const Orders = () => {
   useKeyboardShortcut('n', handleCreateClick);
 
   const addOrderItem = () => {
-    setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0 }]);
+    setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0, pu_id: null }]);
   };
 
-  const updateOrderItem = (index: number, field: string, value: string | number) => {
+  const updateOrderItem = (index: number, field: string, value: string | number | null) => {
     const newItems = [...orderItems];
     if (field === 'product_id') {
       const product = products.find(p => p.id === value);
@@ -880,11 +898,37 @@ const Orders = () => {
         ...newItems[index],
         product_id: value as string,
         unit_price: product?.price || 0,
+        pu_id: null, // Reset UOM when product changes
       };
+    } else if (field === 'pu_id') {
+      // 'base' represents the product's base unit (null in database)
+      newItems[index] = { ...newItems[index], pu_id: value === 'base' ? null : value as string | null };
     } else {
-      newItems[index] = { ...newItems[index], [field]: value };
+      newItems[index] = { ...newItems[index], [field]: value as string | number };
     }
     setOrderItems(newItems);
+  };
+
+  // Get UOM options for a product (base unit + packaging units)
+  const getUomOptions = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    const productPUs = packagingUnits.filter(pu => pu.product_id === productId);
+    
+    const options: { value: string; label: string }[] = [];
+    
+    // Add base unit first (use 'base' as value since Radix doesn't allow empty strings)
+    if (product?.unit) {
+      options.push({ value: 'base', label: product.unit });
+    } else {
+      options.push({ value: 'base', label: 'EA' });
+    }
+    
+    // Add packaging units
+    productPUs.forEach(pu => {
+      options.push({ value: pu.id, label: `${pu.pu_number} (${pu.quantity})` });
+    });
+    
+    return options;
   };
 
   const removeOrderItem = (index: number) => {
@@ -1055,6 +1099,7 @@ const Orders = () => {
         quantity: item.quantity,
         unit_price: item.unit_price,
         total_price: item.quantity * item.unit_price,
+        pu_id: item.pu_id || null,
       }));
 
       const { error: itemsError } = await supabase
@@ -1650,48 +1695,85 @@ const Orders = () => {
                   No items added yet. Click "Add Item" to start.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {orderItems.map((item, index) => (
-                    <div key={index} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <SearchableSelect
-                          options={filteredProductOptions}
-                          value={item.product_id}
-                          onValueChange={(value) => updateOrderItem(index, 'product_id', value)}
-                          placeholder="Select product"
-                        />
-                      </div>
-                      <div className="w-24">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                          placeholder="Qty"
-                        />
-                      </div>
-                      <div className="w-28">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.unit_price}
-                          onChange={(e) => updateOrderItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                          placeholder="Price"
-                        />
-                      </div>
-                      <div className="w-24 text-right font-mono text-sm py-2">
-                        ${(item.quantity * item.unit_price).toFixed(2)}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOrderItem(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40%]">Product</TableHead>
+                        <TableHead className="w-[15%]">UOM</TableHead>
+                        <TableHead className="w-[12%] text-right">Qty</TableHead>
+                        <TableHead className="w-[15%] text-right">Unit Price</TableHead>
+                        <TableHead className="w-[13%] text-right">Total</TableHead>
+                        <TableHead className="w-[5%]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orderItems.map((item, index) => {
+                        const uomOptions = item.product_id ? getUomOptions(item.product_id) : [];
+                        return (
+                          <TableRow key={index}>
+                            <TableCell className="p-2">
+                              <SearchableSelect
+                                options={filteredProductOptions}
+                                value={item.product_id}
+                                onValueChange={(value) => updateOrderItem(index, 'product_id', value)}
+                                placeholder="Select product"
+                              />
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Select
+                                value={item.pu_id || 'base'}
+                                onValueChange={(value) => updateOrderItem(index, 'pu_id', value)}
+                                disabled={!item.product_id}
+                              >
+                                <SelectTrigger className="h-10">
+                                  <SelectValue placeholder="UOM" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {uomOptions.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                                className="text-right"
+                              />
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={item.unit_price}
+                                onChange={(e) => updateOrderItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                className="text-right"
+                              />
+                            </TableCell>
+                            <TableCell className="p-2 text-right font-mono">
+                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="p-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeOrderItem(index)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
 
