@@ -1977,6 +1977,116 @@ export type Database = {
           },
         ]
       }
+      material_movements: {
+        Row: {
+          bin_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          destination_bin_id: string | null
+          id: string
+          location_id: string
+          movement_id: string
+          movement_type: string
+          notes: string | null
+          product_id: string
+          pu_id: string | null
+          quantity: number
+          reference_id: string | null
+          reference_number: string | null
+          reference_type: string | null
+          source_bin_id: string | null
+        }
+        Insert: {
+          bin_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          destination_bin_id?: string | null
+          id?: string
+          location_id: string
+          movement_id: string
+          movement_type: string
+          notes?: string | null
+          product_id: string
+          pu_id?: string | null
+          quantity?: number
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+          source_bin_id?: string | null
+        }
+        Update: {
+          bin_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          destination_bin_id?: string | null
+          id?: string
+          location_id?: string
+          movement_id?: string
+          movement_type?: string
+          notes?: string | null
+          product_id?: string
+          pu_id?: string | null
+          quantity?: number
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+          source_bin_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_movements_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movements_destination_bin_id_fkey"
+            columns: ["destination_bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movements_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_movements_source_bin_id_fkey"
+            columns: ["source_bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -3768,6 +3878,7 @@ export type Database = {
       }
       get_next_ledger_id: { Args: { p_company_id: string }; Returns: string }
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_movement_id: { Args: { p_company_id: string }; Returns: string }
       get_next_outbound_delivery_number: {
         Args: { p_company_id: string }
         Returns: string

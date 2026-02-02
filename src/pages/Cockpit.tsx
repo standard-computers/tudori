@@ -20,6 +20,7 @@ import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import ViewBinDialog from '@/components/cockpit/ViewBinDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
+import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
 import {
   Select,
   SelectContent,
@@ -240,6 +241,7 @@ const [areaFormData, setAreaFormData] = useState({
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [moveToBinId, setMoveToBinId] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
+  const [isMaterialFlowDialogOpen, setIsMaterialFlowDialogOpen] = useState(false);
 
   // Sales orders state
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
@@ -1682,6 +1684,14 @@ const [areaFormData, setAreaFormData] = useState({
                       Clear Filters
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsMaterialFlowDialogOpen(true)}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    Material Flow
+                  </Button>
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -2351,6 +2361,14 @@ const [areaFormData, setAreaFormData] = useState({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Material Movements Dialog */}
+      <MaterialMovementsDialog
+        open={isMaterialFlowDialogOpen}
+        onOpenChange={setIsMaterialFlowDialogOpen}
+        locationId={selectedLocationId}
+        locationName={selectedLocation?.name || ''}
+      />
     </div>
   );
 };
