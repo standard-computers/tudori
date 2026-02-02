@@ -255,6 +255,8 @@ const Orders = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
   
   // Delivery items selection dialog state
   const [isDeliveryItemsDialogOpen, setIsDeliveryItemsDialogOpen] = useState(false);
@@ -282,18 +284,18 @@ const Orders = () => {
   // Set transaction based on dialog state
   useEffect(() => {
     if (isCreateDialogOpen) {
-      setTransaction('ord/new');
+      setTransaction(isEditMode ? 'ord/edit' : 'ord/new');
     } else if (isViewDialogOpen) {
       setTransaction('ord/view');
     } else {
       setTransaction('ord');
     }
-  }, [isCreateDialogOpen, isViewDialogOpen, setTransaction]);
+  }, [isCreateDialogOpen, isViewDialogOpen, isEditMode, setTransaction]);
 
   // Ctrl+S to save
   useSaveShortcut(() => {
     if (isCreateDialogOpen && !isSubmitting) {
-      handleCreateOrder();
+      handleSaveOrder();
     }
   }, isCreateDialogOpen);
   
@@ -906,6 +908,67 @@ const Orders = () => {
     setOrderItems([]);
     setLocationInventory([]);
     setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate, rate_type: defaultRate.rate_type || 'percent' }] : []);
+    setIsEditMode(false);
+    setEditOrderId(null);
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleEditOrder = async (order: PurchaseOrder) => {
+    // Fetch order items
+    const { data: items } = await supabase
+      .from('purchase_order_items')
+      .select(`
+        *,
+        product:products(name, product_id, price, sku, description, category, unit, vendor_id)
+      `)
+      .eq('purchase_order_id', order.id);
+
+    // Fetch applied tax rates
+    const { data: appliedTaxRates } = await supabase
+      .from('purchase_order_tax_rates')
+      .select(`
+        tax_rate_id,
+        tax_amount,
+        tax_rate:tax_rates(name, rate, rate_type)
+      `)
+      .eq('purchase_order_id', order.id);
+
+    // Determine vendor value format (vendor:id or location:id)
+    let vendorValue = '';
+    if (order.vendor_id) {
+      vendorValue = `vendor:${order.vendor_id}`;
+    } else if (order.source_location_id) {
+      vendorValue = `location:${order.source_location_id}`;
+    }
+
+    // Set form data
+    setFormData({
+      vendor_id: vendorValue,
+      location_id: order.location_id || '',
+      bill_to_location_id: order.bill_to_location_id || '',
+      ledger_id: order.ledger_id || '',
+      notes: order.notes || '',
+    });
+
+    // Set order items
+    setOrderItems((items || []).map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.unit_price || 0,
+      pu_id: item.pu_id || null,
+    })));
+
+    // Set tax rates
+    setSelectedTaxRates((appliedTaxRates || []).map((tr: any) => ({
+      tax_rate_id: tr.tax_rate_id,
+      name: tr.tax_rate.name,
+      rate: tr.tax_rate.rate,
+      rate_type: tr.tax_rate.rate_type || 'percent',
+    })));
+
+    setLocationInventory([]);
+    setIsEditMode(true);
+    setEditOrderId(order.id);
     setIsCreateDialogOpen(true);
   };
 
@@ -1168,6 +1231,111 @@ const Orders = () => {
       toast.error(error.message || 'Failed to create purchase order');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateOrder = async () => {
+    if (!editOrderId) return;
+
+    if (!formData.vendor_id) {
+      toast.error('Please select a vendor');
+      return;
+    }
+
+    if (orderItems.length === 0) {
+      toast.error('Please add at least one item');
+      return;
+    }
+
+    if (orderItems.some(item => !item.product_id)) {
+      toast.error('Please select a product for all items');
+      return;
+    }
+
+    // Parse vendor value to extract actual UUID
+    const parsedVendor = parseVendorValue(formData.vendor_id);
+    const actualVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+    const sourceLocationId = parsedVendor?.type === 'location' ? parsedVendor.id : null;
+
+    setIsSubmitting(true);
+
+    try {
+      const subtotal = calculateTotal();
+      const taxAmount = calculateTax();
+      const totalAmount = calculateGrandTotal();
+
+      // Update purchase order
+      const { error: orderError } = await supabase
+        .from('purchase_orders')
+        .update({
+          vendor_id: actualVendorId,
+          source_location_id: sourceLocationId,
+          location_id: formData.location_id || null,
+          bill_to_location_id: formData.bill_to_location_id || null,
+          ledger_id: formData.ledger_id || null,
+          tax_rate_id: selectedTaxRates.length === 1 ? selectedTaxRates[0].tax_rate_id : null,
+          subtotal,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          notes: formData.notes || null,
+        })
+        .eq('id', editOrderId);
+
+      if (orderError) throw orderError;
+
+      // Delete existing tax rates and items
+      await supabase.from('purchase_order_tax_rates').delete().eq('purchase_order_id', editOrderId);
+      await supabase.from('purchase_order_items').delete().eq('purchase_order_id', editOrderId);
+
+      // Re-create tax rates
+      if (selectedTaxRates.length > 0) {
+        const taxRatesToInsert = selectedTaxRates.map(sr => ({
+          purchase_order_id: editOrderId,
+          tax_rate_id: sr.tax_rate_id,
+          tax_amount: sr.rate_type === 'flat' ? sr.rate : subtotal * (sr.rate / 100),
+        }));
+
+        const { error: taxError } = await supabase
+          .from('purchase_order_tax_rates')
+          .insert(taxRatesToInsert);
+
+        if (taxError) throw taxError;
+      }
+
+      // Re-create order items
+      const itemsToInsert = orderItems.map(item => ({
+        purchase_order_id: editOrderId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.quantity * item.unit_price,
+        pu_id: item.pu_id || null,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('purchase_order_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      toast.success('Purchase Order updated');
+      setIsCreateDialogOpen(false);
+      setIsEditMode(false);
+      setEditOrderId(null);
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error updating order:', error);
+      toast.error(error.message || 'Failed to update purchase order');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveOrder = () => {
+    if (isEditMode) {
+      handleUpdateOrder();
+    } else {
+      handleCreateOrder();
     }
   };
 
@@ -1650,6 +1818,7 @@ const Orders = () => {
             selectedOrderIds={selectedOrderIds}
             onSelectionChange={setSelectedOrderIds}
             onViewOrder={handleViewOrder}
+            onEditOrder={handleEditOrder}
             onConfirmOrder={(id) => handleUpdateStatus(id, 'confirmed')}
             onDeleteOrder={handleDeleteOrder}
             onVendorClick={openVendorDetail}
@@ -1669,9 +1838,9 @@ const Orders = () => {
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
           <DialogHeader>
-            <DialogTitle>Create Purchase Order</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Purchase Order' : 'Create Purchase Order'}</DialogTitle>
             <DialogDescription>
-              Create a new purchase order to send to a vendor
+              {isEditMode ? 'Edit purchase order details and items' : 'Create a new purchase order to send to a vendor'}
             </DialogDescription>
           </DialogHeader>
           
@@ -2028,9 +2197,9 @@ const Orders = () => {
           </div>
 
           <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button onClick={handleCreateOrder} disabled={isSubmitting}>
+            <Button onClick={handleSaveOrder} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Create Order
+              {isEditMode ? 'Save Changes' : 'Create Order'}
               <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
@@ -2592,6 +2761,7 @@ function OrdersTable({
   selectedOrderIds,
   onSelectionChange,
   onViewOrder,
+  onEditOrder,
   onConfirmOrder,
   onDeleteOrder,
   onVendorClick,
@@ -2601,6 +2771,7 @@ function OrdersTable({
   selectedOrderIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   onViewOrder: (order: PurchaseOrder) => void;
+  onEditOrder: (order: PurchaseOrder) => void;
   onConfirmOrder: (id: string) => void;
   onDeleteOrder: (id: string) => void;
   onVendorClick: (vendorId: string) => void;
@@ -2846,6 +3017,14 @@ function OrdersTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {(order.status === 'draft' || order.status === 'pending') && (
+                          <DropdownMenuItem
+                            onClick={() => onEditOrder(order)}
+                          >
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                         {order.status !== 'shipped' && order.status !== 'delivered' && (
                           <DropdownMenuItem
                             onClick={() => onConfirmOrder(order.id)}
