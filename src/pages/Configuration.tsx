@@ -60,6 +60,7 @@ interface POAutomationSettings {
 interface ProcessControlSettings {
   require_gr_on_delivery: boolean;
   require_delivery_receipt: boolean;
+  track_bin_level_movements: boolean;
 }
 
 interface ImportExportSettings {
@@ -112,6 +113,7 @@ const Configuration = () => {
   const [processControls, setProcessControls] = useState<ProcessControlSettings>({
     require_gr_on_delivery: true,
     require_delivery_receipt: true,
+    track_bin_level_movements: true,
   });
 const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
 
@@ -243,6 +245,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
         setProcessControls({
           require_gr_on_delivery: (val.require_gr_on_delivery as boolean) ?? true,
           require_delivery_receipt: (val.require_delivery_receipt as boolean) ?? true,
+          track_bin_level_movements: (val.track_bin_level_movements as boolean) ?? true,
         });
       }
     } catch (error) {
@@ -417,6 +420,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
       const settingValue = {
         require_gr_on_delivery: processControls.require_gr_on_delivery,
         require_delivery_receipt: processControls.require_delivery_receipt,
+        track_bin_level_movements: processControls.track_bin_level_movements,
       };
 
       if (existing) {
@@ -863,6 +867,23 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
                       checked={processControls.require_gr_on_delivery}
                       onCheckedChange={(checked) => 
                         setProcessControls(prev => ({ ...prev, require_gr_on_delivery: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1">
+                      <Label className="font-medium text-base">Track Bin Level Movements</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, bin-to-bin movements (transfers, moves) will be recorded in the Material Flow history.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        When disabled, only location-level receipts and issues will be tracked.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={processControls.track_bin_level_movements}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, track_bin_level_movements: checked }))
                       }
                     />
                   </div>
