@@ -6,6 +6,7 @@ import { useSaveShortcut, useKeyboardShortcut } from '@/hooks/use-keyboard-short
 import { supabase } from '@/integrations/supabase/client';
 import { postGoodsIssue } from '@/lib/inventory-posting';
 import { createMultiplePackagingUnits } from '@/lib/packaging-units';
+import { logMaterialMovement } from '@/lib/material-movements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -547,12 +548,32 @@ const [areaFormData, setAreaFormData] = useState({
     try {
       const itemIds = Array.from(selectedInventoryIds);
       
+      // Get the inventory items being moved for logging
+      const itemsToMove = inventory.filter(inv => selectedInventoryIds.has(inv.id));
+      
       const { error } = await supabase
         .from('inventory')
         .update({ bin_id: moveToBinId })
         .in('id', itemIds);
       
       if (error) throw error;
+      
+      // Log material movements for each item (bin-to-bin transfer)
+      if (companyId && selectedLocationId) {
+        for (const invItem of itemsToMove) {
+          await logMaterialMovement({
+            companyId,
+            locationId: selectedLocationId,
+            productId: invItem.product_id,
+            quantity: invItem.quantity,
+            movementType: 'transfer',
+            puId: invItem.pu_id,
+            binId: moveToBinId,
+            sourceBinId: invItem.bin_id,
+            destinationBinId: moveToBinId,
+          });
+        }
+      }
       
       const targetBin = bins.find(b => b.id === moveToBinId);
       toast.success(`Moved ${itemIds.length} items to ${targetBin?.bin_id || 'selected bin'}`);
