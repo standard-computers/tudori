@@ -33,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { createPackagingUnit, createMultiplePackagingUnits } from '@/lib/packaging-units';
+import { logMaterialMovement } from '@/lib/material-movements';
 interface InventoryItem {
   id: string;
   location_id: string;
@@ -326,6 +327,24 @@ export const InventoryDetailDialog = ({
         }
       }
 
+      // Log material movements for put away (move_in)
+      if (item.product?.company_id) {
+        for (const invItem of itemsToMove) {
+          const moveQuantity = invItem.id === item.id ? putAwayQuantity : invItem.quantity;
+          await logMaterialMovement({
+            companyId: item.product.company_id,
+            locationId,
+            productId: invItem.product_id,
+            quantity: moveQuantity,
+            movementType: 'move_in',
+            puId: invItem.pu_id,
+            binId: selectedBinId,
+            sourceBinId: invItem.bin_id,
+            destinationBinId: selectedBinId,
+          });
+        }
+      }
+
       const selectedBin = bins.find(b => b.id === selectedBinId);
       const totalItems = siblingPUItems.length > 0 ? itemsToMove.length : 1;
       toast.success(
@@ -464,6 +483,23 @@ export const InventoryDetailDialog = ({
         await supabase.from('inventory').delete().eq('id', invItem.id);
       }
 
+      // Log material movements for auto put away (move_in)
+      if (item.product?.company_id) {
+        for (const invItem of itemsToMove) {
+          await logMaterialMovement({
+            companyId: item.product.company_id,
+            locationId,
+            productId: invItem.product_id,
+            quantity: invItem.quantity,
+            movementType: 'move_in',
+            puId: invItem.pu_id,
+            binId: targetBinId,
+            sourceBinId: invItem.bin_id,
+            destinationBinId: targetBinId,
+          });
+        }
+      }
+
       const totalItems = siblingPUItems.length > 0 ? itemsToMove.length : 1;
       toast.success(
         `Auto put away ${totalItems > 1 ? `${totalItems} items (PU)` : `${item.quantity} units`} to ${selectedBin?.bin_id || 'bin'}`
@@ -588,6 +624,24 @@ export const InventoryDetailDialog = ({
             .eq('id', invItem.id);
         } else {
           await supabase.from('inventory').delete().eq('id', invItem.id);
+        }
+      }
+
+      // Log material movements for bin-to-bin transfer
+      if (item.product?.company_id) {
+        for (const invItem of itemsToMove) {
+          const moveQuantity = invItem.id === item.id ? putAwayQuantity : invItem.quantity;
+          await logMaterialMovement({
+            companyId: item.product.company_id,
+            locationId,
+            productId: invItem.product_id,
+            quantity: moveQuantity,
+            movementType: 'transfer',
+            puId: invItem.pu_id,
+            binId: selectedBinId,
+            sourceBinId: invItem.bin_id,
+            destinationBinId: selectedBinId,
+          });
         }
       }
 
