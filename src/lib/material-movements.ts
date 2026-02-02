@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 export type MovementType = 'receipt' | 'issue' | 'move_in' | 'move_out' | 'adjustment' | 'transfer';
 export type ReferenceType = 'goods_receipt' | 'goods_issue' | 'inventory_transfer' | 'adjustment' | 'production';
 
+// Bin-level movement types that should only be tracked when enabled
+const BIN_LEVEL_MOVEMENT_TYPES: MovementType[] = ['move_in', 'move_out', 'transfer'];
+
 interface CreateMovementParams {
   companyId: string;
   locationId: string;
@@ -17,6 +20,26 @@ interface CreateMovementParams {
   referenceId?: string | null;
   referenceNumber?: string | null;
   notes?: string | null;
+}
+
+/**
+ * Check if bin-level movement tracking is enabled for the company
+ */
+async function isBinLevelTrackingEnabled(companyId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('company_settings')
+    .select('setting_value')
+    .eq('company_id', companyId)
+    .eq('setting_key', 'process_controls')
+    .maybeSingle();
+
+  if (error || !data?.setting_value) {
+    // Default to true if not configured
+    return true;
+  }
+
+  const val = data.setting_value as Record<string, unknown>;
+  return (val.track_bin_level_movements as boolean) ?? true;
 }
 
 /**
@@ -38,6 +61,14 @@ export async function logMaterialMovement(params: CreateMovementParams): Promise
     referenceNumber,
     notes,
   } = params;
+
+  // Check if this is a bin-level movement and if tracking is enabled
+  if (BIN_LEVEL_MOVEMENT_TYPES.includes(movementType)) {
+    const trackingEnabled = await isBinLevelTrackingEnabled(companyId);
+    if (!trackingEnabled) {
+      return null; // Skip logging bin-level movements when disabled
+    }
+  }
 
   // Get next movement ID
   const { data: movementId, error: idError } = await supabase.rpc('get_next_movement_id', {

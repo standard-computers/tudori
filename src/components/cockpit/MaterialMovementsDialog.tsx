@@ -176,7 +176,7 @@ const MaterialMovementsDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-2 px-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -189,7 +189,7 @@ const MaterialMovementsDialog = ({
           <Badge variant="secondary">{filteredMovements.length} movements</Badge>
         </div>
 
-        <div className="flex-1 overflow-hidden min-h-0">
+        <div className="flex-1 overflow-hidden min-h-0 px-4 pb-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
