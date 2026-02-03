@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -43,10 +44,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, X, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+
+interface TaxRate {
+  id: string;
+  name: string;
+  rate: number;
+  rate_type: string;
+  is_default: boolean;
+}
+
+interface SelectedTaxRate {
+  tax_rate_id: string;
+  name: string;
+  rate: number;
+  rate_type: string;
+}
 
 interface Invoice {
   id: string;
@@ -57,6 +74,8 @@ interface Invoice {
   ledger_id: string | null;
   invoice_date: string;
   due_date: string | null;
+  subtotal: number;
+  tax_amount: number;
   amount: number;
   status: string;
   notes: string | null;
@@ -65,6 +84,18 @@ interface Invoice {
   purchase_order?: { po_number: string; total_amount: number; ledger_id: string | null } | null;
   sales_order?: { so_number: string; total_amount: number; ledger_id: string | null } | null;
   ledger?: { name: string } | null;
+}
+
+interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number | null;
+  total_price: number | null;
+  pu_id: string | null;
+  notes: string | null;
+  product?: { name: string; product_id: string; price: number | null } | null;
 }
 
 interface Account {
@@ -78,6 +109,8 @@ interface PurchaseOrder {
   id: string;
   po_number: string;
   total_amount: number;
+  subtotal: number;
+  tax_amount: number;
   ledger_id: string | null;
   status: string;
 }
@@ -86,8 +119,27 @@ interface SalesOrder {
   id: string;
   so_number: string;
   total_amount: number;
+  subtotal: number;
+  tax_amount: number;
   ledger_id: string | null;
   status: string;
+}
+
+interface ReferenceItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number | null;
+  total_price: number | null;
+  product?: { name: string; product_id: string; price: number | null } | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  product_id: string;
+  price: number | null;
+  unit: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -118,6 +170,8 @@ const Invoices = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -125,7 +179,13 @@ const Invoices = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+
+  // Reference items from PO/SO
+  const [referenceItems, setReferenceItems] = useState<ReferenceItem[]>([]);
+  const [loadingReferenceItems, setLoadingReferenceItems] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -135,9 +195,12 @@ const Invoices = () => {
     sales_order_id: '',
     invoice_date: format(new Date(), 'yyyy-MM-dd'),
     due_date: '',
-    amount: '',
     notes: '',
   });
+
+  // Invoice line items state
+  const [invoiceItems, setInvoiceItems] = useState<{ product_id: string; quantity: number; unit_price: number; selected: boolean }[]>([]);
+  const [selectedTaxRates, setSelectedTaxRates] = useState<SelectedTaxRate[]>([]);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -175,6 +238,8 @@ const Invoices = () => {
       fetchAccounts();
       fetchPurchaseOrders();
       fetchSalesOrders();
+      fetchProducts();
+      fetchTaxRates();
     }
   }, [companyId]);
 
@@ -226,7 +291,7 @@ const Invoices = () => {
   const fetchPurchaseOrders = async () => {
     const { data } = await supabase
       .from('purchase_orders')
-      .select('id, po_number, total_amount, ledger_id, status')
+      .select('id, po_number, total_amount, subtotal, tax_amount, ledger_id, status')
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     setPurchaseOrders(data || []);
@@ -235,11 +300,116 @@ const Invoices = () => {
   const fetchSalesOrders = async () => {
     const { data } = await supabase
       .from('sales_orders' as any)
-      .select('id, so_number, total_amount, ledger_id, status')
+      .select('id, so_number, total_amount, subtotal, tax_amount, ledger_id, status')
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     setSalesOrders((data as any) || []);
   };
+
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, product_id, price, unit')
+      .eq('company_id', companyId)
+      .order('name');
+    setProducts(data || []);
+  };
+
+  const fetchTaxRates = async () => {
+    const { data } = await supabase
+      .from('tax_rates')
+      .select('id, name, rate, rate_type, is_default')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('name');
+    setTaxRates(data || []);
+  };
+
+  // Fetch reference items when PO/SO is selected
+  const fetchReferenceItems = async () => {
+    setLoadingReferenceItems(true);
+    setReferenceItems([]);
+    setInvoiceItems([]);
+
+    try {
+      if (formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
+        const { data } = await supabase
+          .from('purchase_order_items')
+          .select('id, product_id, quantity, unit_price, total_price, product:products(name, product_id, price)')
+          .eq('purchase_order_id', formData.purchase_order_id);
+        
+        const items = (data as any[] || []) as ReferenceItem[];
+        setReferenceItems(items);
+        // Pre-populate invoice items from reference, all selected by default
+        setInvoiceItems(items.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price || item.product?.price || 0,
+          selected: true
+        })));
+
+        // Fetch and apply tax rates from the PO
+        const { data: poTaxRates } = await supabase
+          .from('purchase_order_tax_rates' as any)
+          .select('tax_rate_id, tax_rate:tax_rates(name, rate, rate_type)')
+          .eq('purchase_order_id', formData.purchase_order_id);
+        
+        if (poTaxRates && poTaxRates.length > 0) {
+          setSelectedTaxRates((poTaxRates as any[]).map((tr: any) => ({
+            tax_rate_id: tr.tax_rate_id,
+            name: tr.tax_rate?.name || '',
+            rate: tr.tax_rate?.rate || 0,
+            rate_type: tr.tax_rate?.rate_type || 'percent'
+          })));
+        }
+      } else if (formData.reference_type === 'sales_order' && formData.sales_order_id) {
+        const { data } = await supabase
+          .from('sales_order_items' as any)
+          .select('id, product_id, quantity, unit_price, total_price, product:products(name, product_id, price)')
+          .eq('sales_order_id', formData.sales_order_id);
+        
+        const items = (data as any[] || []) as ReferenceItem[];
+        setReferenceItems(items);
+        // Pre-populate invoice items from reference, all selected by default
+        setInvoiceItems(items.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price || item.product?.price || 0,
+          selected: true
+        })));
+
+        // Fetch and apply tax rates from the SO
+        const { data: soTaxRates } = await supabase
+          .from('sales_order_tax_rates' as any)
+          .select('tax_rate_id, tax_rate:tax_rates(name, rate, rate_type)')
+          .eq('sales_order_id', formData.sales_order_id);
+        
+        if (soTaxRates && soTaxRates.length > 0) {
+          setSelectedTaxRates((soTaxRates as any[]).map((tr: any) => ({
+            tax_rate_id: tr.tax_rate_id,
+            name: tr.tax_rate?.name || '',
+            rate: tr.tax_rate?.rate || 0,
+            rate_type: tr.tax_rate?.rate_type || 'percent'
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching reference items:', error);
+    } finally {
+      setLoadingReferenceItems(false);
+    }
+  };
+
+  // Fetch reference items when reference changes
+  useEffect(() => {
+    if ((formData.reference_type === 'purchase_order' && formData.purchase_order_id) ||
+        (formData.reference_type === 'sales_order' && formData.sales_order_id)) {
+      fetchReferenceItems();
+    } else {
+      setReferenceItems([]);
+      setInvoiceItems([]);
+    }
+  }, [formData.purchase_order_id, formData.sales_order_id, formData.reference_type]);
 
   const accountOptions: SearchableSelectOption[] = useMemo(() => {
     return accounts.map((a) => ({
@@ -265,6 +435,14 @@ const Invoices = () => {
     }));
   }, [salesOrders]);
 
+  const productOptions: SearchableSelectOption[] = useMemo(() => {
+    return products.map((p) => ({
+      value: p.id,
+      label: p.name,
+      sublabel: `$${p.price?.toFixed(2) || '0.00'}`,
+    }));
+  }, [products]);
+
   const filteredInvoices = useMemo(() => {
     if (!searchQuery) return sortedAndFilteredData;
     const query = searchQuery.toLowerCase();
@@ -277,7 +455,41 @@ const Invoices = () => {
     );
   }, [sortedAndFilteredData, searchQuery]);
 
+  // Calculate totals
+  const selectedItems = useMemo(() => invoiceItems.filter(item => item.selected), [invoiceItems]);
+  
+  const subtotal = useMemo(() => {
+    return selectedItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  }, [selectedItems]);
+
+  const taxCalculations = useMemo(() => {
+    // Separate percentage rates from flat rates
+    const percentRates = selectedTaxRates.filter(r => r.rate_type === 'percent');
+    const flatRates = selectedTaxRates.filter(r => r.rate_type === 'flat');
+    
+    // Calculate percentage taxes on subtotal
+    const percentTaxes = percentRates.map(rate => ({
+      ...rate,
+      amount: subtotal * (rate.rate / 100)
+    }));
+    
+    // Flat taxes are just the rate value
+    const flatTaxes = flatRates.map(rate => ({
+      ...rate,
+      amount: rate.rate
+    }));
+    
+    return [...percentTaxes, ...flatTaxes];
+  }, [selectedTaxRates, subtotal]);
+
+  const totalTax = useMemo(() => {
+    return taxCalculations.reduce((sum, calc) => sum + calc.amount, 0);
+  }, [taxCalculations]);
+
+  const grandTotal = subtotal + totalTax;
+
   const handleCreateClick = () => {
+    const defaultRate = taxRates.find(r => r.is_default);
     setFormData({
       account_id: '',
       reference_type: 'purchase_order',
@@ -285,33 +497,66 @@ const Invoices = () => {
       sales_order_id: '',
       invoice_date: format(new Date(), 'yyyy-MM-dd'),
       due_date: '',
-      amount: '',
       notes: '',
     });
+    setInvoiceItems([]);
+    setReferenceItems([]);
+    setSelectedTaxRates(defaultRate ? [{ tax_rate_id: defaultRate.id, name: defaultRate.name, rate: defaultRate.rate, rate_type: defaultRate.rate_type || 'percent' }] : []);
+    setIsMaximized(false);
     setIsCreateDialogOpen(true);
   };
 
   useKeyboardShortcut('n', handleCreateClick);
 
-  const handleViewClick = (invoice: Invoice) => {
+  const handleViewClick = async (invoice: Invoice) => {
     setViewingInvoice(invoice);
+    
+    // Fetch invoice items
+    const { data: items } = await supabase
+      .from('invoice_items' as any)
+      .select('*, product:products(name, product_id, price)')
+      .eq('invoice_id', invoice.id);
+    
+    setViewItems((items as any) || []);
     setIsViewDialogOpen(true);
   };
 
-  // Auto-fill amount when PO/SO is selected
-  useEffect(() => {
-    if (formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
-      const po = purchaseOrders.find((p) => p.id === formData.purchase_order_id);
-      if (po) {
-        setFormData((prev) => ({ ...prev, amount: po.total_amount?.toString() || '' }));
-      }
-    } else if (formData.reference_type === 'sales_order' && formData.sales_order_id) {
-      const so = salesOrders.find((s) => s.id === formData.sales_order_id);
-      if (so) {
-        setFormData((prev) => ({ ...prev, amount: so.total_amount?.toString() || '' }));
+  const addInvoiceItem = () => {
+    setInvoiceItems([...invoiceItems, { product_id: '', quantity: 1, unit_price: 0, selected: true }]);
+  };
+
+  const updateInvoiceItem = (index: number, field: string, value: any) => {
+    const updated = [...invoiceItems];
+    updated[index] = { ...updated[index], [field]: value };
+    
+    // Auto-fill price when product is selected
+    if (field === 'product_id') {
+      const product = products.find(p => p.id === value);
+      if (product) {
+        updated[index].unit_price = product.price || 0;
       }
     }
-  }, [formData.purchase_order_id, formData.sales_order_id, formData.reference_type, purchaseOrders, salesOrders]);
+    
+    setInvoiceItems(updated);
+  };
+
+  const removeInvoiceItem = (index: number) => {
+    setInvoiceItems(invoiceItems.filter((_, i) => i !== index));
+  };
+
+  const toggleTaxRate = (rate: TaxRate) => {
+    const exists = selectedTaxRates.find(r => r.tax_rate_id === rate.id);
+    if (exists) {
+      setSelectedTaxRates(selectedTaxRates.filter(r => r.tax_rate_id !== rate.id));
+    } else {
+      setSelectedTaxRates([...selectedTaxRates, { 
+        tax_rate_id: rate.id, 
+        name: rate.name, 
+        rate: rate.rate, 
+        rate_type: rate.rate_type || 'percent' 
+      }]);
+    }
+  };
 
   const handleCreate = async () => {
     if (!formData.account_id) {
@@ -328,8 +573,8 @@ const Invoices = () => {
       return;
     }
 
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      toast.error('Please enter a valid amount');
+    if (selectedItems.length === 0) {
+      toast.error('Please add at least one line item');
       return;
     }
 
@@ -340,7 +585,6 @@ const Invoices = () => {
         p_company_id: companyId,
       });
 
-      const amount = parseFloat(formData.amount);
       let ledgerId: string | null = null;
 
       // Determine ledger from the referenced order
@@ -364,7 +608,9 @@ const Invoices = () => {
           ledger_id: ledgerId,
           invoice_date: formData.invoice_date,
           due_date: formData.due_date || null,
-          amount,
+          subtotal,
+          tax_amount: totalTax,
+          amount: grandTotal,
           status: 'pending',
           notes: formData.notes || null,
         })
@@ -373,11 +619,41 @@ const Invoices = () => {
 
       if (invoiceError) throw invoiceError;
 
+      // Insert invoice items
+      const itemsToInsert = selectedItems.map(item => ({
+        invoice_id: (invoice as any).id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.quantity * item.unit_price,
+      }));
+
+      if (itemsToInsert.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('invoice_items' as any)
+          .insert(itemsToInsert);
+        if (itemsError) throw itemsError;
+      }
+
+      // Insert invoice tax rates
+      if (selectedTaxRates.length > 0) {
+        const taxRatesToInsert = taxCalculations.map(calc => ({
+          invoice_id: (invoice as any).id,
+          tax_rate_id: calc.tax_rate_id,
+          tax_amount: calc.amount,
+        }));
+
+        const { error: taxError } = await supabase
+          .from('invoice_tax_rates' as any)
+          .insert(taxRatesToInsert);
+        if (taxError) throw taxError;
+      }
+
       // Create ledger transaction
       // SO reference = positive adjustment (income)
       // PO reference = negative adjustment (expense)
       if (ledgerId) {
-        const transactionAmount = formData.reference_type === 'sales_order' ? amount : -amount;
+        const transactionAmount = formData.reference_type === 'sales_order' ? grandTotal : -grandTotal;
         const referenceNumber =
           formData.reference_type === 'purchase_order'
             ? purchaseOrders.find((p) => p.id === formData.purchase_order_id)?.po_number
@@ -604,108 +880,338 @@ const Invoices = () => {
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className={isMaximized ? "max-w-[95vw] h-[95vh]" : "max-w-4xl max-h-[90vh]"}>
           <DialogHeader>
-            <DialogTitle>Create Invoice</DialogTitle>
-            <DialogDescription>Create a new invoice linked to a PO or SO.</DialogDescription>
+            <div className="flex items-center justify-between pr-8">
+              <div>
+                <DialogTitle>Create Invoice</DialogTitle>
+                <DialogDescription>Create a new invoice linked to a PO or SO.</DialogDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMaximized(!isMaximized)}
+              >
+                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <Label>Account *</Label>
-              <SearchableSelect
-                options={accountOptions}
-                value={formData.account_id}
-                onValueChange={(value) => setFormData({ ...formData, account_id: value })}
-                placeholder="Select account..."
-              />
-            </div>
+          <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="mx-6">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="reference">Reference</TabsTrigger>
+              <TabsTrigger value="items">Line Items</TabsTrigger>
+              <TabsTrigger value="tax">Tax</TabsTrigger>
+            </TabsList>
 
-            <div>
-              <Label>Reference Type *</Label>
-              <Select
-                value={formData.reference_type}
-                onValueChange={(value: 'purchase_order' | 'sales_order') =>
-                  setFormData({
-                    ...formData,
-                    reference_type: value,
-                    purchase_order_id: '',
-                    sales_order_id: '',
-                    amount: '',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  <SelectItem value="purchase_order">Purchase Order (PO)</SelectItem>
-                  <SelectItem value="sales_order">Sales Order (SO)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <TabsContent value="details" className="flex-1 overflow-auto px-6 pb-4">
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <div>
+                  <Label>Account *</Label>
+                  <SearchableSelect
+                    options={accountOptions}
+                    value={formData.account_id}
+                    onValueChange={(value) => setFormData({ ...formData, account_id: value })}
+                    placeholder="Select account..."
+                  />
+                </div>
 
-            {formData.reference_type === 'purchase_order' && (
-              <div>
-                <Label>Purchase Order *</Label>
-                <SearchableSelect
-                  options={poOptions}
-                  value={formData.purchase_order_id}
-                  onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
-                  placeholder="Select PO..."
-                />
+                <div>
+                  <Label>Reference Type *</Label>
+                  <Select
+                    value={formData.reference_type}
+                    onValueChange={(value: 'purchase_order' | 'sales_order') =>
+                      setFormData({
+                        ...formData,
+                        reference_type: value,
+                        purchase_order_id: '',
+                        sales_order_id: '',
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="purchase_order">Purchase Order (PO)</SelectItem>
+                      <SelectItem value="sales_order">Sales Order (SO)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.reference_type === 'purchase_order' && (
+                  <div>
+                    <Label>Purchase Order *</Label>
+                    <SearchableSelect
+                      options={poOptions}
+                      value={formData.purchase_order_id}
+                      onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
+                      placeholder="Select PO..."
+                    />
+                  </div>
+                )}
+
+                {formData.reference_type === 'sales_order' && (
+                  <div>
+                    <Label>Sales Order *</Label>
+                    <SearchableSelect
+                      options={soOptions}
+                      value={formData.sales_order_id}
+                      onValueChange={(value) => setFormData({ ...formData, sales_order_id: value })}
+                      placeholder="Select SO..."
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <Label>Invoice Date *</Label>
+                  <Input
+                    type="date"
+                    value={formData.invoice_date}
+                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Optional notes"
+                    rows={3}
+                  />
+                </div>
               </div>
-            )}
+            </TabsContent>
 
-            {formData.reference_type === 'sales_order' && (
-              <div>
-                <Label>Sales Order *</Label>
-                <SearchableSelect
-                  options={soOptions}
-                  value={formData.sales_order_id}
-                  onValueChange={(value) => setFormData({ ...formData, sales_order_id: value })}
-                  placeholder="Select SO..."
-                />
+            <TabsContent value="reference" className="flex-1 overflow-auto px-6 pb-4">
+              <div className="pt-4">
+                {!formData.purchase_order_id && !formData.sales_order_id ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    Select a Purchase Order or Sales Order in the Details tab to see reference items.
+                  </div>
+                ) : loadingReferenceItems ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : referenceItems.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    No line items found in the selected order.
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      These are the line items from the selected {formData.reference_type === 'purchase_order' ? 'Purchase Order' : 'Sales Order'}. 
+                      They have been automatically added to the invoice. You can modify them in the Line Items tab.
+                    </p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {referenceItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.product?.name}</p>
+                                <p className="text-sm text-muted-foreground">{item.product?.product_id}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">${(item.unit_price || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-mono">${(item.total_price || 0).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
-            )}
+            </TabsContent>
 
-            <div>
-              <Label>Invoice Date *</Label>
-              <Input
-                type="date"
-                value={formData.invoice_date}
-                onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-              />
-            </div>
+            <TabsContent value="items" className="flex-1 overflow-auto px-6 pb-4">
+              <div className="pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Add or modify line items for this invoice. Use checkboxes to include/exclude items.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={addInvoiceItem}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                {invoiceItems.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8 border rounded-lg">
+                    No line items. Select a PO/SO to auto-populate or add items manually.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]">Include</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="w-[100px]">Quantity</TableHead>
+                        <TableHead className="w-[120px]">Unit Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoiceItems.map((item, index) => {
+                        const product = products.find(p => p.id === item.product_id);
+                        return (
+                          <TableRow key={index} className={!item.selected ? 'opacity-50' : ''}>
+                            <TableCell>
+                              <Checkbox
+                                checked={item.selected}
+                                onCheckedChange={(checked) => updateInvoiceItem(index, 'selected', checked)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <SearchableSelect
+                                options={productOptions}
+                                value={item.product_id}
+                                onValueChange={(value) => updateInvoiceItem(index, 'product_id', value)}
+                                placeholder="Select product..."
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.quantity}
+                                onChange={(e) => updateInvoiceItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                                className="w-full"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.unit_price}
+                                onChange={(e) => updateInvoiceItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                className="w-full"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeInvoiceItem(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </TabsContent>
 
-            <div>
-              <Label>Due Date</Label>
-              <Input
-                type="date"
-                value={formData.due_date}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              />
-            </div>
+            <TabsContent value="tax" className="flex-1 overflow-auto px-6 pb-4">
+              <div className="pt-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Select tax rates to apply to this invoice. Rates are automatically imported from the reference order.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="mb-2 block">Available Tax Rates</Label>
+                    <div className="border rounded-lg p-4 space-y-2 max-h-[200px] overflow-auto">
+                      {taxRates.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No tax rates configured.</p>
+                      ) : (
+                        taxRates.map((rate) => {
+                          const isSelected = selectedTaxRates.some(r => r.tax_rate_id === rate.id);
+                          return (
+                            <div key={rate.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`tax-${rate.id}`}
+                                checked={isSelected}
+                                onCheckedChange={() => toggleTaxRate(rate)}
+                              />
+                              <label htmlFor={`tax-${rate.id}`} className="text-sm cursor-pointer flex-1">
+                                {rate.name} - {rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`}
+                              </label>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
 
-            <div>
-              <Label>Amount *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
+                  <div>
+                    <Label className="mb-2 block">Applied Tax Rates</Label>
+                    <div className="border rounded-lg p-4 space-y-2">
+                      {selectedTaxRates.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No tax rates applied.</p>
+                      ) : (
+                        selectedTaxRates.map((rate) => {
+                          const calc = taxCalculations.find(c => c.tax_rate_id === rate.tax_rate_id);
+                          return (
+                            <div key={rate.tax_rate_id} className="flex items-center justify-between text-sm">
+                              <span>{rate.name} ({rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})</span>
+                              <span className="font-mono">${(calc?.amount || 0).toFixed(2)}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Optional notes"
-                rows={3}
-              />
+          {/* Summary */}
+          <div className="border-t px-6 py-4 bg-muted/50">
+            <div className="flex justify-end">
+              <div className="w-64 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span className="font-mono">${subtotal.toFixed(2)}</span>
+                </div>
+                {taxCalculations.filter(c => c.rate_type === 'percent').map((calc) => (
+                  <div key={calc.tax_rate_id} className="flex justify-between text-sm text-muted-foreground">
+                    <span>{calc.name} ({calc.rate}%):</span>
+                    <span className="font-mono">${calc.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+                {taxCalculations.filter(c => c.rate_type === 'flat').map((calc) => (
+                  <div key={calc.tax_rate_id} className="flex justify-between text-sm text-muted-foreground">
+                    <span>{calc.name}:</span>
+                    <span className="font-mono">${calc.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between font-bold border-t pt-2">
+                  <span>Total:</span>
+                  <span className="font-mono">${grandTotal.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -723,70 +1229,128 @@ const Invoices = () => {
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Invoice {viewingInvoice?.invoice_number}</DialogTitle>
-            <DialogDescription>Invoice details</DialogDescription>
+            <DialogDescription>Invoice details and line items</DialogDescription>
           </DialogHeader>
 
           {viewingInvoice && (
-            <div className="space-y-4 px-6 pb-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Account</Label>
-                  <p className="font-medium">{viewingInvoice.account?.name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <Badge className={statusColors[viewingInvoice.status] || 'bg-slate-500'}>
-                    {viewingInvoice.status}
-                  </Badge>
-                </div>
-              </div>
+            <Tabs defaultValue="details" className="flex-1">
+              <TabsList className="mx-6">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="items">Line Items</TabsTrigger>
+              </TabsList>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Invoice Date</Label>
-                  <p>{format(new Date(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
-                </div>
-                {viewingInvoice.due_date && (
-                  <div>
-                    <Label className="text-muted-foreground">Due Date</Label>
-                    <p>{format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
+              <TabsContent value="details" className="px-6 pb-4">
+                <div className="space-y-4 pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Account</Label>
+                      <p className="font-medium">{viewingInvoice.account?.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Status</Label>
+                      <Badge className={statusColors[viewingInvoice.status] || 'bg-slate-500'}>
+                        {viewingInvoice.status}
+                      </Badge>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div>
-                <Label className="text-muted-foreground">Reference</Label>
-                <p>
-                  {viewingInvoice.purchase_order?.po_number && `PO: ${viewingInvoice.purchase_order.po_number}`}
-                  {viewingInvoice.sales_order?.so_number && `SO: ${viewingInvoice.sales_order.so_number}`}
-                </p>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Invoice Date</Label>
+                      <p>{format(new Date(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
+                    </div>
+                    {viewingInvoice.due_date && (
+                      <div>
+                        <Label className="text-muted-foreground">Due Date</Label>
+                        <p>{format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
+                      </div>
+                    )}
+                  </div>
 
-              <div>
-                <Label className="text-muted-foreground">Amount</Label>
-                <p className="text-2xl font-bold">${viewingInvoice.amount?.toFixed(2)}</p>
-              </div>
+                  <div>
+                    <Label className="text-muted-foreground">Reference</Label>
+                    <p>
+                      {viewingInvoice.purchase_order?.po_number && `PO: ${viewingInvoice.purchase_order.po_number}`}
+                      {viewingInvoice.sales_order?.so_number && `SO: ${viewingInvoice.sales_order.so_number}`}
+                    </p>
+                  </div>
 
-              {viewingInvoice.ledger && (
-                <div>
-                  <Label className="text-muted-foreground">Ledger</Label>
-                  <p>{viewingInvoice.ledger.name}</p>
+                  <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                    <div>
+                      <Label className="text-muted-foreground">Subtotal</Label>
+                      <p className="text-lg font-mono">${(viewingInvoice.subtotal || 0).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Tax</Label>
+                      <p className="text-lg font-mono">${(viewingInvoice.tax_amount || 0).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Total</Label>
+                      <p className="text-2xl font-bold font-mono">${viewingInvoice.amount?.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {viewingInvoice.ledger && (
+                    <div>
+                      <Label className="text-muted-foreground">Ledger</Label>
+                      <p>{viewingInvoice.ledger.name}</p>
+                    </div>
+                  )}
+
+                  {viewingInvoice.notes && (
+                    <div>
+                      <Label className="text-muted-foreground">Notes</Label>
+                      <p>{viewingInvoice.notes}</p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </TabsContent>
 
-              {viewingInvoice.notes && (
-                <div>
-                  <Label className="text-muted-foreground">Notes</Label>
-                  <p>{viewingInvoice.notes}</p>
+              <TabsContent value="items" className="px-6 pb-4">
+                <div className="pt-4">
+                  {viewItems.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No line items for this invoice.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.product?.name}</p>
+                                <p className="text-sm text-muted-foreground">{item.product?.product_id}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">${(item.unit_price || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-mono">${(item.total_price || 0).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </div>
-              )}
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
 
           <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1701,6 +1701,103 @@ export type Database = {
           },
         ]
       }
+      invoice_items: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_id: string
+          notes: string | null
+          product_id: string
+          pu_id: string | null
+          quantity: number
+          total_price: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          product_id: string
+          pu_id?: string | null
+          quantity?: number
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          product_id?: string
+          pu_id?: string | null
+          quantity?: number
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_id: string
+          tax_amount: number
+          tax_rate_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_id: string
+          tax_amount?: number
+          tax_rate_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          tax_amount?: number
+          tax_rate_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_tax_rates_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_tax_rates_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           account_id: string
@@ -1716,6 +1813,8 @@ export type Database = {
           purchase_order_id: string | null
           sales_order_id: string | null
           status: string
+          subtotal: number | null
+          tax_amount: number | null
           updated_at: string
         }
         Insert: {
@@ -1732,6 +1831,8 @@ export type Database = {
           purchase_order_id?: string | null
           sales_order_id?: string | null
           status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
           updated_at?: string
         }
         Update: {
@@ -1748,6 +1849,8 @@ export type Database = {
           purchase_order_id?: string | null
           sales_order_id?: string | null
           status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
           updated_at?: string
         }
         Relationships: [
