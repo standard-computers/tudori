@@ -2716,6 +2716,7 @@ export type Database = {
           company_id: string
           created_at: string
           description: string | null
+          hazardous: boolean
           height: number | null
           height_uom: string | null
           id: string
@@ -2747,6 +2748,7 @@ export type Database = {
           company_id: string
           created_at?: string
           description?: string | null
+          hazardous?: boolean
           height?: number | null
           height_uom?: string | null
           id?: string
@@ -2778,6 +2780,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           description?: string | null
+          hazardous?: boolean
           height?: number | null
           height_uom?: string | null
           id?: string

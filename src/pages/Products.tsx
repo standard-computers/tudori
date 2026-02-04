@@ -588,6 +588,7 @@ const Products = () => {
     transport_time_days: '',
     manufacture_time_days: '',
     lead_time_days: '',
+    hazardous: false,
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -948,6 +949,7 @@ const Products = () => {
       transport_time_days: '',
       manufacture_time_days: '',
       lead_time_days: '',
+      hazardous: false,
     });
     setImageFile(null);
     setImagePreview(null);
@@ -998,6 +1000,7 @@ const Products = () => {
       transport_time_days: product.transport_time_days?.toString() || '',
       manufacture_time_days: product.manufacture_time_days?.toString() || '',
       lead_time_days: product.lead_time_days?.toString() || '',
+      hazardous: (product as any).hazardous || false,
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
@@ -1285,6 +1288,7 @@ const Products = () => {
           transport_time_days: formData.transport_time_days ? parseInt(formData.transport_time_days) : null,
           manufacture_time_days: formData.manufacture_time_days ? parseInt(formData.manufacture_time_days) : null,
           lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
+          hazardous: formData.hazardous,
         } as any)
         .eq('id', editingId);
 
@@ -1321,6 +1325,7 @@ const Products = () => {
           transport_time_days: formData.transport_time_days ? parseInt(formData.transport_time_days) : null,
           manufacture_time_days: formData.manufacture_time_days ? parseInt(formData.manufacture_time_days) : null,
           lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
+          hazardous: formData.hazardous,
         } as any)
         .select('id')
         .single();
@@ -2360,6 +2365,28 @@ const Products = () => {
                         {formData.is_consumable && (
                           <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
                             Useful for raw materials like fabric, liquids, or bulk goods that can be ordered and issued in partial quantities (e.g., 2.5 meters, 0.75 liters).
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="border rounded-lg p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="hazardous" className="text-base">Hazardous</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Mark this product as hazardous material
+                            </p>
+                          </div>
+                          <Switch
+                            id="hazardous"
+                            checked={formData.hazardous}
+                            onCheckedChange={(checked) => setFormData({ ...formData, hazardous: checked })}
+                          />
+                        </div>
+                        
+                        {formData.hazardous && (
+                          <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                            This product will be flagged as hazardous material. Special handling and documentation may be required.
                           </p>
                         )}
                       </div>
