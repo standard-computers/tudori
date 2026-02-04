@@ -184,8 +184,8 @@ const AccountDetail = () => {
         .from('invoices' as any)
         .select(`
           *,
-          purchase_order:purchase_orders(po_number, vendor:vendors(name, vendor_id), location:locations(name, location_id)),
-          sales_order:sales_orders(so_number, customer:customers(name, customer_id), location:locations(name, location_id)),
+          purchase_order:purchase_orders(po_number, vendor:vendors(name, vendor_id), location:locations!purchase_orders_location_id_fkey(name, location_id)),
+          sales_order:sales_orders(so_number, customer:customers(name, customer_id), location:locations!sales_orders_location_id_fkey(name, location_id)),
           ledger:ledgers(name)
         `)
         .eq('account_id', id)
