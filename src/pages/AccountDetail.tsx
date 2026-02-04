@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -91,6 +92,7 @@ const AccountDetail = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isCreditMemoDialogOpen, setIsCreditMemoDialogOpen] = useState(false);
   const [isDebitMemoDialogOpen, setIsDebitMemoDialogOpen] = useState(false);
+  const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form states
@@ -400,7 +402,7 @@ const AccountDetail = () => {
             </div>
           </div>
           {canCreateInvoice && (
-            <Button onClick={() => navigate('/invoices?create=true&account=' + account.id)}>
+            <Button onClick={() => setIsCreateInvoiceDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Invoice
             </Button>
@@ -715,6 +717,14 @@ const AccountDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceDialog
+        open={isCreateInvoiceDialogOpen}
+        onOpenChange={setIsCreateInvoiceDialogOpen}
+        defaultAccountId={account.id}
+        onSuccess={fetchAccountAndInvoices}
+      />
     </div>
   );
 };
