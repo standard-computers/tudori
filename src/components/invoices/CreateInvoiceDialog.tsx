@@ -236,6 +236,13 @@ export const CreateInvoiceDialog = ({
     setTaxRates(data || []);
   };
 
+  const calculateDueDate = (invoiceDate: string, paymentTerms: number | null): string => {
+    const terms = paymentTerms ?? 30;
+    const date = new Date(invoiceDate);
+    date.setDate(date.getDate() + terms);
+    return format(date, 'yyyy-MM-dd');
+  };
+
   const fetchReferenceItems = async () => {
     setLoadingReferenceItems(true);
     setReferenceItems([]);
@@ -243,6 +250,17 @@ export const CreateInvoiceDialog = ({
 
     try {
       if (formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
+        // Fetch PO with vendor payment terms
+        const { data: poData } = await supabase
+          .from('purchase_orders')
+          .select('vendor_id, vendor:vendors(payment_terms)')
+          .eq('id', formData.purchase_order_id)
+          .single();
+        
+        const paymentTerms = (poData as any)?.vendor?.payment_terms ?? null;
+        const dueDate = calculateDueDate(formData.invoice_date, paymentTerms);
+        setFormData(prev => ({ ...prev, due_date: dueDate }));
+
         const { data } = await supabase
           .from('purchase_order_items')
           .select('id, product_id, quantity, unit_price, total_price, product:products(name, product_id, price)')
@@ -271,6 +289,17 @@ export const CreateInvoiceDialog = ({
           })));
         }
       } else if (formData.reference_type === 'sales_order' && formData.sales_order_id) {
+        // Fetch SO with customer payment terms
+        const { data: soData } = await supabase
+          .from('sales_orders' as any)
+          .select('customer_id, customer:customers(payment_terms)')
+          .eq('id', formData.sales_order_id)
+          .single();
+        
+        const paymentTerms = (soData as any)?.customer?.payment_terms ?? null;
+        const dueDate = calculateDueDate(formData.invoice_date, paymentTerms);
+        setFormData(prev => ({ ...prev, due_date: dueDate }));
+
         const { data } = await supabase
           .from('sales_order_items' as any)
           .select('id, product_id, quantity, unit_price, total_price, product:products(name, product_id, price)')
