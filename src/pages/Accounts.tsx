@@ -138,6 +138,7 @@ const Accounts = () => {
   });
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Account>(accounts);
+  const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
 
   useEffect(() => {
     if (isCreateDialogOpen) {
@@ -419,7 +420,6 @@ const Accounts = () => {
     );
   }
 
-  const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
 
   return (
     <div className="min-h-screen bg-background">
