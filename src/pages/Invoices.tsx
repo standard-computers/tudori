@@ -153,8 +153,8 @@ const Invoices = () => {
       .select(`
         *,
         account:accounts(name, account_id),
-        purchase_order:purchase_orders(po_number, total_amount, ledger_id, vendor:vendors(name, vendor_id), location:locations(name, location_id)),
-        sales_order:sales_orders(so_number, total_amount, ledger_id, customer:customers(name, customer_id), location:locations(name, location_id)),
+        purchase_order:purchase_orders(po_number, total_amount, ledger_id, vendor:vendors(name, vendor_id), location:locations!purchase_orders_location_id_fkey(name, location_id)),
+        sales_order:sales_orders(so_number, total_amount, ledger_id, customer:customers(name, customer_id), location:locations!sales_orders_location_id_fkey(name, location_id)),
         ledger:ledgers(name)
       `)
       .eq('company_id', companyId)
