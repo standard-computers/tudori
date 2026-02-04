@@ -117,7 +117,7 @@ const Accounts = () => {
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -282,16 +282,6 @@ const Accounts = () => {
     }));
   }, [companyUsers]);
 
-  const filteredAccounts = useMemo(() => {
-    if (!searchQuery) return sortedAndFilteredData;
-    const query = searchQuery.toLowerCase();
-    return sortedAndFilteredData.filter(
-      (account) =>
-        account.name.toLowerCase().includes(query) ||
-        account.account_id.toLowerCase().includes(query) ||
-        account.type.toLowerCase().includes(query)
-    );
-  }, [sortedAndFilteredData, searchQuery]);
 
   const handleCreateClick = () => {
     setFormData({
@@ -429,29 +419,28 @@ const Accounts = () => {
     );
   }
 
+  const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b">
-        <div className="px-4 h-16 flex items-center">
+        <div className="px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <Users className="h-6 w-6 text-indigo-500" />
+            <Users className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold">Accounts</h1>
           </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <Input
-            placeholder="Search accounts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
           <div className="flex items-center gap-2">
+            <ColumnToggle 
+              columns={toggleableColumns} 
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <ImportExportButtons
               importEnabled={isImportEnabled('account')}
               exportEnabled={isExportEnabled('account')}
@@ -464,7 +453,9 @@ const Accounts = () => {
             </Button>
           </div>
         </div>
-        <div className="border rounded-lg">
+      </div>
+
+      <div className="w-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -505,14 +496,14 @@ const Accounts = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAccounts.length === 0 ? (
+              {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No accounts found. Create your first account to get started.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAccounts.map((account) => (
+                sortedAndFilteredData.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell className="font-mono">{account.account_id}</TableCell>
                     <TableCell className="font-medium">{account.name}</TableCell>
@@ -532,37 +523,41 @@ const Accounts = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover">
-                          <DropdownMenuItem onClick={() => navigate(`/accounts/${account.id}`)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditClick(account)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(account)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => navigate(`/accounts/${account.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover">
+                            <DropdownMenuItem onClick={() => handleEditClick(account)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(account)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </div>
       </div>
 
       {/* Create Dialog */}
@@ -660,12 +655,10 @@ const Accounts = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Create Account
+              <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -775,12 +768,10 @@ const Accounts = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button onClick={handleUpdate} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Update Account
+              <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
