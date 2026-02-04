@@ -915,6 +915,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          payment_terms: number | null
           phone: string | null
           postal_code: string | null
           state: string | null
@@ -935,6 +936,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          payment_terms?: number | null
           phone?: string | null
           postal_code?: string | null
           state?: string | null
@@ -955,6 +957,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          payment_terms?: number | null
           phone?: string | null
           postal_code?: string | null
           state?: string | null
@@ -2032,6 +2035,7 @@ export type Database = {
           is_production_enabled: boolean
           location_id: string
           name: string
+          payment_terms: number | null
           postal_code: string
           state: string
           type: string
@@ -2050,6 +2054,7 @@ export type Database = {
           is_production_enabled?: boolean
           location_id: string
           name: string
+          payment_terms?: number | null
           postal_code: string
           state: string
           type?: string
@@ -2068,6 +2073,7 @@ export type Database = {
           is_production_enabled?: boolean
           location_id?: string
           name?: string
+          payment_terms?: number | null
           postal_code?: string
           state?: string
           type?: string
@@ -3815,6 +3821,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          payment_terms: number | null
           phone: string | null
           postal_code: string | null
           state: string | null
@@ -3836,6 +3843,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          payment_terms?: number | null
           phone?: string | null
           postal_code?: string | null
           state?: string | null
@@ -3857,6 +3865,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          payment_terms?: number | null
           phone?: string | null
           postal_code?: string | null
           state?: string | null

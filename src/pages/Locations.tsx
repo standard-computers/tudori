@@ -66,6 +66,7 @@ interface Location {
   is_internal_vendor?: boolean;
   is_pos_enabled?: boolean;
   is_production_enabled?: boolean;
+  payment_terms?: number | null;
 }
 
 interface CompanyUser {
@@ -366,6 +367,7 @@ const Locations = () => {
     is_internal_vendor: true,
     is_pos_enabled: false,
     is_production_enabled: false,
+    payment_terms: '',
   });
 
   useEffect(() => {
@@ -465,6 +467,7 @@ const Locations = () => {
       is_internal_vendor: true,
       is_pos_enabled: false,
       is_production_enabled: false,
+      payment_terms: '',
     });
     setIsEditing(false);
     setIsViewMode(false);
@@ -497,6 +500,7 @@ const Locations = () => {
       is_internal_vendor: location.is_internal_vendor ?? true,
       is_pos_enabled: location.is_pos_enabled ?? false,
       is_production_enabled: location.is_production_enabled ?? false,
+      payment_terms: location.payment_terms?.toString() || '',
     });
     setIsViewMode(true);
     setIsEditing(false);
@@ -520,6 +524,7 @@ const Locations = () => {
       is_internal_vendor: location.is_internal_vendor ?? true,
       is_pos_enabled: location.is_pos_enabled ?? false,
       is_production_enabled: location.is_production_enabled ?? false,
+      payment_terms: location.payment_terms?.toString() || '',
     });
     setIsViewMode(false);
     setIsEditing(true);
@@ -613,6 +618,7 @@ const Locations = () => {
             is_internal_vendor: formData.is_internal_vendor,
             is_pos_enabled: formData.is_pos_enabled,
             is_production_enabled: formData.is_production_enabled,
+            payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
           })
           .eq('id', editingId);
 
@@ -639,6 +645,7 @@ const Locations = () => {
             is_internal_vendor: formData.is_internal_vendor,
             is_pos_enabled: formData.is_pos_enabled,
             is_production_enabled: formData.is_production_enabled,
+            payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
           })
           .select()
           .single();
@@ -889,6 +896,21 @@ const Locations = () => {
                               required
                             />
                           </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="payment_terms">Payment Terms (days)</Label>
+                          <Input
+                            id="payment_terms"
+                            type="number"
+                            min="0"
+                            value={formData.payment_terms}
+                            onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+                            disabled={isViewMode}
+                            className={isViewMode ? 'bg-muted' : ''}
+                            placeholder="30"
+                          />
+                        </div>
                       </div>
                     </TabsContent>
                     
