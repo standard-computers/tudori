@@ -43,6 +43,7 @@ interface Account {
   type: string;
   customer_id: string | null;
   vendor_id: string | null;
+  account_manager_id: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
@@ -96,6 +97,7 @@ const AccountDetail = () => {
   const [memoAmount, setMemoAmount] = useState('');
   const [memoNotes, setMemoNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [canCreateInvoice, setCanCreateInvoice] = useState(false);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -131,6 +133,17 @@ const AccountDetail = () => {
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
+      // Check if user has admin or IT role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user!.id)
+        .eq('company_id', profile.company_id);
+      
+      const hasAdminRole = roles?.some(r => r.role === 'admin' || r.role === 'it' || r.role === 'owner');
+      if (hasAdminRole) {
+        setCanCreateInvoice(true);
+      }
     }
   };
 
@@ -150,6 +163,11 @@ const AccountDetail = () => {
 
       if (accountError) throw accountError;
       setAccount(accountData as any);
+      
+      // Check if current user is the account manager
+      if ((accountData as any).account_manager_id === user?.id) {
+        setCanCreateInvoice(true);
+      }
 
       // Fetch invoices for this account
       const { data: invoicesData, error: invoicesError } = await supabase
@@ -370,7 +388,7 @@ const AccountDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b">
-        <div className="px-4 h-16 flex items-center">
+        <div className="px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/accounts')}>
               <ArrowLeft className="h-5 w-5" />
@@ -381,6 +399,12 @@ const AccountDetail = () => {
               <p className="text-sm text-muted-foreground font-mono">{account.account_id}</p>
             </div>
           </div>
+          {canCreateInvoice && (
+            <Button onClick={() => navigate('/invoices?create=true&account=' + account.id)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invoice
+            </Button>
+          )}
         </div>
       </div>
 
