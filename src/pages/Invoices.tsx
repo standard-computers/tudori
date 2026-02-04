@@ -742,7 +742,7 @@ const Invoices = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b">
-        <div className="px-4 h-16 flex items-center">
+        <div className="px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
               <ArrowLeft className="h-5 w-5" />
@@ -750,23 +750,17 @@ const Invoices = () => {
             <FileText className="h-6 w-6 text-cyan-500" />
             <h1 className="text-2xl font-bold">Invoices</h1>
           </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleCreateClick}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Invoice
+              <Kbd className="ml-2">N</Kbd>
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <Input
-            placeholder="Search invoices..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
-          <Button onClick={handleCreateClick}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Invoice
-            <Kbd className="ml-2">N</Kbd>
-          </Button>
-        </div>
 
         <div className="border rounded-lg">
           <Table>
