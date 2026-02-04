@@ -54,8 +54,20 @@ interface Invoice {
   notes: string | null;
   created_at: string;
   account?: { name: string; account_id: string } | null;
-  purchase_order?: { po_number: string; total_amount: number; ledger_id: string | null } | null;
-  sales_order?: { so_number: string; total_amount: number; ledger_id: string | null } | null;
+  purchase_order?: { 
+    po_number: string; 
+    total_amount: number; 
+    ledger_id: string | null;
+    vendor?: { name: string; vendor_id: string } | null;
+    location?: { name: string; location_id: string } | null;
+  } | null;
+  sales_order?: { 
+    so_number: string; 
+    total_amount: number; 
+    ledger_id: string | null;
+    customer?: { name: string; customer_id: string } | null;
+    location?: { name: string; location_id: string } | null;
+  } | null;
   ledger?: { name: string } | null;
 }
 
@@ -141,8 +153,8 @@ const Invoices = () => {
       .select(`
         *,
         account:accounts(name, account_id),
-        purchase_order:purchase_orders(po_number, total_amount, ledger_id),
-        sales_order:sales_orders(so_number, total_amount, ledger_id),
+        purchase_order:purchase_orders(po_number, total_amount, ledger_id, vendor:vendors(name, vendor_id), location:locations(name, location_id)),
+        sales_order:sales_orders(so_number, total_amount, ledger_id, customer:customers(name, customer_id), location:locations(name, location_id)),
         ledger:ledgers(name)
       `)
       .eq('company_id', companyId)
@@ -264,6 +276,8 @@ const Invoices = () => {
                   filterable={false}
                 />
                 <TableHead>Account</TableHead>
+                <TableHead>Pay To</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Reference</TableHead>
                 <SortableTableHead
                   label="Date"
@@ -295,7 +309,7 @@ const Invoices = () => {
             <TableBody>
               {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No invoices found. Create your first invoice to get started.
                   </TableCell>
                 </TableRow>
@@ -304,6 +318,36 @@ const Invoices = () => {
                   <TableRow key={invoice.id}>
                     <TableCell className="font-mono">{invoice.invoice_number}</TableCell>
                     <TableCell>{invoice.account?.name}</TableCell>
+                    <TableCell>
+                      {invoice.purchase_order?.vendor && (
+                        <div>
+                          <p className="font-medium">{invoice.purchase_order.vendor.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.purchase_order.vendor.vendor_id}</p>
+                        </div>
+                      )}
+                      {invoice.sales_order?.customer && (
+                        <div>
+                          <p className="font-medium">{invoice.sales_order.customer.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.sales_order.customer.customer_id}</p>
+                        </div>
+                      )}
+                      {!invoice.purchase_order?.vendor && !invoice.sales_order?.customer && '-'}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.purchase_order?.location && (
+                        <div>
+                          <p className="font-medium">{invoice.purchase_order.location.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.purchase_order.location.location_id}</p>
+                        </div>
+                      )}
+                      {invoice.sales_order?.location && (
+                        <div>
+                          <p className="font-medium">{invoice.sales_order.location.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.sales_order.location.location_id}</p>
+                        </div>
+                      )}
+                      {!invoice.purchase_order?.location && !invoice.sales_order?.location && '-'}
+                    </TableCell>
                     <TableCell>
                       {invoice.purchase_order?.po_number && (
                         <Badge variant="outline">PO: {invoice.purchase_order.po_number}</Badge>
