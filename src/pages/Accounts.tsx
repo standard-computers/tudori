@@ -57,12 +57,19 @@ interface Account {
   customer_id: string | null;
   vendor_id: string | null;
   location_id: string | null;
+  account_manager_id: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
   vendor?: { name: string } | null;
   location?: { name: string } | null;
+}
+
+interface CompanyUser {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
 }
 
 interface Customer {
@@ -104,6 +111,7 @@ const Accounts = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Import/Export settings
@@ -124,6 +132,7 @@ const Accounts = () => {
     customer_id: '',
     vendor_id: '',
     location_id: '',
+    account_manager_id: '',
     description: '',
     is_active: true,
   });
@@ -166,6 +175,7 @@ const Accounts = () => {
       fetchCustomers();
       fetchVendors();
       fetchLocations();
+      fetchCompanyUsers();
     }
   }, [companyId]);
 
@@ -230,6 +240,15 @@ const Accounts = () => {
     setLocations(data || []);
   };
 
+  const fetchCompanyUsers = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('user_id, first_name, last_name')
+      .eq('company_id', companyId)
+      .order('last_name');
+    setCompanyUsers(data || []);
+  };
+
   const customerOptions: SearchableSelectOption[] = useMemo(() => {
     return customers.map((c) => ({
       value: c.id,
@@ -254,6 +273,15 @@ const Accounts = () => {
     }));
   }, [locations]);
 
+  const userOptions: SearchableSelectOption[] = useMemo(() => {
+    return companyUsers.map((u) => ({
+      value: u.user_id,
+      label: u.first_name && u.last_name 
+        ? `${u.first_name} ${u.last_name}` 
+        : u.first_name || u.last_name || 'Unnamed User',
+    }));
+  }, [companyUsers]);
+
   const filteredAccounts = useMemo(() => {
     if (!searchQuery) return sortedAndFilteredData;
     const query = searchQuery.toLowerCase();
@@ -272,6 +300,7 @@ const Accounts = () => {
       customer_id: '',
       vendor_id: '',
       location_id: '',
+      account_manager_id: '',
       description: '',
       is_active: true,
     });
@@ -288,6 +317,7 @@ const Accounts = () => {
       customer_id: account.customer_id || '',
       vendor_id: account.vendor_id || '',
       location_id: account.location_id || '',
+      account_manager_id: account.account_manager_id || '',
       description: account.description || '',
       is_active: account.is_active,
     });
@@ -315,6 +345,7 @@ const Accounts = () => {
         customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
         vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
         location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
+        account_manager_id: formData.account_manager_id || null,
         description: formData.description || null,
         is_active: formData.is_active,
       });
@@ -349,6 +380,7 @@ const Accounts = () => {
           customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
           vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
           location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
+          account_manager_id: formData.account_manager_id || null,
           description: formData.description || null,
           is_active: formData.is_active,
         })
@@ -607,6 +639,16 @@ const Accounts = () => {
             )}
 
             <div>
+              <Label>Account Manager</Label>
+              <SearchableSelect
+                options={userOptions}
+                value={formData.account_manager_id}
+                onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
+                placeholder="Select account manager..."
+              />
+            </div>
+
+            <div>
               <Label>Description</Label>
               <Textarea
                 value={formData.description}
@@ -701,6 +743,16 @@ const Accounts = () => {
                 />
               </div>
             )}
+
+            <div>
+              <Label>Account Manager</Label>
+              <SearchableSelect
+                options={userOptions}
+                value={formData.account_manager_id}
+                onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
+                placeholder="Select account manager..."
+              />
+            </div>
 
             <div>
               <Label>Description</Label>
