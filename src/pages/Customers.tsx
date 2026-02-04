@@ -59,6 +59,7 @@ interface Customer {
   country: string | null;
   website: string | null;
   notes: string | null;
+  payment_terms: number | null;
 }
 
 const CUSTOMER_TYPES = ['Business', 'Individual', 'Government', 'Non-Profit', 'Educational', 'Reseller'];
@@ -391,6 +392,7 @@ const Customers = () => {
     country: 'United States',
     website: '',
     notes: '',
+    payment_terms: '',
   });
 
   // Set transaction based on dialog state
@@ -481,6 +483,7 @@ const Customers = () => {
       country: 'United States',
       website: '',
       notes: '',
+      payment_terms: '',
     });
     setIsEditing(false);
     setEditingId(null);
@@ -511,6 +514,7 @@ const Customers = () => {
       country: customer.country || 'United States',
       website: customer.website || '',
       notes: customer.notes || '',
+      payment_terms: customer.payment_terms?.toString() || '',
     });
     setIsEditing(true);
     setEditingId(customer.id);
@@ -555,6 +559,7 @@ const Customers = () => {
           country: formData.country || null,
           website: formData.website || null,
           notes: formData.notes || null,
+          payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
         })
         .eq('id', editingId);
 
@@ -583,6 +588,7 @@ const Customers = () => {
           country: formData.country || null,
           website: formData.website || null,
           notes: formData.notes || null,
+          payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
         });
 
       if (error) {
@@ -832,6 +838,19 @@ const Customers = () => {
                           id="country"
                           value={formData.country}
                           onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="payment_terms">Payment Terms (days)</Label>
+                        <Input
+                          id="payment_terms"
+                          type="number"
+                          min="0"
+                          value={formData.payment_terms}
+                          onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+                          placeholder="30"
                         />
                       </div>
                     </div>
