@@ -880,348 +880,351 @@ const Invoices = () => {
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className={isMaximized ? "max-w-[95vw] h-[95vh]" : "max-w-4xl max-h-[90vh]"}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
-              <div>
-                <DialogTitle>Create Invoice</DialogTitle>
-                <DialogDescription>Create a new invoice linked to a PO or SO.</DialogDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsMaximized(!isMaximized)}
-              >
-                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-            </div>
+            <DialogTitle>Create Invoice</DialogTitle>
+            <DialogDescription>
+              Create a new invoice linked to a PO or SO
+            </DialogDescription>
           </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto pb-6">
+            {/* Header Fields */}
+            <div className="grid grid-cols-3 gap-4 pb-4 border-b px-6">
+              <div className="space-y-2">
+                <Label>Account *</Label>
+                <SearchableSelect
+                  options={accountOptions}
+                  value={formData.account_id}
+                  onValueChange={(value) => setFormData({ ...formData, account_id: value })}
+                  placeholder="Select account"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Reference Type *</Label>
+                <Select
+                  value={formData.reference_type}
+                  onValueChange={(value: 'purchase_order' | 'sales_order') =>
+                    setFormData({
+                      ...formData,
+                      reference_type: value,
+                      purchase_order_id: '',
+                      sales_order_id: '',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="purchase_order">Purchase Order</SelectItem>
+                    <SelectItem value="sales_order">Sales Order</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="mx-6">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="reference">Reference</TabsTrigger>
-              <TabsTrigger value="items">Line Items</TabsTrigger>
-              <TabsTrigger value="tax">Tax</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="details" className="flex-1 overflow-auto px-6 pb-4">
-              <div className="grid grid-cols-2 gap-4 pt-4">
-                <div>
-                  <Label>Account *</Label>
+              {formData.reference_type === 'purchase_order' ? (
+                <div className="space-y-2">
+                  <Label>Purchase Order *</Label>
                   <SearchableSelect
-                    options={accountOptions}
-                    value={formData.account_id}
-                    onValueChange={(value) => setFormData({ ...formData, account_id: value })}
-                    placeholder="Select account..."
+                    options={poOptions}
+                    value={formData.purchase_order_id}
+                    onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
+                    placeholder="Select PO"
                   />
                 </div>
-
-                <div>
-                  <Label>Reference Type *</Label>
-                  <Select
-                    value={formData.reference_type}
-                    onValueChange={(value: 'purchase_order' | 'sales_order') =>
-                      setFormData({
-                        ...formData,
-                        reference_type: value,
-                        purchase_order_id: '',
-                        sales_order_id: '',
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover">
-                      <SelectItem value="purchase_order">Purchase Order (PO)</SelectItem>
-                      <SelectItem value="sales_order">Sales Order (SO)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.reference_type === 'purchase_order' && (
-                  <div>
-                    <Label>Purchase Order *</Label>
-                    <SearchableSelect
-                      options={poOptions}
-                      value={formData.purchase_order_id}
-                      onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
-                      placeholder="Select PO..."
-                    />
-                  </div>
-                )}
-
-                {formData.reference_type === 'sales_order' && (
-                  <div>
-                    <Label>Sales Order *</Label>
-                    <SearchableSelect
-                      options={soOptions}
-                      value={formData.sales_order_id}
-                      onValueChange={(value) => setFormData({ ...formData, sales_order_id: value })}
-                      placeholder="Select SO..."
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <Label>Invoice Date *</Label>
-                  <Input
-                    type="date"
-                    value={formData.invoice_date}
-                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+              ) : (
+                <div className="space-y-2">
+                  <Label>Sales Order *</Label>
+                  <SearchableSelect
+                    options={soOptions}
+                    value={formData.sales_order_id}
+                    onValueChange={(value) => setFormData({ ...formData, sales_order_id: value })}
+                    placeholder="Select SO"
                   />
                 </div>
+              )}
+            </div>
 
-                <div>
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <Label>Notes</Label>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Optional notes"
-                    rows={3}
-                  />
-                </div>
+            {/* Second Row Header Fields */}
+            <div className="grid grid-cols-3 gap-4 py-4 border-b px-6">
+              <div className="space-y-2">
+                <Label>Invoice Date *</Label>
+                <Input
+                  type="date"
+                  value={formData.invoice_date}
+                  onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                />
               </div>
-            </TabsContent>
-
-            <TabsContent value="reference" className="flex-1 overflow-auto px-6 pb-4">
-              <div className="pt-4">
-                {!formData.purchase_order_id && !formData.sales_order_id ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    Select a Purchase Order or Sales Order in the Details tab to see reference items.
-                  </div>
-                ) : loadingReferenceItems ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : referenceItems.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    No line items found in the selected order.
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      These are the line items from the selected {formData.reference_type === 'purchase_order' ? 'Purchase Order' : 'Sales Order'}. 
-                      They have been automatically added to the invoice. You can modify them in the Line Items tab.
-                    </p>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Unit Price</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {referenceItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{item.product?.name}</p>
-                                <p className="text-sm text-muted-foreground">{item.product?.product_id}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right font-mono">${(item.unit_price || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-mono">${(item.total_price || 0).toFixed(2)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                />
               </div>
-            </TabsContent>
+            </div>
 
-            <TabsContent value="items" className="flex-1 overflow-auto px-6 pb-4">
-              <div className="pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    Add or modify line items for this invoice. Use checkboxes to include/exclude items.
-                  </p>
-                  <Button variant="outline" size="sm" onClick={addInvoiceItem}>
-                    <Plus className="h-4 w-4 mr-2" />
+            {/* Tabs */}
+            <Tabs defaultValue="items" className="w-full px-6">
+              <TabsList className="grid w-full grid-cols-4 mt-4">
+                <TabsTrigger value="items">Items</TabsTrigger>
+                <TabsTrigger value="rates">Rates</TabsTrigger>
+                <TabsTrigger value="reference">Reference</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="items" className="space-y-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <Label>Invoice Items</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addInvoiceItem}>
+                    <Plus className="w-4 h-4 mr-1" />
                     Add Item
                   </Button>
                 </div>
                 
                 {invoiceItems.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8 border rounded-lg">
-                    No line items. Select a PO/SO to auto-populate or add items manually.
-                  </div>
+                  <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                    No items added yet. Select a PO/SO to auto-populate or click "Add Item".
+                  </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px]">Include</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="w-[100px]">Quantity</TableHead>
-                        <TableHead className="w-[120px]">Unit Price</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoiceItems.map((item, index) => {
-                        const product = products.find(p => p.id === item.product_id);
-                        return (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px]"></TableHead>
+                          <TableHead className="w-[40%]">Product</TableHead>
+                          <TableHead className="w-[15%] text-right">Qty</TableHead>
+                          <TableHead className="w-[18%] text-right">Unit Price</TableHead>
+                          <TableHead className="w-[15%] text-right">Total</TableHead>
+                          <TableHead className="w-[5%]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoiceItems.map((item, index) => (
                           <TableRow key={index} className={!item.selected ? 'opacity-50' : ''}>
-                            <TableCell>
+                            <TableCell className="p-2">
                               <Checkbox
                                 checked={item.selected}
                                 onCheckedChange={(checked) => updateInvoiceItem(index, 'selected', checked)}
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-2">
                               <SearchableSelect
                                 options={productOptions}
                                 value={item.product_id}
                                 onValueChange={(value) => updateInvoiceItem(index, 'product_id', value)}
-                                placeholder="Select product..."
+                                placeholder="Select product"
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-2">
                               <Input
                                 type="number"
                                 min="0"
                                 step="0.01"
                                 value={item.quantity}
                                 onChange={(e) => updateInvoiceItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                                className="w-full"
+                                className="text-right"
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-2">
                               <Input
                                 type="number"
-                                min="0"
                                 step="0.01"
                                 value={item.unit_price}
                                 onChange={(e) => updateInvoiceItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                                className="w-full"
+                                className="text-right"
                               />
                             </TableCell>
-                            <TableCell className="text-right font-mono">
+                            <TableCell className="p-2 text-right font-mono">
                               ${(item.quantity * item.unit_price).toFixed(2)}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-2">
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => removeInvoiceItem(index)}
                               >
-                                <X className="h-4 w-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
-              </div>
-            </TabsContent>
 
-            <TabsContent value="tax" className="flex-1 overflow-auto px-6 pb-4">
-              <div className="pt-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Select tax rates to apply to this invoice. Rates are automatically imported from the reference order.
-                </p>
+                {/* Totals */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-end gap-8 text-sm">
+                    <span className="text-muted-foreground">Subtotal:</span>
+                    <span className="font-mono">${subtotal.toFixed(2)}</span>
+                  </div>
+                  {/* Percentage-based taxes */}
+                  {taxCalculations.filter(c => c.rate_type === 'percent').map((calc) => (
+                    <div key={calc.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                      <span className="text-muted-foreground">
+                        {calc.name} ({calc.rate}%):
+                      </span>
+                      <span className="font-mono">
+                        ${calc.amount.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                  {taxCalculations.filter(c => c.rate_type === 'percent').length === 0 && (
+                    <div className="flex justify-end gap-8 text-sm">
+                      <span className="text-muted-foreground">Tax:</span>
+                      <span className="font-mono">$0.00</span>
+                    </div>
+                  )}
+                  {/* Flat fees - shown after taxes */}
+                  {taxCalculations.filter(c => c.rate_type === 'flat').map((calc) => (
+                    <div key={calc.tax_rate_id} className="flex justify-end gap-8 text-sm">
+                      <span className="text-muted-foreground">
+                        {calc.name} (Fee):
+                      </span>
+                      <span className="font-mono">
+                        ${calc.amount.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-end gap-8 text-base font-semibold">
+                    <span>Total:</span>
+                    <span className="font-mono">${grandTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="rates" className="space-y-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <Label>Tax Rates</Label>
+                  {taxRates.filter(r => !selectedTaxRates.find(sr => sr.tax_rate_id === r.id)).length > 0 && (
+                    <Select onValueChange={(id) => {
+                      const rate = taxRates.find(r => r.id === id);
+                      if (rate) toggleTaxRate(rate);
+                    }}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Add tax rate" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {taxRates.filter(r => !selectedTaxRates.find(sr => sr.tax_rate_id === r.id)).map((rate) => (
+                          <SelectItem key={rate.id} value={rate.id}>
+                            {rate.name} ({rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                {selectedTaxRates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                    No tax rates applied
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTaxRates.map((sr) => (
+                      <Badge key={sr.tax_rate_id} variant="secondary" className="flex items-center gap-1 py-1">
+                        {sr.name} ({sr.rate_type === 'flat' ? `$${sr.rate.toFixed(2)}` : `${sr.rate}%`})
+                        <button
+                          type="button"
+                          onClick={() => toggleTaxRate({ id: sr.tax_rate_id, name: sr.name, rate: sr.rate, rate_type: sr.rate_type, is_default: false })}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {selectedTaxRates.some(r => r.rate_type === 'percent') && (
+                  <div className="text-sm text-muted-foreground">
+                    Combined percentage rate: {selectedTaxRates.filter(r => r.rate_type === 'percent').reduce((sum, r) => sum + r.rate, 0).toFixed(2)}%
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="reference" className="space-y-4 mt-4">
+                {!formData.purchase_order_id && !formData.sales_order_id ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                    Select a Purchase Order or Sales Order above to see reference items
+                  </p>
+                ) : loadingReferenceItems ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : referenceItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                    No line items found in the selected order
+                  </p>
+                ) : (
                   <div>
-                    <Label className="mb-2 block">Available Tax Rates</Label>
-                    <div className="border rounded-lg p-4 space-y-2 max-h-[200px] overflow-auto">
-                      {taxRates.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No tax rates configured.</p>
-                      ) : (
-                        taxRates.map((rate) => {
-                          const isSelected = selectedTaxRates.some(r => r.tax_rate_id === rate.id);
-                          return (
-                            <div key={rate.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`tax-${rate.id}`}
-                                checked={isSelected}
-                                onCheckedChange={() => toggleTaxRate(rate)}
-                              />
-                              <label htmlFor={`tax-${rate.id}`} className="text-sm cursor-pointer flex-1">
-                                {rate.name} - {rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`}
-                              </label>
-                            </div>
-                          );
-                        })
-                      )}
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Reference items from the selected {formData.reference_type === 'purchase_order' ? 'Purchase Order' : 'Sales Order'}. 
+                      These have been automatically added to the Items tab.
+                    </p>
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product</TableHead>
+                            <TableHead className="text-right">Quantity</TableHead>
+                            <TableHead className="text-right">Unit Price</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {referenceItems.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div>
+                                  <span className="font-medium">{item.product?.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">{item.product?.product_id}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right font-mono">{item.quantity}</TableCell>
+                              <TableCell className="text-right font-mono">${(item.unit_price || 0).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono">${(item.total_price || 0).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
+                )}
+              </TabsContent>
 
-                  <div>
-                    <Label className="mb-2 block">Applied Tax Rates</Label>
-                    <div className="border rounded-lg p-4 space-y-2">
-                      {selectedTaxRates.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No tax rates applied.</p>
-                      ) : (
-                        selectedTaxRates.map((rate) => {
-                          const calc = taxCalculations.find(c => c.tax_rate_id === rate.tax_rate_id);
-                          return (
-                            <div key={rate.tax_rate_id} className="flex items-center justify-between text-sm">
-                              <span>{rate.name} ({rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})</span>
-                              <span className="font-mono">${(calc?.amount || 0).toFixed(2)}</span>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
+              <TabsContent value="notes" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Invoice Notes</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Add any notes or special instructions for this invoice..."
+                    rows={6}
+                  />
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Summary */}
-          <div className="border-t px-6 py-4 bg-muted/50">
-            <div className="flex justify-end">
-              <div className="w-64 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span className="font-mono">${subtotal.toFixed(2)}</span>
-                </div>
-                {taxCalculations.filter(c => c.rate_type === 'percent').map((calc) => (
-                  <div key={calc.tax_rate_id} className="flex justify-between text-sm text-muted-foreground">
-                    <span>{calc.name} ({calc.rate}%):</span>
-                    <span className="font-mono">${calc.amount.toFixed(2)}</span>
-                  </div>
-                ))}
-                {taxCalculations.filter(c => c.rate_type === 'flat').map((calc) => (
-                  <div key={calc.tax_rate_id} className="flex justify-between text-sm text-muted-foreground">
-                    <span>{calc.name}:</span>
-                    <span className="font-mono">${calc.amount.toFixed(2)}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between font-bold border-t pt-2">
-                  <span>Total:</span>
-                  <span className="font-mono">${grandTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
-            </Button>
+          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Create Invoice
+              <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
