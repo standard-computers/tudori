@@ -65,8 +65,16 @@ interface Invoice {
   status: string;
   notes: string | null;
   created_at: string;
-  purchase_order?: { po_number: string } | null;
-  sales_order?: { so_number: string } | null;
+  purchase_order?: { 
+    po_number: string;
+    vendor?: { name: string; vendor_id: string } | null;
+    location?: { name: string; location_id: string } | null;
+  } | null;
+  sales_order?: { 
+    so_number: string;
+    customer?: { name: string; customer_id: string } | null;
+    location?: { name: string; location_id: string } | null;
+  } | null;
   ledger?: { name: string } | null;
 }
 
@@ -176,8 +184,8 @@ const AccountDetail = () => {
         .from('invoices' as any)
         .select(`
           *,
-          purchase_order:purchase_orders(po_number),
-          sales_order:sales_orders(so_number),
+          purchase_order:purchase_orders(po_number, vendor:vendors(name, vendor_id), location:locations(name, location_id)),
+          sales_order:sales_orders(so_number, customer:customers(name, customer_id), location:locations(name, location_id)),
           ledger:ledgers(name)
         `)
         .eq('account_id', id)
@@ -477,6 +485,8 @@ const AccountDetail = () => {
                   filterable={false}
                 />
                 <TableHead>Reference</TableHead>
+                <TableHead>Pay To</TableHead>
+                <TableHead>Location</TableHead>
                 <SortableTableHead
                   label="Amount"
                   sortKey="amount"
@@ -508,7 +518,7 @@ const AccountDetail = () => {
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     No invoices found for this account.
                   </TableCell>
                 </TableRow>
@@ -526,6 +536,36 @@ const AccountDetail = () => {
                       {invoice.sales_order && (
                         <Badge variant="outline">SO: {invoice.sales_order.so_number}</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.purchase_order?.vendor && (
+                        <div>
+                          <p className="font-medium">{invoice.purchase_order.vendor.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.purchase_order.vendor.vendor_id}</p>
+                        </div>
+                      )}
+                      {invoice.sales_order?.customer && (
+                        <div>
+                          <p className="font-medium">{invoice.sales_order.customer.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.sales_order.customer.customer_id}</p>
+                        </div>
+                      )}
+                      {!invoice.purchase_order?.vendor && !invoice.sales_order?.customer && '-'}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.purchase_order?.location && (
+                        <div>
+                          <p className="font-medium">{invoice.purchase_order.location.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.purchase_order.location.location_id}</p>
+                        </div>
+                      )}
+                      {invoice.sales_order?.location && (
+                        <div>
+                          <p className="font-medium">{invoice.sales_order.location.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.sales_order.location.location_id}</p>
+                        </div>
+                      )}
+                      {!invoice.purchase_order?.location && !invoice.sales_order?.location && '-'}
                     </TableCell>
                     <TableCell className="font-medium">${invoice.amount.toFixed(2)}</TableCell>
                     <TableCell>{invoice.ledger?.name || '-'}</TableCell>
