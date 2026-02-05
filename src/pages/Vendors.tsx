@@ -912,13 +912,13 @@ const Vendors = () => {
                             id="vendor_id"
                             value={formData.vendor_id}
                             onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
-                            disabled={true}
-                            className="bg-muted"
+                           disabled={isEditing}
+                           className={isEditing ? "bg-muted" : ""}
                             required
                           />
                           {!isEditing && (
                             <p className="text-sm text-muted-foreground">
-                              Auto-generated from Configuration
+                             Suggested ID from Configuration
                             </p>
                           )}
                         </div>
