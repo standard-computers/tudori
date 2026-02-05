@@ -1589,6 +1589,99 @@ export type Database = {
           },
         ]
       }
+      help_documents: {
+        Row: {
+          company_id: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          folder_id: string | null
+          id: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          folder_id?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          folder_id?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "help_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_folders: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_folders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "help_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           bin_id: string | null

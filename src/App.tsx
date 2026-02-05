@@ -52,6 +52,7 @@ import Messages from "./pages/Messages";
 import Analytics from "./pages/Analytics";
 import DataExplorer from "./pages/DataExplorer";
 import Transportation from "./pages/Transportation";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
                   <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                   <Route path="/data-explorer" element={<ProtectedRoute><DataExplorer /></ProtectedRoute>} />
                   <Route path="/transportation" element={<ProtectedRoute><Transportation /></ProtectedRoute>} />
+                  <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
