@@ -1098,12 +1098,8 @@ const Vendors = () => {
                     </div>
                   </div>
                   <DialogFooter className="shrink-0">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
                     <Button 
                       type="submit" 
-                      disabled={!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id)}
                     >
                       {isEditing ? 'Update' : 'Create'}
                       <Kbd className="ml-2">⌘S</Kbd>
