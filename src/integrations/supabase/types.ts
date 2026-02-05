@@ -26,6 +26,7 @@ export type Database = {
           is_active: boolean
           location_id: string | null
           name: string
+          parent_account_id: string | null
           type: string
           updated_at: string
           vendor_id: string | null
@@ -41,6 +42,7 @@ export type Database = {
           is_active?: boolean
           location_id?: string | null
           name: string
+          parent_account_id?: string | null
           type?: string
           updated_at?: string
           vendor_id?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           is_active?: boolean
           location_id?: string | null
           name?: string
+          parent_account_id?: string | null
           type?: string
           updated_at?: string
           vendor_id?: string | null
@@ -87,6 +90,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
           {
