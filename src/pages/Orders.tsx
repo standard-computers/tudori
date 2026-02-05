@@ -50,6 +50,7 @@ import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown, Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Package } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
@@ -348,6 +349,12 @@ const Orders = () => {
   const [productUoms, setProductUoms] = useState<ProductUom[]>([]);
   const [selectedTaxRates, setSelectedTaxRates] = useState<SelectedTaxRate[]>([]);
   const [viewTaxRates, setViewTaxRates] = useState<{ tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[]>([]);
+   
+   // BOM import state
+   const [isBomImportOpen, setIsBomImportOpen] = useState(false);
+   const [bomImportId, setBomImportId] = useState('');
+   const [bomImportQty, setBomImportQty] = useState('1');
+   const [isBomImporting, setIsBomImporting] = useState(false);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
   
@@ -1010,6 +1017,73 @@ const Orders = () => {
   const addOrderItem = () => {
     setOrderItems([...orderItems, { product_id: '', quantity: 1, unit_price: 0, pu_id: null }]);
   };
+
+   // Import components from a Bill of Materials
+   const handleBomImport = async () => {
+     if (!bomImportId.trim()) return;
+     
+     setIsBomImporting(true);
+     try {
+       // Find the BOM by its bom_id
+       const { data: bom, error: bomError } = await supabase
+         .from('bill_of_materials')
+         .select('id, bom_id, name')
+         .eq('bom_id', bomImportId.trim())
+         .eq('company_id', companyId)
+         .single();
+       
+       if (bomError || !bom) {
+         toast.error(`BOM "${bomImportId}" not found`);
+         setIsBomImporting(false);
+         return;
+       }
+       
+       // Fetch the BOM items (components)
+       const { data: bomItems, error: itemsError } = await supabase
+         .from('bom_items')
+         .select(`
+           id,
+           product_id,
+           quantity,
+           product:products(id, name, product_id, price)
+         `)
+         .eq('bom_id', bom.id);
+       
+       if (itemsError || !bomItems || bomItems.length === 0) {
+         toast.error(`No components found in BOM "${bomImportId}"`);
+         setIsBomImporting(false);
+         return;
+       }
+       
+       const multiplier = parseInt(bomImportQty) || 1;
+       
+       // Create order items from BOM components
+       const newItems = bomItems.map(item => {
+         const product = item.product as any;
+         return {
+           product_id: item.product_id,
+           quantity: item.quantity * multiplier,
+           unit_price: product?.price || 0,
+           pu_id: null,
+         };
+       });
+       
+       // Add to existing order items
+       setOrderItems([...orderItems, ...newItems]);
+       
+       toast.success(`Imported ${newItems.length} component(s) from ${bom.bom_id} (x${multiplier})`);
+       
+       // Reset and close
+       setBomImportId('');
+       setBomImportQty('1');
+       setIsBomImportOpen(false);
+     } catch (error) {
+       console.error('BOM import error:', error);
+       toast.error('Failed to import BOM components');
+     } finally {
+       setIsBomImporting(false);
+     }
+   };
 
   // Helper to get conversion factor for a UOM selection
   const getUomConversionFactor = (uomValue: string | null): number => {
@@ -1954,10 +2028,70 @@ const Orders = () => {
             <TabsContent value="items" className="space-y-4 mt-4">
               <div className="flex items-center justify-between">
                 <Label>Order Items</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addOrderItem}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Item
-                </Button>
+                 <div className="flex items-center gap-2">
+                   <Popover open={isBomImportOpen} onOpenChange={setIsBomImportOpen}>
+                     <PopoverTrigger asChild>
+                       <Button 
+                         type="button" 
+                         variant="outline" 
+                         size="icon"
+                         title="Import from BOM"
+                       >
+                         <BookOpen className="w-4 h-4" />
+                       </Button>
+                     </PopoverTrigger>
+                     <PopoverContent className="w-72" align="end">
+                       <div className="space-y-4">
+                         <div className="space-y-2">
+                           <h4 className="font-medium text-sm">Import from Bill of Materials</h4>
+                           <p className="text-xs text-muted-foreground">
+                             Enter a BOM ID to import its components as line items.
+                           </p>
+                         </div>
+                         <div className="space-y-2">
+                           <Label htmlFor="bom_id">BOM ID</Label>
+                           <Input
+                             id="bom_id"
+                             value={bomImportId}
+                             onChange={(e) => setBomImportId(e.target.value)}
+                             placeholder="e.g. BOM-001"
+                           />
+                         </div>
+                         <div className="space-y-2">
+                           <Label htmlFor="bom_qty">Quantity</Label>
+                           <Input
+                             id="bom_qty"
+                             type="number"
+                             min="1"
+                             value={bomImportQty}
+                             onChange={(e) => setBomImportQty(e.target.value)}
+                             placeholder="1"
+                           />
+                         </div>
+                         <Button 
+                           type="button" 
+                           className="w-full" 
+                           size="sm"
+                           onClick={handleBomImport}
+                           disabled={isBomImporting || !bomImportId.trim()}
+                         >
+                           {isBomImporting ? (
+                             <>
+                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                               Importing...
+                             </>
+                           ) : (
+                             'Import Components'
+                           )}
+                         </Button>
+                       </div>
+                     </PopoverContent>
+                   </Popover>
+                   <Button type="button" variant="outline" size="sm" onClick={addOrderItem}>
+                     <Plus className="w-4 h-4 mr-1" />
+                     Add Item
+                   </Button>
+                 </div>
               </div>
               
               {orderItems.length === 0 ? (
