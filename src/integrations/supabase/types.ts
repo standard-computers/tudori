@@ -4075,6 +4075,22 @@ export type Database = {
       }
     }
     Functions: {
+      create_company_and_profile: {
+        Args: {
+          p_address_line1: string
+          p_address_line2: string
+          p_city: string
+          p_company_name: string
+          p_country: string
+          p_first_name: string
+          p_industry: string
+          p_last_name: string
+          p_postal_code: string
+          p_size: string
+          p_state: string
+        }
+        Returns: Json
+      }
       generate_assignment_id: {
         Args: { p_company_id: string }
         Returns: string
