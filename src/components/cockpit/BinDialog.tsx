@@ -359,7 +359,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
           >
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
-          <form onSubmit={handleSubmit} className="flex flex-col h-full">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
             <DialogHeader>
               <DialogTitle>{editingBin ? 'Edit Bin' : 'Add Bin'}</DialogTitle>
               <DialogDescription>
@@ -377,7 +377,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
               </div>
             )}
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col mt-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 overflow-hidden flex flex-col mt-4">
               <TabsList className="mx-6 grid grid-cols-4">
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
@@ -385,7 +385,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
                 <TabsTrigger value="products">Products</TabsTrigger>
               </TabsList>
 
-              <div className="flex-1 overflow-auto px-6 py-4">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
                 <TabsContent value="general" className="space-y-4 mt-0">
                   <div className="space-y-2">
                     <Label htmlFor="bin_area">Area *</Label>
