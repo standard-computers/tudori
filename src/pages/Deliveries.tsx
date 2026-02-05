@@ -1293,8 +1293,8 @@ const Deliveries = () => {
               </TabsContent>
             </Tabs>
           )}
-          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
+          {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
+            <DialogFooter className="shrink-0">
               <Button onClick={() => {
                 setIsViewOpen(false);
                 if (viewDelivery) handleEdit(viewDelivery);
@@ -1302,8 +1302,8 @@ const Deliveries = () => {
                 <Pencil className="w-4 h-4 mr-2" />
                 Edit
               </Button>
-            )}
-          </DialogFooter>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1369,8 +1369,6 @@ const Deliveries = () => {
               )}
             </div>
           )}
-          <DialogFooter>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1410,8 +1408,6 @@ const Deliveries = () => {
               )}
             </div>
           )}
-          <DialogFooter>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1466,8 +1462,6 @@ const Deliveries = () => {
               )}
             </div>
           )}
-          <DialogFooter>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
