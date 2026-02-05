@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+ import { designSystems, applyDesignSystem } from '@/config/design-systems';
 import {
   DndContext,
   closestCenter,
@@ -116,6 +118,7 @@ const UserSettings = () => {
   const [openInNewTab, setOpenInNewTab] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null, company_id: null });
   const [savingProfile, setSavingProfile] = useState(false);
+   const [designSystem, setDesignSystem] = useState('default');
 
   // Get transaction access for the user's company
   const { hasAccess, loading: accessLoading } = useTransactionAccess(profile.company_id || undefined);
@@ -182,7 +185,7 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-      .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme')
+       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system')
       .eq('user_id', user!.id)
       .maybeSingle();
 
@@ -193,6 +196,12 @@ const UserSettings = () => {
     if (data?.theme) {
       setTheme(data.theme);
     }
+     
+     // Apply saved design system
+     if (data?.design_system) {
+       setDesignSystem(data.design_system);
+       applyDesignSystem(data.design_system, (data.theme || 'light') as 'light' | 'dark');
+     }
     
     // Filter apps based on transaction access
     const accessibleApps = defaultApps.filter(app => {
@@ -267,6 +276,7 @@ const UserSettings = () => {
   const handleThemeChange = async (checked: boolean) => {
     const newTheme = checked ? 'dark' : 'light';
     setTheme(newTheme);
+     applyDesignSystem(designSystem, newTheme);
     
     if (!user) return;
     
@@ -289,6 +299,32 @@ const UserSettings = () => {
     
     toast.success('Theme preference saved');
   };
+ 
+   const handleDesignSystemChange = async (newDesignSystem: string) => {
+     setDesignSystem(newDesignSystem);
+     applyDesignSystem(newDesignSystem, (theme || 'light') as 'light' | 'dark');
+     
+     if (!user) return;
+     
+     const { data: existing } = await supabase
+       .from('user_preferences')
+       .select('id')
+       .eq('user_id', user.id)
+       .maybeSingle();
+ 
+     if (existing) {
+       await supabase
+         .from('user_preferences')
+         .update({ design_system: newDesignSystem })
+         .eq('user_id', user.id);
+     } else {
+       await supabase
+         .from('user_preferences')
+         .insert({ user_id: user.id, design_system: newDesignSystem });
+     }
+     
+     toast.success('Design system saved');
+   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -455,6 +491,58 @@ const UserSettings = () => {
                 </div>
               </CardContent>
             </Card>
+             
+             <Card>
+               <CardHeader>
+                 <CardTitle>Design System</CardTitle>
+                 <CardDescription>
+                   Choose a color palette for the interface
+                 </CardDescription>
+               </CardHeader>
+               <CardContent className="space-y-4">
+                 <Select value={designSystem} onValueChange={handleDesignSystemChange}>
+                   <SelectTrigger className="w-full">
+                     <SelectValue placeholder="Select a design system" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     {designSystems.map((ds) => (
+                       <SelectItem key={ds.id} value={ds.id}>
+                         <div className="flex items-center gap-3">
+                           <div 
+                             className="w-4 h-4 rounded-full border border-border" 
+                             style={{ backgroundColor: ds.preview }}
+                           />
+                           <div>
+                             <span className="font-medium">{ds.name}</span>
+                             <span className="text-muted-foreground ml-2 text-xs">{ds.description}</span>
+                           </div>
+                         </div>
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+                 
+                 <div className="grid grid-cols-5 gap-3 pt-2">
+                   {designSystems.map((ds) => (
+                     <button
+                       key={ds.id}
+                       onClick={() => handleDesignSystemChange(ds.id)}
+                       className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
+                         designSystem === ds.id 
+                           ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                           : 'border-border hover:border-muted-foreground/30'
+                       }`}
+                     >
+                       <div 
+                         className="w-8 h-8 rounded-full border-2 border-background shadow-md" 
+                         style={{ backgroundColor: ds.preview }}
+                       />
+                       <span className="text-xs font-medium text-center">{ds.name}</span>
+                     </button>
+                   ))}
+                 </div>
+               </CardContent>
+             </Card>
           </TabsContent>
 
           <TabsContent value="apps">
