@@ -67,6 +67,8 @@ interface Location {
   is_pos_enabled?: boolean;
   is_production_enabled?: boolean;
   payment_terms?: number | null;
+  status: string;
+  user_count?: number;
 }
 
 interface CompanyUser {
@@ -105,12 +107,10 @@ const LocationTable = ({
   locations,
   onView,
   onEdit,
-  onDelete,
 }: {
   locations: Location[];
   onView: (location: Location) => void;
   onEdit: (location: Location) => void;
-  onDelete: (id: string) => void;
 }) => {
   const {
     sortConfig,
@@ -204,6 +204,51 @@ const LocationTable = ({
                 onFilter={(value) => setFilter('state', value)}
               />
               <SortableTableHead
+                label="Postal Code"
+                sortKey="postal_code"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['postal_code']}
+                onFilter={(value) => setFilter('postal_code', value)}
+              />
+              <SortableTableHead
+                label="Country"
+                sortKey="country"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['country']}
+                onFilter={(value) => setFilter('country', value)}
+              />
+              <SortableTableHead
+                label="Users"
+                sortKey="user_count"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+                className="w-20 text-center"
+              />
+              <SortableTableHead
+                label="Payment Terms"
+                sortKey="payment_terms"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+                className="w-28"
+              />
+              <SortableTableHead
+                label="Status"
+                sortKey="status"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['status']}
+                onFilter={(value) => setFilter('status', value)}
+              />
+              <SortableTableHead
                 label="Internal Vendor"
                 sortKey="is_internal_vendor"
                 currentSortKey={sortConfig.key}
@@ -244,7 +289,7 @@ const LocationTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                   No locations match your filters
                 </TableCell>
               </TableRow>
@@ -264,6 +309,15 @@ const LocationTable = ({
                   <TableCell>{location.address_line1}</TableCell>
                   <TableCell>{location.city}</TableCell>
                   <TableCell>{location.state}</TableCell>
+                  <TableCell>{location.postal_code}</TableCell>
+                  <TableCell>{location.country}</TableCell>
+                  <TableCell className="text-center">{location.user_count || 0}</TableCell>
+                  <TableCell>{location.payment_terms ? `${location.payment_terms} days` : '-'}</TableCell>
+                  <TableCell>
+                    <Badge variant={location.status === 'Active' ? 'default' : 'secondary'}>
+                      {location.status}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-center">
                     {location.is_internal_vendor && <Badge variant="secondary">✓</Badge>}
                   </TableCell>
@@ -292,14 +346,6 @@ const LocationTable = ({
                           <DropdownMenuItem onClick={() => onEdit(location)}>
                             <Pencil className="w-4 h-4 mr-2" />
                             Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => onDelete(location.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -368,6 +414,7 @@ const Locations = () => {
     is_pos_enabled: false,
     is_production_enabled: false,
     payment_terms: '',
+    status: 'Active',
   });
 
   useEffect(() => {
@@ -414,7 +461,26 @@ const Locations = () => {
       return;
     }
 
-    setLocations(data || []);
+    // Fetch user counts for each location
+    const locationsData = data || [];
+    if (locationsData.length > 0) {
+      const locationIds = locationsData.map(l => l.id);
+      const { data: userCounts } = await supabase
+        .from('location_users')
+        .select('location_id')
+        .in('location_id', locationIds);
+      
+      const countMap = new Map<string, number>();
+      (userCounts || []).forEach(lu => {
+        countMap.set(lu.location_id, (countMap.get(lu.location_id) || 0) + 1);
+      });
+      
+      locationsData.forEach(location => {
+        (location as any).user_count = countMap.get(location.id) || 0;
+      });
+    }
+    
+    setLocations(locationsData as Location[]);
   };
 
   const fetchNextLocationId = async () => {
@@ -468,6 +534,7 @@ const Locations = () => {
       is_pos_enabled: false,
       is_production_enabled: false,
       payment_terms: '',
+      status: 'Active',
     });
     setIsEditing(false);
     setIsViewMode(false);
@@ -501,6 +568,7 @@ const Locations = () => {
       is_pos_enabled: location.is_pos_enabled ?? false,
       is_production_enabled: location.is_production_enabled ?? false,
       payment_terms: location.payment_terms?.toString() || '',
+      status: location.status,
     });
     setIsViewMode(true);
     setIsEditing(false);
@@ -525,6 +593,7 @@ const Locations = () => {
       is_pos_enabled: location.is_pos_enabled ?? false,
       is_production_enabled: location.is_production_enabled ?? false,
       payment_terms: location.payment_terms?.toString() || '',
+      status: location.status,
     });
     setIsViewMode(false);
     setIsEditing(true);
@@ -534,11 +603,13 @@ const Locations = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteFromEdit = async () => {
+    if (!editingId) return;
+    
     const { error } = await supabase
       .from('locations')
       .delete()
-      .eq('id', id);
+      .eq('id', editingId);
 
     if (error) {
       toast.error('Failed to delete location');
@@ -546,6 +617,7 @@ const Locations = () => {
     }
 
     toast.success('Location deleted');
+    setIsDialogOpen(false);
     fetchLocations();
     fetchNextLocationId();
   };
@@ -619,6 +691,7 @@ const Locations = () => {
             is_pos_enabled: formData.is_pos_enabled,
             is_production_enabled: formData.is_production_enabled,
             payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
+            status: formData.status,
           })
           .eq('id', editingId);
 
@@ -646,6 +719,7 @@ const Locations = () => {
             is_pos_enabled: formData.is_pos_enabled,
             is_production_enabled: formData.is_production_enabled,
             payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
+            status: formData.status,
           })
           .select()
           .single();
@@ -911,6 +985,22 @@ const Locations = () => {
                             placeholder="30"
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="status">Status</Label>
+                          <Select
+                            value={formData.status}
+                            onValueChange={(value) => setFormData({ ...formData, status: value })}
+                            disabled={isViewMode}
+                          >
+                            <SelectTrigger className={isViewMode ? 'bg-muted' : ''}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Active">Active</SelectItem>
+                              <SelectItem value="Inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </TabsContent>
                     
@@ -1021,6 +1111,17 @@ const Locations = () => {
                   
                   {!isViewMode && (
                     <DialogFooter className="shrink-0">
+                      {isEditing && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={handleDeleteFromEdit}
+                          className="mr-auto"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      )}
                       <Button 
                         type="submit" 
                         disabled={!isEditing && locations.some(l => l.location_id === formData.location_id)}
@@ -1056,7 +1157,6 @@ const Locations = () => {
             locations={locations}
             onView={handleView}
             onEdit={handleEdit}
-            onDelete={handleDelete}
           />
         )}
       </main>
