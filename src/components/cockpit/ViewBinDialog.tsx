@@ -131,7 +131,7 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <TabsList className="mx-6 grid grid-cols-2">
             <TabsTrigger value="details" className="gap-2">
               <Info className="w-4 h-4" />
