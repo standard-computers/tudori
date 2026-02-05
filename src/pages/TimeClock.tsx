@@ -8,6 +8,7 @@ import { ArrowLeft, Clock, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import {
   Table,
   TableBody,
@@ -41,6 +42,9 @@ const TimeClock = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPunching, setIsPunching] = useState(false);
+
+  // F1 to go back to dashboard
+  useKeyboardShortcut('F1', () => navigate('/dashboard'));
 
   useEffect(() => {
     if (!authLoading && !user) {

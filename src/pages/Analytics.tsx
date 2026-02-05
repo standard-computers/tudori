@@ -38,6 +38,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { entities } from "@/components/analytics/entities";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { ReportTab, ReportField, SavedReport, FieldFilter, EntityField } from "@/components/analytics/types";
 import { DraggableField } from "@/components/analytics/DraggableField";
 import { DraggableEntity } from "@/components/analytics/DraggableEntity";
@@ -50,6 +51,9 @@ const Analytics = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+
+  // F1 to go back to dashboard
+  useKeyboardShortcut('F1', () => navigate('/dashboard'));
 
   // Tab state
   const [tabs, setTabs] = useState<ReportTab[]>([]);
