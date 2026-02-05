@@ -41,6 +41,7 @@ import { ArrowLeft, Plus, Users, Pencil, Trash2, AlertCircle, X, Eye, MoreHorizo
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,7 +99,7 @@ const CustomerTable = ({
   customers: Customer[];
   onView: (customer: Customer) => void;
   onEdit: (customer: Customer) => void;
-  onDelete: (id: string) => void;
+  onDelete: (customer: Customer) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
   const {
@@ -352,7 +353,7 @@ const CustomerTable = ({
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => onDelete(customer.id)}
+                              onClick={() => onDelete(customer)}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
@@ -399,6 +400,10 @@ const Customers = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingCustomer, setDeletingCustomer] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteBlockedReason, setDeleteBlockedReason] = useState('');
   const [nextCustomerId, setNextCustomerId] = useState('0001');
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -551,11 +556,66 @@ const Customers = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteRequest = async (customer: Customer) => {
+    // Check for linked accounts
+    const { data: accounts } = await supabase
+      .from('accounts')
+      .select('account_id')
+      .eq('customer_id', customer.id)
+      .limit(1);
+    
+    if (accounts && accounts.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete customer "${customer.name}". It is linked to account ${accounts[0].account_id}.`);
+      setDeletingCustomer({ id: customer.id, name: customer.name });
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked sales orders
+    const { data: salesOrders } = await supabase
+      .from('sales_orders')
+      .select('so_number')
+      .eq('customer_id', customer.id)
+      .limit(1);
+    
+    if (salesOrders && salesOrders.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete customer "${customer.name}". It is linked to sales order ${salesOrders[0].so_number}.`);
+      setDeletingCustomer({ id: customer.id, name: customer.name });
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked goods issues
+    const { data: goodsIssues } = await supabase
+      .from('goods_issues')
+      .select('issue_number')
+      .eq('customer_id', customer.id)
+      .limit(1);
+    
+    if (goodsIssues && goodsIssues.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete customer "${customer.name}". It is linked to goods issue ${goodsIssues[0].issue_number}.`);
+      setDeletingCustomer({ id: customer.id, name: customer.name });
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // No blocking records, show confirm dialog
+    setDeleteBlocked(false);
+    setDeleteBlockedReason('');
+    setDeletingCustomer({ id: customer.id, name: customer.name });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingCustomer) return;
+    
     const { error } = await supabase
       .from('customers')
       .delete()
-      .eq('id', id);
+      .eq('id', deletingCustomer.id);
 
     if (error) {
       toast.error('Failed to delete customer');
@@ -563,6 +623,8 @@ const Customers = () => {
     }
 
     toast.success('Customer deleted');
+    setDeleteDialogOpen(false);
+    setDeletingCustomer(null);
     fetchCustomers();
     fetchNextCustomerId();
   };
@@ -1008,6 +1070,16 @@ const Customers = () => {
               </DialogContent>
             </Dialog>
           </div>
+
+          <ConfirmDeleteDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            title="Delete Customer"
+            description={`Are you sure you want to delete customer "${deletingCustomer?.name}"? This action cannot be undone.`}
+            onConfirm={handleDeleteConfirm}
+            isBlocked={deleteBlocked}
+            blockedReason={deleteBlockedReason}
+          />
         </div>
         </div>
       </header>
@@ -1030,7 +1102,7 @@ const Customers = () => {
             customers={customers}
             onView={handleView}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={handleDeleteRequest}
             isColumnVisible={isColumnVisible}
           />
         )}

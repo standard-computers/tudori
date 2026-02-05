@@ -50,6 +50,7 @@ import { Switch } from '@/components/ui/switch';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { toast } from 'sonner';
 
 interface Location {
@@ -374,6 +375,9 @@ const Locations = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteBlockedReason, setDeleteBlockedReason] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
   // Set transaction based on dialog state
@@ -605,6 +609,88 @@ const Locations = () => {
 
   const handleDeleteFromEdit = async () => {
     if (!editingId) return;
+
+    const location = locations.find(l => l.id === editingId);
+    if (!location) return;
+
+    // Check for linked accounts
+    const { data: accounts } = await supabase
+      .from('accounts')
+      .select('account_id')
+      .eq('location_id', editingId)
+      .limit(1);
+    
+    if (accounts && accounts.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete location "${location.name}". It is linked to account ${accounts[0].account_id}.`);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked inventory
+    const { data: inventory } = await supabase
+      .from('inventory')
+      .select('id')
+      .eq('location_id', editingId)
+      .limit(1);
+    
+    if (inventory && inventory.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete location "${location.name}". It has inventory records. Remove all inventory first.`);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked purchase orders
+    const { data: purchaseOrders } = await supabase
+      .from('purchase_orders')
+      .select('po_number')
+      .eq('location_id', editingId)
+      .limit(1);
+    
+    if (purchaseOrders && purchaseOrders.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete location "${location.name}". It is linked to purchase order ${purchaseOrders[0].po_number}.`);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked sales orders
+    const { data: salesOrders } = await supabase
+      .from('sales_orders')
+      .select('so_number')
+      .eq('location_id', editingId)
+      .limit(1);
+    
+    if (salesOrders && salesOrders.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete location "${location.name}". It is linked to sales order ${salesOrders[0].so_number}.`);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked deliveries
+    const { data: deliveries } = await supabase
+      .from('deliveries')
+      .select('delivery_id')
+      .eq('location_id', editingId)
+      .limit(1);
+    
+    if (deliveries && deliveries.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete location "${location.name}". It is linked to delivery ${deliveries[0].delivery_id}.`);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // No blocking records, show confirm dialog
+    setDeleteBlocked(false);
+    setDeleteBlockedReason('');
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!editingId) return;
     
     const { error } = await supabase
       .from('locations')
@@ -617,6 +703,7 @@ const Locations = () => {
     }
 
     toast.success('Location deleted');
+    setDeleteDialogOpen(false);
     setIsDialogOpen(false);
     fetchLocations();
     fetchNextLocationId();
@@ -1160,6 +1247,16 @@ const Locations = () => {
           />
         )}
       </main>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Location"
+        description={`Are you sure you want to delete location "${formData.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        isBlocked={deleteBlocked}
+        blockedReason={deleteBlockedReason}
+      />
     </div>
   );
 };
