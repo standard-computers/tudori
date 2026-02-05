@@ -32,6 +32,7 @@ interface Bin {
   allow_picking?: boolean;
   allow_auto_picking?: boolean;
   is_production_enabled?: boolean;
+  is_hazardous?: boolean;
 }
 
 interface Area {
@@ -226,7 +227,16 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
                       <div className={`w-2 h-2 rounded-full ${bin.is_production_enabled ? 'bg-green-500' : 'bg-destructive'}`} />
                       <span>Production</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${bin.is_hazardous ? 'bg-amber-500' : 'bg-muted-foreground/30'}`} />
+                      <span>Hazardous Only</span>
+                    </div>
                   </div>
+                  {bin.is_hazardous && (
+                    <div className="mt-4 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-lg p-3 text-sm">
+                      ⚠️ This bin is designated for hazardous materials only.
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

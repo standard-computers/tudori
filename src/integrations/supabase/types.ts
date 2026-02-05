@@ -402,6 +402,7 @@ export type Database = {
           height: number | null
           height_uom: string | null
           id: string
+          is_hazardous: boolean
           is_production_enabled: boolean
           length: number | null
           length_uom: string | null
@@ -425,6 +426,7 @@ export type Database = {
           height?: number | null
           height_uom?: string | null
           id?: string
+          is_hazardous?: boolean
           is_production_enabled?: boolean
           length?: number | null
           length_uom?: string | null
@@ -448,6 +450,7 @@ export type Database = {
           height?: number | null
           height_uom?: string | null
           id?: string
+          is_hazardous?: boolean
           is_production_enabled?: boolean
           length?: number | null
           length_uom?: string | null

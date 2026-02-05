@@ -67,6 +67,7 @@ interface Bin {
   allow_picking?: boolean;
   allow_auto_picking?: boolean;
   is_production_enabled?: boolean;
+  is_hazardous?: boolean;
 }
 
 interface BinProduct {
@@ -136,6 +137,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
       allow_picking: true,
       allow_auto_picking: true,
       is_production_enabled: false,
+      is_hazardous: false,
     });
 
     const [binProducts, setBinProducts] = useState<BinProduct[]>([]);
@@ -167,6 +169,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             allow_picking: editingBin.allow_picking ?? true,
             allow_auto_picking: editingBin.allow_auto_picking ?? true,
             is_production_enabled: editingBin.is_production_enabled ?? false,
+            is_hazardous: editingBin.is_hazardous ?? false,
           });
           fetchBinProducts(editingBin.id);
         } else {
@@ -190,6 +193,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
             allow_picking: true,
             allow_auto_picking: true,
             is_production_enabled: false,
+            is_hazardous: false,
           });
           setBinProducts([]);
         }
@@ -241,6 +245,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
         allow_picking: formData.allow_picking,
         allow_auto_picking: formData.allow_auto_picking,
         is_production_enabled: formData.is_production_enabled,
+        is_hazardous: formData.is_hazardous,
       };
 
       if (editingBin) {
@@ -332,6 +337,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
         allow_picking: data.allow_picking ?? true,
         allow_auto_picking: data.allow_auto_picking ?? true,
         is_production_enabled: data.is_production_enabled ?? false,
+        is_hazardous: data.is_hazardous ?? false,
       }));
     };
 
@@ -745,6 +751,32 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
                             }}
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="font-medium text-sm">Hazardous Materials</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="is_hazardous">Hazardous Only</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Only products marked as hazardous may be placed in this bin
+                            </p>
+                          </div>
+                          <Switch
+                            id="is_hazardous"
+                            checked={formData.is_hazardous}
+                            onCheckedChange={(checked) => 
+                              setFormData({ ...formData, is_hazardous: checked })
+                            }
+                          />
+                        </div>
+                        {formData.is_hazardous && (
+                          <div className="bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-lg p-3 text-sm">
+                            ⚠️ This bin is designated for hazardous materials only. Non-hazardous products cannot be stored here.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
