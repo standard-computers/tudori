@@ -204,8 +204,7 @@ const Accounts = () => {
         *,
         customer:customers(name),
         vendor:vendors(name),
-        location:locations(name),
-        parent_account:accounts!accounts_parent_account_id_fkey(account_id, name)
+        location:locations(name)
       `)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
@@ -216,7 +215,32 @@ const Accounts = () => {
       return;
     }
 
-    setAccounts((data as any) || []);
+    // Manually fetch parent account names for accounts that have parent_account_id
+    const accountsData = (data as any) || [];
+    const parentIds = [...new Set(accountsData.filter((a: any) => a.parent_account_id).map((a: any) => a.parent_account_id))];
+    
+    if (parentIds.length > 0) {
+      const { data: parentAccounts } = await supabase
+        .from('accounts' as any)
+        .select('id, account_id, name')
+        .in('id', parentIds);
+      
+      const parentMap = new Map((parentAccounts || []).map((p: any) => [p.id, p]));
+      
+      accountsData.forEach((account: any) => {
+        if (account.parent_account_id) {
+          account.parent_account = parentMap.get(account.parent_account_id) || null;
+        } else {
+          account.parent_account = null;
+        }
+      });
+    } else {
+      accountsData.forEach((account: any) => {
+        account.parent_account = null;
+      });
+    }
+    
+    setAccounts(accountsData);
   };
 
   const fetchCustomers = async () => {
