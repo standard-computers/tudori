@@ -2013,7 +2013,8 @@ const Orders = () => {
        warnings.push(`${zeroPriceItems.length} item(s) have $0.00 unit price`);
      }
      
-      // Route enforcement validation - check in real-time as ship-to is selected
+      // Route enforcement validation - only warn when NO routes exist for ship-to
+      // (When routes exist, vendor dropdown is already filtered to valid options)
       if (enforceRouteRecords && formData.location_id) {
         const shipToLocationId = formData.location_id;
         const shipToLocation = locations.find(l => l.id === shipToLocationId);
@@ -2023,27 +2024,11 @@ const Orders = () => {
         const assignmentsForShipTo = assignments.filter(a => a.destination_location_id === shipToLocationId);
         
         if (assignmentsForShipTo.length === 0) {
-          // No route records exist at all for this ship-to
-          warnings.push('A route record does not exist for the source/ship-to combo');
-        } else if (formData.vendor_id) {
-          // Routes exist - check if selected vendor matches
-          const parsed = parseVendorValue(formData.vendor_id);
-          
-          if (parsed) {
-            let matchFound = false;
-            
-            if (parsed.type === 'vendor') {
-              matchFound = assignmentsForShipTo.some(a => a.vendor_id === parsed.id);
-            } else if (parsed.type === 'location') {
-              matchFound = assignmentsForShipTo.some(a => a.source_location_id === parsed.id);
-            }
-            
-            if (!matchFound) {
-              // Route exists for ship-to but with different source/vendor
-              warnings.push(`The selected source is not in a route record for ${shipToName}`);
-            }
-          }
+          // No route records exist at all for this ship-to - show warning
+          warnings.push(`No route records exist for ${shipToName}. All sources are available.`);
         }
+        // Note: When routes exist, vendor dropdown is filtered to only valid options,
+        // so no need for additional validation warnings
       }
       
       return { errors, warnings };
@@ -2054,7 +2039,7 @@ const Orders = () => {
     if (!isCreateDialogOpen) return;
     
     const hasRouteWarning = poValidation.warnings.some(w => 
-      w.includes('route record') || w.includes('source is not in a route')
+      w.includes('No route records exist')
     );
     
     if (hasRouteWarning) {
