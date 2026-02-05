@@ -550,9 +550,18 @@ const Vendors = () => {
     setEditingId(null);
   };
 
-  const handleOpenDialog = () => {
+  const handleOpenDialog = async () => {
     resetForm();
-    setFormData(prev => ({ ...prev, vendor_id: nextVendorId }));
+    // Fetch fresh vendor ID to enforce document_id_config
+    const { data: freshVendorId } = await supabase.rpc('get_next_vendor_id', {
+      p_company_id: companyId!,
+    });
+    if (freshVendorId) {
+      setNextVendorId(freshVendorId);
+      setFormData(prev => ({ ...prev, vendor_id: freshVendorId }));
+    } else {
+      setFormData(prev => ({ ...prev, vendor_id: nextVendorId }));
+    }
     setIsDialogOpen(true);
   };
 
@@ -879,20 +888,13 @@ const Vendors = () => {
                           id="vendor_id"
                           value={formData.vendor_id}
                           onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
-                          disabled={isEditing}
-                          className={`${isEditing ? 'bg-muted' : ''} ${!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id) ? 'border-destructive border-2' : ''}`}
+                          disabled={true}
+                          className="bg-muted"
                           required
                         />
-                        {!isEditing && vendors.some(v => v.vendor_id === formData.vendor_id) && (
-                          <p className="text-sm text-destructive flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            This ID is already in use
-                          </p>
-                        )}
-                        {!isEditing && !vendors.some(v => v.vendor_id === formData.vendor_id) && formData.vendor_id && (
-                          <p className="text-sm text-amber-600 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            ID cannot be changed after creation
+                        {!isEditing && (
+                          <p className="text-sm text-muted-foreground">
+                            Auto-generated from Configuration
                           </p>
                         )}
                       </div>
