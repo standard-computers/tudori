@@ -1147,6 +1147,17 @@ const Vendors = () => {
       {/* View Vendor Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
+          <button
+            type="button"
+            onClick={() => {
+              setIsViewDialogOpen(false);
+              if (viewingVendor) handleEdit(viewingVendor);
+            }}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <Pencil className="h-4 w-4" />
+            <span className="sr-only">Edit</span>
+          </button>
           <DialogHeader>
             <DialogTitle>View Vendor</DialogTitle>
             <DialogDescription>
@@ -1219,15 +1230,6 @@ const Vendors = () => {
               )}
             </div>
           )}
-          <DialogFooter className="shrink-0">
-            <Button onClick={() => {
-              setIsViewDialogOpen(false);
-              if (viewingVendor) handleEdit(viewingVendor);
-            }}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
