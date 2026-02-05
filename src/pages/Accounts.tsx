@@ -141,7 +141,21 @@ const Accounts = () => {
     is_active: true,
   });
 
-  const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Account>(accounts);
+  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter } = useTableSort<Account>(
+    useMemo(() => accounts.map(account => ({
+      ...account,
+      parent_account_display: account.parent_account 
+        ? `${account.parent_account.account_id} - ${account.parent_account.name}` 
+        : '',
+      linked_to_display: account.type === 'customer' && account.customer?.name
+        ? account.customer.name
+        : account.type === 'vendor' && account.vendor?.name
+        ? account.vendor.name
+        : account.type === 'location' && account.location?.name
+        ? account.location.name
+        : '',
+    })), [accounts])
+  );
   const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
 
   useEffect(() => {
@@ -525,8 +539,24 @@ const Accounts = () => {
                   onSort={handleSort}
                   filterable={false}
                 />
-                <TableHead>Parent Account</TableHead>
-                <TableHead>Linked To</TableHead>
+                <SortableTableHead
+                  label="Parent Account"
+                  sortKey="parent_account_display"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['parent_account_display'] || ''}
+                  onFilter={(value) => setFilter('parent_account_display', value)}
+                />
+                <SortableTableHead
+                  label="Linked To"
+                  sortKey="linked_to_display"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['linked_to_display'] || ''}
+                  onFilter={(value) => setFilter('linked_to_display', value)}
+                />
                 <SortableTableHead
                   label="Status"
                   sortKey="is_active"
