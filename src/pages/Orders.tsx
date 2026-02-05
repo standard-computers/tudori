@@ -94,7 +94,7 @@ interface PurchaseOrder {
   vendor?: { name: string; vendor_id: string } | null;
   source_location?: { name: string; location_id: string } | null;
   location?: { name: string; location_id: string } | null;
-  bill_to_location?: { name: string } | null;
+   bill_to_location?: { name: string; location_id: string } | null;
   ledger?: { name: string } | null;
   requisition?: { requisition_id: string } | null;
   tax_rate?: { name: string; rate: number } | null;
@@ -255,7 +255,8 @@ const ORDER_COLUMNS: ColumnDefinition[] = [
   { key: 'po_number', label: 'PO #', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
-  { key: 'location', label: 'Ship To', defaultVisible: true },
+   { key: 'ship_to', label: 'Ship To', defaultVisible: true },
+   { key: 'bill_to', label: 'Bill To', defaultVisible: true },
   { key: 'total_amount', label: 'Total', defaultVisible: true },
   { key: 'order_date', label: 'Date', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
@@ -419,7 +420,7 @@ const Orders = () => {
         vendor:vendors(name, vendor_id),
         source_location:locations!purchase_orders_source_location_id_fkey(name, location_id),
         location:locations!purchase_orders_location_id_fkey(name, location_id),
-        bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name),
+         bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name, location_id),
         ledger:ledgers(name),
         requisition:requisitions(requisition_id),
         tax_rate:tax_rates(name, rate)
@@ -3248,8 +3249,8 @@ function OrdersTable({
                 onFilter={(v) => setFilter('vendor.name', v)}
               />
               <SortableTableHead
-                label="Location ID"
-                sortKey="location.location_id"
+                 label="Ship To ID"
+                 sortKey="location.location_id"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
@@ -3257,7 +3258,7 @@ function OrdersTable({
                 onFilter={(v) => setFilter('location.location_id', v)}
               />
               <SortableTableHead
-                label="Location Name"
+                 label="Ship To Name"
                 sortKey="location.name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -3265,6 +3266,24 @@ function OrdersTable({
                 filterValue={filters['location.name']}
                 onFilter={(v) => setFilter('location.name', v)}
               />
+               <SortableTableHead
+                 label="Bill To ID"
+                 sortKey="bill_to_location.location_id"
+                 currentSortKey={sortConfig.key}
+                 currentSortDirection={sortConfig.direction}
+                 onSort={handleSort}
+                 filterValue={filters['bill_to_location.location_id']}
+                 onFilter={(v) => setFilter('bill_to_location.location_id', v)}
+               />
+               <SortableTableHead
+                 label="Bill To Name"
+                 sortKey="bill_to_location.name"
+                 currentSortKey={sortConfig.key}
+                 currentSortDirection={sortConfig.direction}
+                 onSort={handleSort}
+                 filterValue={filters['bill_to_location.name']}
+                 onFilter={(v) => setFilter('bill_to_location.name', v)}
+               />
               <SortableTableHead
                 label="Total"
                 sortKey="total_amount"
@@ -3355,6 +3374,18 @@ function OrdersTable({
                   ) : '-'}
                 </TableCell>
                 <TableCell>{order.location?.name || '-'}</TableCell>
+                 <TableCell>
+                   {order.bill_to_location?.location_id ? (
+                     <button
+                       type="button"
+                       onClick={() => onLocationClick(order.bill_to_location_id!)}
+                       className="text-primary hover:underline font-mono"
+                     >
+                       {order.bill_to_location.location_id}
+                     </button>
+                   ) : '-'}
+                 </TableCell>
+                 <TableCell>{order.bill_to_location?.name || '-'}</TableCell>
                 <TableCell className="text-right font-mono">
                   ${Number(order.total_amount || 0).toFixed(2)}
                 </TableCell>
