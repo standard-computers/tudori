@@ -302,6 +302,7 @@ const Orders = () => {
   // View dialog state
   const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
   const [viewItems, setViewItems] = useState<PurchaseOrderItem[]>([]);
+  const [viewInvoice, setViewInvoice] = useState<{ invoice_number: string; id: string } | null>(null);
   
   // Create dialog form state
   const [formData, setFormData] = useState({
@@ -1363,6 +1364,15 @@ const Orders = () => {
       .eq('purchase_order_id', order.id);
 
     setViewTaxRates((appliedTaxRates as any) || []);
+
+    // Fetch associated invoice
+    const { data: invoice } = await supabase
+      .from('invoices')
+      .select('id, invoice_number')
+      .eq('purchase_order_id', order.id)
+      .maybeSingle();
+
+    setViewInvoice(invoice);
     setIsEditingTaxRates(false);
     setIsViewDialogOpen(true);
   };
@@ -2507,6 +2517,18 @@ const Orders = () => {
 
                 <TabsContent value="assignment" className="space-y-4 mt-4">
                   <div className="space-y-4">
+                    {viewInvoice && (
+                      <div className="p-4 border rounded-lg space-y-1">
+                        <Label className="text-muted-foreground text-xs">Invoice Reference</Label>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/invoices')}
+                          className="font-mono text-primary hover:underline"
+                        >
+                          {viewInvoice.invoice_number}
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-muted-foreground" />
                       <Label>Ledger Assignment</Label>
