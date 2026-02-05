@@ -769,8 +769,17 @@ const Vendors = () => {
       });
 
       if (error) {
-        console.error('Lookup error:', error);
-        addMessage('Failed to look up company', 'error');
+        // Try to extract the error message from the response
+        let errorMessage = 'Failed to look up company';
+        try {
+          const errorBody = error.context?.body ? JSON.parse(error.context.body) : null;
+          if (errorBody?.error) {
+            errorMessage = errorBody.error;
+          }
+        } catch {
+          // Use default message if parsing fails
+        }
+        addMessage(errorMessage, 'error');
         return;
       }
 
