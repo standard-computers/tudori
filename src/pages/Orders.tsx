@@ -49,7 +49,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown, Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Package } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown, Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Package, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -355,6 +355,7 @@ const Orders = () => {
    const [bomImportId, setBomImportId] = useState('');
    const [bomImportQty, setBomImportQty] = useState('1');
    const [isBomImporting, setIsBomImporting] = useState(false);
+   const [isValidationPopoverOpen, setIsValidationPopoverOpen] = useState(false);
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
   
@@ -1859,6 +1860,62 @@ const Orders = () => {
     }));
   }, [filteredProducts]);
 
+   // Validation for PO creation - compute errors (blocking) and warnings
+   const poValidation = useMemo(() => {
+     const errors: string[] = [];
+     const warnings: string[] = [];
+     
+     // Blocking errors
+     if (!formData.vendor_id) {
+       errors.push('Vendor / Source is required');
+     }
+     if (!formData.location_id) {
+       errors.push('Ship To location is required');
+     }
+     if (!formData.bill_to_location_id) {
+       errors.push('Bill To location is required');
+     }
+     if (orderItems.length === 0) {
+       errors.push('At least one item is required');
+     }
+     
+     // Check for items without products selected
+     const emptyItems = orderItems.filter(item => !item.product_id);
+     if (emptyItems.length > 0) {
+       errors.push(`${emptyItems.length} item(s) missing product selection`);
+     }
+     
+     // Check for items with zero quantity
+     const zeroQtyItems = orderItems.filter(item => item.product_id && item.quantity <= 0);
+     if (zeroQtyItems.length > 0) {
+       errors.push(`${zeroQtyItems.length} item(s) have zero or negative quantity`);
+     }
+     
+     // Warnings (non-blocking)
+     // Check if items have different vendors than the selected vendor
+     if (formData.vendor_id) {
+       const parsed = parseVendorValue(formData.vendor_id);
+       if (parsed?.type === 'vendor') {
+         const itemsWithDifferentVendor = orderItems.filter(item => {
+           if (!item.product_id) return false;
+           const product = products.find(p => p.id === item.product_id);
+           return product && product.vendor_id && product.vendor_id !== parsed.id;
+         });
+         if (itemsWithDifferentVendor.length > 0) {
+           warnings.push(`${itemsWithDifferentVendor.length} item(s) are from different vendors than selected`);
+         }
+       }
+     }
+     
+     // Check for items with zero price
+     const zeroPriceItems = orderItems.filter(item => item.product_id && item.unit_price === 0);
+     if (zeroPriceItems.length > 0) {
+       warnings.push(`${zeroPriceItems.length} item(s) have $0.00 unit price`);
+     }
+     
+     return { errors, warnings };
+   }, [formData, orderItems, products, parseVendorValue]);
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1953,6 +2010,69 @@ const Orders = () => {
       {/* Create PO Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[85vh]'}`}>
+           {/* Validation Alert Button */}
+           {(poValidation.errors.length > 0 || poValidation.warnings.length > 0) && (
+             <Popover open={isValidationPopoverOpen} onOpenChange={setIsValidationPopoverOpen}>
+               <PopoverTrigger asChild>
+                 <button
+                   type="button"
+                   className={`absolute right-16 top-4 rounded-sm ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10 flex items-center justify-center ${
+                     poValidation.errors.length > 0 
+                       ? 'text-destructive opacity-100' 
+                       : 'text-yellow-500 opacity-90'
+                   }`}
+                 >
+                   <AlertTriangle className="h-4 w-4" />
+                   <span className={`absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+                     poValidation.errors.length > 0 ? 'bg-destructive' : 'bg-yellow-500'
+                   }`}>
+                     {poValidation.errors.length > 0 
+                       ? poValidation.errors.length 
+                       : poValidation.warnings.length}
+                   </span>
+                 </button>
+               </PopoverTrigger>
+               <PopoverContent className="w-80" align="end">
+                 <div className="space-y-4">
+                   <h4 className="font-medium text-sm">Validation Issues</h4>
+                   
+                   {poValidation.errors.length > 0 && (
+                     <div className="space-y-2">
+                       <div className="flex items-center gap-2 text-destructive text-xs font-medium">
+                         <AlertTriangle className="h-3.5 w-3.5" />
+                         Blocking Issues ({poValidation.errors.length})
+                       </div>
+                       <ul className="space-y-1.5 text-sm">
+                         {poValidation.errors.map((error, idx) => (
+                           <li key={idx} className="flex items-start gap-2 text-destructive">
+                             <span className="text-destructive mt-0.5">•</span>
+                             <span>{error}</span>
+                           </li>
+                         ))}
+                       </ul>
+                     </div>
+                   )}
+                   
+                   {poValidation.warnings.length > 0 && (
+                     <div className="space-y-2">
+                       <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-xs font-medium">
+                         <AlertTriangle className="h-3.5 w-3.5" />
+                         Warnings ({poValidation.warnings.length})
+                       </div>
+                       <ul className="space-y-1.5 text-sm">
+                         {poValidation.warnings.map((warning, idx) => (
+                           <li key={idx} className="flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
+                             <span className="mt-0.5">•</span>
+                             <span>{warning}</span>
+                           </li>
+                         ))}
+                       </ul>
+                     </div>
+                   )}
+                 </div>
+               </PopoverContent>
+             </Popover>
+           )}
           <button
             type="button"
             onClick={() => setIsMaximized(!isMaximized)}
