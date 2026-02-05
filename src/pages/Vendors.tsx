@@ -315,7 +315,15 @@ const VendorTable = ({
               sortedAndFilteredData.map((vendor) => (
                 <TableRow key={vendor.id}>
                   {isColumnVisible('vendor_id') && (
-                    <TableCell className="font-mono text-sm">{vendor.vendor_id}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      <button
+                        type="button"
+                        onClick={() => onView(vendor)}
+                        className="text-primary hover:underline cursor-pointer"
+                      >
+                        {vendor.vendor_id}
+                      </button>
+                    </TableCell>
                   )}
                   {isColumnVisible('name') && (
                     <TableCell className="font-medium">{vendor.name}</TableCell>
