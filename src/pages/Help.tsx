@@ -553,16 +553,15 @@
            <DialogHeader>
              <DialogTitle>{editingFolder ? "Rename Folder" : "Create Folder"}</DialogTitle>
            </DialogHeader>
-           <Input
-             placeholder="Folder name"
-             value={newFolderName}
-             onChange={(e) => setNewFolderName(e.target.value)}
-             onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
-           />
+          <div className="py-4">
+            <Input
+              placeholder="Folder name"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+            />
+          </div>
            <DialogFooter>
-             <Button variant="outline" onClick={() => setFolderDialogOpen(false)}>
-               Cancel
-             </Button>
              <Button onClick={handleCreateFolder}>
                {editingFolder ? "Save" : "Create"}
              </Button>
