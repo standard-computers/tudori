@@ -548,7 +548,7 @@ const BillOfMaterials = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextBomId, setNextBomId] = useState('BOM-0001');
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState('components');
 
   const [formData, setFormData] = useState({
     bom_id: '',
@@ -782,7 +782,7 @@ const BillOfMaterials = () => {
     setNewStep({ name: '', description: '', location_id: '', bin_id: '', duration: '', items: [] });
     setNewStepItem({ product_id: '', quantity: '1' });
     setEditingStepIndex(null);
-    setActiveTab('details');
+    setActiveTab('components');
   };
 
   const handleOpenDialog = () => {
@@ -1308,77 +1308,75 @@ const BillOfMaterials = () => {
           </DialogHeader>
 
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+            {/* Details section - always visible */}
+            <div className="px-6 py-4 space-y-4 shrink-0 border-b">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>BoM ID</Label>
+                  <Input value={formData.bom_id} disabled className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map(status => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Name *</Label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., Standard Widget Assembly"
+                    disabled={isViewMode}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Output Product *</Label>
+                  <SearchableSelect
+                    options={outputProductOptions}
+                    value={formData.product_id}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, product_id: value }))}
+                    placeholder="Select output product"
+                    disabled={isViewMode || isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Output Quantity</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={formData.output_quantity}
+                    onChange={(e) => setFormData(prev => ({ ...prev, output_quantity: parseInt(e.target.value) || 1 }))}
+                    disabled={isViewMode}
+                  />
+                </div>
+              </div>
+            </div>
+
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
-              <TabsList className="shrink-0 mx-6">
-                <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsList className="shrink-0 mx-6 mt-4">
                 <TabsTrigger value="components">Components ({bomItems.length})</TabsTrigger>
                 <TabsTrigger value="steps">Steps ({bomSteps.length})</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
 
               <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
-                <TabsContent value="details" className="mt-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>BoM ID</Label>
-                      <Input value={formData.bom_id} disabled className="bg-muted" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select
-                        value={formData.status}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                        disabled={isViewMode}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map(status => (
-                            <SelectItem key={status} value={status}>
-                              {status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Name *</Label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g., Standard Widget Assembly"
-                      disabled={isViewMode}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Output Product *</Label>
-                      <SearchableSelect
-                        options={outputProductOptions}
-                        value={formData.product_id}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, product_id: value }))}
-                        placeholder="Select output product"
-                        disabled={isViewMode || isEditing}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Output Quantity</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={formData.output_quantity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, output_quantity: parseInt(e.target.value) || 1 }))}
-                        disabled={isViewMode}
-                      />
-                    </div>
-                  </div>
-
-                </TabsContent>
-
                 <TabsContent value="components" className="mt-4 space-y-4">
                   {!isViewMode && (
                     <div className="space-y-2">
