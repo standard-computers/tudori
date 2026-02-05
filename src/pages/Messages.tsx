@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Plus, Send, Users, User } from "lucide-react";
 import { NewConversationDialog } from "@/components/messages/NewConversationDialog";
 import { format, isToday, isYesterday } from "date-fns";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 
 interface Conversation {
   id: string;
@@ -37,6 +38,9 @@ const Messages = () => {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // F1 to go back to dashboard
+  useKeyboardShortcut('F1', () => navigate('/dashboard'));
 
   useEffect(() => {
     if (!loading && !user) {

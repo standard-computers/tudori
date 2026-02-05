@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -111,6 +112,9 @@ const Transportation = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
+
+  // F1 to go back to dashboard
+  useKeyboardShortcut('F1', () => navigate('/dashboard'));
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('carriers');
