@@ -553,7 +553,7 @@
            <DialogHeader>
              <DialogTitle>{editingFolder ? "Rename Folder" : "Create Folder"}</DialogTitle>
            </DialogHeader>
-          <div className="py-6">
+          <div className="px-6 py-6">
             <Input
               placeholder="Folder name"
               value={newFolderName}
