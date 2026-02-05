@@ -39,6 +39,7 @@
  import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
  import { cn } from "@/lib/utils";
  import ReactMarkdown from "react-markdown";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
  
  interface HelpFolder {
    id: string;
@@ -89,6 +90,9 @@
    const [editingFolder, setEditingFolder] = useState<HelpFolder | null>(null);
    const [deletingFolder, setDeletingFolder] = useState<HelpFolder | null>(null);
  
+  // F1 to go back to dashboard
+  useKeyboardShortcut('F1', () => navigate('/dashboard'));
+
    useEffect(() => {
      if (user) {
        fetchUserProfile();
