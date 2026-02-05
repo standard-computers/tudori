@@ -47,6 +47,8 @@ import {
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { toast } from 'sonner';
 
 const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: 'vendor_id', label: 'ID', defaultVisible: true },
@@ -105,7 +107,7 @@ const VendorTable = ({
   vendors: Vendor[];
   onView: (vendor: Vendor) => void;
   onEdit: (vendor: Vendor) => void;
-  onDelete: (id: string) => void;
+  onDelete: (vendor: Vendor) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
   const {
@@ -382,7 +384,7 @@ const VendorTable = ({
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => onDelete(vendor.id)}
+                              onClick={() => onDelete(vendor)}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
@@ -413,6 +415,10 @@ const Vendors = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingVendor, setViewingVendor] = useState<Vendor | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingVendor, setDeletingVendor] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteBlockedReason, setDeleteBlockedReason] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState('0001');
@@ -577,18 +583,90 @@ const Vendors = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase
-      .from('vendors')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      addMessage('Failed to delete vendor', 'error');
+  const handleDeleteRequest = async (vendor: Vendor) => {
+    // Check for linked accounts
+    const { data: accounts } = await supabase
+      .from('accounts')
+      .select('account_id')
+      .eq('vendor_id', vendor.id)
+      .limit(1);
+    
+    if (accounts && accounts.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to account ${accounts[0].account_id}.`);
+      setDeletingVendor({ id: vendor.id, name: vendor.name });
+      setDeleteDialogOpen(true);
       return;
     }
 
-    addMessage('Vendor deleted', 'success');
+    // Check for linked purchase orders
+    const { data: purchaseOrders } = await supabase
+      .from('purchase_orders')
+      .select('po_number')
+      .eq('vendor_id', vendor.id)
+      .limit(1);
+    
+    if (purchaseOrders && purchaseOrders.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to purchase order ${purchaseOrders[0].po_number}.`);
+      setDeletingVendor({ id: vendor.id, name: vendor.name });
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked deliveries
+    const { data: deliveries } = await supabase
+      .from('deliveries')
+      .select('delivery_id')
+      .eq('vendor_id', vendor.id)
+      .limit(1);
+    
+    if (deliveries && deliveries.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to delivery ${deliveries[0].delivery_id}.`);
+      setDeletingVendor({ id: vendor.id, name: vendor.name });
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // Check for linked goods receipts
+    const { data: goodsReceipts } = await supabase
+      .from('goods_receipts')
+      .select('receipt_number')
+      .eq('vendor_id', vendor.id)
+      .limit(1);
+    
+    if (goodsReceipts && goodsReceipts.length > 0) {
+      setDeleteBlocked(true);
+      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to goods receipt ${goodsReceipts[0].receipt_number}.`);
+      setDeletingVendor({ id: vendor.id, name: vendor.name });
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    // No blocking records, show confirm dialog
+    setDeleteBlocked(false);
+    setDeleteBlockedReason('');
+    setDeletingVendor({ id: vendor.id, name: vendor.name });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingVendor) return;
+    
+    const { error } = await supabase
+      .from('vendors')
+      .delete()
+      .eq('id', deletingVendor.id);
+
+    if (error) {
+      toast.error('Failed to delete vendor');
+      return;
+    }
+
+    toast.success('Vendor deleted');
+    setDeleteDialogOpen(false);
+    setDeletingVendor(null);
     fetchVendors();
     fetchNextVendorId();
   };
@@ -1050,7 +1128,7 @@ const Vendors = () => {
               setIsViewDialogOpen(true);
             }}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={handleDeleteRequest}
             isColumnVisible={isColumnVisible}
           />
         )}
@@ -1142,6 +1220,16 @@ const Vendors = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Vendor"
+        description={`Are you sure you want to delete vendor "${deletingVendor?.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        isBlocked={deleteBlocked}
+        blockedReason={deleteBlockedReason}
+      />
     </div>
   );
 };
