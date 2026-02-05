@@ -95,56 +95,23 @@ const CompleteProfile = () => {
 
     setLoading(true);
 
-    // Create company
-    const { data: companyData, error: companyError } = await supabase
-      .from('companies')
-      .insert({
-        name: companyName,
-        industry: industry || null,
-        size: size || null,
-        address_line1: addressLine1,
-        address_line2: addressLine2 || null,
-        city,
-        state,
-        postal_code: postalCode,
-        country,
-      })
-      .select()
-      .single();
+    // Use the security definer function to create company, profile, and role in one transaction
+    const { error } = await supabase.rpc('create_company_and_profile', {
+      p_company_name: companyName,
+      p_industry: industry || null,
+      p_size: size || null,
+      p_address_line1: addressLine1,
+      p_address_line2: addressLine2 || null,
+      p_city: city,
+      p_state: state,
+      p_postal_code: postalCode,
+      p_country: country,
+      p_first_name: firstName,
+      p_last_name: lastName,
+    });
 
-    if (companyError) {
-      toast.error('Failed to create company: ' + companyError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Create profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: user.id,
-        company_id: companyData.id,
-        first_name: firstName,
-        last_name: lastName,
-      });
-
-    if (profileError) {
-      toast.error('Failed to create profile: ' + profileError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Assign owner role
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .insert({
-        user_id: user.id,
-        company_id: companyData.id,
-        role: 'owner',
-      });
-
-    if (roleError) {
-      toast.error('Failed to assign role: ' + roleError.message);
+    if (error) {
+      toast.error('Failed to complete setup: ' + error.message);
       setLoading(false);
       return;
     }
