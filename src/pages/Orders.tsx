@@ -169,6 +169,9 @@ interface Product {
   vendor_id: string | null;
   status: string;
   unit: string | null;
+   transport_time_days: number | null;
+   manufacture_time_days: number | null;
+   lead_time_days: number | null;
 }
 
 interface PackagingUnit {
@@ -195,6 +198,33 @@ interface InventoryRecord {
   product?: { name: string; product_id: string };
   bin?: { name: string } | null;
 }
+
+// Helper function to calculate expected delivery date based on product lead times
+const calculateExpectedDelivery = (product: Product | undefined): string => {
+  const today = new Date();
+  let totalLeadDays = 0;
+  
+  if (product) {
+    totalLeadDays = 
+      (product.transport_time_days || 0) + 
+      (product.manufacture_time_days || 0) + 
+      (product.lead_time_days || 0);
+  }
+  
+  // If no lead time defined or sum is 0, use tomorrow
+  if (totalLeadDays === 0) {
+    totalLeadDays = 1;
+  }
+  
+  const expectedDate = new Date(today);
+  expectedDate.setDate(today.getDate() + totalLeadDays);
+  
+  return expectedDate.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
 
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500',
@@ -457,7 +487,7 @@ const Orders = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id, status, unit')
+       .select('id, name, product_id, price, vendor_id, status, unit, transport_time_days, manufacture_time_days, lead_time_days')
       .eq('company_id', companyId)
       .eq('status', 'active') // Only fetch active products for purchase orders
       .order('name');
@@ -1939,17 +1969,19 @@ const Orders = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[40%]">Product</TableHead>
-                        <TableHead className="w-[15%]">UOM</TableHead>
-                        <TableHead className="w-[12%] text-right">Qty</TableHead>
-                        <TableHead className="w-[15%] text-right">Unit Price</TableHead>
-                        <TableHead className="w-[13%] text-right">Total</TableHead>
+                         <TableHead className="w-[32%]">Product</TableHead>
+                         <TableHead className="w-[12%]">UOM</TableHead>
+                         <TableHead className="w-[10%] text-right">Qty</TableHead>
+                         <TableHead className="w-[12%] text-right">Unit Price</TableHead>
+                         <TableHead className="w-[12%] text-right">Total</TableHead>
+                         <TableHead className="w-[17%]">Expected Delivery</TableHead>
                         <TableHead className="w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {orderItems.map((item, index) => {
                         const uomOptions = item.product_id ? getUomOptions(item.product_id) : [];
+                         const selectedProduct = products.find(p => p.id === item.product_id);
                         return (
                           <TableRow key={index}>
                             <TableCell className="p-2">
@@ -1999,6 +2031,9 @@ const Orders = () => {
                             <TableCell className="p-2 text-right font-mono">
                               ${(item.quantity * item.unit_price).toFixed(2)}
                             </TableCell>
+                             <TableCell className="p-2 text-muted-foreground text-sm">
+                               {item.product_id ? calculateExpectedDelivery(selectedProduct) : '-'}
+                             </TableCell>
                             <TableCell className="p-2">
                               <Button
                                 type="button"
@@ -2380,31 +2415,38 @@ const Orders = () => {
                           <TableHead className="text-right">Qty</TableHead>
                           <TableHead className="text-right">Unit Price</TableHead>
                           <TableHead className="text-right">Total</TableHead>
+                           <TableHead>Expected Delivery</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {viewItems.map((item, index) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-                            <TableCell>
-                              <button
-                                type="button"
-                                onClick={() => openProductDetail(item)}
-                                className="text-primary hover:underline cursor-pointer text-left"
-                              >
-                                {item.product?.product_id || '-'}
-                              </button>
-                            </TableCell>
-                            <TableCell>{item.product?.name || 'Unknown'}</TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right font-mono">
-                              ${Number(item.unit_price || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              ${Number(item.total_price || 0).toFixed(2)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                         {viewItems.map((item, index) => {
+                           const viewProduct = products.find(p => p.id === item.product_id);
+                           return (
+                             <TableRow key={item.id}>
+                               <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                               <TableCell>
+                                 <button
+                                   type="button"
+                                   onClick={() => openProductDetail(item)}
+                                   className="text-primary hover:underline cursor-pointer text-left"
+                                 >
+                                   {item.product?.product_id || '-'}
+                                 </button>
+                               </TableCell>
+                               <TableCell>{item.product?.name || 'Unknown'}</TableCell>
+                               <TableCell className="text-right">{item.quantity}</TableCell>
+                               <TableCell className="text-right font-mono">
+                                 ${Number(item.unit_price || 0).toFixed(2)}
+                               </TableCell>
+                               <TableCell className="text-right font-mono">
+                                 ${Number(item.total_price || 0).toFixed(2)}
+                               </TableCell>
+                               <TableCell className="text-muted-foreground text-sm">
+                                 {calculateExpectedDelivery(viewProduct)}
+                               </TableCell>
+                             </TableRow>
+                           );
+                         })}
                       </TableBody>
                     </Table>
                   </div>
