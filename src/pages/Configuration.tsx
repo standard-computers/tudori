@@ -909,23 +909,6 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
                     />
                   </div>
                 </div>
-
-                <div className="flex justify-end pt-4 border-t">
-                  <Button onClick={handleSaveControls} disabled={savingControls}>
-                    {savingControls ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Controls
-                        <Kbd className="ml-2">⌘S</Kbd>
-                      </>
-                    )}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
 
