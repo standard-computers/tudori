@@ -839,91 +839,96 @@ const Deliveries = () => {
                     
                     <TabsContent value="items" className="mt-4">
                       <div className="space-y-4">
-                        {/* Add Item Form */}
-                        <div className="flex gap-2 items-end">
-                          <div className="flex-1 space-y-2">
-                            <Label>Product</Label>
-                            <Select
-                              value={newItemProductId}
-                              onValueChange={setNewItemProductId}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select product" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {products
-                                  .filter(p => !deliveryItems.some(di => di.product_id === p.id))
-                                  .map((product) => (
-                                    <SelectItem key={product.id} value={product.id}>
-                                      {product.product_id} - {product.name}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="w-24 space-y-2">
-                            <Label>Qty</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              value={newItemQuantity}
-                              onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
-                            />
-                          </div>
-                          <Button type="button" onClick={handleAddItem} disabled={!newItemProductId}>
+                        <div className="flex items-center justify-between">
+                          <Label>Delivery Items</Label>
+                          <Button type="button" variant="outline" size="sm" onClick={() => {
+                            if (newItemProductId) {
+                              handleAddItem();
+                            } else {
+                              // Add empty row
+                              setDeliveryItems([...deliveryItems, {
+                                id: `new-${Date.now()}`,
+                                delivery_id: editingId || '',
+                                product_id: '',
+                                quantity: 1,
+                                pu_id: null,
+                                notes: null,
+                                product: null,
+                              }]);
+                            }
+                          }}>
                             <Plus className="w-4 h-4" />
+                            Add Item
                           </Button>
                         </div>
                         
-                        {/* Items List */}
                         {deliveryItems.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                            <p>No items in this delivery</p>
-                          </div>
+                          <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                            No items added yet. Click "Add Item" to start.
+                          </p>
                         ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead className="w-24 text-right">Qty</TableHead>
-                                <TableHead className="w-16"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {deliveryItems.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">{item.product?.name || 'Unknown'}</div>
-                                      <div className="text-sm text-muted-foreground font-mono">
-                                        {item.product?.product_id}
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={item.quantity}
-                                      onChange={(e) => handleUpdateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                                      className="w-20 text-right ml-auto"
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleRemoveItem(item.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
-                                  </TableCell>
+                          <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[70%]">Product</TableHead>
+                                  <TableHead className="w-[20%] text-right">Qty</TableHead>
+                                  <TableHead className="w-[10%]"></TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {deliveryItems.map((item, index) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="p-2">
+                                      <Select
+                                        value={item.product_id}
+                                        onValueChange={(value) => {
+                                          const updated = [...deliveryItems];
+                                          const product = products.find(p => p.id === value);
+                                          updated[index] = { 
+                                            ...updated[index], 
+                                            product_id: value,
+                                            product: product || null
+                                          };
+                                          setDeliveryItems(updated);
+                                        }}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select product" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {products.map((product) => (
+                                            <SelectItem key={product.id} value={product.id}>
+                                              {product.product_id} - {product.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        value={item.quantity}
+                                        onChange={(e) => handleUpdateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                        className="text-right"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleRemoveItem(item.id)}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         )}
                       </div>
                     </TabsContent>
@@ -934,39 +939,40 @@ const Deliveries = () => {
                           Assign Packaging Units (PU) to items for ASN tracking. PU numbers will be generated when items are received.
                         </p>
                         {deliveryItems.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                            <p>Add items first to configure packing</p>
-                          </div>
+                          <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                            Add items first to configure packing
+                          </p>
                         ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead className="w-24 text-right">Qty</TableHead>
-                                <TableHead className="w-32">PU #</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {deliveryItems.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">{item.product?.name || 'Unknown'}</div>
-                                      <div className="text-sm text-muted-foreground font-mono">
-                                        {item.product?.product_id}
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                                  <TableCell className="font-mono text-sm text-primary">
-                                    {item.packaging_unit?.pu_number || 
-                                      <span className="text-muted-foreground italic">Auto-generate on receipt</span>}
-                                  </TableCell>
+                          <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Product</TableHead>
+                                  <TableHead className="w-24 text-right">Qty</TableHead>
+                                  <TableHead className="w-32">PU #</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {deliveryItems.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell>
+                                      <div>
+                                        <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                                        <div className="text-sm text-muted-foreground font-mono">
+                                          {item.product?.product_id}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                                    <TableCell className="font-mono text-sm text-primary">
+                                      {item.packaging_unit?.pu_number || 
+                                        <span className="text-muted-foreground italic">Auto-generate on receipt</span>}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         )}
                       </div>
                     </TabsContent>
@@ -974,9 +980,6 @@ const Deliveries = () => {
                   </div>
                   
                   <DialogFooter className="shrink-0">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
                     <Button type="submit">
                       {isEditing ? 'Update' : 'Create'}
                       <Kbd className="ml-2">⌘S</Kbd>
@@ -1257,34 +1260,35 @@ const Deliveries = () => {
               
               <TabsContent value="items" className="mt-4">
                 {viewItems.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p>No items in this delivery</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
+                    No items in this delivery
+                  </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Qty</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {viewItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{item.product?.name || 'Unknown'}</div>
-                              <div className="text-sm text-muted-foreground font-mono">
-                                {item.product?.product_id}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">{item.quantity}</TableCell>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {viewItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                                <div className="text-sm text-muted-foreground font-mono">
+                                  {item.product?.product_id}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </TabsContent>
             </Tabs>
