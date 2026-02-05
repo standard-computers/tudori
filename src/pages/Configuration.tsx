@@ -61,6 +61,7 @@ interface ProcessControlSettings {
   require_gr_on_delivery: boolean;
   require_delivery_receipt: boolean;
   track_bin_level_movements: boolean;
+  enforce_route_records: boolean;
 }
 
 interface ImportExportSettings {
@@ -114,6 +115,7 @@ const Configuration = () => {
     require_gr_on_delivery: true,
     require_delivery_receipt: true,
     track_bin_level_movements: true,
+    enforce_route_records: false,
   });
 const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
 
@@ -246,6 +248,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
           require_gr_on_delivery: (val.require_gr_on_delivery as boolean) ?? true,
           require_delivery_receipt: (val.require_delivery_receipt as boolean) ?? true,
           track_bin_level_movements: (val.track_bin_level_movements as boolean) ?? true,
+          enforce_route_records: (val.enforce_route_records as boolean) ?? false,
         });
       }
     } catch (error) {
@@ -421,6 +424,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
         require_gr_on_delivery: processControls.require_gr_on_delivery,
         require_delivery_receipt: processControls.require_delivery_receipt,
         track_bin_level_movements: processControls.track_bin_level_movements,
+        enforce_route_records: processControls.enforce_route_records,
       };
 
       if (existing) {
@@ -884,6 +888,23 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
                       checked={processControls.track_bin_level_movements}
                       onCheckedChange={(checked) => 
                         setProcessControls(prev => ({ ...prev, track_bin_level_movements: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1">
+                      <Label className="font-medium text-base">Enforce Route Records</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, creating a Purchase Order will validate that a route record (assignment) exists for the vendor/source and ship-to location combination.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        When disabled, Purchase Orders can be created with any vendor and ship-to combination without route validation.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={processControls.enforce_route_records}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, enforce_route_records: checked }))
                       }
                     />
                   </div>
