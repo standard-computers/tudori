@@ -33,6 +33,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronsUpDown, Check, Plus, Trash2, Loader2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,6 +43,7 @@ interface Area {
   id: string;
   area_id: string;
   name: string;
+   is_production_enabled?: boolean;
 }
 
 interface Product {
@@ -116,6 +118,16 @@ const AutoMakeBinsDialog = ({
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [newProductQty, setNewProductQty] = useState('');
+ 
+   // Controls
+   const [controls, setControls] = useState({
+     allow_put_away: true,
+     allow_auto_put_away: true,
+     allow_picking: true,
+     allow_auto_picking: true,
+     is_production_enabled: false,
+     is_hazardous: false,
+   });
 
   useEffect(() => {
     if (open) {
@@ -136,6 +148,14 @@ const AutoMakeBinsDialog = ({
         weight_capacity_uom: 'lb',
       });
       setProductRestrictions([]);
+       setControls({
+         allow_put_away: true,
+         allow_auto_put_away: true,
+         allow_picking: true,
+         allow_auto_picking: true,
+         is_production_enabled: false,
+         is_hazardous: false,
+       });
       fetchProducts();
     }
   }, [open, areas]);
@@ -239,6 +259,12 @@ const AutoMakeBinsDialog = ({
           height_uom: dimensions.height_uom,
           weight_capacity: dimensions.weight_capacity ? parseFloat(dimensions.weight_capacity) : null,
           weight_capacity_uom: dimensions.weight_capacity_uom,
+           allow_put_away: controls.allow_put_away,
+           allow_auto_put_away: controls.allow_auto_put_away,
+           allow_picking: controls.allow_picking,
+           allow_auto_picking: controls.allow_auto_picking,
+           is_production_enabled: controls.is_production_enabled,
+           is_hazardous: controls.is_hazardous,
         });
       }
 
@@ -314,9 +340,10 @@ const AutoMakeBinsDialog = ({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col mt-2">
-          <TabsList className="mx-6 grid grid-cols-3">
+           <TabsList className="mx-6 grid grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+             <TabsTrigger value="controls">Controls</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
           </TabsList>
 
@@ -599,6 +626,140 @@ const AutoMakeBinsDialog = ({
               </div>
             </TabsContent>
 
+             <TabsContent value="controls" className="space-y-4 mt-0">
+               <div className="bg-muted/50 rounded-lg p-3 mb-4">
+                 <p className="text-sm text-muted-foreground">
+                   Control what operations are allowed for all created bins.
+                 </p>
+               </div>
+ 
+               <div className="space-y-6">
+                 <div className="space-y-4">
+                   <h4 className="font-medium text-sm">Put Away</h4>
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <div className="space-y-0.5">
+                         <Label htmlFor="allow_put_away">Allow Put Away</Label>
+                         <p className="text-xs text-muted-foreground">
+                           Enable manual put away operations to these bins
+                         </p>
+                       </div>
+                       <Switch
+                         id="allow_put_away"
+                         checked={controls.allow_put_away}
+                         onCheckedChange={(checked) => 
+                           setControls({ ...controls, allow_put_away: checked })
+                         }
+                       />
+                     </div>
+                     <div className="flex items-center justify-between">
+                       <div className="space-y-0.5">
+                         <Label htmlFor="allow_auto_put_away">Allow Auto Put Away</Label>
+                         <p className="text-xs text-muted-foreground">
+                           Include these bins in automatic put away suggestions
+                         </p>
+                       </div>
+                       <Switch
+                         id="allow_auto_put_away"
+                         checked={controls.allow_auto_put_away}
+                         onCheckedChange={(checked) => 
+                           setControls({ ...controls, allow_auto_put_away: checked })
+                         }
+                       />
+                     </div>
+                   </div>
+                 </div>
+ 
+                 <div className="border-t pt-4 space-y-4">
+                   <h4 className="font-medium text-sm">Picking</h4>
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <div className="space-y-0.5">
+                         <Label htmlFor="allow_picking">Allow Picking</Label>
+                         <p className="text-xs text-muted-foreground">
+                           Enable manual picking operations from these bins
+                         </p>
+                       </div>
+                       <Switch
+                         id="allow_picking"
+                         checked={controls.allow_picking}
+                         onCheckedChange={(checked) => 
+                           setControls({ ...controls, allow_picking: checked })
+                         }
+                       />
+                     </div>
+                     <div className="flex items-center justify-between">
+                       <div className="space-y-0.5">
+                         <Label htmlFor="allow_auto_picking">Allow Auto Picking</Label>
+                         <p className="text-xs text-muted-foreground">
+                           Include these bins in automatic picking suggestions
+                         </p>
+                       </div>
+                       <Switch
+                         id="allow_auto_picking"
+                         checked={controls.allow_auto_picking}
+                         onCheckedChange={(checked) => 
+                           setControls({ ...controls, allow_auto_picking: checked })
+                         }
+                       />
+                     </div>
+                   </div>
+                 </div>
+ 
+                 <div className="border-t pt-4 space-y-4">
+                   <h4 className="font-medium text-sm">Production</h4>
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <div className="space-y-0.5">
+                         <Label htmlFor="is_production_enabled">Allow Production</Label>
+                         <p className="text-xs text-muted-foreground">
+                           Enable production operations in these bins
+                         </p>
+                       </div>
+                       <Switch
+                         id="is_production_enabled"
+                         checked={controls.is_production_enabled}
+                         onCheckedChange={(checked) => {
+                           const parentArea = areas.find(a => a.id === selectedAreaId);
+                           if (checked && !parentArea?.is_production_enabled) {
+                             toast.error('Cannot enable production: parent area does not allow production');
+                             return;
+                           }
+                           setControls({ ...controls, is_production_enabled: checked });
+                         }}
+                       />
+                     </div>
+                   </div>
+                 </div>
+ 
+                 <div className="border-t pt-4 space-y-4">
+                   <h4 className="font-medium text-sm">Hazardous Materials</h4>
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <div className="space-y-0.5">
+                         <Label htmlFor="is_hazardous">Hazardous Only</Label>
+                         <p className="text-xs text-muted-foreground">
+                           Only hazardous products may be placed in these bins
+                         </p>
+                       </div>
+                       <Switch
+                         id="is_hazardous"
+                         checked={controls.is_hazardous}
+                         onCheckedChange={(checked) => 
+                           setControls({ ...controls, is_hazardous: checked })
+                         }
+                       />
+                     </div>
+                     {controls.is_hazardous && (
+                       <div className="bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-lg p-3 text-sm">
+                         ⚠️ These bins will be designated for hazardous materials only.
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+             </TabsContent>
+ 
             <TabsContent value="products" className="space-y-4 mt-0">
               <div className="bg-muted/50 rounded-lg p-3 mb-4">
                 <p className="text-sm text-muted-foreground">
