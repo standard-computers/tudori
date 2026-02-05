@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { toast } from 'sonner';
@@ -888,215 +889,225 @@ const Vendors = () => {
                     </div>
                   )}
                   
-                  <div className="flex-1 overflow-y-auto px-6 py-4 pb-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="vendor_id">Vendor ID</Label>
-                        <Input
-                          id="vendor_id"
-                          value={formData.vendor_id}
-                          onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
-                          disabled={true}
-                          className="bg-muted"
-                          required
-                        />
-                        {!isEditing && (
-                          <p className="text-sm text-muted-foreground">
-                            Auto-generated from Configuration
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="type">Type</Label>
-                        <Select
-                          value={formData.type}
-                          onValueChange={(value) => setFormData({ ...formData, type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {VENDOR_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
-                        <Select
-                          value={formData.status}
-                          onValueChange={(value) => setFormData({ ...formData, status: value as VendorStatus })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {VENDOR_STATUSES.map((status) => (
-                              <SelectItem key={status.value} value={status.value}>
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${status.color}`} />
-                                  {status.label}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Vendor Name *</Label>
-                        <div className="flex gap-2">
+                  <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
+                    <TabsList className="mx-6 w-fit">
+                      <TabsTrigger value="general">General</TabsTrigger>
+                      <TabsTrigger value="notes">Notes</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="general" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="vendor_id">Vendor ID</Label>
                           <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="Acme Supplies Inc."
+                            id="vendor_id"
+                            value={formData.vendor_id}
+                            onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
+                            disabled={true}
+                            className="bg-muted"
                             required
-                            className="flex-1"
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handleAILookup}
-                            disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
-                            title="Look up company info with AI"
-                          >
-                            {isLookingUp ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Search className="w-4 h-4" />
-                            )}
-                          </Button>
+                          {!isEditing && (
+                            <p className="text-sm text-muted-foreground">
+                              Auto-generated from Configuration
+                            </p>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Click the search icon to auto-fill contact info using AI
-                        </p>
+                        <div className="space-y-2">
+                          <Label htmlFor="type">Type</Label>
+                          <Select
+                            value={formData.type}
+                            onValueChange={(value) => setFormData({ ...formData, type: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {VENDOR_TYPES.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="status">Status</Label>
+                          <Select
+                            value={formData.status}
+                            onValueChange={(value) => setFormData({ ...formData, status: value as VendorStatus })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {VENDOR_STATUSES.map((status) => (
+                                <SelectItem key={status.value} value={status.value}>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                                    {status.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Vendor Name *</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="name"
+                              value={formData.name}
+                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              placeholder="Acme Supplies Inc."
+                              required
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={handleAILookup}
+                              disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
+                              title="Look up company info with AI"
+                            >
+                              {isLookingUp ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Search className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Click the search icon to auto-fill contact info using AI
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="contact_name">Contact Name</Label>
+                          <Input
+                            id="contact_name"
+                            value={formData.contact_name}
+                            onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                            placeholder="John Smith"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="john@acme.com"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone</Label>
+                          <Input
+                            id="phone"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="(555) 123-4567"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="website">Website</Label>
+                          <Input
+                            id="website"
+                            value={formData.website}
+                            onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                            placeholder="https://acme.com"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="contact_name">Contact Name</Label>
+                        <Label htmlFor="address_line1">Address Line 1</Label>
                         <Input
-                          id="contact_name"
-                          value={formData.contact_name}
-                          onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-                          placeholder="John Smith"
+                          id="address_line1"
+                          value={formData.address_line1}
+                          onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                          placeholder="123 Main Street"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="address_line2">Address Line 2</Label>
                         <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="john@acme.com"
+                          id="address_line2"
+                          value={formData.address_line2}
+                          onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                          placeholder="Suite 100"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input
-                          id="phone"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          placeholder="(555) 123-4567"
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            value={formData.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            value={formData.state}
+                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="postal_code">Postal Code</Label>
+                          <Input
+                            id="postal_code"
+                            value={formData.postal_code}
+                            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="country">Country</Label>
+                          <Input
+                            id="country"
+                            value={formData.country}
+                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="payment_terms">Payment Terms (days)</Label>
+                          <Input
+                            id="payment_terms"
+                            type="number"
+                            min="0"
+                            value={formData.payment_terms}
+                            onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+                            placeholder="30"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="notes" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0">
+                      <div className="space-y-2 h-full">
+                        <Label htmlFor="notes">Notes</Label>
+                        <Textarea
+                          id="notes"
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                          placeholder="Additional notes about this vendor..."
+                          className="min-h-[200px]"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="website">Website</Label>
-                        <Input
-                          id="website"
-                          value={formData.website}
-                          onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                          placeholder="https://acme.com"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line1">Address Line 1</Label>
-                      <Input
-                        id="address_line1"
-                        value={formData.address_line1}
-                        onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                        placeholder="123 Main Street"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address_line2">Address Line 2</Label>
-                      <Input
-                        id="address_line2"
-                        value={formData.address_line2}
-                        onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                        placeholder="Suite 100"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
-                        <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="state">State</Label>
-                        <Input
-                          id="state"
-                          value={formData.state}
-                          onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="postal_code">Postal Code</Label>
-                        <Input
-                          id="postal_code"
-                          value={formData.postal_code}
-                          onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="country">Country</Label>
-                        <Input
-                          id="country"
-                          value={formData.country}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="payment_terms">Payment Terms (days)</Label>
-                        <Input
-                          id="payment_terms"
-                          type="number"
-                          min="0"
-                          value={formData.payment_terms}
-                          onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                          placeholder="30"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Notes</Label>
-                      <Textarea
-                        id="notes"
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="Additional notes about this vendor..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
+                    </TabsContent>
+                  </Tabs>
                   <DialogFooter className="shrink-0">
                     <Button 
                       type="submit" 
