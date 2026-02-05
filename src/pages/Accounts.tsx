@@ -58,12 +58,14 @@ interface Account {
   vendor_id: string | null;
   location_id: string | null;
   account_manager_id: string | null;
+  parent_account_id: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
   vendor?: { name: string } | null;
   location?: { name: string } | null;
+  parent_account?: { account_id: string; name: string } | null;
 }
 
 interface CompanyUser {
@@ -95,6 +97,7 @@ const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'account_id', label: 'ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'parent_account', label: 'Parent Account', defaultVisible: true },
   { key: 'customer', label: 'Customer', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
   { key: 'location', label: 'Location', defaultVisible: true },
@@ -133,6 +136,7 @@ const Accounts = () => {
     vendor_id: '',
     location_id: '',
     account_manager_id: '',
+    parent_account_id: '',
     description: '',
     is_active: true,
   });
@@ -200,7 +204,8 @@ const Accounts = () => {
         *,
         customer:customers(name),
         vendor:vendors(name),
-        location:locations(name)
+        location:locations(name),
+        parent_account:accounts!accounts_parent_account_id_fkey(account_id, name)
       `)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
@@ -283,6 +288,15 @@ const Accounts = () => {
     }));
   }, [companyUsers]);
 
+  const parentAccountOptions: SearchableSelectOption[] = useMemo(() => {
+    return accounts
+      .filter((a) => !editingAccount || a.id !== editingAccount.id) // Exclude self when editing
+      .map((a) => ({
+        value: a.id,
+        label: a.name,
+        sublabel: a.account_id,
+      }));
+  }, [accounts, editingAccount]);
 
   const handleCreateClick = () => {
     setFormData({
@@ -292,6 +306,7 @@ const Accounts = () => {
       vendor_id: '',
       location_id: '',
       account_manager_id: '',
+      parent_account_id: '',
       description: '',
       is_active: true,
     });
@@ -309,6 +324,7 @@ const Accounts = () => {
       vendor_id: account.vendor_id || '',
       location_id: account.location_id || '',
       account_manager_id: account.account_manager_id || '',
+      parent_account_id: account.parent_account_id || '',
       description: account.description || '',
       is_active: account.is_active,
     });
@@ -337,6 +353,7 @@ const Accounts = () => {
         vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
         location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
         account_manager_id: formData.account_manager_id || null,
+        parent_account_id: formData.parent_account_id || null,
         description: formData.description || null,
         is_active: formData.is_active,
       });
@@ -372,6 +389,7 @@ const Accounts = () => {
           vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
           location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
           account_manager_id: formData.account_manager_id || null,
+          parent_account_id: formData.parent_account_id || null,
           description: formData.description || null,
           is_active: formData.is_active,
         })
@@ -483,6 +501,7 @@ const Accounts = () => {
                   onSort={handleSort}
                   filterable={false}
                 />
+                <TableHead>Parent Account</TableHead>
                 <TableHead>Linked To</TableHead>
                 <SortableTableHead
                   label="Status"
@@ -511,6 +530,17 @@ const Accounts = () => {
                       <Badge variant="outline" className="capitalize">
                         {account.type}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {account.parent_account ? (
+                        <span className="text-sm">
+                          <span className="font-mono text-muted-foreground">{account.parent_account.account_id}</span>
+                          {' - '}
+                          {account.parent_account.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {account.type === 'customer' && account.customer?.name}
@@ -644,6 +674,16 @@ const Accounts = () => {
             </div>
 
             <div>
+              <Label>Parent Account</Label>
+              <SearchableSelect
+                options={parentAccountOptions}
+                value={formData.parent_account_id}
+                onValueChange={(value) => setFormData({ ...formData, parent_account_id: value })}
+                placeholder="Select parent account (optional)..."
+              />
+            </div>
+
+            <div>
               <Label>Description</Label>
               <Textarea
                 value={formData.description}
@@ -744,6 +784,16 @@ const Accounts = () => {
                 value={formData.account_manager_id}
                 onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
                 placeholder="Select account manager..."
+              />
+            </div>
+
+            <div>
+              <Label>Parent Account</Label>
+              <SearchableSelect
+                options={parentAccountOptions}
+                value={formData.parent_account_id}
+                onValueChange={(value) => setFormData({ ...formData, parent_account_id: value })}
+                placeholder="Select parent account (optional)..."
               />
             </div>
 
