@@ -918,10 +918,8 @@ const Customers = () => {
                   </DialogDescription>
                 </DialogHeader>
                 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-12 top-4 z-10"
+                <button
+                  className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
                   onClick={() => {
                     if (viewingCustomer) {
                       handleEdit(viewingCustomer);
@@ -930,7 +928,7 @@ const Customers = () => {
                   }}
                 >
                   <Pencil className="w-4 h-4" />
-                </Button>
+                </button>
                 
                 {viewingCustomer && (
                   <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
