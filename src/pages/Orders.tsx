@@ -49,7 +49,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown, Download, FileSpreadsheet, FileText, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, ChevronDown, Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Package } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DeliveryItemsDialog } from '@/components/DeliveryItemsDialog';
@@ -303,6 +303,7 @@ const Orders = () => {
   const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
   const [viewItems, setViewItems] = useState<PurchaseOrderItem[]>([]);
   const [viewInvoice, setViewInvoice] = useState<{ invoice_number: string; id: string } | null>(null);
+  const [viewGoodsReceipts, setViewGoodsReceipts] = useState<{ receipt_number: string; id: string; status: string }[]>([]);
   
   // Create dialog form state
   const [formData, setFormData] = useState({
@@ -1368,11 +1369,19 @@ const Orders = () => {
     // Fetch associated invoice
     const { data: invoice } = await supabase
       .from('invoices')
-      .select('id, invoice_number')
+      .select('id, invoice_number, amount')
       .eq('purchase_order_id', order.id)
       .maybeSingle();
 
     setViewInvoice(invoice);
+
+    // Fetch associated goods receipts
+    const { data: goodsReceipts } = await supabase
+      .from('goods_receipts' as any)
+      .select('id, receipt_number, status')
+      .eq('purchase_order_id', order.id);
+
+    setViewGoodsReceipts((goodsReceipts as any) || []);
     setIsEditingTaxRates(false);
     setIsViewDialogOpen(true);
   };
@@ -2518,16 +2527,55 @@ const Orders = () => {
                 <TabsContent value="assignment" className="space-y-4 mt-4">
                   <div className="space-y-4">
                     {viewInvoice && (
-                      <div className="p-4 border rounded-lg space-y-1">
-                        <Label className="text-muted-foreground text-xs">Invoice Reference</Label>
-                        <button
-                          type="button"
-                          onClick={() => navigate('/invoices')}
-                          className="font-mono text-primary hover:underline"
-                        >
-                          {viewInvoice.invoice_number}
-                        </button>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <Label>Invoice</Label>
+                        </div>
+                        <div className="p-4 border rounded-lg space-y-3">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Invoice Number</Label>
+                            <button
+                              type="button"
+                              onClick={() => navigate('/invoices')}
+                              className="block font-mono text-primary hover:underline"
+                            >
+                              {viewInvoice.invoice_number}
+                            </button>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Amount</Label>
+                            <p className="font-mono">${Number((viewInvoice as any).amount || 0).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {viewGoodsReceipts.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                          <Label>Goods Receipts</Label>
+                        </div>
+                        <div className="p-4 border rounded-lg space-y-3">
+                          {viewGoodsReceipts.map((gr) => (
+                            <div key={gr.id} className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-muted-foreground text-xs">Receipt Number</Label>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/goods-receipts')}
+                                  className="block font-mono text-primary hover:underline"
+                                >
+                                  {gr.receipt_number}
+                                </button>
+                              </div>
+                              <Badge variant={gr.status === 'posted' ? 'default' : 'secondary'}>
+                                {gr.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     )}
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-muted-foreground" />
