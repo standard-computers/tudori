@@ -76,8 +76,9 @@ import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
    const [isEditing, setIsEditing] = useState(false);
    const [editContent, setEditContent] = useState("");
    const [editTitle, setEditTitle] = useState("");
-   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
    
    // Dialog states
    const [folderDialogOpen, setFolderDialogOpen] = useState(false);
@@ -541,12 +542,57 @@ import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
                </div>
              </>
            ) : (
-             <div className="flex-1 flex items-center justify-center text-muted-foreground">
-               <div className="text-center">
-                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                 <p>Select a document to view</p>
-               </div>
-             </div>
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6">
+              <div className="w-full max-w-md space-y-4">
+                <div className="text-center mb-6">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Search Help Documents</p>
+                </div>
+                <Input
+                  placeholder="Search documents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                  autoFocus
+                />
+                {searchQuery.trim() && (
+                  <div className="bg-background border rounded-md max-h-64 overflow-y-auto">
+                    {documents
+                      .filter((doc) =>
+                        doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (doc.content && doc.content.toLowerCase().includes(searchQuery.toLowerCase()))
+                      )
+                      .map((doc) => (
+                        <div
+                          key={doc.id}
+                          onClick={() => {
+                            setSelectedDocument(doc);
+                            setSearchQuery("");
+                            setIsEditing(false);
+                          }}
+                          className="flex items-center gap-2 p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
+                        >
+                          <FileText className="h-4 w-4 text-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{doc.title}</p>
+                            {doc.content && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {doc.content.substring(0, 100)}...
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    {documents.filter((doc) =>
+                      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (doc.content && doc.content.toLowerCase().includes(searchQuery.toLowerCase()))
+                    ).length === 0 && (
+                      <p className="p-3 text-sm text-center">No documents found</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
            )}
          </div>
        </div>
