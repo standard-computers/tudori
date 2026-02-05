@@ -27,7 +27,8 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X } from 'lucide-react';
+import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X, Shield } from 'lucide-react';
+import { SafetyStockDialog } from '@/components/planning/SafetyStockDialog';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -104,6 +105,9 @@ const Planning = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [createProgress, setCreateProgress] = useState({ current: 0, total: 0, currentAction: '' });
   const [createResults, setCreateResults] = useState<{ success: string[]; failed: string[] }>({ success: [], failed: [] });
+
+  // Safety stock dialog state
+  const [isSafetyDialogOpen, setIsSafetyDialogOpen] = useState(false);
 
   // Calculate number of requisitions that will be created (grouped by vendor)
   const vendorGroups = useMemo(() => {
@@ -662,14 +666,18 @@ const Planning = () => {
               </Badge>
             )}
           </div>
-          {selectedLocation && selectedItems.size > 0 && (
-            <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsSafetyDialogOpen(true)}>
+              <Shield className="w-4 h-4 mr-2" />
+              Safety
+            </Button>
+            {selectedLocation && selectedItems.size > 0 && (
               <Button onClick={handleOpenRequisitionDialog} size="sm">
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Create Requisition ({selectedItems.size})
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
@@ -1025,6 +1033,12 @@ const Planning = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SafetyStockDialog
+        open={isSafetyDialogOpen}
+        onOpenChange={setIsSafetyDialogOpen}
+        companyId={companyId}
+      />
     </div>
   );
 };
