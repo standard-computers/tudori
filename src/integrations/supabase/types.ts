@@ -3821,6 +3821,7 @@ export type Database = {
         Row: {
           created_at: string
           dashboard_tile_order: string[] | null
+          design_system: string | null
           hidden_tiles: string[] | null
           id: string
           open_apps_in_new_tab: boolean | null
@@ -3831,6 +3832,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dashboard_tile_order?: string[] | null
+          design_system?: string | null
           hidden_tiles?: string[] | null
           id?: string
           open_apps_in_new_tab?: boolean | null
@@ -3841,6 +3843,7 @@ export type Database = {
         Update: {
           created_at?: string
           dashboard_tile_order?: string[] | null
+          design_system?: string | null
           hidden_tiles?: string[] | null
           id?: string
           open_apps_in_new_tab?: boolean | null
