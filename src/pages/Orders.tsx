@@ -200,6 +200,14 @@ interface InventoryRecord {
   bin?: { name: string } | null;
 }
 
+interface Assignment {
+  id: string;
+  vendor_id: string | null;
+  source_location_id: string | null;
+  destination_location_id: string;
+  is_active: boolean;
+}
+
 // Helper function to calculate expected delivery date based on product lead times
 const calculateExpectedDelivery = (product: Product | undefined): string => {
   const today = new Date();
@@ -362,6 +370,11 @@ const Orders = () => {
   
   // Availability tab state
   const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
+  
+  // Route enforcement state
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [enforceRouteRecords, setEnforceRouteRecords] = useState(false);
+  const [routeFilteredVendors, setRouteFilteredVendors] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -385,6 +398,8 @@ const Orders = () => {
       fetchTaxRates();
       fetchLedgers();
       fetchAllVendors();
+      fetchAssignments();
+      fetchRouteEnforcementSetting();
     }
   }, [companyId]);
 
@@ -551,6 +566,29 @@ const Orders = () => {
       .eq('is_active', true)
       .order('name');
     setLedgers((data as any) || []);
+  };
+
+  const fetchAssignments = async () => {
+    const { data } = await supabase
+      .from('assignments')
+      .select('id, vendor_id, source_location_id, destination_location_id, is_active')
+      .eq('company_id', companyId)
+      .eq('is_active', true);
+    setAssignments(data || []);
+  };
+
+  const fetchRouteEnforcementSetting = async () => {
+    const { data } = await supabase
+      .from('company_settings')
+      .select('setting_value')
+      .eq('company_id', companyId)
+      .eq('setting_key', 'process_controls')
+      .maybeSingle();
+
+    if (data?.setting_value && typeof data.setting_value === 'object' && !Array.isArray(data.setting_value)) {
+      const val = data.setting_value as Record<string, unknown>;
+      setEnforceRouteRecords((val.enforce_route_records as boolean) ?? false);
+    }
   };
 
   // Fetch inventory for availability check (source location for internal transfers, Ship To for external)
@@ -1861,6 +1899,67 @@ const Orders = () => {
     }));
   }, [filteredProducts]);
 
+  // Compute valid vendor options based on route enforcement
+  const routeValidVendorOptions = useMemo(() => {
+    // If route enforcement is disabled or no ship-to selected, return all vendor options
+    if (!enforceRouteRecords || !formData.location_id) {
+      return vendorOptions;
+    }
+
+    const shipToLocationId = formData.location_id;
+    const assignmentsForShipTo = assignments.filter(a => a.destination_location_id === shipToLocationId);
+
+    // If no assignments exist for this ship-to, return all vendor options (will show warning)
+    if (assignmentsForShipTo.length === 0) {
+      return vendorOptions;
+    }
+
+    // Filter vendor options to only those in route records
+    const validVendorIds = new Set<string>();
+    const validLocationIds = new Set<string>();
+
+    assignmentsForShipTo.forEach(a => {
+      if (a.vendor_id) validVendorIds.add(a.vendor_id);
+      if (a.source_location_id) validLocationIds.add(a.source_location_id);
+    });
+
+    return vendorOptions.filter(opt => {
+      const parsed = parseVendorValue(opt.value);
+      if (!parsed) return false;
+      if (parsed.type === 'vendor') return validVendorIds.has(parsed.id);
+      if (parsed.type === 'location') return validLocationIds.has(parsed.id);
+      return false;
+    });
+  }, [enforceRouteRecords, formData.location_id, assignments, vendorOptions, parseVendorValue]);
+
+  // Effect to handle vendor mismatch when ship-to changes with route enforcement
+  useEffect(() => {
+    if (!enforceRouteRecords || !formData.location_id || !formData.vendor_id) return;
+
+    const shipToLocationId = formData.location_id;
+    const parsed = parseVendorValue(formData.vendor_id);
+    if (!parsed) return;
+
+    const assignmentsForShipTo = assignments.filter(a => a.destination_location_id === shipToLocationId);
+    
+    // If assignments exist for ship-to, check if current vendor is valid
+    if (assignmentsForShipTo.length > 0) {
+      let isCurrentVendorValid = false;
+      
+      if (parsed.type === 'vendor') {
+        isCurrentVendorValid = assignmentsForShipTo.some(a => a.vendor_id === parsed.id);
+      } else if (parsed.type === 'location') {
+        isCurrentVendorValid = assignmentsForShipTo.some(a => a.source_location_id === parsed.id);
+      }
+
+      // If current vendor is not valid, clear it to force re-selection
+      if (!isCurrentVendorValid) {
+        setFormData(prev => ({ ...prev, vendor_id: '' }));
+        setOrderItems([]);
+      }
+    }
+  }, [formData.location_id, enforceRouteRecords, assignments]);
+
    // Validation for PO creation - compute errors (blocking) and warnings
    const poValidation = useMemo(() => {
      const errors: string[] = [];
@@ -1914,8 +2013,38 @@ const Orders = () => {
        warnings.push(`${zeroPriceItems.length} item(s) have $0.00 unit price`);
      }
      
+     // Route enforcement validation
+     if (enforceRouteRecords && formData.location_id && formData.vendor_id) {
+       const shipToLocationId = formData.location_id;
+       const parsed = parseVendorValue(formData.vendor_id);
+       
+       // Find all assignments for this ship-to destination
+       const assignmentsForShipTo = assignments.filter(a => a.destination_location_id === shipToLocationId);
+       
+       if (assignmentsForShipTo.length === 0) {
+         // No route records exist at all for this ship-to
+         warnings.push('A route record does not exist for the source/ship-to combo');
+       } else {
+         // Check if the selected vendor/source matches any assignment
+         let matchFound = false;
+         
+         if (parsed?.type === 'vendor') {
+           matchFound = assignmentsForShipTo.some(a => a.vendor_id === parsed.id);
+         } else if (parsed?.type === 'location') {
+           matchFound = assignmentsForShipTo.some(a => a.source_location_id === parsed.id);
+         }
+         
+         if (!matchFound) {
+           // Route exists for ship-to but with different source/vendor
+           const shipToLocation = locations.find(l => l.id === shipToLocationId);
+           const shipToName = shipToLocation?.name || shipToLocation?.location_id || 'selected location';
+           warnings.push(`The selected source is not in a route record for ${shipToName}`);
+         }
+       }
+     }
+     
      return { errors, warnings };
-   }, [formData, orderItems, products, parseVendorValue]);
+   }, [formData, orderItems, products, parseVendorValue, enforceRouteRecords, assignments, locations]);
 
   if (authLoading || loading) {
     return (
@@ -2094,7 +2223,7 @@ const Orders = () => {
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor / Source *</Label>
               <SearchableSelect
-                options={vendorOptions}
+                options={routeValidVendorOptions}
                 value={formData.vendor_id}
                 onValueChange={(value) => {
                   setFormData({ ...formData, vendor_id: value });
