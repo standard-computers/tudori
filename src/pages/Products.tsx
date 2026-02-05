@@ -111,6 +111,7 @@ interface ProductUom {
   name: string;
   abbreviation: string;
   conversion_factor: string;
+  lower_uom?: string; // For display purposes
 }
 
 interface ProductComponent {
@@ -558,7 +559,7 @@ const Products = () => {
   const [nextProductId, setNextProductId] = useState('0001');
   const [activeTab, setActiveTab] = useState('general');
   const [uoms, setUoms] = useState<ProductUom[]>([]);
-  const [newUom, setNewUom] = useState<ProductUom>({ name: '', abbreviation: '', conversion_factor: '1' });
+  const [newUom, setNewUom] = useState<ProductUom>({ name: '', abbreviation: '', conversion_factor: '1', lower_uom: '' });
   const [components, setComponents] = useState<ProductComponent[]>([]);
   const [newComponent, setNewComponent] = useState<{ product_id: string; quantity: string }>({ product_id: '', quantity: '1' });
   const [availableComponents, setAvailableComponents] = useState<SearchableSelectOption[]>([]);
@@ -1055,16 +1056,38 @@ const Products = () => {
   };
 
   const handleAddUom = () => {
-    if (!newUom.name.trim()) {
-      toast.error('UOM name is required');
+    if (!newUom.abbreviation) {
+      toast.error('Please select a UOM');
       return;
     }
-    if (uoms.some(u => u.name.toLowerCase() === newUom.name.toLowerCase())) {
+    if (uoms.some(u => u.abbreviation === newUom.abbreviation)) {
       toast.error('This UOM already exists');
       return;
     }
-    setUoms([...uoms, { ...newUom }]);
-    setNewUom({ name: '', abbreviation: '', conversion_factor: '1' });
+    
+    // Get the name from the selected abbreviation
+    const selectedUomOption = BASE_UOM_OPTIONS.find(o => o.value === newUom.abbreviation);
+    const name = selectedUomOption?.label.split(' - ')[1] || newUom.abbreviation;
+    
+    // Calculate conversion factor based on lower UOM
+    let finalConversionFactor = parseFloat(newUom.conversion_factor) || 1;
+    const lowerUom = newUom.lower_uom || formData.unit;
+    
+    // If lower UOM is not the base unit, multiply by its conversion factor
+    if (lowerUom !== formData.unit) {
+      const lowerUomEntry = uoms.find(u => u.abbreviation === lowerUom);
+      if (lowerUomEntry) {
+        finalConversionFactor = finalConversionFactor * (parseFloat(lowerUomEntry.conversion_factor) || 1);
+      }
+    }
+    
+    setUoms([...uoms, { 
+      name, 
+      abbreviation: newUom.abbreviation, 
+      conversion_factor: finalConversionFactor.toString(),
+      lower_uom: lowerUom
+    }]);
+    setNewUom({ name: '', abbreviation: '', conversion_factor: '1', lower_uom: '' });
   };
 
   const handleRemoveUom = (index: number) => {
@@ -2041,8 +2064,7 @@ const Products = () => {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Abbrev.</TableHead>
+                                <TableHead>UOM</TableHead>
                                 <TableHead>Conversion</TableHead>
                                 <TableHead className="w-16"></TableHead>
                               </TableRow>
@@ -2050,10 +2072,9 @@ const Products = () => {
                             <TableBody>
                               {uoms.map((uom, index) => (
                                 <TableRow key={index}>
-                                  <TableCell className="font-medium">{uom.name}</TableCell>
-                                  <TableCell>{uom.abbreviation || '-'}</TableCell>
+                                  <TableCell className="font-medium">{uom.abbreviation} - {uom.name}</TableCell>
                                   <TableCell>
-                                    1 {uom.name} = {uom.conversion_factor} {formData.unit}
+                                    1 {uom.abbreviation} = {uom.conversion_factor} {formData.unit}
                                   </TableCell>
                                   <TableCell>
                                     <Button
@@ -2076,16 +2097,7 @@ const Products = () => {
                         <h4 className="font-medium text-sm">Add Unit of Measure</h4>
                         <div className="grid grid-cols-3 gap-3">
                           <div className="space-y-1">
-                            <Label htmlFor="uom_name" className="text-xs">Name *</Label>
-                            <Input
-                              id="uom_name"
-                              value={newUom.name}
-                              onChange={(e) => setNewUom({ ...newUom, name: e.target.value })}
-                              placeholder="e.g., Pallet"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label htmlFor="uom_abbrev" className="text-xs">Abbreviation</Label>
+                            <Label className="text-xs">UOM *</Label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button
@@ -2093,7 +2105,9 @@ const Products = () => {
                                   role="combobox"
                                   className="w-full justify-between font-normal"
                                 >
-                                  {newUom.abbreviation || "Select..."}
+                                  {newUom.abbreviation 
+                                    ? BASE_UOM_OPTIONS.find(o => o.value === newUom.abbreviation)?.label || newUom.abbreviation
+                                    : "Select UOM..."}
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
@@ -2125,7 +2139,7 @@ const Products = () => {
                             </Popover>
                           </div>
                           <div className="space-y-1">
-                            <Label htmlFor="uom_factor" className="text-xs">Base units per UOM *</Label>
+                            <Label htmlFor="uom_factor" className="text-xs">Units of lower UOM *</Label>
                             <Input
                               id="uom_factor"
                               type="number"
@@ -2136,12 +2150,70 @@ const Products = () => {
                               placeholder="e.g., 48"
                             />
                           </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Lower UOM</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className="w-full justify-between font-normal"
+                                >
+                                  {newUom.lower_uom 
+                                    ? (uoms.find(u => u.abbreviation === newUom.lower_uom)?.name || 
+                                       BASE_UOM_OPTIONS.find(o => o.value === newUom.lower_uom)?.label ||
+                                       newUom.lower_uom)
+                                    : formData.unit || "Base UOM"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[200px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Search UOM..." />
+                                  <CommandList>
+                                    <CommandEmpty>No UOM found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {/* Base UOM option */}
+                                      <CommandItem
+                                        value={formData.unit || 'base'}
+                                        onSelect={() => setNewUom({ ...newUom, lower_uom: '' })}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            !newUom.lower_uom ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {formData.unit} - Base Unit
+                                      </CommandItem>
+                                      {/* Existing UOMs */}
+                                      {uoms.map((uom) => (
+                                        <CommandItem
+                                          key={uom.abbreviation}
+                                          value={uom.name}
+                                          onSelect={() => setNewUom({ ...newUom, lower_uom: uom.abbreviation })}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              newUom.lower_uom === uom.abbreviation ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          {uom.abbreviation} - {uom.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {newUom.name && newUom.conversion_factor ? (
-                            <>1 {newUom.name} = {newUom.conversion_factor} {formData.unit}</>
+                          {newUom.abbreviation && newUom.conversion_factor ? (
+                            <>1 {BASE_UOM_OPTIONS.find(o => o.value === newUom.abbreviation)?.label.split(' - ')[1] || newUom.abbreviation} = {newUom.conversion_factor} {newUom.lower_uom ? (uoms.find(u => u.abbreviation === newUom.lower_uom)?.name || newUom.lower_uom) : formData.unit}</>
                           ) : (
-                            <>Example: 1 Pallet = 48 each</>
+                            <>Example: 1 Case = 12 {formData.unit || 'Each'}</>
                           )}
                         </p>
                         <Button type="button" variant="outline" size="sm" onClick={handleAddUom}>
