@@ -37,10 +37,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Users, Pencil, Trash2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Plus, Users, Pencil, Trash2, AlertCircle, X, Eye, MoreHorizontal } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 interface Customer {
@@ -84,11 +90,13 @@ const CUSTOMER_COLUMNS: ColumnDefinition[] = [
 // Separated table component with sorting/filtering
 const CustomerTable = ({
   customers,
+  onView,
   onEdit,
   onDelete,
   isColumnVisible,
 }: {
   customers: Customer[];
+  onView: (customer: Customer) => void;
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
   isColumnVisible: (key: string) => boolean;
@@ -328,17 +336,30 @@ const CustomerTable = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => onEdit(customer)}
+                          onClick={() => onView(customer)}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDelete(customer.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(customer)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(customer.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   )}
@@ -376,6 +397,8 @@ const Customers = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
   const [nextCustomerId, setNextCustomerId] = useState('0001');
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -399,10 +422,12 @@ const Customers = () => {
   useEffect(() => {
     if (isDialogOpen) {
       setTransaction(isEditing ? 'cust/edit' : 'cust/new');
+    } else if (isViewDialogOpen) {
+      setTransaction('cust/view');
     } else {
       setTransaction('cust');
     }
-  }, [isDialogOpen, isEditing, setTransaction]);
+  }, [isDialogOpen, isEditing, isViewDialogOpen, setTransaction]);
 
   // Ctrl+S to save
   useSaveShortcut(() => {
@@ -497,6 +522,11 @@ const Customers = () => {
 
   // Keyboard shortcut for adding new customer
   useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleView = (customer: Customer) => {
+    setViewingCustomer(customer);
+    setIsViewDialogOpen(true);
+  };
 
   const handleEdit = (customer: Customer) => {
     setFormData({
@@ -866,9 +896,6 @@ const Customers = () => {
                     </div>
                   </div>
                   <DialogFooter className="shrink-0">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
                     <Button 
                       type="submit" 
                       disabled={!isEditing && isCustomerIdInUse}
@@ -878,6 +905,108 @@ const Customers = () => {
                     </Button>
                   </DialogFooter>
                 </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* View Customer Dialog */}
+            <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>View Customer</DialogTitle>
+                  <DialogDescription>
+                    Customer details and information.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-12 top-4 z-10"
+                  onClick={() => {
+                    if (viewingCustomer) {
+                      handleEdit(viewingCustomer);
+                      setIsViewDialogOpen(false);
+                    }
+                  }}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                
+                {viewingCustomer && (
+                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Customer ID</Label>
+                        <p className="font-mono">{viewingCustomer.customer_id}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Type</Label>
+                        <p>{viewingCustomer.type}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Customer Name</Label>
+                      <p className="font-medium">{viewingCustomer.name}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Contact Name</Label>
+                        <p>{viewingCustomer.contact_name || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Email</Label>
+                        <p>{viewingCustomer.email || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Phone</Label>
+                        <p>{viewingCustomer.phone || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Website</Label>
+                        <p>{viewingCustomer.website || '-'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Address</Label>
+                      <p>
+                        {viewingCustomer.address_line1 || '-'}
+                        {viewingCustomer.address_line2 && <><br />{viewingCustomer.address_line2}</>}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">City</Label>
+                        <p>{viewingCustomer.city || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">State</Label>
+                        <p>{viewingCustomer.state || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Postal Code</Label>
+                        <p>{viewingCustomer.postal_code || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Country</Label>
+                        <p>{viewingCustomer.country || '-'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Payment Terms</Label>
+                      <p>{viewingCustomer.payment_terms ? `${viewingCustomer.payment_terms} days` : '-'}</p>
+                    </div>
+                    {viewingCustomer.notes && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Notes</Label>
+                        <p className="whitespace-pre-wrap">{viewingCustomer.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           </div>
@@ -901,6 +1030,7 @@ const Customers = () => {
         ) : (
           <CustomerTable
             customers={customers}
+            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
             isColumnVisible={isColumnVisible}
