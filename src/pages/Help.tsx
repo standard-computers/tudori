@@ -1,45 +1,55 @@
- import { useState, useEffect } from "react";
- import { useNavigate } from "react-router-dom";
- import { useAuth } from "@/contexts/AuthContext";
- import { supabase } from "@/integrations/supabase/client";
- import { Button } from "@/components/ui/button";
- import { Input } from "@/components/ui/input";
- import { Textarea } from "@/components/ui/textarea";
- import { toast } from "sonner";
- import {
-   ChevronLeft,
-   ChevronRight,
-   Folder,
-   FolderPlus,
-   FileText,
-   FilePlus,
-   Pencil,
-   Trash2,
-   Save,
-   X,
-   ChevronDown,
- } from "lucide-react";
- import {
-   Dialog,
-   DialogContent,
-   DialogHeader,
-   DialogTitle,
-   DialogFooter,
- } from "@/components/ui/dialog";
- import {
-   AlertDialog,
-   AlertDialogAction,
-   AlertDialogCancel,
-   AlertDialogContent,
-   AlertDialogDescription,
-   AlertDialogFooter,
-   AlertDialogHeader,
-   AlertDialogTitle,
- } from "@/components/ui/alert-dialog";
- import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
- import { cn } from "@/lib/utils";
- import ReactMarkdown from "react-markdown";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Folder,
+  FolderPlus,
+  FileText,
+  FilePlus,
+  Pencil,
+  Trash2,
+  Save,
+  X,
+  ChevronDown,
+  GripVertical,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+  closestCenter,
+  DragStartEvent,
+  DragEndEvent,
+} from "@dnd-kit/core";
  
  interface HelpFolder {
    id: string;
@@ -79,6 +89,7 @@ import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeDocument, setActiveDocument] = useState<HelpDocument | null>(null);
    
    // Dialog states
    const [folderDialogOpen, setFolderDialogOpen] = useState(false);
@@ -318,89 +329,150 @@ import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
      setDocumentDialogOpen(true);
    };
  
-   const { rootFolders, rootDocuments } = buildTree();
- 
-   const renderFolder = (folder: TreeFolder, depth: number = 0) => {
-     const isExpanded = expandedFolders.has(folder.id);
-     
-     return (
-       <div key={folder.id}>
-         <Collapsible open={isExpanded} onOpenChange={() => toggleFolder(folder.id)}>
-           <div
-             className={cn(
-               "flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-accent group",
-               "cursor-pointer"
-             )}
-             style={{ paddingLeft: `${depth * 12 + 8}px` }}
-           >
-             <CollapsibleTrigger asChild>
-               <button className="p-0.5 hover:bg-accent rounded">
-                 <ChevronDown
-                   className={cn(
-                     "h-4 w-4 text-muted-foreground transition-transform",
-                     !isExpanded && "-rotate-90"
-                   )}
-                 />
-               </button>
-             </CollapsibleTrigger>
-            <Folder className="h-4 w-4 text-warning shrink-0" />
-             <span className="flex-1 text-sm truncate">{folder.name}</span>
-             {isAdmin && (
-               <div className="hidden group-hover:flex items-center gap-0.5">
-                 <button
-                   onClick={(e) => { e.stopPropagation(); openNewFolderDialog(folder.id); }}
-                   className="p-1 hover:bg-accent rounded"
-                   title="Add subfolder"
-                 >
-                   <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                 </button>
-                 <button
-                   onClick={(e) => { e.stopPropagation(); openNewDocumentDialog(folder.id); }}
-                   className="p-1 hover:bg-accent rounded"
-                   title="Add document"
-                 >
-                   <FilePlus className="h-3.5 w-3.5 text-muted-foreground" />
-                 </button>
-                 <button
-                   onClick={(e) => { e.stopPropagation(); openEditFolderDialog(folder); }}
-                   className="p-1 hover:bg-accent rounded"
-                   title="Rename folder"
-                 >
-                   <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                 </button>
-                 <button
-                   onClick={(e) => { e.stopPropagation(); setDeletingFolder(folder); setDeleteFolderDialogOpen(true); }}
-                   className="p-1 hover:bg-accent rounded"
-                   title="Delete folder"
-                 >
-                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                 </button>
-               </div>
-             )}
-           </div>
-           <CollapsibleContent>
-             {folder.children.map((child) => renderFolder(child, depth + 1))}
-             {folder.documents.map((doc) => renderDocument(doc, depth + 1))}
-           </CollapsibleContent>
-         </Collapsible>
-       </div>
-     );
-   };
- 
-   const renderDocument = (doc: HelpDocument, depth: number = 0) => (
-     <div
-       key={doc.id}
-       onClick={() => { setSelectedDocument(doc); setIsEditing(false); }}
-       className={cn(
-         "flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-accent cursor-pointer",
-         selectedDocument?.id === doc.id && "bg-accent"
-       )}
-       style={{ paddingLeft: `${depth * 12 + 28}px` }}
-     >
-      <FileText className="h-4 w-4 text-primary shrink-0" />
-       <span className="flex-1 text-sm truncate">{doc.title}</span>
-     </div>
-   );
+    const { rootFolders, rootDocuments } = buildTree();
+
+    const handleDragStart = (event: DragStartEvent) => {
+      const doc = documents.find((d) => d.id === event.active.id);
+      if (doc) setActiveDocument(doc);
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+      setActiveDocument(null);
+      const { active, over } = event;
+      if (!over || !isAdmin) return;
+
+      const docId = active.id as string;
+      const targetFolderId = over.id === "root" ? null : (over.id as string);
+      
+      const doc = documents.find((d) => d.id === docId);
+      if (!doc || doc.folder_id === targetFolderId) return;
+
+      const { error } = await supabase
+        .from("help_documents")
+        .update({ folder_id: targetFolderId })
+        .eq("id", docId);
+
+      if (error) {
+        toast.error("Failed to move document");
+      } else {
+        toast.success("Document moved");
+        fetchData();
+      }
+    };
+
+    const DroppableFolder = ({ folder, depth }: { folder: TreeFolder; depth: number }) => {
+      const { setNodeRef, isOver } = useDroppable({ id: folder.id });
+      const isExpanded = expandedFolders.has(folder.id);
+
+      return (
+        <div key={folder.id} ref={setNodeRef}>
+          <Collapsible open={isExpanded} onOpenChange={() => toggleFolder(folder.id)}>
+            <div
+              className={cn(
+                "flex items-center gap-1 py-1.5 px-2 rounded-md hover:bg-accent group",
+                "cursor-pointer",
+                isOver && "bg-accent ring-2 ring-primary"
+              )}
+              style={{ paddingLeft: `${depth * 12 + 8}px` }}
+            >
+              <CollapsibleTrigger asChild>
+                <button className="p-0.5 hover:bg-accent rounded">
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform",
+                      !isExpanded && "-rotate-90"
+                    )}
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <Folder className="h-4 w-4 text-warning shrink-0" />
+              <span className="flex-1 text-sm truncate">{folder.name}</span>
+              {isAdmin && (
+                <div className="hidden group-hover:flex items-center gap-0.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openNewFolderDialog(folder.id); }}
+                    className="p-1 hover:bg-accent rounded"
+                    title="Add subfolder"
+                  >
+                    <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openNewDocumentDialog(folder.id); }}
+                    className="p-1 hover:bg-accent rounded"
+                    title="Add document"
+                  >
+                    <FilePlus className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openEditFolderDialog(folder); }}
+                    className="p-1 hover:bg-accent rounded"
+                    title="Rename folder"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeletingFolder(folder); setDeleteFolderDialogOpen(true); }}
+                    className="p-1 hover:bg-accent rounded"
+                    title="Delete folder"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <CollapsibleContent>
+              {folder.children.map((child) => (
+                <DroppableFolder key={child.id} folder={child} depth={depth + 1} />
+              ))}
+              {folder.documents.map((doc) => (
+                <DraggableDocument key={doc.id} doc={doc} depth={depth + 1} />
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      );
+    };
+
+    const DraggableDocument = ({ doc, depth }: { doc: HelpDocument; depth: number }) => {
+      const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+        id: doc.id,
+        disabled: !isAdmin,
+      });
+
+      const style = transform
+        ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
+        : undefined;
+
+      return (
+        <div
+          ref={setNodeRef}
+          style={{ ...style, paddingLeft: `${depth * 12 + 28}px` }}
+          className={cn(
+            "flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-accent cursor-pointer",
+            selectedDocument?.id === doc.id && "bg-accent",
+            isDragging && "opacity-50"
+          )}
+          onClick={() => { setSelectedDocument(doc); setIsEditing(false); }}
+        >
+          {isAdmin && (
+            <div {...attributes} {...listeners} className="cursor-grab">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          )}
+          <FileText className="h-4 w-4 text-primary shrink-0" />
+          <span className="flex-1 text-sm truncate">{doc.title}</span>
+        </div>
+      );
+    };
+
+    const RootDropZone = ({ children }: { children: React.ReactNode }) => {
+      const { setNodeRef, isOver } = useDroppable({ id: "root" });
+      return (
+        <div ref={setNodeRef} className={cn("flex-1", isOver && "bg-accent/50")}>
+          {children}
+        </div>
+      );
+    };
  
    return (
      <div className="min-h-screen bg-background flex flex-col">
@@ -463,15 +535,35 @@ import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
                  </div>
                )}
                
-               <div className="flex-1 overflow-y-auto p-2">
-                 {rootFolders.map((folder) => renderFolder(folder))}
-                 {rootDocuments.map((doc) => renderDocument(doc))}
-                 {folders.length === 0 && documents.length === 0 && (
-                   <p className="text-sm text-muted-foreground text-center py-8">
-                     {isAdmin ? "Create your first folder or document" : "No help documents yet"}
-                   </p>
-                 )}
-               </div>
+                <div className="flex-1 overflow-y-auto p-2">
+                  <DndContext
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <RootDropZone>
+                      {rootFolders.map((folder) => (
+                        <DroppableFolder key={folder.id} folder={folder} depth={0} />
+                      ))}
+                      {rootDocuments.map((doc) => (
+                        <DraggableDocument key={doc.id} doc={doc} depth={0} />
+                      ))}
+                    </RootDropZone>
+                    <DragOverlay>
+                      {activeDocument && (
+                        <div className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-accent shadow-lg">
+                          <FileText className="h-4 w-4 text-primary shrink-0" />
+                          <span className="text-sm">{activeDocument.title}</span>
+                        </div>
+                      )}
+                    </DragOverlay>
+                  </DndContext>
+                  {folders.length === 0 && documents.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      {isAdmin ? "Create your first folder or document" : "No help documents yet"}
+                    </p>
+                  )}
+                </div>
              </>
            )}
          </div>
