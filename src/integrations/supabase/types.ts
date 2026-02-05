@@ -2141,6 +2141,7 @@ export type Database = {
           payment_terms: number | null
           postal_code: string
           state: string
+          status: string
           type: string
           updated_at: string
         }
@@ -2160,6 +2161,7 @@ export type Database = {
           payment_terms?: number | null
           postal_code: string
           state: string
+          status?: string
           type?: string
           updated_at?: string
         }
@@ -2179,6 +2181,7 @@ export type Database = {
           payment_terms?: number | null
           postal_code?: string
           state?: string
+          status?: string
           type?: string
           updated_at?: string
         }
