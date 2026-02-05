@@ -2013,38 +2013,54 @@ const Orders = () => {
        warnings.push(`${zeroPriceItems.length} item(s) have $0.00 unit price`);
      }
      
-     // Route enforcement validation
-     if (enforceRouteRecords && formData.location_id && formData.vendor_id) {
-       const shipToLocationId = formData.location_id;
-       const parsed = parseVendorValue(formData.vendor_id);
-       
-       // Find all assignments for this ship-to destination
-       const assignmentsForShipTo = assignments.filter(a => a.destination_location_id === shipToLocationId);
-       
-       if (assignmentsForShipTo.length === 0) {
-         // No route records exist at all for this ship-to
-         warnings.push('A route record does not exist for the source/ship-to combo');
-       } else {
-         // Check if the selected vendor/source matches any assignment
-         let matchFound = false;
-         
-         if (parsed?.type === 'vendor') {
-           matchFound = assignmentsForShipTo.some(a => a.vendor_id === parsed.id);
-         } else if (parsed?.type === 'location') {
-           matchFound = assignmentsForShipTo.some(a => a.source_location_id === parsed.id);
-         }
-         
-         if (!matchFound) {
-           // Route exists for ship-to but with different source/vendor
-           const shipToLocation = locations.find(l => l.id === shipToLocationId);
-           const shipToName = shipToLocation?.name || shipToLocation?.location_id || 'selected location';
-           warnings.push(`The selected source is not in a route record for ${shipToName}`);
-         }
-       }
-     }
-     
-     return { errors, warnings };
+      // Route enforcement validation - check in real-time as ship-to is selected
+      if (enforceRouteRecords && formData.location_id) {
+        const shipToLocationId = formData.location_id;
+        const shipToLocation = locations.find(l => l.id === shipToLocationId);
+        const shipToName = shipToLocation?.name || shipToLocation?.location_id || 'selected location';
+        
+        // Find all assignments for this ship-to destination
+        const assignmentsForShipTo = assignments.filter(a => a.destination_location_id === shipToLocationId);
+        
+        if (assignmentsForShipTo.length === 0) {
+          // No route records exist at all for this ship-to
+          warnings.push('A route record does not exist for the source/ship-to combo');
+        } else if (formData.vendor_id) {
+          // Routes exist - check if selected vendor matches
+          const parsed = parseVendorValue(formData.vendor_id);
+          
+          if (parsed) {
+            let matchFound = false;
+            
+            if (parsed.type === 'vendor') {
+              matchFound = assignmentsForShipTo.some(a => a.vendor_id === parsed.id);
+            } else if (parsed.type === 'location') {
+              matchFound = assignmentsForShipTo.some(a => a.source_location_id === parsed.id);
+            }
+            
+            if (!matchFound) {
+              // Route exists for ship-to but with different source/vendor
+              warnings.push(`The selected source is not in a route record for ${shipToName}`);
+            }
+          }
+        }
+      }
+      
+      return { errors, warnings };
    }, [formData, orderItems, products, parseVendorValue, enforceRouteRecords, assignments, locations]);
+
+  // Auto-open validation popover when route enforcement warnings are detected
+  useEffect(() => {
+    if (!isCreateDialogOpen) return;
+    
+    const hasRouteWarning = poValidation.warnings.some(w => 
+      w.includes('route record') || w.includes('source is not in a route')
+    );
+    
+    if (hasRouteWarning) {
+      setIsValidationPopoverOpen(true);
+    }
+  }, [poValidation.warnings, isCreateDialogOpen]);
 
   if (authLoading || loading) {
     return (
