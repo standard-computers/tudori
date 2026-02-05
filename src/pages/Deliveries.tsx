@@ -175,8 +175,13 @@ interface Product {
   product_id: string;
 }
 
+interface Carrier {
+  id: string;
+  name: string;
+  carrier_id: string;
+}
+
 const DELIVERY_STATUSES = ['pending', 'in_transit', 'delivered', 'cancelled'];
-const CARRIERS = ['UPS', 'FedEx', 'USPS', 'DHL', 'Freight', 'Local Pickup', 'Other'];
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -196,6 +201,7 @@ const Deliveries = () => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -295,6 +301,7 @@ const Deliveries = () => {
       fetchPurchaseOrders();
       fetchLocations();
       fetchProducts();
+      fetchCarriers();
     }
   }, [companyId]);
 
@@ -368,6 +375,17 @@ const Deliveries = () => {
       .order('name');
     
     setProducts(data || []);
+  };
+
+  const fetchCarriers = async () => {
+    const { data } = await supabase
+      .from('carriers')
+      .select('id, name, carrier_id')
+      .eq('company_id', companyId!)
+      .eq('is_active', true)
+      .order('name');
+    
+    setCarriers(data || []);
   };
 
   const fetchDeliveryItems = async (deliveryId: string) => {
@@ -787,9 +805,9 @@ const Deliveries = () => {
                                 <SelectValue placeholder="Select carrier" />
                               </SelectTrigger>
                               <SelectContent>
-                                {CARRIERS.map((carrier) => (
-                                  <SelectItem key={carrier} value={carrier}>
-                                    {carrier}
+                                {carriers.map((carrier) => (
+                                  <SelectItem key={carrier.id} value={carrier.name}>
+                                    {carrier.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
