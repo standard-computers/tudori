@@ -553,12 +553,13 @@
            <DialogHeader>
              <DialogTitle>{editingFolder ? "Rename Folder" : "Create Folder"}</DialogTitle>
            </DialogHeader>
-          <div className="py-4">
+          <div className="py-6">
             <Input
               placeholder="Folder name"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+              autoFocus
             />
           </div>
            <DialogFooter>
