@@ -3251,6 +3251,7 @@ export type Database = {
           location_id: string | null
           notes: string | null
           requisition_id: string
+          source_location_id: string | null
           status: string
           total_amount: number | null
           updated_at: string
@@ -3264,6 +3265,7 @@ export type Database = {
           location_id?: string | null
           notes?: string | null
           requisition_id: string
+          source_location_id?: string | null
           status?: string
           total_amount?: number | null
           updated_at?: string
@@ -3277,6 +3279,7 @@ export type Database = {
           location_id?: string | null
           notes?: string | null
           requisition_id?: string
+          source_location_id?: string | null
           status?: string
           total_amount?: number | null
           updated_at?: string
@@ -3293,6 +3296,13 @@ export type Database = {
           {
             foreignKeyName: "requisitions_location_id_fkey"
             columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisitions_source_location_id_fkey"
+            columns: ["source_location_id"]
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]

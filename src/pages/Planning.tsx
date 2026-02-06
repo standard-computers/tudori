@@ -362,13 +362,13 @@ const Planning = () => {
           if (!assignmentMap.has(a.product_id)) {
             if (a.vendor_id) {
               assignmentMap.set(a.product_id, {
-                vendorId: a.vendor_id,
+                vendorId: `vendor:${a.vendor_id}`,
                 vendorName: a.vendor?.name || null,
               });
             } else if (a.source_location_id) {
-              // Internal source - use source_location_id as vendorId (for grouping)
+              // Internal source - use location: prefix convention
               assignmentMap.set(a.product_id, {
-                vendorId: a.source_location_id,
+                vendorId: `location:${a.source_location_id}`,
                 vendorName: a.source_location?.name ? `${a.source_location.name} (Internal)` : null,
               });
             }
@@ -707,14 +707,29 @@ const Planning = () => {
           return sum + (item.quantity * (item.unitPrice || 0));
         }, 0);
 
-        // Create the requisition with vendor_id and total_amount
+        // Parse vendor value to determine if it's a vendor or internal source location
+        let resolvedVendorId: string | null = null;
+        let resolvedSourceLocationId: string | null = null;
+        if (vendorId) {
+          if (vendorId.startsWith('vendor:')) {
+            resolvedVendorId = vendorId.replace('vendor:', '');
+          } else if (vendorId.startsWith('location:')) {
+            resolvedSourceLocationId = vendorId.replace('location:', '');
+          } else {
+            // Legacy: no prefix, assume vendor
+            resolvedVendorId = vendorId;
+          }
+        }
+
+        // Create the requisition with vendor_id or source_location_id
         const { data: requisition, error: reqError } = await supabase
           .from('requisitions')
           .insert({
             company_id: companyId!,
             requisition_id: nextId || `REQ-${Date.now()}`,
             location_id: selectedLocation!.id,
-            vendor_id: vendorId,
+            vendor_id: resolvedVendorId,
+            source_location_id: resolvedSourceLocationId,
             total_amount: totalAmount,
             status: 'draft',
             notes: `Auto-generated from Planning for ${selectedLocation!.name}`,
