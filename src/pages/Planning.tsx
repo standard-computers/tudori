@@ -39,6 +39,7 @@ interface LocationSummary {
   name: string;
   salesOrderCount: number;
   productionOrderCount: number;
+  requisitionCount: number;
   shortfallCount: number;
   totalShortfall: number;
 }
@@ -71,11 +72,13 @@ interface InventoryShortfall {
   unitPrice: number | null;
   totalRequired: number;
   productionRequired: number;
+  requisitionDemand: number;
   safetyStock: number;
   currentStock: number;
   shortfall: number;
   salesOrders: string[];
   productionOrders: string[];
+  requisitionOrders: string[];
 }
 
 interface RequisitionItem {
@@ -253,9 +256,17 @@ const Planning = () => {
     // Get production order items for shortfall calculation
     const { data: prodItems } = await supabase
       .from('production_orders')
-      .select('location_id, quantity, bom:bills_of_materials(bom_items:bom_items(product_id, quantity))')
+      .select('location_id, quantity, bom:bill_of_materials(bom_items:bom_items(product_id, quantity))')
       .eq('company_id', companyId!)
       .in('status', ['pending', 'in_progress']);
+
+    // Get outstanding requisitions that source from internal locations (creates demand at source)
+    const { data: internalReqs } = await supabase
+      .from('requisitions')
+      .select('id, source_location_id, requisition_items(product_id, quantity)')
+      .eq('company_id', companyId!)
+      .not('source_location_id', 'is', null)
+      .in('status', ['draft', 'pending', 'approved']);
 
     // Build inventory map by location and product
     const inventoryByLocProduct = new Map<string, number>();
@@ -278,6 +289,17 @@ const Planning = () => {
       (bom.bom_items as any[]).forEach(item => {
         const key = `${po.location_id}-${item.product_id}`;
         demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0) * (po.quantity || 1));
+      });
+    });
+
+    // Add requisition demand to source locations
+    const reqCountBySourceLocation = new Map<string, number>();
+    internalReqs?.forEach((req: any) => {
+      if (!req.source_location_id) return;
+      reqCountBySourceLocation.set(req.source_location_id, (reqCountBySourceLocation.get(req.source_location_id) || 0) + 1);
+      (req.requisition_items as any[])?.forEach((item: any) => {
+        const key = `${req.source_location_id}-${item.product_id}`;
+        demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0));
       });
     });
 
@@ -327,18 +349,20 @@ const Planning = () => {
     const summaries: LocationSummary[] = locationsData.map(loc => {
       const soCount = salesOrders?.filter(so => so.location_id === loc.id).length || 0;
       const poCount = productionOrders?.filter(po => po.location_id === loc.id).length || 0;
+      const reqCount = reqCountBySourceLocation.get(loc.id) || 0;
       return {
         ...loc,
         salesOrderCount: soCount,
         productionOrderCount: poCount,
+        requisitionCount: reqCount,
         shortfallCount: 0,
         totalShortfall: shortfallByLocation.get(loc.id) || 0,
       };
     });
 
-    // Filter to show locations with outstanding orders OR safety stock shortfalls
+    // Filter to show locations with outstanding orders, requisition demand, OR safety stock shortfalls
     const activeSummaries = summaries.filter(s => 
-      s.salesOrderCount > 0 || s.productionOrderCount > 0 || locationsWithSafetyShortfall.has(s.id) || s.totalShortfall > 0
+      s.salesOrderCount > 0 || s.productionOrderCount > 0 || s.requisitionCount > 0 || locationsWithSafetyShortfall.has(s.id) || s.totalShortfall > 0
     );
     setLocations(activeSummaries);
   };
@@ -454,6 +478,22 @@ const Planning = () => {
         .eq('location_id', locationId)
         .in('status', ['draft', 'pending', 'approved']);
 
+      // Get incoming requisitions where this location is the source (creates demand here)
+      const { data: incomingReqs } = await supabase
+        .from('requisitions')
+        .select(`
+          id,
+          requisition_id,
+          requisition_items(
+            product_id,
+            quantity,
+            product:products(product_id, name, unit, price, vendor_id, vendor:vendors(name))
+          )
+        `)
+        .eq('company_id', companyId!)
+        .eq('source_location_id', locationId)
+        .in('status', ['draft', 'pending', 'approved']);
+
       // Build a map of already requisitioned quantities
       const requisitionedMap = new Map<string, number>();
       outstandingReqs?.forEach(req => {
@@ -474,9 +514,11 @@ const Planning = () => {
         unitPrice: number | null;
         totalRequired: number;
         productionRequired: number;
+        requisitionDemand: number;
         safetyStock: number;
         salesOrders: string[];
         productionOrders: string[];
+        requisitionOrders: string[];
       }>();
 
       // Get safety stock levels for this location
@@ -514,9 +556,11 @@ const Planning = () => {
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
+            requisitionDemand: 0,
             safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
             productionOrders: [],
+            requisitionOrders: [],
           };
           
           existing.totalRequired += item.quantity;
@@ -553,9 +597,11 @@ const Planning = () => {
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
+            requisitionDemand: 0,
             safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
             productionOrders: [],
+            requisitionOrders: [],
           };
           
           // Multiply BOM item quantity by production order quantity (batches)
@@ -564,6 +610,47 @@ const Planning = () => {
           existing.productionRequired += prodQty;
           if (!existing.productionOrders.includes(po.order_number)) {
             existing.productionOrders.push(po.order_number);
+          }
+          requirementMap.set(item.product_id, existing);
+        });
+      });
+
+      // Add incoming requisition demand (other locations sourcing from here)
+      incomingReqs?.forEach((req: any) => {
+        ((req.requisition_items || []) as any[]).forEach((item: any) => {
+          const product = item.product;
+          if (!product) return;
+          
+          const assignmentVendor = assignmentMap.get(item.product_id);
+          const resolvedVendorId = assignmentVendor
+            ? assignmentVendor.vendorId
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorId : product.vendor_id);
+          const resolvedVendorName = assignmentVendor
+            ? assignmentVendor.vendorName
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorName : (product.vendor?.name || null));
+          
+          const existing = requirementMap.get(item.product_id) || {
+            productId: item.product_id,
+            productCode: product.product_id,
+            productName: product.name,
+            unit: product.unit,
+            vendorId: resolvedVendorId,
+            vendorName: resolvedVendorName,
+            unitPrice: product.price || null,
+            totalRequired: 0,
+            productionRequired: 0,
+            requisitionDemand: 0,
+            safetyStock: safetyStockMap.get(item.product_id) || 0,
+            salesOrders: [],
+            productionOrders: [],
+            requisitionOrders: [],
+          };
+          
+          existing.totalRequired += item.quantity;
+          existing.requisitionDemand = (existing.requisitionDemand || 0) + item.quantity;
+          if (!existing.requisitionOrders) existing.requisitionOrders = [];
+          if (!existing.requisitionOrders.includes(req.requisition_id)) {
+            existing.requisitionOrders.push(req.requisition_id);
           }
           requirementMap.set(item.product_id, existing);
         });
@@ -611,9 +698,11 @@ const Planning = () => {
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
+            requisitionDemand: 0,
             safetyStock: ss.safety_stock_quantity,
             salesOrders: [],
             productionOrders: [],
+            requisitionOrders: [],
           });
         }
       });
@@ -907,6 +996,16 @@ const Planning = () => {
                     className="w-40 text-center"
                   />
                   <SortableTableHead
+                    label="Requisitions"
+                    sortKey="requisitionCount"
+                    currentSortKey={locationsSortConfig.key}
+                    currentSortDirection={locationsSortConfig.direction}
+                    onSort={handleLocationsSort}
+                    filterValue={locationsFilters['requisitionCount'] || ''}
+                    onFilter={(value) => setLocationsFilter('requisitionCount', value)}
+                    className="w-40 text-center"
+                  />
+                  <SortableTableHead
                     label="Production Orders"
                     sortKey="productionOrderCount"
                     currentSortKey={locationsSortConfig.key}
@@ -932,7 +1031,7 @@ const Planning = () => {
               <TableBody>
                 {sortedLocations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No locations with outstanding orders
                     </TableCell>
                   </TableRow>
@@ -957,6 +1056,16 @@ const Planning = () => {
                           <Badge variant="secondary" className="gap-1">
                             <ShoppingCart className="w-3 h-3" />
                             {location.salesOrderCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {location.requisitionCount > 0 ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <FileSpreadsheet className="w-3 h-3" />
+                            {location.requisitionCount}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -1051,6 +1160,16 @@ const Planning = () => {
                       onFilter={(value) => setShortfallsFilter('productionRequired', value)}
                     />
                     <SortableTableHead
+                      label="Req"
+                      sortKey="requisitionDemand"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['requisitionDemand'] || ''}
+                      onFilter={(value) => setShortfallsFilter('requisitionDemand', value)}
+                      className="w-24 text-right"
+                    />
+                    <SortableTableHead
                       label="Safety"
                       sortKey="safetyStock"
                       currentSortKey={shortfallsSortConfig.key}
@@ -1108,6 +1227,9 @@ const Planning = () => {
                         {item.productionRequired > 0 ? `${item.productionRequired} ${item.unit || ''}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono text-muted-foreground">
+                        {item.requisitionDemand > 0 ? `${item.requisitionDemand} ${item.unit || ''}` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
                         {item.safetyStock > 0 ? item.safetyStock : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
@@ -1124,6 +1246,12 @@ const Planning = () => {
                             <Badge key={so} variant="outline" className="text-xs">
                               <ShoppingCart className="w-3 h-3 mr-1" />
                               {so}
+                            </Badge>
+                          ))}
+                          {item.requisitionOrders.map(req => (
+                            <Badge key={req} variant="outline" className="text-xs">
+                              <FileSpreadsheet className="w-3 h-3 mr-1" />
+                              {req}
                             </Badge>
                           ))}
                           {item.productionOrders.map(po => (
