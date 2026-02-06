@@ -360,10 +360,8 @@ const Planning = () => {
       };
     });
 
-    // Filter to show locations with outstanding orders, requisition demand, OR safety stock shortfalls
-    const activeSummaries = summaries.filter(s => 
-      s.salesOrderCount > 0 || s.productionOrderCount > 0 || s.requisitionCount > 0 || locationsWithSafetyShortfall.has(s.id) || s.totalShortfall > 0
-    );
+    // Only show locations that actually have shortfalls
+    const activeSummaries = summaries.filter(s => s.totalShortfall > 0);
     setLocations(activeSummaries);
   };
 
