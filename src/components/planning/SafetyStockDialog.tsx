@@ -297,16 +297,8 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
         }
       }
 
-      // 2. Location-type expansion: for products with safety stock at some locations,
-      //    suggest the same for other locations of the same type that are missing it
-      const locationTypeMap = new Map<string, Location[]>();
-      locations.forEach(loc => {
-        const t = loc.type || 'Other';
-        if (!locationTypeMap.has(t)) locationTypeMap.set(t, []);
-        locationTypeMap.get(t)!.push(loc);
-      });
-
-      // Group existing safety stocks by product
+      // 2. Location expansion: for products with safety stock at some locations,
+      //    suggest safety stock for ALL other locations (any type) that are missing it
       const safetyStocksByProduct = new Map<string, SafetyStock[]>();
       safetyStocks.forEach(ss => {
         if (!safetyStocksByProduct.has(ss.product_id)) safetyStocksByProduct.set(ss.product_id, []);
@@ -314,38 +306,22 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
       });
 
       for (const [productId, productSafetyStocks] of safetyStocksByProduct) {
-        // For each location type that has an established safety stock, find missing locations
-        const coveredTypeQty = new Map<string, number>();
+        // Calculate average safety stock qty across all established records for this product
+        const totalQty = productSafetyStocks.reduce((sum, ss) => sum + ss.safety_stock_quantity, 0);
+        const avgQty = Math.ceil(totalQty / productSafetyStocks.length);
 
-        for (const ss of productSafetyStocks) {
-          const loc = locations.find(l => l.id === ss.location_id);
-          if (!loc) continue;
-          const locType = loc.type || 'Other';
-          // Use average qty across established records of this type
-          const current = coveredTypeQty.get(locType) || 0;
-          coveredTypeQty.set(locType, current + ss.safety_stock_quantity);
-        }
+        // Suggest for ALL locations that don't have safety stock for this product
+        for (const loc of locations) {
+          const key = `${productId}-${loc.id}`;
+          if (existingPairs.has(key) || addedPairs.has(key)) continue;
 
-        for (const [locType, totalQty] of coveredTypeQty) {
-          const locsOfType = locationTypeMap.get(locType) || [];
-          const establishedCount = productSafetyStocks.filter(ss => {
-            const loc = locations.find(l => l.id === ss.location_id);
-            return loc && (loc.type || 'Other') === locType;
-          }).length;
-          const avgQty = Math.ceil(totalQty / establishedCount);
+          // Use inventory quantity if available, otherwise use the average from established records
+          const currentInventory = inventoryMap.get(key) || 0;
+          const suggestedQty = currentInventory > 0
+            ? Math.ceil(currentInventory * 0.25) // 25% of current stock as safety buffer
+            : avgQty;
 
-          for (const loc of locsOfType) {
-            const key = `${productId}-${loc.id}`;
-            if (existingPairs.has(key) || addedPairs.has(key)) continue;
-
-            // Use inventory quantity if available, otherwise use the average from same-type locations
-            const currentInventory = inventoryMap.get(key) || 0;
-            const suggestedQty = currentInventory > 0
-              ? Math.ceil(currentInventory * 0.25) // 25% of current stock as safety buffer
-              : avgQty;
-
-            addSuggestion(productId, loc.id, suggestedQty, true);
-          }
+          addSuggestion(productId, loc.id, suggestedQty, true);
         }
       }
 
