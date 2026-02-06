@@ -352,13 +352,15 @@ const Planning = () => {
       let assignmentMap = new Map<string, { vendorId: string | null; vendorName: string | null }>();
       if (enforceRouteRecords) {
         // 1. Get the highest-priority route for this destination (location-level default source)
-        const { data: routes } = await supabase
+        const { data: routes, error: routesError } = await supabase
           .from('routes')
           .select('source_location_id, source_location:locations!routes_source_location_id_fkey(id, name, location_id)')
           .eq('destination_location_id', locationId)
           .eq('is_active', true)
           .order('priority', { ascending: true })
           .limit(1);
+
+        console.log('[Planning] Route enforcement - locationId:', locationId, 'routes:', routes, 'error:', routesError);
 
         if (routes && routes.length > 0) {
           const route = routes[0] as any;
@@ -369,6 +371,7 @@ const Planning = () => {
               vendorId: `location:${route.source_location_id}`,
               vendorName: `${locName} (Internal)`,
             };
+            console.log('[Planning] Default route source set:', defaultRouteSource);
           }
         }
 
