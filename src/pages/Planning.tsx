@@ -69,6 +69,7 @@ interface InventoryShortfall {
   vendorName: string | null;
   unitPrice: number | null;
   totalRequired: number;
+  productionRequired: number;
   safetyStock: number;
   currentStock: number;
   shortfall: number;
@@ -332,6 +333,7 @@ const Planning = () => {
         vendorName: string | null;
         unitPrice: number | null;
         totalRequired: number;
+        productionRequired: number;
         safetyStock: number;
         salesOrders: string[];
         productionOrders: string[];
@@ -363,6 +365,7 @@ const Planning = () => {
             vendorName: product.vendor?.name || null,
             unitPrice: product.price || null,
             totalRequired: 0,
+            productionRequired: 0,
             safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
             productionOrders: [],
@@ -394,13 +397,16 @@ const Planning = () => {
             vendorName: product.vendor?.name || null,
             unitPrice: product.price || null,
             totalRequired: 0,
+            productionRequired: 0,
             safetyStock: safetyStockMap.get(item.product_id) || 0,
             salesOrders: [],
             productionOrders: [],
           };
           
           // Multiply BOM item quantity by production order quantity (batches)
-          existing.totalRequired += item.quantity * po.quantity;
+          const prodQty = item.quantity * po.quantity;
+          existing.totalRequired += prodQty;
+          existing.productionRequired += prodQty;
           if (!existing.productionOrders.includes(po.order_number)) {
             existing.productionOrders.push(po.order_number);
           }
@@ -442,6 +448,7 @@ const Planning = () => {
             vendorName: product.vendor?.name || null,
             unitPrice: product.price || null,
             totalRequired: 0,
+            productionRequired: 0,
             safetyStock: ss.safety_stock_quantity,
             salesOrders: [],
             productionOrders: [],
@@ -824,6 +831,15 @@ const Planning = () => {
                       className="w-24 text-right"
                     />
                     <SortableTableHead
+                      label="Prod Req"
+                      sortKey="productionRequired"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['productionRequired'] || ''}
+                      onFilter={(value) => setShortfallsFilter('productionRequired', value)}
+                    />
+                    <SortableTableHead
                       label="Safety"
                       sortKey="safetyStock"
                       currentSortKey={shortfallsSortConfig.key}
@@ -876,6 +892,9 @@ const Planning = () => {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {item.totalRequired} {item.unit || ''}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {item.productionRequired > 0 ? `${item.productionRequired} ${item.unit || ''}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono text-muted-foreground">
                         {item.safetyStock > 0 ? item.safetyStock : '-'}
