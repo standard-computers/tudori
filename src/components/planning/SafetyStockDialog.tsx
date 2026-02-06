@@ -49,6 +49,7 @@ interface Location {
   id: string;
   location_id: string;
   name: string;
+  type: string | null;
 }
 
 interface SuggestedSafetyStock {
@@ -140,7 +141,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
     if (!companyId) return;
     const { data } = await supabase
       .from('locations')
-      .select('id, location_id, name')
+      .select('id, location_id, name, type')
       .eq('company_id', companyId)
       .eq('status', 'active')
       .order('location_id');
@@ -228,6 +229,16 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
         safetyStocks.map(ss => `${ss.product_id}-${ss.location_id}`)
       );
 
+      // Fetch inventory quantities for all product-location combos
+      const { data: inventoryData } = await supabase
+        .from('inventory')
+        .select('product_id, location_id, quantity');
+
+      const inventoryMap = new Map<string, number>();
+      inventoryData?.forEach((inv: any) => {
+        inventoryMap.set(`${inv.product_id}-${inv.location_id}`, inv.quantity || 0);
+      });
+
       // Get products with recent sales activity (last 90 days)
       const { data: salesData } = await supabase
         .from('sales_order_items')
@@ -253,58 +264,98 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
         demandMap.set(key, existing);
       });
 
-      // Generate suggestions for product-location combos without safety stock
       const newSuggestions: SuggestedSafetyStock[] = [];
-      
-      for (const [key, demand] of demandMap) {
-        if (existingPairs.has(key)) continue;
+      const addedPairs = new Set<string>();
 
-        const product = products.find(p => p.id === demand.productId);
-        const location = locations.find(l => l.id === demand.locationId);
-        
-        if (!product || !location) continue;
+      const addSuggestion = (
+        productId: string, locationId: string, qty: number, selected: boolean
+      ) => {
+        const key = `${productId}-${locationId}`;
+        if (existingPairs.has(key) || addedPairs.has(key)) return;
+        const product = products.find(p => p.id === productId);
+        const location = locations.find(l => l.id === locationId);
+        if (!product || !location) return;
+        addedPairs.add(key);
+        newSuggestions.push({
+          productId,
+          productCode: product.product_id,
+          productName: product.name,
+          locationId,
+          locationCode: location.location_id,
+          locationName: location.name,
+          suggestedQuantity: Math.max(1, qty),
+          selected,
+        });
+      };
 
-        // Suggest ~2 weeks of average demand as safety stock
+      // 1. Demand-based suggestions: ~2 weeks of average demand
+      for (const [, demand] of demandMap) {
         const avgDaily = demand.totalQty / 90;
         const suggestedQty = Math.ceil(avgDaily * 14);
-        
         if (suggestedQty > 0) {
-          newSuggestions.push({
-            productId: demand.productId,
-            productCode: product.product_id,
-            productName: product.name,
-            locationId: demand.locationId,
-            locationCode: location.location_id,
-            locationName: location.name,
-            suggestedQuantity: suggestedQty,
-            selected: true,
-          });
+          addSuggestion(demand.productId, demand.locationId, suggestedQty, true);
         }
       }
 
-      // Also suggest for products without any safety stock at any location
-      const productsWithSafetyStock = new Set(safetyStocks.map(ss => ss.product_id));
-      
-      for (const product of products) {
-        if (productsWithSafetyStock.has(product.id)) continue;
-        
-        // For products with no history, suggest a default at main locations
-        for (const location of locations.slice(0, 3)) { // First 3 locations
-          const key = `${product.id}-${location.id}`;
-          if (existingPairs.has(key)) continue;
-          if (newSuggestions.some(s => s.productId === product.id && s.locationId === location.id)) continue;
+      // 2. Location-type expansion: for products with safety stock at some locations,
+      //    suggest the same for other locations of the same type that are missing it
+      const locationTypeMap = new Map<string, Location[]>();
+      locations.forEach(loc => {
+        const t = loc.type || 'Other';
+        if (!locationTypeMap.has(t)) locationTypeMap.set(t, []);
+        locationTypeMap.get(t)!.push(loc);
+      });
 
-          newSuggestions.push({
-            productId: product.id,
-            productCode: product.product_id,
-            productName: product.name,
-            locationId: location.id,
-            locationCode: location.location_id,
-            locationName: location.name,
-            suggestedQuantity: 10, // Default suggestion
-            selected: false,
-          });
+      // Group existing safety stocks by product
+      const safetyStocksByProduct = new Map<string, SafetyStock[]>();
+      safetyStocks.forEach(ss => {
+        if (!safetyStocksByProduct.has(ss.product_id)) safetyStocksByProduct.set(ss.product_id, []);
+        safetyStocksByProduct.get(ss.product_id)!.push(ss);
+      });
+
+      for (const [productId, productSafetyStocks] of safetyStocksByProduct) {
+        // For each location type that has an established safety stock, find missing locations
+        const coveredTypeQty = new Map<string, number>();
+
+        for (const ss of productSafetyStocks) {
+          const loc = locations.find(l => l.id === ss.location_id);
+          if (!loc) continue;
+          const locType = loc.type || 'Other';
+          // Use average qty across established records of this type
+          const current = coveredTypeQty.get(locType) || 0;
+          coveredTypeQty.set(locType, current + ss.safety_stock_quantity);
         }
+
+        for (const [locType, totalQty] of coveredTypeQty) {
+          const locsOfType = locationTypeMap.get(locType) || [];
+          const establishedCount = productSafetyStocks.filter(ss => {
+            const loc = locations.find(l => l.id === ss.location_id);
+            return loc && (loc.type || 'Other') === locType;
+          }).length;
+          const avgQty = Math.ceil(totalQty / establishedCount);
+
+          for (const loc of locsOfType) {
+            const key = `${productId}-${loc.id}`;
+            if (existingPairs.has(key) || addedPairs.has(key)) continue;
+
+            // Use inventory quantity if available, otherwise use the average from same-type locations
+            const currentInventory = inventoryMap.get(key) || 0;
+            const suggestedQty = currentInventory > 0
+              ? Math.ceil(currentInventory * 0.25) // 25% of current stock as safety buffer
+              : avgQty;
+
+            addSuggestion(productId, loc.id, suggestedQty, true);
+          }
+        }
+      }
+
+      // 3. Inventory-based suggestions: products stocked at locations but without safety stock
+      for (const [key, qty] of inventoryMap) {
+        if (qty <= 0) continue;
+        if (existingPairs.has(key) || addedPairs.has(key)) continue;
+        const [productId, locationId] = key.split('-');
+        const suggestedQty = Math.ceil(qty * 0.25); // 25% of on-hand as safety stock
+        addSuggestion(productId, locationId, suggestedQty, false);
       }
 
       setSuggestions(newSuggestions);
