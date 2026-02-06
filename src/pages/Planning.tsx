@@ -332,17 +332,23 @@ const Planning = () => {
       addLocProduct(locId, prodId);
     });
 
+    const shortfallCountByLocation = new Map<string, number>();
     productsByLocation.forEach((products, locId) => {
       let totalShortfall = 0;
+      let shortfallCount = 0;
       products.forEach(prodId => {
         const key = `${locId}-${prodId}`;
         const demand = demandByLocProduct.get(key) || 0;
         const safety = safetyByLocProduct.get(key) || 0;
         const stock = inventoryByLocProduct.get(key) || 0;
         const shortfall = demand + safety - stock;
-        if (shortfall > 0) totalShortfall += shortfall;
+        if (shortfall > 0) {
+          totalShortfall += shortfall;
+          shortfallCount++;
+        }
       });
       shortfallByLocation.set(locId, totalShortfall);
+      shortfallCountByLocation.set(locId, shortfallCount);
     });
 
     // Build summaries
@@ -350,17 +356,19 @@ const Planning = () => {
       const soCount = salesOrders?.filter(so => so.location_id === loc.id).length || 0;
       const poCount = productionOrders?.filter(po => po.location_id === loc.id).length || 0;
       const reqCount = reqCountBySourceLocation.get(loc.id) || 0;
+      const totalShortfall = shortfallByLocation.get(loc.id) || 0;
+      const shortfallCount = shortfallCountByLocation.get(loc.id) || 0;
       return {
         ...loc,
         salesOrderCount: soCount,
         productionOrderCount: poCount,
         requisitionCount: reqCount,
-        shortfallCount: 0,
-        totalShortfall: shortfallByLocation.get(loc.id) || 0,
+        shortfallCount,
+        totalShortfall,
       };
     });
 
-    // Only show locations that actually have shortfalls
+    // Only show locations that have shortfalls
     const activeSummaries = summaries.filter(s => s.totalShortfall > 0);
     setLocations(activeSummaries);
   };
@@ -1081,9 +1089,12 @@ const Planning = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {location.totalShortfall > 0 ? (
-                          <Badge variant="destructive" className="font-mono">
-                            -{location.totalShortfall.toLocaleString()}
-                          </Badge>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-xs text-muted-foreground">{location.shortfallCount} items</span>
+                            <Badge variant="destructive" className="font-mono">
+                              -{location.totalShortfall.toLocaleString()}
+                            </Badge>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
