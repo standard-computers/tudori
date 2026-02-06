@@ -140,7 +140,7 @@ const Ledgers = () => {
   
   const formRef = useRef<HTMLFormElement>(null);
 
-  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin';
+  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
 
   // Set transaction based on dialog state
   useEffect(() => {
