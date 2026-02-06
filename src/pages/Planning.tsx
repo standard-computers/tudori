@@ -97,6 +97,7 @@ const Planning = () => {
   const [selectedLocation, setSelectedLocation] = useState<LocationSummary | null>(null);
   const [shortfalls, setShortfalls] = useState<InventoryShortfall[]>([]);
   const [isLoadingShortfalls, setIsLoadingShortfalls] = useState(false);
+  const [enforceRouteRecords, setEnforceRouteRecords] = useState(false);
 
   // Requisition creation state
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
@@ -171,8 +172,28 @@ const Planning = () => {
   useEffect(() => {
     if (companyId) {
       fetchLocationSummaries();
+      fetchEnforceRouteSetting();
     }
   }, [companyId]);
+
+  const fetchEnforceRouteSetting = async () => {
+    if (!companyId) return;
+    try {
+      const { data } = await supabase
+        .from('company_settings')
+        .select('setting_value')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'process_controls')
+        .maybeSingle();
+
+      if (data?.setting_value && typeof data.setting_value === 'object' && !Array.isArray(data.setting_value)) {
+        const val = data.setting_value as Record<string, unknown>;
+        setEnforceRouteRecords((val.enforce_route_records as boolean) ?? false);
+      }
+    } catch (error) {
+      console.error('Error fetching enforce route setting:', error);
+    }
+  };
 
   const fetchCompanyId = async () => {
     const { data } = await supabase
@@ -326,6 +347,35 @@ const Planning = () => {
     setIsLoadingShortfalls(true);
     
     try {
+      // If enforce route records is enabled, fetch assignments for this destination location
+      let assignmentMap = new Map<string, { vendorId: string | null; vendorName: string | null }>();
+      if (enforceRouteRecords) {
+        const { data: assignments } = await supabase
+          .from('assignments')
+          .select('product_id, vendor_id, source_location_id, vendor:vendors(name), source_location:locations!assignments_source_location_id_fkey(id, name)')
+          .eq('destination_location_id', locationId)
+          .eq('is_active', true)
+          .order('priority', { ascending: true });
+
+        assignments?.forEach((a: any) => {
+          // Only use the first (highest priority) assignment per product
+          if (!assignmentMap.has(a.product_id)) {
+            if (a.vendor_id) {
+              assignmentMap.set(a.product_id, {
+                vendorId: a.vendor_id,
+                vendorName: a.vendor?.name || null,
+              });
+            } else if (a.source_location_id) {
+              // Internal source - use source_location_id as vendorId (for grouping)
+              assignmentMap.set(a.product_id, {
+                vendorId: a.source_location_id,
+                vendorName: a.source_location?.name ? `${a.source_location.name} (Internal)` : null,
+              });
+            }
+          }
+        });
+      }
+
       // Get sales order items for this location
       const { data: salesOrderItems } = await supabase
         .from('sales_orders')
@@ -421,13 +471,14 @@ const Planning = () => {
           const product = item.product;
           if (!product) return;
           
+          const assignmentVendor = assignmentMap.get(item.product_id);
           const existing = requirementMap.get(item.product_id) || {
             productId: item.product_id,
             productCode: product.product_id,
             productName: product.name,
             unit: product.unit,
-            vendorId: product.vendor_id,
-            vendorName: product.vendor?.name || null,
+            vendorId: assignmentVendor ? assignmentVendor.vendorId : product.vendor_id,
+            vendorName: assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null),
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
@@ -453,13 +504,14 @@ const Planning = () => {
           const product = item.product;
           if (!product) return;
           
+          const assignmentVendor = assignmentMap.get(item.product_id);
           const existing = requirementMap.get(item.product_id) || {
             productId: item.product_id,
             productCode: product.product_id,
             productName: product.name,
             unit: product.unit,
-            vendorId: product.vendor_id,
-            vendorName: product.vendor?.name || null,
+            vendorId: assignmentVendor ? assignmentVendor.vendorId : product.vendor_id,
+            vendorName: assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null),
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
@@ -504,13 +556,14 @@ const Planning = () => {
         // Only add if there's a potential shortfall (current stock < safety stock)
         const currentStock = inventoryMap.get(ss.product_id) || 0;
         if (currentStock < ss.safety_stock_quantity) {
+          const assignmentVendor = assignmentMap.get(ss.product_id);
           requirementMap.set(ss.product_id, {
             productId: ss.product_id,
             productCode: product.product_id,
             productName: product.name,
             unit: product.unit,
-            vendorId: product.vendor_id,
-            vendorName: product.vendor?.name || null,
+            vendorId: assignmentVendor ? assignmentVendor.vendorId : product.vendor_id,
+            vendorName: assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null),
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
