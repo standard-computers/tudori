@@ -306,20 +306,37 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
       });
 
       for (const [productId, productSafetyStocks] of safetyStocksByProduct) {
-        // Calculate average safety stock qty across all established records for this product
-        const totalQty = productSafetyStocks.reduce((sum, ss) => sum + ss.safety_stock_quantity, 0);
-        const avgQty = Math.ceil(totalQty / productSafetyStocks.length);
+        // Group existing safety stock quantities by location type for this product
+        const qtyByLocationType = new Map<string, { total: number; count: number }>();
+        for (const ss of productSafetyStocks) {
+          const loc = locations.find(l => l.id === ss.location_id);
+          if (!loc) continue;
+          const locType = loc.type || 'Other';
+          const entry = qtyByLocationType.get(locType) || { total: 0, count: 0 };
+          entry.total += ss.safety_stock_quantity;
+          entry.count += 1;
+          qtyByLocationType.set(locType, entry);
+        }
+
+        // Overall average as fallback
+        const overallTotal = productSafetyStocks.reduce((sum, ss) => sum + ss.safety_stock_quantity, 0);
+        const overallAvg = Math.ceil(overallTotal / productSafetyStocks.length);
 
         // Suggest for ALL locations that don't have safety stock for this product
         for (const loc of locations) {
           const key = `${productId}-${loc.id}`;
           if (existingPairs.has(key) || addedPairs.has(key)) continue;
 
-          // Use inventory quantity if available, otherwise use the average from established records
+          const locType = loc.type || 'Other';
+          // Use avg from same location type if available, otherwise fall back to overall avg
+          const typeEntry = qtyByLocationType.get(locType);
+          const typeAvgQty = typeEntry ? Math.ceil(typeEntry.total / typeEntry.count) : overallAvg;
+
+          // Use inventory quantity if available, otherwise use location-type average
           const currentInventory = inventoryMap.get(key) || 0;
           const suggestedQty = currentInventory > 0
-            ? Math.ceil(currentInventory * 0.25) // 25% of current stock as safety buffer
-            : avgQty;
+            ? Math.ceil(currentInventory * 0.25)
+            : typeAvgQty;
 
           addSuggestion(productId, loc.id, suggestedQty, true);
         }
