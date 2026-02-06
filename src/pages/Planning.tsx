@@ -472,13 +472,20 @@ const Planning = () => {
           if (!product) return;
           
           const assignmentVendor = assignmentMap.get(item.product_id);
+          // When enforce route records is enabled, only use assignment-defined sources (no fallback to default vendor)
+          const resolvedVendorId = enforceRouteRecords
+            ? (assignmentVendor ? assignmentVendor.vendorId : null)
+            : (assignmentVendor ? assignmentVendor.vendorId : product.vendor_id);
+          const resolvedVendorName = enforceRouteRecords
+            ? (assignmentVendor ? assignmentVendor.vendorName : null)
+            : (assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null));
           const existing = requirementMap.get(item.product_id) || {
             productId: item.product_id,
             productCode: product.product_id,
             productName: product.name,
             unit: product.unit,
-            vendorId: assignmentVendor ? assignmentVendor.vendorId : product.vendor_id,
-            vendorName: assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null),
+            vendorId: resolvedVendorId,
+            vendorName: resolvedVendorName,
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
@@ -505,13 +512,19 @@ const Planning = () => {
           if (!product) return;
           
           const assignmentVendor = assignmentMap.get(item.product_id);
+          const resolvedVendorId = enforceRouteRecords
+            ? (assignmentVendor ? assignmentVendor.vendorId : null)
+            : (assignmentVendor ? assignmentVendor.vendorId : product.vendor_id);
+          const resolvedVendorName = enforceRouteRecords
+            ? (assignmentVendor ? assignmentVendor.vendorName : null)
+            : (assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null));
           const existing = requirementMap.get(item.product_id) || {
             productId: item.product_id,
             productCode: product.product_id,
             productName: product.name,
             unit: product.unit,
-            vendorId: assignmentVendor ? assignmentVendor.vendorId : product.vendor_id,
-            vendorName: assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null),
+            vendorId: resolvedVendorId,
+            vendorName: resolvedVendorName,
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
@@ -557,13 +570,19 @@ const Planning = () => {
         const currentStock = inventoryMap.get(ss.product_id) || 0;
         if (currentStock < ss.safety_stock_quantity) {
           const assignmentVendor = assignmentMap.get(ss.product_id);
+          const resolvedVendorId = enforceRouteRecords
+            ? (assignmentVendor ? assignmentVendor.vendorId : null)
+            : (assignmentVendor ? assignmentVendor.vendorId : product.vendor_id);
+          const resolvedVendorName = enforceRouteRecords
+            ? (assignmentVendor ? assignmentVendor.vendorName : null)
+            : (assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null));
           requirementMap.set(ss.product_id, {
             productId: ss.product_id,
             productCode: product.product_id,
             productName: product.name,
             unit: product.unit,
-            vendorId: assignmentVendor ? assignmentVendor.vendorId : product.vendor_id,
-            vendorName: assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null),
+            vendorId: resolvedVendorId,
+            vendorName: resolvedVendorName,
             unitPrice: product.price || null,
             totalRequired: 0,
             productionRequired: 0,
