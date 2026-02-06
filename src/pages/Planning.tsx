@@ -268,6 +268,13 @@ const Planning = () => {
       .not('source_location_id', 'is', null)
       .in('status', ['draft', 'pending', 'approved']);
 
+    // Get all outstanding requisitions per destination location (to subtract already-requisitioned quantities)
+    const { data: outstandingReqsByLoc } = await supabase
+      .from('requisitions')
+      .select('location_id, requisition_items(product_id, quantity)')
+      .eq('company_id', companyId!)
+      .in('status', ['draft', 'pending', 'approved']);
+
     // Build inventory map by location and product
     const inventoryByLocProduct = new Map<string, number>();
     inventoryData?.forEach(inv => {
@@ -315,6 +322,16 @@ const Planning = () => {
       }
     });
 
+    // Build already-requisitioned map by location-product
+    const requisitionedByLocProduct = new Map<string, number>();
+    outstandingReqsByLoc?.forEach((req: any) => {
+      if (!req.location_id) return;
+      (req.requisition_items as any[])?.forEach((item: any) => {
+        const key = `${req.location_id}::${item.product_id}`;
+        requisitionedByLocProduct.set(key, (requisitionedByLocProduct.get(key) || 0) + (item.quantity || 0));
+      });
+    });
+
     // Calculate total shortfall per location
     const shortfallByLocation = new Map<string, number>();
     // Collect all product keys per location
@@ -341,7 +358,8 @@ const Planning = () => {
         const demand = demandByLocProduct.get(key) || 0;
         const safety = safetyByLocProduct.get(key) || 0;
         const stock = inventoryByLocProduct.get(key) || 0;
-        const shortfall = demand + safety - stock;
+        const requisitioned = requisitionedByLocProduct.get(key) || 0;
+        const shortfall = demand + safety - stock - requisitioned;
         if (shortfall > 0) {
           totalShortfall += shortfall;
           shortfallCount++;
