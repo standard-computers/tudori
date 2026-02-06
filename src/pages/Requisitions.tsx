@@ -56,11 +56,13 @@ interface Requisition {
   status: string;
   location_id: string | null;
   vendor_id: string | null;
+  source_location_id: string | null;
   notes: string | null;
   total_amount: number;
   created_at: string;
   created_by: string | null;
   location?: { name: string; location_id: string } | null;
+  source_location?: { name: string; location_id: string } | null;
   vendor?: { name: string; vendor_id: string } | null;
   creator?: { first_name: string | null; last_name: string | null } | null;
 }
@@ -272,6 +274,7 @@ const Requisitions = () => {
       // Parse vendor_id
       const parsedVendor = requisition.vendor_id ? parseVendorValue(requisition.vendor_id) : null;
       const poVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+      const poSourceLocationId = requisition.source_location_id || (parsedVendor?.type === 'location' ? parsedVendor.id : null);
 
       // Auto-select ledger
       let selectedLedgerId: string | null = null;
@@ -298,6 +301,7 @@ const Requisitions = () => {
           po_number: poNumber,
           status: 'draft',
           vendor_id: poVendorId,
+          source_location_id: poSourceLocationId,
           location_id: requisition.location_id,
           bill_to_location_id: requisition.location_id,
           ledger_id: selectedLedgerId,
@@ -499,7 +503,8 @@ const Requisitions = () => {
       .from('requisitions')
       .select(`
         *,
-        location:locations(name, location_id),
+        location:locations!requisitions_location_id_fkey(name, location_id),
+        source_location:locations!requisitions_source_location_id_fkey(name, location_id),
         vendor:vendors(name, vendor_id)
       `)
       .eq('company_id', companyId)
@@ -785,6 +790,7 @@ const Requisitions = () => {
       // Parse vendor_id from requisition (handles 'vendor:uuid' format)
       const parsedVendor = requisition.vendor_id ? parseVendorValue(requisition.vendor_id) : null;
       const poVendorId = parsedVendor?.type === 'vendor' ? parsedVendor.id : null;
+      const poSourceLocationId = requisition.source_location_id || (parsedVendor?.type === 'location' ? parsedVendor.id : null);
 
       // Auto-select ledger: prefer location-specific, then first active
       let selectedLedgerId: string | null = null;
@@ -814,6 +820,7 @@ const Requisitions = () => {
           po_number: poNumber,
           status: 'draft',
           vendor_id: poVendorId,
+          source_location_id: poSourceLocationId,
           location_id: requisition.location_id,
           bill_to_location_id: requisition.location_id, // Use same location for bill-to
           ledger_id: selectedLedgerId,
@@ -1332,7 +1339,7 @@ const Requisitions = () => {
                   )}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Vendor</Label>
+                  <Label className="text-muted-foreground">Vendor / Source</Label>
                   {viewRequisition.vendor ? (
                     <button
                       type="button"
@@ -1341,6 +1348,10 @@ const Requisitions = () => {
                     >
                       {viewRequisition.vendor.name}
                     </button>
+                  ) : viewRequisition.source_location ? (
+                    <p className="mt-1 text-sm">
+                      {viewRequisition.source_location.name} <span className="text-muted-foreground">({viewRequisition.source_location.location_id} • Internal)</span>
+                    </p>
                   ) : (
                     <p className="mt-1">All Vendors</p>
                   )}
@@ -1896,9 +1907,13 @@ function RequisitionsTable({
                     >
                       {req.vendor.vendor_id}
                     </button>
+                  ) : req.source_location?.location_id ? (
+                    <span className="font-mono text-muted-foreground">{req.source_location.location_id}</span>
                   ) : '-'}
                 </TableCell>
-                <TableCell>{req.vendor?.name || 'All Vendors'}</TableCell>
+                <TableCell>
+                  {req.vendor?.name || (req.source_location?.name ? `${req.source_location.name} (Internal)` : 'All Vendors')}
+                </TableCell>
                 <TableCell className="text-right font-mono">
                   ${req.total_amount?.toFixed(2) || '0.00'}
                 </TableCell>
