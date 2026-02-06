@@ -143,7 +143,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
       .from('locations')
       .select('id, location_id, name, type')
       .eq('company_id', companyId)
-      .eq('status', 'active')
+      .ilike('status', 'active')
       .order('location_id');
     setLocations(data || []);
   };
