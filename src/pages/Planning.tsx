@@ -352,7 +352,7 @@ const Planning = () => {
       let assignmentMap = new Map<string, { vendorId: string | null; vendorName: string | null }>();
       if (enforceRouteRecords) {
         // 1. Get the highest-priority route for this destination (location-level default source)
-        const { data: routes, error: routesError } = await supabase
+        const { data: routes } = await supabase
           .from('routes')
           .select('source_location_id, source_location:locations!routes_source_location_id_fkey(id, name, location_id)')
           .eq('destination_location_id', locationId)
@@ -360,7 +360,7 @@ const Planning = () => {
           .order('priority', { ascending: true })
           .limit(1);
 
-        console.log('[Planning] Route enforcement - locationId:', locationId, 'routes:', routes, 'error:', routesError);
+        
 
         if (routes && routes.length > 0) {
           const route = routes[0] as any;
@@ -371,7 +371,7 @@ const Planning = () => {
               vendorId: `location:${route.source_location_id}`,
               vendorName: `${locName} (Internal)`,
             };
-            console.log('[Planning] Default route source set:', defaultRouteSource);
+            
           }
         }
 
@@ -498,12 +498,12 @@ const Planning = () => {
           
           const assignmentVendor = assignmentMap.get(item.product_id);
           // Priority: product-specific assignment > route default source > product default vendor
-          const resolvedVendorId = enforceRouteRecords
-            ? (assignmentVendor ? assignmentVendor.vendorId : (defaultRouteSource ? defaultRouteSource.vendorId : null))
-            : (assignmentVendor ? assignmentVendor.vendorId : product.vendor_id);
-          const resolvedVendorName = enforceRouteRecords
-            ? (assignmentVendor ? assignmentVendor.vendorName : (defaultRouteSource ? defaultRouteSource.vendorName : null))
-            : (assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null));
+          const resolvedVendorId = assignmentVendor
+            ? assignmentVendor.vendorId
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorId : product.vendor_id);
+          const resolvedVendorName = assignmentVendor
+            ? assignmentVendor.vendorName
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorName : (product.vendor?.name || null));
           const existing = requirementMap.get(item.product_id) || {
             productId: item.product_id,
             productCode: product.product_id,
@@ -537,12 +537,12 @@ const Planning = () => {
           if (!product) return;
           
           const assignmentVendor = assignmentMap.get(item.product_id);
-          const resolvedVendorId = enforceRouteRecords
-            ? (assignmentVendor ? assignmentVendor.vendorId : (defaultRouteSource ? defaultRouteSource.vendorId : null))
-            : (assignmentVendor ? assignmentVendor.vendorId : product.vendor_id);
-          const resolvedVendorName = enforceRouteRecords
-            ? (assignmentVendor ? assignmentVendor.vendorName : (defaultRouteSource ? defaultRouteSource.vendorName : null))
-            : (assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null));
+          const resolvedVendorId = assignmentVendor
+            ? assignmentVendor.vendorId
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorId : product.vendor_id);
+          const resolvedVendorName = assignmentVendor
+            ? assignmentVendor.vendorName
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorName : (product.vendor?.name || null));
           const existing = requirementMap.get(item.product_id) || {
             productId: item.product_id,
             productCode: product.product_id,
@@ -595,12 +595,12 @@ const Planning = () => {
         const currentStock = inventoryMap.get(ss.product_id) || 0;
         if (currentStock < ss.safety_stock_quantity) {
           const assignmentVendor = assignmentMap.get(ss.product_id);
-          const resolvedVendorId = enforceRouteRecords
-            ? (assignmentVendor ? assignmentVendor.vendorId : (defaultRouteSource ? defaultRouteSource.vendorId : null))
-            : (assignmentVendor ? assignmentVendor.vendorId : product.vendor_id);
-          const resolvedVendorName = enforceRouteRecords
-            ? (assignmentVendor ? assignmentVendor.vendorName : (defaultRouteSource ? defaultRouteSource.vendorName : null))
-            : (assignmentVendor ? assignmentVendor.vendorName : (product.vendor?.name || null));
+          const resolvedVendorId = assignmentVendor
+            ? assignmentVendor.vendorId
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorId : product.vendor_id);
+          const resolvedVendorName = assignmentVendor
+            ? assignmentVendor.vendorName
+            : (enforceRouteRecords && defaultRouteSource ? defaultRouteSource.vendorName : (product.vendor?.name || null));
           requirementMap.set(ss.product_id, {
             productId: ss.product_id,
             productCode: product.product_id,
