@@ -43,7 +43,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2 } from 'lucide-react';
+import { AutoMakeLedgersDialog } from '@/components/ledgers/AutoMakeLedgersDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,6 +114,7 @@ const Ledgers = () => {
   
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAutoMakeOpen, setIsAutoMakeOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingLedgerId, setEditingLedgerId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -508,11 +510,17 @@ const Ledgers = () => {
               </div>
             </div>
             {isAdmin && (
-              <Button onClick={openCreateDialog}>
-                <Plus className="w-4 h-4 mr-2" />
-                New Ledger
-                <Kbd className="ml-2">N</Kbd>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setIsAutoMakeOpen(true)}>
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  AutoMake
+                </Button>
+                <Button onClick={openCreateDialog}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Ledger
+                  <Kbd className="ml-2">N</Kbd>
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -907,6 +915,15 @@ const Ledgers = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AutoMake Dialog */}
+      <AutoMakeLedgersDialog
+        open={isAutoMakeOpen}
+        onOpenChange={setIsAutoMakeOpen}
+        locations={locations}
+        companyId={companyId}
+        onCreated={() => fetchLedgers(companyId!)}
+      />
     </div>
   );
 };
