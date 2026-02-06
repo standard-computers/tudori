@@ -271,7 +271,7 @@ const Planning = () => {
     // Build inventory map by location and product
     const inventoryByLocProduct = new Map<string, number>();
     inventoryData?.forEach(inv => {
-      const key = `${inv.location_id}-${inv.product_id}`;
+      const key = `${inv.location_id}::${inv.product_id}`;
       inventoryByLocProduct.set(key, (inventoryByLocProduct.get(key) || 0) + inv.quantity);
     });
 
@@ -279,7 +279,7 @@ const Planning = () => {
     const demandByLocProduct = new Map<string, number>();
     soItems?.forEach((so: any) => {
       (so.sales_order_items as any[])?.forEach(item => {
-        const key = `${so.location_id}-${item.product_id}`;
+        const key = `${so.location_id}::${item.product_id}`;
         demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0));
       });
     });
@@ -287,7 +287,7 @@ const Planning = () => {
       const bom = po.bom as any;
       if (!bom?.bom_items) return;
       (bom.bom_items as any[]).forEach(item => {
-        const key = `${po.location_id}-${item.product_id}`;
+        const key = `${po.location_id}::${item.product_id}`;
         demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0) * (po.quantity || 1));
       });
     });
@@ -298,7 +298,7 @@ const Planning = () => {
       if (!req.source_location_id) return;
       reqCountBySourceLocation.set(req.source_location_id, (reqCountBySourceLocation.get(req.source_location_id) || 0) + 1);
       (req.requisition_items as any[])?.forEach((item: any) => {
-        const key = `${req.source_location_id}-${item.product_id}`;
+        const key = `${req.source_location_id}::${item.product_id}`;
         demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0));
       });
     });
@@ -307,7 +307,7 @@ const Planning = () => {
     const safetyByLocProduct = new Map<string, number>();
     const locationsWithSafetyShortfall = new Set<string>();
     safetyStocks?.forEach(ss => {
-      const key = `${ss.location_id}-${ss.product_id}`;
+      const key = `${ss.location_id}::${ss.product_id}`;
       safetyByLocProduct.set(key, ss.safety_stock_quantity);
       const currentStock = inventoryByLocProduct.get(key) || 0;
       if (currentStock < ss.safety_stock_quantity) {
@@ -324,11 +324,11 @@ const Planning = () => {
       productsByLocation.get(locId)!.add(prodId);
     };
     demandByLocProduct.forEach((_, key) => {
-      const [locId, prodId] = key.split('-');
+      const [locId, prodId] = key.split('::');
       addLocProduct(locId, prodId);
     });
     safetyByLocProduct.forEach((_, key) => {
-      const [locId, prodId] = key.split('-');
+      const [locId, prodId] = key.split('::');
       addLocProduct(locId, prodId);
     });
 
@@ -337,7 +337,7 @@ const Planning = () => {
       let totalShortfall = 0;
       let shortfallCount = 0;
       products.forEach(prodId => {
-        const key = `${locId}-${prodId}`;
+        const key = `${locId}::${prodId}`;
         const demand = demandByLocProduct.get(key) || 0;
         const safety = safetyByLocProduct.get(key) || 0;
         const stock = inventoryByLocProduct.get(key) || 0;
