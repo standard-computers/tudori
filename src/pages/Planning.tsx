@@ -40,6 +40,7 @@ interface LocationSummary {
   salesOrderCount: number;
   productionOrderCount: number;
   shortfallCount: number;
+  totalShortfall: number;
 }
 
 interface SalesOrderItem {
@@ -221,6 +222,20 @@ const Planning = () => {
       .from('inventory')
       .select('location_id, product_id, quantity');
 
+    // Get sales order items for shortfall calculation
+    const { data: soItems } = await supabase
+      .from('sales_orders')
+      .select('location_id, sales_order_items(product_id, quantity)')
+      .eq('company_id', companyId!)
+      .in('status', ['confirmed', 'processing']);
+
+    // Get production order items for shortfall calculation
+    const { data: prodItems } = await supabase
+      .from('production_orders')
+      .select('location_id, quantity, bom:bills_of_materials(bom_items:bom_items(product_id, quantity))')
+      .eq('company_id', companyId!)
+      .in('status', ['pending', 'in_progress']);
+
     // Build inventory map by location and product
     const inventoryByLocProduct = new Map<string, number>();
     inventoryData?.forEach(inv => {
@@ -228,14 +243,63 @@ const Planning = () => {
       inventoryByLocProduct.set(key, (inventoryByLocProduct.get(key) || 0) + inv.quantity);
     });
 
-    // Check which locations have safety stock shortfalls
+    // Build demand map by location and product
+    const demandByLocProduct = new Map<string, number>();
+    soItems?.forEach((so: any) => {
+      (so.sales_order_items as any[])?.forEach(item => {
+        const key = `${so.location_id}-${item.product_id}`;
+        demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0));
+      });
+    });
+    prodItems?.forEach((po: any) => {
+      const bom = po.bom as any;
+      if (!bom?.bom_items) return;
+      (bom.bom_items as any[]).forEach(item => {
+        const key = `${po.location_id}-${item.product_id}`;
+        demandByLocProduct.set(key, (demandByLocProduct.get(key) || 0) + (item.quantity || 0) * (po.quantity || 1));
+      });
+    });
+
+    // Build safety stock map by location-product
+    const safetyByLocProduct = new Map<string, number>();
     const locationsWithSafetyShortfall = new Set<string>();
     safetyStocks?.forEach(ss => {
       const key = `${ss.location_id}-${ss.product_id}`;
+      safetyByLocProduct.set(key, ss.safety_stock_quantity);
       const currentStock = inventoryByLocProduct.get(key) || 0;
       if (currentStock < ss.safety_stock_quantity) {
         locationsWithSafetyShortfall.add(ss.location_id);
       }
+    });
+
+    // Calculate total shortfall per location
+    const shortfallByLocation = new Map<string, number>();
+    // Collect all product keys per location
+    const productsByLocation = new Map<string, Set<string>>();
+    const addLocProduct = (locId: string, prodId: string) => {
+      if (!productsByLocation.has(locId)) productsByLocation.set(locId, new Set());
+      productsByLocation.get(locId)!.add(prodId);
+    };
+    demandByLocProduct.forEach((_, key) => {
+      const [locId, prodId] = key.split('-');
+      addLocProduct(locId, prodId);
+    });
+    safetyByLocProduct.forEach((_, key) => {
+      const [locId, prodId] = key.split('-');
+      addLocProduct(locId, prodId);
+    });
+
+    productsByLocation.forEach((products, locId) => {
+      let totalShortfall = 0;
+      products.forEach(prodId => {
+        const key = `${locId}-${prodId}`;
+        const demand = demandByLocProduct.get(key) || 0;
+        const safety = safetyByLocProduct.get(key) || 0;
+        const stock = inventoryByLocProduct.get(key) || 0;
+        const shortfall = demand + safety - stock;
+        if (shortfall > 0) totalShortfall += shortfall;
+      });
+      shortfallByLocation.set(locId, totalShortfall);
     });
 
     // Build summaries
@@ -246,13 +310,14 @@ const Planning = () => {
         ...loc,
         salesOrderCount: soCount,
         productionOrderCount: poCount,
-        shortfallCount: 0, // Will be calculated when drilling in
+        shortfallCount: 0,
+        totalShortfall: shortfallByLocation.get(loc.id) || 0,
       };
     });
 
     // Filter to show locations with outstanding orders OR safety stock shortfalls
     const activeSummaries = summaries.filter(s => 
-      s.salesOrderCount > 0 || s.productionOrderCount > 0 || locationsWithSafetyShortfall.has(s.id)
+      s.salesOrderCount > 0 || s.productionOrderCount > 0 || locationsWithSafetyShortfall.has(s.id) || s.totalShortfall > 0
     );
     setLocations(activeSummaries);
   };
@@ -724,13 +789,23 @@ const Planning = () => {
                     onFilter={(value) => setLocationsFilter('productionOrderCount', value)}
                     className="w-40 text-center"
                   />
+                  <SortableTableHead
+                    label="Shortfall"
+                    sortKey="totalShortfall"
+                    currentSortKey={locationsSortConfig.key}
+                    currentSortDirection={locationsSortConfig.direction}
+                    onSort={handleLocationsSort}
+                    filterValue={locationsFilters['totalShortfall'] || ''}
+                    onFilter={(value) => setLocationsFilter('totalShortfall', value)}
+                    className="w-32 text-right"
+                  />
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedLocations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No locations with outstanding orders
                     </TableCell>
                   </TableRow>
@@ -765,6 +840,15 @@ const Planning = () => {
                           <Badge variant="secondary" className="gap-1">
                             <Factory className="w-3 h-3" />
                             {location.productionOrderCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalShortfall > 0 ? (
+                          <Badge variant="destructive" className="font-mono">
+                            -{location.totalShortfall.toLocaleString()}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
