@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X, Shield } from 'lucide-react';
+import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X, Shield, RefreshCw } from 'lucide-react';
 import { SafetyStockDialog } from '@/components/planning/SafetyStockDialog';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
@@ -854,6 +854,21 @@ const Planning = () => {
             <Button variant="outline" size="sm" onClick={() => setIsSafetyDialogOpen(true)}>
               <Shield className="w-4 h-4 mr-2" />
               Safety
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => {
+                if (selectedLocation) {
+                  fetchShortfallsForLocation(selectedLocation.id);
+                } else {
+                  fetchLocationSummaries();
+                }
+              }}
+              title="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
             </Button>
             {selectedLocation && selectedItems.size > 0 && (
               <Button onClick={handleOpenRequisitionDialog} size="sm">
