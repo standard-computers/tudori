@@ -38,6 +38,8 @@ import {
   Settings2,
   MoreHorizontal,
   Eye,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -366,6 +368,7 @@ const Locations = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
   const [deleteBlockedReason, setDeleteBlockedReason] = useState("");
@@ -535,6 +538,7 @@ const Locations = () => {
   const handleOpenDialog = () => {
     resetForm();
     setFormData((prev) => ({ ...prev, location_id: nextLocationId }));
+    setIsMaximized(false);
     setIsDialogOpen(true);
   };
 
@@ -559,6 +563,7 @@ const Locations = () => {
       status: location.status,
     });
     setIsViewMode(true);
+    setIsMaximized(false);
     setIsEditing(false);
     setEditingId(location.id);
     setActiveTab("general");
@@ -857,7 +862,30 @@ const Locations = () => {
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogContent
+                  className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[550px] max-h-[85vh]"}`}
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  {isViewMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsViewMode(false);
+                        setIsEditing(true);
+                      }}
+                      className="absolute right-[4.5rem] top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMaximized(!isMaximized)}
+                    className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                  >
+                    {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                  </button>
                   <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <DialogHeader>
                       <DialogTitle>
