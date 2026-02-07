@@ -1015,6 +1015,29 @@ const Orders = () => {
     toast.success("Downloaded as PDF");
   };
 
+  const handleExportOrders = async () => {
+    if (orders.length === 0) {
+      toast.info("No purchase orders to export");
+      return;
+    }
+    const exportData = orders.map((o) => ({
+      "PO #": o.po_number,
+      "Status": o.status,
+      "Vendor": o.vendor?.name || o.source_location?.name || "",
+      "Vendor ID": o.vendor?.vendor_id || o.source_location?.location_id || "",
+      "Ship To": o.location?.name || "",
+      "Bill To": o.bill_to_location?.name || "",
+      "Subtotal": o.subtotal,
+      "Tax": o.tax_amount,
+      "Total": o.total_amount,
+      "Order Date": o.order_date,
+      "Expected Delivery": o.expected_delivery_date || "",
+      "Notes": o.notes || "",
+    }));
+    await exportToExcel(exportData, `purchase_orders_export_${new Date().toISOString().split("T")[0]}.xlsx`, "Purchase Orders");
+    toast.success("Purchase orders exported successfully");
+  };
+
   const handleCreateClick = () => {
     const defaultRate = taxRates.find((r) => r.is_default);
     setFormData({ vendor_id: "", location_id: "", bill_to_location_id: "", ledger_id: "", notes: "" });
@@ -2148,6 +2171,7 @@ const Orders = () => {
               <ImportExportButtons
                 importEnabled={isImportEnabled("purchase_order")}
                 exportEnabled={isExportEnabled("purchase_order")}
+                onExport={handleExportOrders}
                 entityName="Purchase Orders"
               />
               <Button onClick={handleCreateClick} variant="default">
