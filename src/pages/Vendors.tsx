@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTransaction, useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useExcel } from "@/hooks/use-excel";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -414,6 +415,34 @@ const Vendors = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel } = useExcel();
+
+  const handleExport = async () => {
+    if (vendors.length === 0) {
+      toast.info("No vendors to export");
+      return;
+    }
+    const exportData = vendors.map((v) => ({
+      "Vendor ID": v.vendor_id,
+      "Name": v.name,
+      "Type": v.type,
+      "Status": v.status,
+      "Contact": v.contact_name || "",
+      "Email": v.email || "",
+      "Phone": v.phone || "",
+      "Address": v.address_line1 || "",
+      "Address 2": v.address_line2 || "",
+      "City": v.city || "",
+      "State": v.state || "",
+      "Postal Code": v.postal_code || "",
+      "Country": v.country || "",
+      "Website": v.website || "",
+      "Payment Terms": v.payment_terms ?? "",
+      "Notes": v.notes || "",
+    }));
+    await exportToExcel(exportData, `vendors_export_${new Date().toISOString().split("T")[0]}.xlsx`, "Vendors");
+    toast.success("Vendors exported successfully");
+  };
   const [formData, setFormData] = useState({
     vendor_id: "",
     name: "",
@@ -804,6 +833,7 @@ const Vendors = () => {
               <ImportExportButtons
                 importEnabled={isImportEnabled("vendor")}
                 exportEnabled={isExportEnabled("vendor")}
+                onExport={handleExport}
                 entityName="Vendors"
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
