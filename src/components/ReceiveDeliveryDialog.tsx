@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, PackageCheck, AlertCircle, Layers } from 'lucide-react';
+import { Loader2, PackageCheck, AlertCircle, Layers, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DeliveryItem {
@@ -32,6 +32,7 @@ interface DeliveryItem {
   quantity: number;
   notes: string | null;
   pu_id?: string | null;
+  packaging_unit?: { pu_number: string } | null;
   product?: { name: string; product_id: string };
 }
 
@@ -119,6 +120,7 @@ export const ReceiveDeliveryDialog = ({
         quantity,
         notes,
         pu_id,
+        packaging_unit:packaging_units(pu_number),
         product:products(name, product_id)
       `)
       .eq('delivery_id', deliveryId);
@@ -129,7 +131,7 @@ export const ReceiveDeliveryDialog = ({
       return;
     }
 
-    const receivedItems: ReceivedItem[] = (data || []).map((item: DeliveryItem) => ({
+    const receivedItems: ReceivedItem[] = (data || []).map((item: any) => ({
       id: item.id,
       product_id: item.product_id,
       product_name: item.product?.name || 'Unknown',
@@ -137,6 +139,7 @@ export const ReceiveDeliveryDialog = ({
       expected_quantity: item.quantity,
       received_quantity: item.quantity,
       pu_id: item.pu_id || null,
+      pu_number: item.packaging_unit?.pu_number || null,
     }));
 
     setItems(receivedItems);
@@ -340,12 +343,11 @@ export const ReceiveDeliveryDialog = ({
         }
       } else {
         // Directly post inventory without creating a GR
-        // Still generate PUs for tracking
         for (const item of items) {
           if (item.received_quantity <= 0) continue;
           
           if (explodeDelivery) {
-            // Create individual inventory records with PUs
+            // Create individual inventory records with PUs (only for unpacked items)
             for (let i = 0; i < item.received_quantity; i++) {
               const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
               await supabase
@@ -358,38 +360,18 @@ export const ReceiveDeliveryDialog = ({
                 });
             }
           } else {
-            // Create PU for the batch
-            const pu = await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity);
+            // Use existing PU if packed, otherwise create one
+            const puId = item.pu_id || (await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity))?.id || null;
             
-            // Check if inventory record exists for this product at this location (without PU)
-            const { data: existingInventory } = await supabase
+            // Create inventory record with the PU
+            await supabase
               .from('inventory')
-              .select('id, quantity')
-              .eq('location_id', locationId)
-              .eq('product_id', item.product_id)
-              .is('pu_id', null)
-              .maybeSingle();
-
-            if (existingInventory) {
-              // Update existing inventory
-              await supabase
-                .from('inventory')
-                .update({ 
-                  quantity: existingInventory.quantity + item.received_quantity,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', existingInventory.id);
-            } else {
-              // Create new inventory record with PU
-              await supabase
-                .from('inventory')
-                .insert({
-                  location_id: locationId,
-                  product_id: item.product_id,
-                  quantity: item.received_quantity,
-                  pu_id: pu?.id || null,
-                });
-            }
+              .insert({
+                location_id: locationId,
+                product_id: item.product_id,
+                quantity: item.received_quantity,
+                pu_id: puId,
+              });
           }
         }
 
@@ -457,7 +439,56 @@ export const ReceiveDeliveryDialog = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {explodeDelivery ? (
+                {hasPackedItems ? (
+                  // Group items by PU for packed deliveries
+                  (() => {
+                    const grouped = items.reduce((acc, item) => {
+                      const key = item.pu_id || '__unpacked__';
+                      if (!acc[key]) acc[key] = { puNumber: item.pu_number, items: [] };
+                      acc[key].items.push(item);
+                      return acc;
+                    }, {} as Record<string, { puNumber: string | null; items: ReceivedItem[] }>);
+
+                    return Object.entries(grouped).flatMap(([puKey, group]) => [
+                      <TableRow key={`pu-header-${puKey}`} className="bg-muted/50">
+                        <TableCell colSpan={3} className="py-1.5">
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                            <Package className="w-3.5 h-3.5" />
+                            {puKey === '__unpacked__' ? 'Unpacked Items' : group.puNumber || puKey}
+                          </div>
+                        </TableCell>
+                      </TableRow>,
+                      ...group.items.map((item) => (
+                        <TableRow key={item.id} className={item.received_quantity !== item.expected_quantity ? 'bg-amber-500/5' : ''}>
+                          <TableCell>
+                            <div className="pl-4">
+                              <div className="font-medium">{item.product_name}</div>
+                              <div className="text-sm text-muted-foreground font-mono">
+                                {item.product_code}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">{item.expected_quantity}</TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={item.received_quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(item.id, parseInt(e.target.value) || 0)
+                              }
+                              className={`w-20 text-right ml-auto ${
+                                item.received_quantity !== item.expected_quantity 
+                                  ? 'border-amber-500 focus-visible:ring-amber-500' 
+                                  : ''
+                              }`}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )),
+                    ]);
+                  })()
+                ) : explodeDelivery ? (
                   displayItems.map((item, index) => (
                     <TableRow key={`${item.id}-${index}`}>
                       <TableCell>
