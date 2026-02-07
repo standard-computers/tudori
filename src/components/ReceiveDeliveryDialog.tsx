@@ -87,19 +87,33 @@ export const ReceiveDeliveryDialog = ({
   }, [open, deliveryId]);
 
   const fetchBinsForLocation = async () => {
-    // Fetch bins from areas that have goods receipt enabled at this location
-    const { data: areas } = await supabase
+    // Check for areas with goods receipt enabled
+    const { data: grAreas } = await supabase
       .from('areas')
-      .select('id, name, is_goods_receipt_enabled')
+      .select('id, name')
       .eq('location_id', locationId)
       .eq('is_goods_receipt_enabled', true);
 
-    if (!areas || areas.length === 0) {
+    const hasGrAreas = grAreas && grAreas.length > 0;
+
+    let targetAreas: { id: string; name: string }[];
+    if (hasGrAreas) {
+      targetAreas = grAreas;
+    } else {
+      // No GR-enabled areas — fall back to all areas at this location
+      const { data: allAreas } = await supabase
+        .from('areas')
+        .select('id, name')
+        .eq('location_id', locationId);
+      targetAreas = allAreas || [];
+    }
+
+    if (targetAreas.length === 0) {
       setBinOptions([]);
       return;
     }
 
-    const areaIds = areas.map(a => a.id);
+    const areaIds = targetAreas.map(a => a.id);
     const { data: bins } = await supabase
       .from('bins')
       .select('id, bin_id, name, area_id, allow_put_away')
@@ -107,12 +121,12 @@ export const ReceiveDeliveryDialog = ({
       .eq('allow_put_away', true)
       .order('bin_id');
 
-    if (!bins) {
+    if (!bins || bins.length === 0) {
       setBinOptions([]);
       return;
     }
 
-    const areaMap = Object.fromEntries(areas.map(a => [a.id, a.name]));
+    const areaMap = Object.fromEntries(targetAreas.map(a => [a.id, a.name]));
     setBinOptions(
       bins.map(bin => ({
         value: bin.id,
@@ -121,6 +135,32 @@ export const ReceiveDeliveryDialog = ({
         group: areaMap[bin.area_id] || 'Unknown Area',
       }))
     );
+
+    // Auto-select: find the first empty bin in the first GR-enabled area
+    if (hasGrAreas) {
+      const firstGrAreaId = grAreas[0].id;
+      const grAreaBins = bins.filter(b => b.area_id === firstGrAreaId);
+
+      if (grAreaBins.length > 0) {
+        // Check which bins have inventory (non-empty)
+        const grAreaBinIds = grAreaBins.map(b => b.id);
+        const { data: occupiedBins } = await supabase
+          .from('inventory')
+          .select('bin_id')
+          .in('bin_id', grAreaBinIds)
+          .gt('quantity', 0);
+
+        const occupiedBinIds = new Set((occupiedBins || []).map(inv => inv.bin_id));
+        const firstEmptyBin = grAreaBins.find(b => !occupiedBinIds.has(b.id));
+
+        if (firstEmptyBin) {
+          setSelectedBinId(firstEmptyBin.id);
+        } else {
+          // All bins occupied — default to first bin in the GR area
+          setSelectedBinId(grAreaBins[0].id);
+        }
+      }
+    }
   };
 
   const checkInternalTransferStatus = async () => {
