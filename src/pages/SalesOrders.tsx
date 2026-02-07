@@ -46,8 +46,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, DollarSign, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, DollarSign, Plus, Eye, Loader2, MoreHorizontal, Trash2, Pencil, Check, X, BookOpen, Maximize2, Minimize2, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 
 interface TaxRate {
   id: string;
@@ -1445,11 +1446,15 @@ const SalesOrders = () => {
 
               {/* Tabs */}
               <Tabs defaultValue="items" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="items">Items</TabsTrigger>
                   <TabsTrigger value="rates">Rates</TabsTrigger>
                   <TabsTrigger value="assignment">Assignment</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="history" className="flex items-center gap-1">
+                    <History className="w-3.5 h-3.5" />
+                    History
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="items" className="space-y-4 mt-4">
@@ -1629,6 +1634,26 @@ const SalesOrders = () => {
                     <Label className="text-muted-foreground">Order Date</Label>
                     <p className="text-sm">{new Date(viewOrder.order_date).toLocaleDateString()}</p>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-4">
+                  <AuditHistoryTab 
+                    tableName="sales_orders" 
+                    recordId={viewOrder.id}
+                    fieldLabels={{
+                      status: "Status",
+                      customer_id: "Customer",
+                      location_id: "Ship From",
+                      bill_to_location_id: "Bill From",
+                      ledger_id: "Ledger",
+                      total_amount: "Total Amount",
+                      subtotal: "Subtotal",
+                      tax_amount: "Tax Amount",
+                      notes: "Notes",
+                      order_date: "Order Date",
+                      expected_delivery_date: "Expected Delivery",
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
