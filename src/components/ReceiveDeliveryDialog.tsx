@@ -31,6 +31,7 @@ interface DeliveryItem {
   product_id: string;
   quantity: number;
   notes: string | null;
+  pu_id?: string | null;
   product?: { name: string; product_id: string };
 }
 
@@ -117,6 +118,7 @@ export const ReceiveDeliveryDialog = ({
         product_id,
         quantity,
         notes,
+        pu_id,
         product:products(name, product_id)
       `)
       .eq('delivery_id', deliveryId);
@@ -134,6 +136,7 @@ export const ReceiveDeliveryDialog = ({
       product_code: item.product?.product_id || '',
       expected_quantity: item.quantity,
       received_quantity: item.quantity,
+      pu_id: item.pu_id || null,
     }));
 
     setItems(receivedItems);
@@ -415,6 +418,7 @@ export const ReceiveDeliveryDialog = ({
   };
 
   const displayItems = getDisplayItems();
+  const hasPackedItems = items.some(item => item.pu_id);
   const hasDiscrepancy = items.some(item => item.received_quantity !== item.expected_quantity);
   const totalExpected = items.reduce((sum, item) => sum + item.expected_quantity, 0);
   const totalReceived = items.reduce((sum, item) => sum + item.received_quantity, 0);
@@ -516,21 +520,23 @@ export const ReceiveDeliveryDialog = ({
         )}
 
         <DialogFooter className="mt-4 flex-wrap gap-2">
-          <div className="flex items-center gap-2 mr-auto">
-            <Checkbox
-              id="explode-delivery"
-              checked={explodeDelivery}
-              onCheckedChange={(checked) => setExplodeDelivery(checked === true)}
-              disabled={items.length === 0}
-            />
-            <Label 
-              htmlFor="explode-delivery" 
-              className="text-sm text-muted-foreground cursor-pointer flex items-center gap-1.5"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Explode Delivery
-            </Label>
-          </div>
+          {!hasPackedItems && (
+            <div className="flex items-center gap-2 mr-auto">
+              <Checkbox
+                id="explode-delivery"
+                checked={explodeDelivery}
+                onCheckedChange={(checked) => setExplodeDelivery(checked === true)}
+                disabled={items.length === 0}
+              />
+              <Label 
+                htmlFor="explode-delivery" 
+                className="text-sm text-muted-foreground cursor-pointer flex items-center gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Explode Delivery
+              </Label>
+            </div>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
             <Kbd>Esc</Kbd>
