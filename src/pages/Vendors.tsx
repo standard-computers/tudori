@@ -1,25 +1,19 @@
-import { useEffect, useState, useRef } from 'react';
-import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
-import { useTableSort } from '@/hooks/use-table-sort';
-import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
-import { ColumnToggle } from '@/components/ColumnToggle';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useImportExportSettings } from '@/hooks/use-import-export-settings';
-import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useEffect, useState, useRef } from "react";
+import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { ColumnToggle } from "@/components/ColumnToggle";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTransaction, useStatusBar } from "@/contexts/StatusBarContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -28,45 +22,52 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/SortableTableHead";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X, Eye, MoreHorizontal, History } from 'lucide-react';
+  ArrowLeft,
+  Plus,
+  Building,
+  Pencil,
+  Trash2,
+  AlertCircle,
+  Search,
+  Loader2,
+  X,
+  Eye,
+  MoreHorizontal,
+  History,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Kbd } from '@/components/ui/kbd';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
-import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
-import { AuditHistoryTab } from '@/components/AuditHistoryTab';
-import { toast } from 'sonner';
+} from "@/components/ui/dropdown-menu";
+import { Kbd } from "@/components/ui/kbd";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { toast } from "sonner";
 
 const VENDOR_COLUMNS: ColumnDefinition[] = [
-  { key: 'vendor_id', label: 'ID', defaultVisible: true },
-  { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'type', label: 'Type', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'contact_name', label: 'Contact', defaultVisible: true },
-  { key: 'email', label: 'Email', defaultVisible: true },
-  { key: 'phone', label: 'Phone', defaultVisible: true },
-  { key: 'address_line1', label: 'Address', defaultVisible: true },
-  { key: 'city', label: 'City', defaultVisible: true },
-  { key: 'state', label: 'State', defaultVisible: true },
-  { key: 'postal_code', label: 'Postal Code', defaultVisible: true },
-  { key: 'country', label: 'Country', defaultVisible: true },
-  { key: 'website', label: 'Website', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
+  { key: "vendor_id", label: "ID", defaultVisible: true },
+  { key: "name", label: "Name", defaultVisible: true },
+  { key: "type", label: "Type", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "contact_name", label: "Contact", defaultVisible: true },
+  { key: "email", label: "Email", defaultVisible: true },
+  { key: "phone", label: "Phone", defaultVisible: true },
+  { key: "address_line1", label: "Address", defaultVisible: true },
+  { key: "city", label: "City", defaultVisible: true },
+  { key: "state", label: "State", defaultVisible: true },
+  { key: "postal_code", label: "Postal Code", defaultVisible: true },
+  { key: "country", label: "Country", defaultVisible: true },
+  { key: "website", label: "Website", defaultVisible: true },
+  { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
 interface Vendor {
@@ -89,14 +90,14 @@ interface Vendor {
   payment_terms: number | null;
 }
 
-type VendorStatus = 'active' | 'blocked';
+type VendorStatus = "active" | "blocked";
 
 const VENDOR_STATUSES: { value: VendorStatus; label: string; color: string }[] = [
-  { value: 'active', label: 'Active', color: 'bg-success' },
-  { value: 'blocked', label: 'Blocked', color: 'bg-destructive' },
+  { value: "active", label: "Active", color: "bg-success" },
+  { value: "blocked", label: "Blocked", color: "bg-destructive" },
 ];
 
-const VENDOR_TYPES = ['Supplier', 'Manufacturer', 'Distributor', 'Contractor', 'Service Provider', 'Consultant'];
+const VENDOR_TYPES = ["Supplier", "Manufacturer", "Distributor", "Contractor", "Service Provider", "Consultant"];
 
 // Separated table component with sorting/filtering
 const VendorTable = ({
@@ -112,17 +113,14 @@ const VendorTable = ({
   onDelete: (vendor: Vendor) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
-  const {
-    sortConfig,
-    filters,
-    handleSort,
-    setFilter,
-    clearAllFilters,
-    sortedAndFilteredData,
-  } = useTableSort(vendors, 'vendor_id', 'asc');
+  const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
+    vendors,
+    "vendor_id",
+    "asc",
+  );
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const visibleColumnCount = VENDOR_COLUMNS.filter(c => isColumnVisible(c.key)).length;
+  const visibleColumnCount = VENDOR_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -135,165 +133,168 @@ const VendorTable = ({
             <X className="w-3 h-3 mr-1" />
             Clear filters
           </Button>
-          {Object.entries(filters).map(([key, value]) => value && (
-            <Badge key={key} variant="secondary" className="text-xs">
-              {key}: {value}
-              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
+          {Object.entries(filters).map(
+            ([key, value]) =>
+              value && (
+                <Badge key={key} variant="secondary" className="text-xs">
+                  {key}: {value}
+                  <button onClick={() => setFilter(key, "")} className="ml-1 hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ),
+          )}
         </div>
       )}
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              {isColumnVisible('vendor_id') && (
+              {isColumnVisible("vendor_id") && (
                 <SortableTableHead
                   label="ID"
                   sortKey="vendor_id"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['vendor_id']}
-                  onFilter={(value) => setFilter('vendor_id', value)}
+                  filterValue={filters["vendor_id"]}
+                  onFilter={(value) => setFilter("vendor_id", value)}
                   className="w-24"
                 />
               )}
-              {isColumnVisible('name') && (
+              {isColumnVisible("name") && (
                 <SortableTableHead
                   label="Name"
                   sortKey="name"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['name']}
-                  onFilter={(value) => setFilter('name', value)}
+                  filterValue={filters["name"]}
+                  onFilter={(value) => setFilter("name", value)}
                 />
               )}
-              {isColumnVisible('type') && (
+              {isColumnVisible("type") && (
                 <SortableTableHead
                   label="Type"
                   sortKey="type"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['type']}
-                  onFilter={(value) => setFilter('type', value)}
+                  filterValue={filters["type"]}
+                  onFilter={(value) => setFilter("type", value)}
                 />
               )}
-              {isColumnVisible('status') && (
+              {isColumnVisible("status") && (
                 <SortableTableHead
                   label="Status"
                   sortKey="status"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['status']}
-                  onFilter={(value) => setFilter('status', value)}
+                  filterValue={filters["status"]}
+                  onFilter={(value) => setFilter("status", value)}
                 />
               )}
-              {isColumnVisible('contact_name') && (
+              {isColumnVisible("contact_name") && (
                 <SortableTableHead
                   label="Contact"
                   sortKey="contact_name"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['contact_name']}
-                  onFilter={(value) => setFilter('contact_name', value)}
+                  filterValue={filters["contact_name"]}
+                  onFilter={(value) => setFilter("contact_name", value)}
                 />
               )}
-              {isColumnVisible('email') && (
+              {isColumnVisible("email") && (
                 <SortableTableHead
                   label="Email"
                   sortKey="email"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['email']}
-                  onFilter={(value) => setFilter('email', value)}
+                  filterValue={filters["email"]}
+                  onFilter={(value) => setFilter("email", value)}
                 />
               )}
-              {isColumnVisible('phone') && (
+              {isColumnVisible("phone") && (
                 <SortableTableHead
                   label="Phone"
                   sortKey="phone"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['phone']}
-                  onFilter={(value) => setFilter('phone', value)}
+                  filterValue={filters["phone"]}
+                  onFilter={(value) => setFilter("phone", value)}
                 />
               )}
-              {isColumnVisible('address_line1') && (
+              {isColumnVisible("address_line1") && (
                 <SortableTableHead
                   label="Address"
                   sortKey="address_line1"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['address_line1']}
-                  onFilter={(value) => setFilter('address_line1', value)}
+                  filterValue={filters["address_line1"]}
+                  onFilter={(value) => setFilter("address_line1", value)}
                 />
               )}
-              {isColumnVisible('city') && (
+              {isColumnVisible("city") && (
                 <SortableTableHead
                   label="City"
                   sortKey="city"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['city']}
-                  onFilter={(value) => setFilter('city', value)}
+                  filterValue={filters["city"]}
+                  onFilter={(value) => setFilter("city", value)}
                 />
               )}
-              {isColumnVisible('state') && (
+              {isColumnVisible("state") && (
                 <SortableTableHead
                   label="State"
                   sortKey="state"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['state']}
-                  onFilter={(value) => setFilter('state', value)}
+                  filterValue={filters["state"]}
+                  onFilter={(value) => setFilter("state", value)}
                 />
               )}
-              {isColumnVisible('postal_code') && (
+              {isColumnVisible("postal_code") && (
                 <SortableTableHead
                   label="Postal Code"
                   sortKey="postal_code"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['postal_code']}
-                  onFilter={(value) => setFilter('postal_code', value)}
+                  filterValue={filters["postal_code"]}
+                  onFilter={(value) => setFilter("postal_code", value)}
                 />
               )}
-              {isColumnVisible('country') && (
+              {isColumnVisible("country") && (
                 <SortableTableHead
                   label="Country"
                   sortKey="country"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['country']}
-                  onFilter={(value) => setFilter('country', value)}
+                  filterValue={filters["country"]}
+                  onFilter={(value) => setFilter("country", value)}
                 />
               )}
-              {isColumnVisible('website') && (
+              {isColumnVisible("website") && (
                 <SortableTableHead
                   label="Website"
                   sortKey="website"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterValue={filters['website']}
-                  onFilter={(value) => setFilter('website', value)}
+                  filterValue={filters["website"]}
+                  onFilter={(value) => setFilter("website", value)}
                 />
               )}
-              {isColumnVisible('actions') && (
+              {isColumnVisible("actions") && (
                 <SortableTableHead
                   label="Actions"
                   sortKey=""
@@ -316,7 +317,7 @@ const VendorTable = ({
             ) : (
               sortedAndFilteredData.map((vendor) => (
                 <TableRow key={vendor.id}>
-                  {isColumnVisible('vendor_id') && (
+                  {isColumnVisible("vendor_id") && (
                     <TableCell className="font-mono text-sm">
                       <button
                         type="button"
@@ -327,59 +328,30 @@ const VendorTable = ({
                       </button>
                     </TableCell>
                   )}
-                  {isColumnVisible('name') && (
-                    <TableCell className="font-medium">{vendor.name}</TableCell>
-                  )}
-                  {isColumnVisible('type') && (
-                    <TableCell>{vendor.type}</TableCell>
-                  )}
-                  {isColumnVisible('status') && (
+                  {isColumnVisible("name") && <TableCell className="font-medium">{vendor.name}</TableCell>}
+                  {isColumnVisible("type") && <TableCell>{vendor.type}</TableCell>}
+                  {isColumnVisible("status") && (
                     <TableCell>
                       {(() => {
-                        const statusConfig = VENDOR_STATUSES.find(s => s.value === vendor.status) || VENDOR_STATUSES[0];
-                        return (
-                          <Badge className={`${statusConfig.color} text-white`}>
-                            {statusConfig.label}
-                          </Badge>
-                        );
+                        const statusConfig =
+                          VENDOR_STATUSES.find((s) => s.value === vendor.status) || VENDOR_STATUSES[0];
+                        return <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>;
                       })()}
                     </TableCell>
                   )}
-                  {isColumnVisible('contact_name') && (
-                    <TableCell>{vendor.contact_name || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('email') && (
-                    <TableCell>{vendor.email || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('phone') && (
-                    <TableCell>{vendor.phone || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('address_line1') && (
-                    <TableCell>{vendor.address_line1 || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('city') && (
-                    <TableCell>{vendor.city || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('state') && (
-                    <TableCell>{vendor.state || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('postal_code') && (
-                    <TableCell>{vendor.postal_code || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('country') && (
-                    <TableCell>{vendor.country || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('website') && (
-                    <TableCell>{vendor.website || '-'}</TableCell>
-                  )}
-                  {isColumnVisible('actions') && (
+                  {isColumnVisible("contact_name") && <TableCell>{vendor.contact_name || "-"}</TableCell>}
+                  {isColumnVisible("email") && <TableCell>{vendor.email || "-"}</TableCell>}
+                  {isColumnVisible("phone") && <TableCell>{vendor.phone || "-"}</TableCell>}
+                  {isColumnVisible("address_line1") && <TableCell>{vendor.address_line1 || "-"}</TableCell>}
+                  {isColumnVisible("city") && <TableCell>{vendor.city || "-"}</TableCell>}
+                  {isColumnVisible("state") && <TableCell>{vendor.state || "-"}</TableCell>}
+                  {isColumnVisible("postal_code") && <TableCell>{vendor.postal_code || "-"}</TableCell>}
+                  {isColumnVisible("country") && <TableCell>{vendor.country || "-"}</TableCell>}
+                  {isColumnVisible("website") && <TableCell>{vendor.website || "-"}</TableCell>}
+                  {isColumnVisible("actions") && (
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onView(vendor)}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => onView(vendor)}>
                           <Eye className="w-4 h-4" />
                         </Button>
                         <DropdownMenu>
@@ -393,7 +365,7 @@ const VendorTable = ({
                               <Pencil className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => onDelete(vendor)}
                               className="text-destructive focus:text-destructive"
                             >
@@ -428,49 +400,45 @@ const Vendors = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingVendor, setDeletingVendor] = useState<{ id: string; name: string } | null>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
-  const [deleteBlockedReason, setDeleteBlockedReason] = useState('');
+  const [deleteBlockedReason, setDeleteBlockedReason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [nextVendorId, setNextVendorId] = useState('0001');
+  const [nextVendorId, setNextVendorId] = useState("0001");
   const [isLookingUp, setIsLookingUp] = useState(false);
-  
+
   // Column visibility
-  const {
-    visibleColumns,
-    isColumnVisible,
-    toggleColumn,
-    resetToDefaults,
-    showAll,
-    hideAll,
-  } = useColumnVisibility('vendors', VENDOR_COLUMNS);
-  
+  const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
+    "vendors",
+    VENDOR_COLUMNS,
+  );
+
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
   const [formData, setFormData] = useState({
-    vendor_id: '',
-    name: '',
-    type: 'Supplier',
-    status: 'active' as VendorStatus,
-    contact_name: '',
-    email: '',
-    phone: '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    postal_code: '',
-    country: 'United States',
-    website: '',
-    notes: '',
-    payment_terms: '',
+    vendor_id: "",
+    name: "",
+    type: "Supplier",
+    status: "active" as VendorStatus,
+    contact_name: "",
+    email: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "United States",
+    website: "",
+    notes: "",
+    payment_terms: "",
   });
 
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
-      setTransaction(isEditing ? 'vend/edit' : 'vend/new');
+      setTransaction(isEditing ? "vend/edit" : "vend/new");
     } else {
-      setTransaction('vend');
+      setTransaction("vend");
     }
   }, [isDialogOpen, isEditing, setTransaction]);
 
@@ -483,7 +451,7 @@ const Vendors = () => {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
   }, [user, loading, navigate]);
 
@@ -501,26 +469,18 @@ const Vendors = () => {
   }, [companyId]);
 
   const fetchCompanyId = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('user_id', user!.id)
-      .single();
-    
+    const { data } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
+
     if (data?.company_id) {
       setCompanyId(data.company_id);
     }
   };
 
   const fetchVendors = async () => {
-    const { data, error } = await supabase
-      .from('vendors')
-      .select('*')
-      .eq('company_id', companyId!)
-      .order('vendor_id');
+    const { data, error } = await supabase.from("vendors").select("*").eq("company_id", companyId!).order("vendor_id");
 
     if (error) {
-      addMessage('Failed to load vendors', 'error');
+      addMessage("Failed to load vendors", "error");
       return;
     }
 
@@ -528,7 +488,7 @@ const Vendors = () => {
   };
 
   const fetchNextVendorId = async () => {
-    const { data, error } = await supabase.rpc('get_next_vendor_id', {
+    const { data, error } = await supabase.rpc("get_next_vendor_id", {
       p_company_id: companyId!,
     });
 
@@ -540,21 +500,21 @@ const Vendors = () => {
   const resetForm = () => {
     setFormData({
       vendor_id: nextVendorId,
-      name: '',
-      type: 'Supplier',
-      status: 'active',
-      contact_name: '',
-      email: '',
-      phone: '',
-      address_line1: '',
-      address_line2: '',
-      city: '',
-      state: '',
-      postal_code: '',
-      country: 'United States',
-      website: '',
-      notes: '',
-      payment_terms: '',
+      name: "",
+      type: "Supplier",
+      status: "active",
+      contact_name: "",
+      email: "",
+      phone: "",
+      address_line1: "",
+      address_line2: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      country: "United States",
+      website: "",
+      notes: "",
+      payment_terms: "",
     });
     setIsEditing(false);
     setEditingId(null);
@@ -563,39 +523,39 @@ const Vendors = () => {
   const handleOpenDialog = async () => {
     resetForm();
     // Fetch fresh vendor ID to enforce document_id_config
-    const { data: freshVendorId } = await supabase.rpc('get_next_vendor_id', {
+    const { data: freshVendorId } = await supabase.rpc("get_next_vendor_id", {
       p_company_id: companyId!,
     });
     if (freshVendorId) {
       setNextVendorId(freshVendorId);
-      setFormData(prev => ({ ...prev, vendor_id: freshVendorId }));
+      setFormData((prev) => ({ ...prev, vendor_id: freshVendorId }));
     } else {
-      setFormData(prev => ({ ...prev, vendor_id: nextVendorId }));
+      setFormData((prev) => ({ ...prev, vendor_id: nextVendorId }));
     }
     setIsDialogOpen(true);
   };
 
   // Keyboard shortcut for adding new vendor
-  useKeyboardShortcut('n', handleOpenDialog);
+  useKeyboardShortcut("n", handleOpenDialog);
 
   const handleEdit = (vendor: Vendor) => {
     setFormData({
       vendor_id: vendor.vendor_id,
       name: vendor.name,
       type: vendor.type,
-      status: (vendor.status as VendorStatus) || 'active',
-      contact_name: vendor.contact_name || '',
-      email: vendor.email || '',
-      phone: vendor.phone || '',
-      address_line1: vendor.address_line1 || '',
-      address_line2: vendor.address_line2 || '',
-      city: vendor.city || '',
-      state: vendor.state || '',
-      postal_code: vendor.postal_code || '',
-      country: vendor.country || 'United States',
-      website: vendor.website || '',
-      notes: vendor.notes || '',
-      payment_terms: vendor.payment_terms?.toString() || '',
+      status: (vendor.status as VendorStatus) || "active",
+      contact_name: vendor.contact_name || "",
+      email: vendor.email || "",
+      phone: vendor.phone || "",
+      address_line1: vendor.address_line1 || "",
+      address_line2: vendor.address_line2 || "",
+      city: vendor.city || "",
+      state: vendor.state || "",
+      postal_code: vendor.postal_code || "",
+      country: vendor.country || "United States",
+      website: vendor.website || "",
+      notes: vendor.notes || "",
+      payment_terms: vendor.payment_terms?.toString() || "",
     });
     setIsEditing(true);
     setEditingId(vendor.id);
@@ -604,15 +564,13 @@ const Vendors = () => {
 
   const handleDeleteRequest = async (vendor: Vendor) => {
     // Check for linked accounts
-    const { data: accounts } = await supabase
-      .from('accounts')
-      .select('account_id')
-      .eq('vendor_id', vendor.id)
-      .limit(1);
-    
+    const { data: accounts } = await supabase.from("accounts").select("account_id").eq("vendor_id", vendor.id).limit(1);
+
     if (accounts && accounts.length > 0) {
       setDeleteBlocked(true);
-      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to account ${accounts[0].account_id}.`);
+      setDeleteBlockedReason(
+        `Cannot delete vendor "${vendor.name}". It is linked to account ${accounts[0].account_id}.`,
+      );
       setDeletingVendor({ id: vendor.id, name: vendor.name });
       setDeleteDialogOpen(true);
       return;
@@ -620,14 +578,16 @@ const Vendors = () => {
 
     // Check for linked purchase orders
     const { data: purchaseOrders } = await supabase
-      .from('purchase_orders')
-      .select('po_number')
-      .eq('vendor_id', vendor.id)
+      .from("purchase_orders")
+      .select("po_number")
+      .eq("vendor_id", vendor.id)
       .limit(1);
-    
+
     if (purchaseOrders && purchaseOrders.length > 0) {
       setDeleteBlocked(true);
-      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to purchase order ${purchaseOrders[0].po_number}.`);
+      setDeleteBlockedReason(
+        `Cannot delete vendor "${vendor.name}". It is linked to purchase order ${purchaseOrders[0].po_number}.`,
+      );
       setDeletingVendor({ id: vendor.id, name: vendor.name });
       setDeleteDialogOpen(true);
       return;
@@ -635,14 +595,16 @@ const Vendors = () => {
 
     // Check for linked deliveries
     const { data: deliveries } = await supabase
-      .from('deliveries')
-      .select('delivery_id')
-      .eq('vendor_id', vendor.id)
+      .from("deliveries")
+      .select("delivery_id")
+      .eq("vendor_id", vendor.id)
       .limit(1);
-    
+
     if (deliveries && deliveries.length > 0) {
       setDeleteBlocked(true);
-      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to delivery ${deliveries[0].delivery_id}.`);
+      setDeleteBlockedReason(
+        `Cannot delete vendor "${vendor.name}". It is linked to delivery ${deliveries[0].delivery_id}.`,
+      );
       setDeletingVendor({ id: vendor.id, name: vendor.name });
       setDeleteDialogOpen(true);
       return;
@@ -650,14 +612,16 @@ const Vendors = () => {
 
     // Check for linked goods receipts
     const { data: goodsReceipts } = await supabase
-      .from('goods_receipts')
-      .select('receipt_number')
-      .eq('vendor_id', vendor.id)
+      .from("goods_receipts")
+      .select("receipt_number")
+      .eq("vendor_id", vendor.id)
       .limit(1);
-    
+
     if (goodsReceipts && goodsReceipts.length > 0) {
       setDeleteBlocked(true);
-      setDeleteBlockedReason(`Cannot delete vendor "${vendor.name}". It is linked to goods receipt ${goodsReceipts[0].receipt_number}.`);
+      setDeleteBlockedReason(
+        `Cannot delete vendor "${vendor.name}". It is linked to goods receipt ${goodsReceipts[0].receipt_number}.`,
+      );
       setDeletingVendor({ id: vendor.id, name: vendor.name });
       setDeleteDialogOpen(true);
       return;
@@ -665,25 +629,22 @@ const Vendors = () => {
 
     // No blocking records, show confirm dialog
     setDeleteBlocked(false);
-    setDeleteBlockedReason('');
+    setDeleteBlockedReason("");
     setDeletingVendor({ id: vendor.id, name: vendor.name });
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
     if (!deletingVendor) return;
-    
-    const { error } = await supabase
-      .from('vendors')
-      .delete()
-      .eq('id', deletingVendor.id);
+
+    const { error } = await supabase.from("vendors").delete().eq("id", deletingVendor.id);
 
     if (error) {
-      toast.error('Failed to delete vendor');
+      toast.error("Failed to delete vendor");
       return;
     }
 
-    toast.success('Vendor deleted');
+    toast.success("Vendor deleted");
     setDeleteDialogOpen(false);
     setDeletingVendor(null);
     fetchVendors();
@@ -695,7 +656,7 @@ const Vendors = () => {
 
     if (isEditing && editingId) {
       const { error } = await supabase
-        .from('vendors')
+        .from("vendors")
         .update({
           name: formData.name,
           type: formData.type,
@@ -713,43 +674,41 @@ const Vendors = () => {
           notes: formData.notes || null,
           payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
         })
-        .eq('id', editingId);
+        .eq("id", editingId);
 
       if (error) {
-        addMessage('Failed to update vendor', 'error');
+        addMessage("Failed to update vendor", "error");
         return;
       }
 
-      addMessage('Vendor updated', 'success');
+      addMessage("Vendor updated", "success");
     } else {
-      const { error } = await supabase
-        .from('vendors')
-        .insert({
-          company_id: companyId!,
-          vendor_id: formData.vendor_id,
-          name: formData.name,
-          type: formData.type,
-          status: formData.status,
-          contact_name: formData.contact_name || null,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          address_line1: formData.address_line1 || null,
-          address_line2: formData.address_line2 || null,
-          city: formData.city || null,
-          state: formData.state || null,
-          postal_code: formData.postal_code || null,
-          country: formData.country || null,
-          website: formData.website || null,
-          notes: formData.notes || null,
-          payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
-        });
+      const { error } = await supabase.from("vendors").insert({
+        company_id: companyId!,
+        vendor_id: formData.vendor_id,
+        name: formData.name,
+        type: formData.type,
+        status: formData.status,
+        contact_name: formData.contact_name || null,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        address_line1: formData.address_line1 || null,
+        address_line2: formData.address_line2 || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        postal_code: formData.postal_code || null,
+        country: formData.country || null,
+        website: formData.website || null,
+        notes: formData.notes || null,
+        payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
+      });
 
       if (error) {
-        addMessage('Failed to create vendor', 'error');
+        addMessage("Failed to create vendor", "error");
         return;
       }
 
-      addMessage('Vendor created', 'success');
+      addMessage("Vendor created", "success");
     }
 
     setIsDialogOpen(false);
@@ -759,19 +718,19 @@ const Vendors = () => {
 
   const handleAILookup = async () => {
     if (!formData.name || formData.name.trim().length < 2) {
-      addMessage('Enter a company name first', 'error');
+      addMessage("Enter a company name first", "error");
       return;
     }
 
     setIsLookingUp(true);
     try {
-      const { data, error } = await supabase.functions.invoke('lookup-vendor', {
-        body: { companyName: formData.name }
+      const { data, error } = await supabase.functions.invoke("lookup-vendor", {
+        body: { companyName: formData.name },
       });
 
       if (error) {
         // Try to extract the error message from the response
-        let errorMessage = 'Failed to look up company';
+        let errorMessage = "Failed to look up company";
         try {
           const errorBody = error.context?.body ? JSON.parse(error.context.body) : null;
           if (errorBody?.error) {
@@ -780,17 +739,17 @@ const Vendors = () => {
         } catch {
           // Use default message if parsing fails
         }
-        addMessage(errorMessage, 'error');
+        addMessage(errorMessage, "error");
         return;
       }
 
       if (data.error) {
-        addMessage(data.error, 'error');
+        addMessage(data.error, "error");
         return;
       }
 
       // Update form with found data
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         website: data.website || prev.website,
         phone: data.phone || prev.phone,
@@ -802,10 +761,10 @@ const Vendors = () => {
         country: data.country || prev.country,
       }));
 
-      addMessage('Company information found!', 'success');
+      addMessage("Company information found!", "success");
     } catch (err) {
-      console.error('Lookup error:', err);
-      addMessage('Failed to look up company', 'error');
+      console.error("Lookup error:", err);
+      addMessage("Failed to look up company", "error");
     } finally {
       setIsLookingUp(false);
     }
@@ -825,7 +784,7 @@ const Vendors = () => {
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
@@ -843,290 +802,286 @@ const Vendors = () => {
                 onHideAll={hideAll}
               />
               <ImportExportButtons
-                importEnabled={isImportEnabled('vendor')}
-                exportEnabled={isExportEnabled('vendor')}
+                importEnabled={isImportEnabled("vendor")}
+                exportEnabled={isExportEnabled("vendor")}
                 entityName="Vendors"
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button onClick={handleOpenDialog}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Vendor
+                    Vendor
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px]">
-                <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                  <DialogHeader>
-                    <DialogTitle>{isEditing ? 'Edit Vendor' : 'Add Vendor'}</DialogTitle>
-                    <DialogDescription>
-                      {isEditing ? 'Update vendor details.' : 'Add a new vendor to your company.'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  {!isEditing && (
-                    <div className="absolute right-12 top-4 z-10">
-                      <CopyFromIdDialog<Vendor>
-                        idLabel="Vendor ID"
-                        onFetch={async (id) => {
-                          const { data } = await supabase
-                            .from('vendors')
-                            .select('*')
-                            .eq('company_id', companyId!)
-                            .eq('vendor_id', id)
-                            .maybeSingle();
-                          return data;
-                        }}
-                        onApply={(vendor) => {
-                          setFormData(prev => ({
-                            ...prev,
-                            name: vendor.name,
-                            type: vendor.type,
-                            contact_name: vendor.contact_name || '',
-                            email: vendor.email || '',
-                            phone: vendor.phone || '',
-                            address_line1: vendor.address_line1 || '',
-                            address_line2: vendor.address_line2 || '',
-                            city: vendor.city || '',
-                            state: vendor.state || '',
-                            postal_code: vendor.postal_code || '',
-                            country: vendor.country || 'United States',
-                            website: vendor.website || '',
-                            notes: vendor.notes || '',
-                          }));
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                  <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
-                    <TabsList className="mx-6 w-fit">
-                      <TabsTrigger value="general">General</TabsTrigger>
-                      <TabsTrigger value="notes">Notes</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="general" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="vendor_id">Vendor ID</Label>
-                          <Input
-                            id="vendor_id"
-                            value={formData.vendor_id}
-                            onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
-                           disabled={isEditing}
-                           className={isEditing ? "bg-muted" : ""}
-                            required
-                          />
-                          {!isEditing && (
-                            <p className="text-sm text-muted-foreground">
-                             Suggested ID from Configuration
-                            </p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="type">Type</Label>
-                          <Select
-                            value={formData.type}
-                            onValueChange={(value) => setFormData({ ...formData, type: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {VENDOR_TYPES.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle>{isEditing ? "Edit Vendor" : "Create Vendor"}</DialogTitle>
+                      <DialogDescription>
+                        {isEditing ? "Update vendor details." : "Add a new vendor to your company."}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {!isEditing && (
+                      <div className="absolute right-12 top-4 z-10">
+                        <CopyFromIdDialog<Vendor>
+                          idLabel="Vendor ID"
+                          onFetch={async (id) => {
+                            const { data } = await supabase
+                              .from("vendors")
+                              .select("*")
+                              .eq("company_id", companyId!)
+                              .eq("vendor_id", id)
+                              .maybeSingle();
+                            return data;
+                          }}
+                          onApply={(vendor) => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              name: vendor.name,
+                              type: vendor.type,
+                              contact_name: vendor.contact_name || "",
+                              email: vendor.email || "",
+                              phone: vendor.phone || "",
+                              address_line1: vendor.address_line1 || "",
+                              address_line2: vendor.address_line2 || "",
+                              city: vendor.city || "",
+                              state: vendor.state || "",
+                              postal_code: vendor.postal_code || "",
+                              country: vendor.country || "United States",
+                              website: vendor.website || "",
+                              notes: vendor.notes || "",
+                            }));
+                          }}
+                        />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="status">Status</Label>
-                          <Select
-                            value={formData.status}
-                            onValueChange={(value) => setFormData({ ...formData, status: value as VendorStatus })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {VENDOR_STATUSES.map((status) => (
-                                <SelectItem key={status.value} value={status.value}>
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${status.color}`} />
-                                    {status.label}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="name">Vendor Name *</Label>
-                          <div className="flex gap-2">
+                    )}
+
+                    <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
+                      <TabsList className="mx-6 w-fit">
+                        <TabsTrigger value="general">General</TabsTrigger>
+                        <TabsTrigger value="notes">Notes</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="general" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor_id">Vendor ID</Label>
                             <Input
-                              id="name"
-                              value={formData.name}
-                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                              placeholder="Acme Supplies Inc."
+                              id="vendor_id"
+                              value={formData.vendor_id}
+                              onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
+                              disabled={isEditing}
+                              className={isEditing ? "bg-muted" : ""}
                               required
-                              className="flex-1"
                             />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={handleAILookup}
-                              disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
-                              title="Look up company info with AI"
-                            >
-                              {isLookingUp ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Search className="w-4 h-4" />
-                              )}
-                            </Button>
+                            {!isEditing && (
+                              <p className="text-sm text-muted-foreground">Suggested ID from Configuration</p>
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Click the search icon to auto-fill contact info using AI
-                          </p>
+                          <div className="space-y-2">
+                            <Label htmlFor="type">Type</Label>
+                            <Select
+                              value={formData.type}
+                              onValueChange={(value) => setFormData({ ...formData, type: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VENDOR_TYPES.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <Select
+                              value={formData.status}
+                              onValueChange={(value) => setFormData({ ...formData, status: value as VendorStatus })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VENDOR_STATUSES.map((status) => (
+                                  <SelectItem key={status.value} value={status.value}>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                                      {status.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="name">Vendor Name *</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="Acme Supplies Inc."
+                                required
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={handleAILookup}
+                                disabled={isLookingUp || !formData.name || formData.name.trim().length < 2}
+                                title="Look up company info with AI"
+                              >
+                                {isLookingUp ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Search className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Click the search icon to auto-fill contact info using AI
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="contact_name">Contact Name</Label>
+                            <Input
+                              id="contact_name"
+                              value={formData.contact_name}
+                              onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                              placeholder="John Smith"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                              placeholder="john@acme.com"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="phone">Phone</Label>
+                            <Input
+                              id="phone"
+                              value={formData.phone}
+                              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                              placeholder="(555) 123-4567"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="website">Website</Label>
+                            <Input
+                              id="website"
+                              value={formData.website}
+                              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                              placeholder="https://acme.com"
+                            />
+                          </div>
+                        </div>
                         <div className="space-y-2">
-                          <Label htmlFor="contact_name">Contact Name</Label>
+                          <Label htmlFor="address_line1">Address Line 1</Label>
                           <Input
-                            id="contact_name"
-                            value={formData.contact_name}
-                            onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-                            placeholder="John Smith"
+                            id="address_line1"
+                            value={formData.address_line1}
+                            onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                            placeholder="123 Main Street"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="email">Email</Label>
+                          <Label htmlFor="address_line2">Address Line 2</Label>
                           <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            placeholder="john@acme.com"
+                            id="address_line2"
+                            value={formData.address_line2}
+                            onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                            placeholder="Suite 100"
                           />
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Phone</Label>
-                          <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder="(555) 123-4567"
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="city">City</Label>
+                            <Input
+                              id="city"
+                              value={formData.city}
+                              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="state">State</Label>
+                            <Input
+                              id="state"
+                              value={formData.state}
+                              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="postal_code">Postal Code</Label>
+                            <Input
+                              id="postal_code"
+                              value={formData.postal_code}
+                              onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="country">Country</Label>
+                            <Input
+                              id="country"
+                              value={formData.country}
+                              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="payment_terms">Payment Terms (days)</Label>
+                            <Input
+                              id="payment_terms"
+                              type="number"
+                              min="0"
+                              value={formData.payment_terms}
+                              onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+                              placeholder="30"
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="notes" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0">
+                        <div className="space-y-2 h-full">
+                          <Label htmlFor="notes">Notes</Label>
+                          <Textarea
+                            id="notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Additional notes about this vendor..."
+                            className="min-h-[200px]"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="website">Website</Label>
-                          <Input
-                            id="website"
-                            value={formData.website}
-                            onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                            placeholder="https://acme.com"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="address_line1">Address Line 1</Label>
-                        <Input
-                          id="address_line1"
-                          value={formData.address_line1}
-                          onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                          placeholder="123 Main Street"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="address_line2">Address Line 2</Label>
-                        <Input
-                          id="address_line2"
-                          value={formData.address_line2}
-                          onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                          placeholder="Suite 100"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={formData.city}
-                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            value={formData.state}
-                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="postal_code">Postal Code</Label>
-                          <Input
-                            id="postal_code"
-                            value={formData.postal_code}
-                            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="country">Country</Label>
-                          <Input
-                            id="country"
-                            value={formData.country}
-                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="payment_terms">Payment Terms (days)</Label>
-                          <Input
-                            id="payment_terms"
-                            type="number"
-                            min="0"
-                            value={formData.payment_terms}
-                            onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                            placeholder="30"
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="notes" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0">
-                      <div className="space-y-2 h-full">
-                        <Label htmlFor="notes">Notes</Label>
-                        <Textarea
-                          id="notes"
-                          value={formData.notes}
-                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          placeholder="Additional notes about this vendor..."
-                          className="min-h-[200px]"
-                        />
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                  <DialogFooter className="shrink-0">
-                    <Button 
-                      type="submit" 
-                    >
-                      {isEditing ? 'Update' : 'Create'}
-                      <Kbd className="ml-2">⌘S</Kbd>
-                    </Button>
-                  </DialogFooter>
-                </form>
+                      </TabsContent>
+                    </Tabs>
+                    <DialogFooter className="shrink-0">
+                      <Button type="submit">
+                        {isEditing ? "Update" : "Create"}
+                        <Kbd className="ml-2">⌘S</Kbd>
+                      </Button>
+                    </DialogFooter>
+                  </form>
                 </DialogContent>
               </Dialog>
             </div>
@@ -1139,12 +1094,10 @@ const Vendors = () => {
           <div className="text-center py-12">
             <Building className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No vendors yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Add your first vendor to get started.
-            </p>
+            <p className="text-muted-foreground mb-4">Add your first vendor to get started.</p>
             <Button onClick={handleOpenDialog}>
               <Plus className="w-4 h-4 mr-2" />
-              Add Vendor
+              Vendor
             </Button>
           </div>
         ) : (
@@ -1182,7 +1135,7 @@ const Vendors = () => {
             </DialogDescription>
           </DialogHeader>
           {viewingVendor && (
-            <Tabs defaultValue="details" className="w-full px-4 pb-4">
+            <Tabs defaultValue="details" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-1">
@@ -1190,7 +1143,7 @@ const Vendors = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details" className="mt-4 px-2">
+              <TabsContent value="details">
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div>
@@ -1204,12 +1157,9 @@ const Vendors = () => {
                     <div>
                       <Label className="text-muted-foreground text-xs">Status</Label>
                       {(() => {
-                        const statusConfig = VENDOR_STATUSES.find(s => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
-                        return (
-                          <Badge className={`${statusConfig.color} text-white`}>
-                            {statusConfig.label}
-                          </Badge>
-                        );
+                        const statusConfig =
+                          VENDOR_STATUSES.find((s) => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
+                        return <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>;
                       })()}
                     </div>
                   </div>
@@ -1220,32 +1170,47 @@ const Vendors = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground text-xs">Contact Name</Label>
-                      <p>{viewingVendor.contact_name || '-'}</p>
+                      <p>{viewingVendor.contact_name || "-"}</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Email</Label>
-                      <p>{viewingVendor.email || '-'}</p>
+                      <p>{viewingVendor.email || "-"}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground text-xs">Phone</Label>
-                      <p>{viewingVendor.phone || '-'}</p>
+                      <p>{viewingVendor.phone || "-"}</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Website</Label>
-                      <p>{viewingVendor.website || '-'}</p>
+                      <p>{viewingVendor.website || "-"}</p>
                     </div>
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Address</Label>
                     <p>
-                      {viewingVendor.address_line1 || '-'}
-                      {viewingVendor.address_line2 && <><br />{viewingVendor.address_line2}</>}
-                      {(viewingVendor.city || viewingVendor.state || viewingVendor.postal_code) && (
-                        <><br />{[viewingVendor.city, viewingVendor.state, viewingVendor.postal_code].filter(Boolean).join(', ')}</>
+                      {viewingVendor.address_line1 || "-"}
+                      {viewingVendor.address_line2 && (
+                        <>
+                          <br />
+                          {viewingVendor.address_line2}
+                        </>
                       )}
-                      {viewingVendor.country && <><br />{viewingVendor.country}</>}
+                      {(viewingVendor.city || viewingVendor.state || viewingVendor.postal_code) && (
+                        <>
+                          <br />
+                          {[viewingVendor.city, viewingVendor.state, viewingVendor.postal_code]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </>
+                      )}
+                      {viewingVendor.country && (
+                        <>
+                          <br />
+                          {viewingVendor.country}
+                        </>
+                      )}
                     </p>
                   </div>
                   {viewingVendor.notes && (
@@ -1257,9 +1222,9 @@ const Vendors = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="history" className="mt-4 px-2">
-                <AuditHistoryTab 
-                  tableName="vendors" 
+              <TabsContent value="history">
+                <AuditHistoryTab
+                  tableName="vendors"
                   recordId={viewingVendor.id}
                   fieldLabels={{
                     status: "Status",
