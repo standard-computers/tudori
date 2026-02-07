@@ -1192,7 +1192,7 @@ const Deliveries = () => {
                     if (viewDelivery) handleEdit(viewDelivery);
                   }}
                   title="Edit"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7 absolute right-10 top-4 opacity-70 hover:opacity-100"
+                  className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
