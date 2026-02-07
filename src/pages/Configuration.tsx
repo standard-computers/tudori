@@ -71,6 +71,14 @@ interface ImportExportSettings {
   };
 }
 
+interface ChangeHistorySettings {
+  [documentType: string]: boolean;
+}
+
+const DEFAULT_CHANGE_HISTORY_SETTINGS: ChangeHistorySettings = Object.fromEntries(
+  DOCUMENT_TYPES.map(dt => [dt.value, true])
+);
+
 const DEFAULT_IMPORT_EXPORT_SETTINGS: ImportExportSettings = {
   purchase_order: { import_enabled: false, export_enabled: true },
   sales_order: { import_enabled: false, export_enabled: true },
@@ -117,7 +125,8 @@ const Configuration = () => {
     track_bin_level_movements: true,
     enforce_route_records: false,
   });
-const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
+  const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
+  const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
 
   useEffect(() => {
     setTransaction(`config/${activeTab}`);
@@ -171,6 +180,7 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
           fetchPOSettings(profile.company_id),
           fetchProcessControls(profile.company_id),
           fetchImportExportSettings(profile.company_id),
+          fetchChangeHistorySettings(profile.company_id),
         ]);
       }
     } catch (error) {
@@ -286,6 +296,32 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
     }
   };
 
+  const fetchChangeHistorySettings = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('setting_value')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'change_history_settings')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.setting_value && typeof data.setting_value === 'object' && !Array.isArray(data.setting_value)) {
+        const val = data.setting_value as Record<string, unknown>;
+        const merged = { ...DEFAULT_CHANGE_HISTORY_SETTINGS };
+        Object.keys(val).forEach(key => {
+          if (key in merged && typeof val[key] === 'boolean') {
+            merged[key] = val[key] as boolean;
+          }
+        });
+        setChangeHistorySettings(merged);
+      }
+    } catch (error) {
+      console.error('Error fetching change history settings:', error);
+    }
+  };
+
   const handleConfigChange = (
     docType: string,
     field: 'prefix' | 'num_digits' | 'starting_number',
@@ -395,6 +431,29 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
             company_id: companyId,
             setting_key: 'import_export_settings',
             setting_value: importExportSettings,
+          }]);
+      }
+
+      // Save change history settings
+      const { data: existingHistory } = await supabase
+        .from('company_settings')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('setting_key', 'change_history_settings')
+        .maybeSingle();
+
+      if (existingHistory) {
+        await supabase
+          .from('company_settings')
+          .update({ setting_value: changeHistorySettings })
+          .eq('id', existingHistory.id);
+      } else {
+        await supabase
+          .from('company_settings')
+          .insert([{
+            company_id: companyId,
+            setting_key: 'change_history_settings',
+            setting_value: changeHistorySettings,
           }]);
       }
 
@@ -735,6 +794,24 @@ const [importExportSettings, setImportExportSettings] = useState<ImportExportSet
                                 }
                               />
                             </div>
+                          </div>
+                        </div>
+
+                        {/* Change History Settings */}
+                        <div className="space-y-4 pt-4 border-t">
+                          <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                            <div className="space-y-0.5">
+                              <Label className="font-medium">Keep Change History</Label>
+                              <p className="text-xs text-muted-foreground">
+                                Track and display an audit trail of all changes made to {docType.label.toLowerCase()} records
+                              </p>
+                            </div>
+                            <Switch
+                              checked={changeHistorySettings[docType.value] ?? true}
+                              onCheckedChange={(checked) => 
+                                setChangeHistorySettings(prev => ({ ...prev, [docType.value]: checked }))
+                              }
+                            />
                           </div>
                         </div>
 
