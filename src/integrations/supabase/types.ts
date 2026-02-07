@@ -1785,6 +1785,118 @@ export type Database = {
           },
         ]
       }
+      inventory_count_items: {
+        Row: {
+          bin_id: string | null
+          count_id: string
+          counted_quantity: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          system_quantity: number
+          variance: number | null
+        }
+        Insert: {
+          bin_id?: string | null
+          count_id: string
+          counted_quantity?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          system_quantity?: number
+          variance?: number | null
+        }
+        Update: {
+          bin_id?: string | null
+          count_id?: string
+          counted_quantity?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          system_quantity?: number
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_count_items_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_items_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_count_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_counts: {
+        Row: {
+          company_id: string
+          count_date: string
+          count_number: string
+          created_at: string
+          created_by: string | null
+          id: string
+          location_id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          count_date?: string
+          count_number: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          count_date?: string
+          count_number?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_counts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -4135,6 +4247,7 @@ export type Database = {
       generate_route_id: { Args: { p_company_id: string }; Returns: string }
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
       get_next_bom_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_count_number: { Args: { p_company_id: string }; Returns: string }
       get_next_credit_memo_number: {
         Args: { p_company_id: string }
         Returns: string

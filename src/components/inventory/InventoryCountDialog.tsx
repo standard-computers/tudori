@@ -1,0 +1,502 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { toast } from 'sonner';
+import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { format } from 'date-fns';
+
+interface InventoryCountDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId: string | null;
+  locationId: string;
+  locationName: string;
+  inventory: Array<{
+    id: string;
+    quantity: number;
+    product: {
+      id: string;
+      product_id: string;
+      name: string;
+    } | null;
+    bin: {
+      id: string;
+      name: string;
+    } | null;
+  }>;
+}
+
+interface CountSession {
+  id: string;
+  count_number: string;
+  status: string;
+  count_date: string;
+  notes: string | null;
+  created_at: string;
+  location: { name: string } | null;
+}
+
+interface CountItem {
+  id: string;
+  product_id: string;
+  bin_id: string | null;
+  system_quantity: number;
+  counted_quantity: number | null;
+  variance: number | null;
+  notes: string | null;
+  product: { product_id: string; name: string } | null;
+  bin: { name: string } | null;
+}
+
+type View = 'list' | 'detail';
+
+const statusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  posted: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+};
+
+export const InventoryCountDialog = ({
+  open,
+  onOpenChange,
+  companyId,
+  locationId,
+  locationName,
+  inventory,
+}: InventoryCountDialogProps) => {
+  const { user } = useAuth();
+  const [view, setView] = useState<View>('list');
+  const [counts, setCounts] = useState<CountSession[]>([]);
+  const [selectedCount, setSelectedCount] = useState<CountSession | null>(null);
+  const [countItems, setCountItems] = useState<CountItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchCounts = useCallback(async () => {
+    if (!companyId || !locationId) return;
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('inventory_counts')
+      .select('id, count_number, status, count_date, notes, created_at, location:locations(name)')
+      .eq('company_id', companyId)
+      .eq('location_id', locationId)
+      .order('created_at', { ascending: false });
+
+    setIsLoading(false);
+    if (error) {
+      toast.error('Failed to load count sheets');
+      return;
+    }
+    setCounts((data as unknown as CountSession[]) || []);
+  }, [companyId, locationId]);
+
+  useEffect(() => {
+    if (open && view === 'list') {
+      fetchCounts();
+    }
+  }, [open, view, fetchCounts]);
+
+  const fetchCountItems = async (countId: string) => {
+    const { data, error } = await supabase
+      .from('inventory_count_items')
+      .select('id, product_id, bin_id, system_quantity, counted_quantity, variance, notes, product:products(product_id, name), bin:bins(name)')
+      .eq('count_id', countId)
+      .order('created_at');
+
+    if (error) {
+      toast.error('Failed to load count items');
+      return;
+    }
+    setCountItems((data as unknown as CountItem[]) || []);
+  };
+
+  const handleCreateCount = async () => {
+    if (!companyId || !locationId || inventory.length === 0) {
+      toast.error('No inventory to count at this location');
+      return;
+    }
+
+    setIsSaving(true);
+
+    // Get next count number
+    const { data: countNumber, error: numError } = await supabase
+      .rpc('get_next_count_number', { p_company_id: companyId });
+
+    if (numError) {
+      toast.error('Failed to generate count number');
+      setIsSaving(false);
+      return;
+    }
+
+    // Create the count session
+    const { data: newCount, error: createError } = await supabase
+      .from('inventory_counts')
+      .insert({
+        count_number: countNumber,
+        company_id: companyId,
+        location_id: locationId,
+        status: 'in_progress',
+        created_by: user?.id,
+      })
+      .select('id, count_number, status, count_date, notes, created_at')
+      .single();
+
+    if (createError) {
+      toast.error('Failed to create count sheet');
+      setIsSaving(false);
+      return;
+    }
+
+    // Create count items from current inventory snapshot
+    const items = inventory.map((inv) => ({
+      count_id: newCount.id,
+      product_id: inv.product?.id || '',
+      bin_id: inv.bin?.id || null,
+      system_quantity: inv.quantity,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('inventory_count_items')
+      .insert(items);
+
+    setIsSaving(false);
+
+    if (itemsError) {
+      toast.error('Failed to create count items');
+      return;
+    }
+
+    toast.success(`Count sheet ${countNumber} created`);
+    // Open the new count
+    setSelectedCount({ ...newCount, location: { name: locationName } } as CountSession);
+    await fetchCountItems(newCount.id);
+    setView('detail');
+  };
+
+  const handleViewCount = async (count: CountSession) => {
+    setSelectedCount(count);
+    await fetchCountItems(count.id);
+    setView('detail');
+  };
+
+  const handleUpdateQuantity = (itemId: string, value: string) => {
+    const numValue = value === '' ? null : parseFloat(value);
+    setCountItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, counted_quantity: numValue, variance: numValue !== null ? numValue - item.system_quantity : null }
+          : item
+      )
+    );
+  };
+
+  const handleSaveItems = async () => {
+    setIsSaving(true);
+    const updates = countItems.map((item) =>
+      supabase
+        .from('inventory_count_items')
+        .update({ counted_quantity: item.counted_quantity })
+        .eq('id', item.id)
+    );
+
+    const results = await Promise.all(updates);
+    const failed = results.filter((r) => r.error);
+    setIsSaving(false);
+
+    if (failed.length > 0) {
+      toast.error('Some items failed to save');
+      return;
+    }
+    toast.success('Count saved');
+  };
+
+  const handleCompleteCount = async () => {
+    if (!selectedCount) return;
+    // Check all items have been counted
+    const uncounted = countItems.filter((i) => i.counted_quantity === null);
+    if (uncounted.length > 0) {
+      toast.error(`${uncounted.length} item(s) still need to be counted`);
+      return;
+    }
+
+    setIsSaving(true);
+    // Save items first
+    await handleSaveItems();
+
+    const { error } = await supabase
+      .from('inventory_counts')
+      .update({ status: 'completed' })
+      .eq('id', selectedCount.id);
+
+    setIsSaving(false);
+    if (error) {
+      toast.error('Failed to complete count');
+      return;
+    }
+
+    toast.success('Count completed');
+    setSelectedCount({ ...selectedCount, status: 'completed' });
+  };
+
+  const handlePostAdjustments = async () => {
+    if (!selectedCount || !companyId) return;
+    setIsSaving(true);
+
+    // Apply variance adjustments to inventory
+    for (const item of countItems) {
+      if (item.variance && item.variance !== 0) {
+        // Update inventory quantity to match counted quantity
+        const { error } = await supabase
+          .from('inventory')
+          .update({ quantity: item.counted_quantity!, last_counted_at: new Date().toISOString() })
+          .eq('location_id', locationId)
+          .eq('product_id', item.product_id)
+          .eq(item.bin_id ? 'bin_id' : 'id', item.bin_id || '');
+
+        // If bin_id match doesn't work, try without bin
+        if (error && item.bin_id) {
+          await supabase
+            .from('inventory')
+            .update({ quantity: item.counted_quantity!, last_counted_at: new Date().toISOString() })
+            .eq('location_id', locationId)
+            .eq('product_id', item.product_id)
+            .eq('bin_id', item.bin_id);
+        }
+      } else {
+        // Even items with no variance get last_counted_at updated
+        await supabase
+          .from('inventory')
+          .update({ last_counted_at: new Date().toISOString() })
+          .eq('location_id', locationId)
+          .eq('product_id', item.product_id);
+      }
+    }
+
+    // Mark count as posted
+    const { error } = await supabase
+      .from('inventory_counts')
+      .update({ status: 'posted' })
+      .eq('id', selectedCount.id);
+
+    setIsSaving(false);
+    if (error) {
+      toast.error('Failed to post adjustments');
+      return;
+    }
+
+    toast.success('Inventory adjustments posted');
+    setSelectedCount({ ...selectedCount, status: 'posted' });
+  };
+
+  const handleBack = () => {
+    setView('list');
+    setSelectedCount(null);
+    setCountItems([]);
+  };
+
+  const isEditable = selectedCount?.status === 'in_progress' || selectedCount?.status === 'draft';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            {view === 'detail' && (
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBack}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <DialogTitle>
+              {view === 'list'
+                ? 'Physical Inventory Count Sheets'
+                : `Count Sheet ${selectedCount?.count_number || ''}`}
+            </DialogTitle>
+          </div>
+          <DialogDescription>
+            {view === 'list'
+              ? `Count sheets for ${locationName}`
+              : `Status: ${selectedCount?.status || ''} • ${selectedCount?.count_date ? format(new Date(selectedCount.count_date), 'MMM d, yyyy') : ''}`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {view === 'list' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {counts.length} count sheet{counts.length !== 1 ? 's' : ''}
+                </span>
+                <Button size="sm" onClick={handleCreateCount} disabled={isSaving || !locationId}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Count
+                </Button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                </div>
+              ) : counts.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No count sheets yet. Create one to start counting.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-28">Count #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead className="w-16" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {counts.map((count) => (
+                      <TableRow key={count.id}>
+                        <TableCell className="font-mono text-sm">{count.count_number}</TableCell>
+                        <TableCell>{format(new Date(count.count_date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={statusColors[count.status] || ''}>
+                            {count.status.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground truncate max-w-[200px]">
+                          {count.notes || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewCount(count)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Variance summary */}
+              {countItems.length > 0 && (
+                <div className="flex items-center gap-6 text-sm text-muted-foreground pb-2 border-b">
+                  <span>
+                    <strong className="text-foreground">{countItems.length}</strong> items
+                  </span>
+                  <span>
+                    <strong className="text-foreground">
+                      {countItems.filter((i) => i.counted_quantity !== null).length}
+                    </strong>{' '}
+                    counted
+                  </span>
+                  <span>
+                    <strong className="text-foreground">
+                      {countItems.filter((i) => i.variance !== null && i.variance !== 0).length}
+                    </strong>{' '}
+                    with variance
+                  </span>
+                </div>
+              )}
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-24">Product ID</TableHead>
+                    <TableHead>Product Name</TableHead>
+                    <TableHead>Bin</TableHead>
+                    <TableHead className="text-right w-24">System Qty</TableHead>
+                    <TableHead className="text-right w-28">Counted Qty</TableHead>
+                    <TableHead className="text-right w-24">Variance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {countItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-sm">{item.product?.product_id || '-'}</TableCell>
+                      <TableCell>{item.product?.name || '-'}</TableCell>
+                      <TableCell>{item.bin?.name || '-'}</TableCell>
+                      <TableCell className="text-right">{item.system_quantity}</TableCell>
+                      <TableCell className="text-right">
+                        {isEditable ? (
+                          <Input
+                            type="number"
+                            className="h-8 w-24 text-right ml-auto"
+                            value={item.counted_quantity ?? ''}
+                            onChange={(e) => handleUpdateQuantity(item.id, e.target.value)}
+                            placeholder="—"
+                          />
+                        ) : (
+                          <span>{item.counted_quantity ?? '—'}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.counted_quantity !== null ? (
+                          <span
+                            className={
+                              (item.variance ?? 0) < 0
+                                ? 'text-destructive font-medium'
+                                : (item.variance ?? 0) > 0
+                                ? 'text-green-600 font-medium'
+                                : 'text-muted-foreground'
+                            }
+                          >
+                            {(item.variance ?? 0) > 0 ? '+' : ''}
+                            {item.variance}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions for detail view */}
+        {view === 'detail' && selectedCount && (
+          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+            {isEditable && (
+              <>
+                <Button variant="outline" size="sm" onClick={handleSaveItems} disabled={isSaving}>
+                  Save
+                </Button>
+                <Button size="sm" onClick={handleCompleteCount} disabled={isSaving}>
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Complete Count
+                </Button>
+              </>
+            )}
+            {selectedCount.status === 'completed' && (
+              <Button size="sm" onClick={handlePostAdjustments} disabled={isSaving}>
+                <ClipboardCheck className="h-4 w-4 mr-1" />
+                Post Adjustments
+              </Button>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
