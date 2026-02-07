@@ -27,8 +27,18 @@ interface DeliveryItem {
   notes: string | null;
   pu_id: string | null;
   uom_id: string | null;
-  product?: { name: string; product_id: string; unit?: string | null };
-  uom?: { id: string; name: string; abbreviation: string | null } | null;
+  product?: {
+    name: string;
+    product_id: string;
+    unit?: string | null;
+    width?: number | null;
+    length?: number | null;
+    height?: number | null;
+    weight?: number | null;
+    width_uom?: string | null;
+    weight_uom?: string | null;
+  };
+  uom?: { id: string; name: string; abbreviation: string | null; conversion_factor?: number } | null;
 }
 
 interface Product {
@@ -43,6 +53,7 @@ interface ProductUom {
   product_id: string;
   name: string;
   abbreviation: string | null;
+  conversion_factor: number;
 }
 
 interface ViewDeliveryItemsTabProps {
@@ -81,6 +92,15 @@ export const ViewDeliveryItemsTab = ({
   const getUomDisplay = (item: DeliveryItem) => {
     if (item.uom) return item.uom.abbreviation || item.uom.name;
     return item.product?.unit || '—';
+  };
+
+  const computeLineValues = (item: DeliveryItem) => {
+    const conversionFactor = item.uom?.conversion_factor || 1;
+    const baseQty = item.quantity * conversionFactor;
+    const p = item.product;
+    const vol = (p?.width && p?.length && p?.height) ? (p.width * p.length * p.height * baseQty) : null;
+    const wt = p?.weight ? (p.weight * baseQty) : null;
+    return { vol, wt, dimUom: p?.width_uom || '', wtUom: p?.weight_uom || '' };
   };
 
   return (
@@ -136,15 +156,18 @@ export const ViewDeliveryItemsTab = ({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
-                <TableHead className={isEditable ? 'w-[40%]' : ''}>Product</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead>UoM</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Volume</TableHead>
+                <TableHead className="text-right">Weight</TableHead>
                 {isEditable && <TableHead className="w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {viewItems.map((item, index) => {
                 const itemUoms = productUoms.filter(u => u.product_id === item.product_id);
+                const { vol, wt, dimUom, wtUom } = computeLineValues(item);
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="text-muted-foreground text-sm font-mono">
@@ -194,6 +217,12 @@ export const ViewDeliveryItemsTab = ({
                       ) : (
                         item.quantity
                       )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-mono text-muted-foreground">
+                      {vol != null ? `${vol.toFixed(2)} ${dimUom}³` : '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-mono text-muted-foreground">
+                      {wt != null ? `${wt.toFixed(2)} ${wtUom}` : '—'}
                     </TableCell>
                     {isEditable && (
                       <TableCell>

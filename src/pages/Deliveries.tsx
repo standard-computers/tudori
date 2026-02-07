@@ -157,9 +157,9 @@ interface DeliveryItem {
   notes: string | null;
   pu_id: string | null;
   uom_id: string | null;
-  product?: { name: string; product_id: string; unit?: string | null };
+  product?: { name: string; product_id: string; unit?: string | null; width?: number | null; length?: number | null; height?: number | null; weight?: number | null; width_uom?: string | null; length_uom?: string | null; height_uom?: string | null; weight_uom?: string | null };
   packaging_unit?: { pu_number: string } | null;
-  uom?: { id: string; name: string; abbreviation: string | null } | null;
+  uom?: { id: string; name: string; abbreviation: string | null; conversion_factor?: number } | null;
 }
 
 interface PackingItem {
@@ -184,6 +184,7 @@ interface ProductUom {
   product_id: string;
   name: string;
   abbreviation: string | null;
+  conversion_factor: number;
 }
 
 interface Carrier {
@@ -396,9 +397,9 @@ const Deliveries = () => {
     if (productIds.length === 0) return;
     const { data } = await supabase
       .from('product_uoms')
-      .select('id, product_id, name, abbreviation')
+      .select('id, product_id, name, abbreviation, conversion_factor')
       .in('product_id', productIds);
-    setProductUoms(data || []);
+    setProductUoms((data || []) as ProductUom[]);
   };
 
   const fetchCarriers = async () => {
@@ -417,9 +418,9 @@ const Deliveries = () => {
       .from('delivery_items')
       .select(`
         *,
-        product:products(name, product_id, unit),
+        product:products(name, product_id, unit, width, length, height, weight, width_uom, length_uom, height_uom, weight_uom),
         packaging_unit:packaging_units(pu_number),
-        uom:product_uoms(id, name, abbreviation)
+        uom:product_uoms(id, name, abbreviation, conversion_factor)
       `)
       .eq('delivery_id', deliveryId);
     
@@ -549,8 +550,8 @@ const Deliveries = () => {
       .from('delivery_items')
       .select(`
         *,
-        product:products(name, product_id, unit),
-        uom:product_uoms(id, name, abbreviation)
+        product:products(name, product_id, unit, width, length, height, weight, width_uom, length_uom, height_uom, weight_uom),
+        uom:product_uoms(id, name, abbreviation, conversion_factor)
       `)
       .eq('delivery_id', deliveryId);
     const items = (data || []) as unknown as DeliveryItem[];
@@ -982,15 +983,22 @@ const Deliveries = () => {
                               <TableHeader>
                                  <TableRow>
                                   <TableHead className="w-10">#</TableHead>
-                                  <TableHead className="w-[45%]">Product</TableHead>
-                                  <TableHead className="w-[20%]">UoM</TableHead>
-                                  <TableHead className="w-[20%] text-right">Qty</TableHead>
-                                  <TableHead className="w-[10%]"></TableHead>
+                                  <TableHead>Product</TableHead>
+                                  <TableHead>UoM</TableHead>
+                                  <TableHead className="text-right">Qty</TableHead>
+                                  <TableHead className="text-right">Volume</TableHead>
+                                  <TableHead className="text-right">Weight</TableHead>
+                                  <TableHead className="w-10"></TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {deliveryItems.map((item, index) => {
                                   const itemUoms = productUoms.filter(u => u.product_id === item.product_id);
+                                  const conversionFactor = item.uom?.conversion_factor || 1;
+                                  const baseQty = item.quantity * conversionFactor;
+                                  const p = item.product;
+                                  const vol = (p?.width && p?.length && p?.height) ? (p.width * p.length * p.height * baseQty) : null;
+                                  const wt = p?.weight ? (p.weight * baseQty) : null;
                                   return (
                                   <TableRow key={item.id}>
                                     <TableCell className="p-2 text-muted-foreground text-sm font-mono">
@@ -1010,7 +1018,6 @@ const Deliveries = () => {
                                             uom: null,
                                           };
                                           setDeliveryItems(updated);
-                                          // Fetch UoMs for newly selected product
                                           fetchProductUoms([...new Set([...deliveryItems.map(i => i.product_id), value].filter(Boolean))]);
                                         }}
                                       >
@@ -1060,6 +1067,12 @@ const Deliveries = () => {
                                         onChange={(e) => handleUpdateItemQuantity(item.id, parseInt(e.target.value) || 1)}
                                         className="text-right"
                                       />
+                                    </TableCell>
+                                    <TableCell className="p-2 text-right text-sm font-mono text-muted-foreground">
+                                      {vol != null ? `${vol.toFixed(2)} ${p?.width_uom || ''}³` : '—'}
+                                    </TableCell>
+                                    <TableCell className="p-2 text-right text-sm font-mono text-muted-foreground">
+                                      {wt != null ? `${wt.toFixed(2)} ${p?.weight_uom || ''}` : '—'}
                                     </TableCell>
                                     <TableCell className="p-2">
                                       <Button
