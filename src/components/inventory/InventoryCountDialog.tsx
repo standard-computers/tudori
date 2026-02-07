@@ -20,7 +20,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { format } from 'date-fns';
 
 interface InventoryCountDialogProps {
@@ -90,6 +91,7 @@ export const InventoryCountDialog = ({
   const [countItems, setCountItems] = useState<CountItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CountSession | null>(null);
 
   const fetchCounts = useCallback(async () => {
     if (!companyId || !locationId) return;
@@ -307,6 +309,23 @@ export const InventoryCountDialog = ({
     setSelectedCount({ ...selectedCount, status: 'posted' });
   };
 
+  const handleDeleteCount = async () => {
+    if (!deleteTarget) return;
+    setIsSaving(true);
+    const { error } = await supabase
+      .from('inventory_counts')
+      .delete()
+      .eq('id', deleteTarget.id);
+    setIsSaving(false);
+    setDeleteTarget(null);
+    if (error) {
+      toast.error('Failed to delete count sheet');
+      return;
+    }
+    toast.success(`Count sheet ${deleteTarget.count_number} deleted`);
+    fetchCounts();
+  };
+
   const handleBack = () => {
     setView('list');
     setSelectedCount(null);
@@ -341,7 +360,7 @@ export const InventoryCountDialog = ({
         <div className="flex-1 min-h-0 overflow-y-auto">
           {view === 'list' ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between px-1 py-2">
                 <span className="text-sm text-muted-foreground">
                   {counts.length} count sheet{counts.length !== 1 ? 's' : ''}
                 </span>
@@ -384,9 +403,21 @@ export const InventoryCountDialog = ({
                           {count.notes || '-'}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewCount(count)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewCount(count)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {(count.status === 'in_progress' || count.status === 'draft') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget(count)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -497,6 +528,14 @@ export const InventoryCountDialog = ({
           </div>
         )}
       </DialogContent>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete Count Sheet"
+        description={`Are you sure you want to delete count sheet ${deleteTarget?.count_number || ''}? This action cannot be undone.`}
+        onConfirm={handleDeleteCount}
+      />
     </Dialog>
   );
 };
