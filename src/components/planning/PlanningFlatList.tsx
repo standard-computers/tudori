@@ -645,7 +645,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
                 onFilter={(value) => setFilter('shortfall', value)}
                 className="w-24 text-right"
               />
-              <TableHead>Source Orders</TableHead>
+              
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -694,28 +694,6 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
                   <Badge variant="destructive" className="font-mono">
                     -{item.shortfall}
                   </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {item.salesOrders.map(so => (
-                      <Badge key={so} variant="outline" className="text-xs">
-                        <ShoppingCart className="w-3 h-3 mr-1" />
-                        {so}
-                      </Badge>
-                    ))}
-                    {item.requisitionOrders.map(req => (
-                      <Badge key={req} variant="outline" className="text-xs">
-                        <FileSpreadsheet className="w-3 h-3 mr-1" />
-                        {req}
-                      </Badge>
-                    ))}
-                    {item.productionOrders.map(po => (
-                      <Badge key={po} variant="outline" className="text-xs">
-                        <Factory className="w-3 h-3 mr-1" />
-                        {po}
-                      </Badge>
-                    ))}
-                  </div>
                 </TableCell>
               </TableRow>
             ))}
