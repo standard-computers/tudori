@@ -401,7 +401,7 @@ const [areaFormData, setAreaFormData] = useState({
         )
       `, { count: 'exact' })
       .eq('location_id', selectedLocationId)
-      .neq('status', 'delivered')
+      .eq('status', 'in_transit')
       .order('expected_date', { ascending: true });
     
     if (error) {
