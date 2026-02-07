@@ -1374,13 +1374,19 @@ const Deliveries = () => {
               </div>
             </div>
           </DialogHeader>
-          {viewDelivery && (
+          {viewDelivery && (() => {
+            const hasPackedItems = viewItems.some(i => i.pu_id);
+            const tabCount = hasPackedItems ? 3 : 2;
+            return (
             <Tabs defaultValue="details" className="flex-1 overflow-y-auto px-6 pb-6">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className={`grid w-full grid-cols-${tabCount}`}>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="items">
                   Items {viewItems.length > 0 && `(${viewItems.length})`}
                 </TabsTrigger>
+                {hasPackedItems && (
+                  <TabsTrigger value="packing">Packing</TabsTrigger>
+                )}
               </TabsList>
               
               <TabsContent value="details" className="mt-4 space-y-4">
@@ -1487,8 +1493,69 @@ const Deliveries = () => {
                   onUpdateUom={handleViewUpdateItemUom}
                 />
               </TabsContent>
+
+              {hasPackedItems && (
+                <TabsContent value="packing" className="mt-4">
+                  {(() => {
+                    const unpackedItems = viewItems.filter(i => !i.pu_id);
+                    const packedByPu = viewItems.filter(i => i.pu_id).reduce((acc, item) => {
+                      const key = item.pu_id!;
+                      if (!acc[key]) acc[key] = { puNumber: item.packaging_unit?.pu_number || key, items: [] };
+                      acc[key].items.push(item);
+                      return acc;
+                    }, {} as Record<string, { puNumber: string; items: typeof viewItems }>);
+
+                    return (
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Unpacked column */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Unpacked Items</h4>
+                          {unpackedItems.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">All items are packed</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {unpackedItems.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                                  <span className="truncate">{item.product?.name || item.product_id}</span>
+                                  <span className="text-muted-foreground ml-2 shrink-0">
+                                    × {item.quantity} {item.uom?.abbreviation || item.product?.unit || 'EA'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Packages column */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Packages</h4>
+                          {Object.entries(packedByPu).map(([puId, { puNumber, items }]) => (
+                            <div key={puId} className="border rounded-md">
+                              <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
+                                <Package className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-sm font-mono font-medium">{puNumber}</span>
+                                <span className="text-xs text-muted-foreground ml-auto">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div className="p-2 space-y-1">
+                                {items.map((item) => (
+                                  <div key={item.id} className="flex items-center justify-between px-2 py-1 text-sm">
+                                    <span className="truncate">{item.product?.name || item.product_id}</span>
+                                    <span className="text-muted-foreground ml-2 shrink-0">
+                                      × {item.quantity} {item.uom?.abbreviation || item.product?.unit || 'EA'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </TabsContent>
+              )}
             </Tabs>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
