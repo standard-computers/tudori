@@ -41,7 +41,14 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
+import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -126,6 +133,9 @@ const GoodsReceipts = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingReceipt, setViewingReceipt] = useState<GoodsReceipt | null>(null);
+  const [viewReceiptItems, setViewReceiptItems] = useState<GoodsReceiptItem[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextReceiptNumber, setNextReceiptNumber] = useState('GR-0001');
@@ -408,6 +418,21 @@ const GoodsReceipts = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleView = async (receipt: GoodsReceipt) => {
+    setViewingReceipt(receipt);
+    // Fetch items for the view dialog
+    const { data } = await supabase
+      .from('goods_receipt_items' as any)
+      .select(`
+        *,
+        product:products(name, product_id),
+        bin:bins(name)
+      `)
+      .eq('goods_receipt_id', receipt.id);
+    setViewReceiptItems((data as any) || []);
+    setIsViewDialogOpen(true);
+  };
 
   const handleEdit = (receipt: GoodsReceipt) => {
     setFormData({
@@ -740,22 +765,153 @@ const GoodsReceipts = () => {
 
       <GoodsReceiptsTable
         receipts={receipts}
+        onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPost={handlePostReceipt}
       />
+
+      {/* View Goods Receipt Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <button
+            type="button"
+            onClick={() => {
+              setIsViewDialogOpen(false);
+              if (viewingReceipt) handleEdit(viewingReceipt);
+            }}
+            className="absolute right-10 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <Pencil className="h-4 w-4" />
+            <span className="sr-only">Edit</span>
+          </button>
+          <DialogHeader>
+            <DialogTitle>View Goods Receipt</DialogTitle>
+            <DialogDescription>
+              {viewingReceipt?.receipt_number}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingReceipt && (
+            <Tabs defaultValue="details" className="w-full px-4 pb-4">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="items">Items</TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-1">
+                  <History className="w-3.5 h-3.5" /> History
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="px-2">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Receipt #</Label>
+                      <p className="font-mono">{viewingReceipt.receipt_number}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Date</Label>
+                      <p>{format(new Date(viewingReceipt.receipt_date), 'MMM d, yyyy')}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Status</Label>
+                      <Badge variant="outline" className={getStatusColor(viewingReceipt.status)}>
+                        {viewingReceipt.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Location</Label>
+                      <p>{viewingReceipt.location?.name || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Vendor</Label>
+                      <p>{viewingReceipt.vendor?.name || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Delivery</Label>
+                      <p className="font-mono">{viewingReceipt.delivery?.delivery_id || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Purchase Order</Label>
+                      <p className="font-mono">{viewingReceipt.purchase_order?.po_number || '-'}</p>
+                    </div>
+                  </div>
+                  {viewingReceipt.notes && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Notes</Label>
+                      <p className="whitespace-pre-wrap">{viewingReceipt.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="items" className="px-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Bin</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {viewReceiptItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.product?.name}</div>
+                            <div className="text-xs text-muted-foreground">{item.product?.product_id}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.bin?.name || '-'}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                      </TableRow>
+                    ))}
+                    {viewReceiptItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          No items
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="history" className="px-2">
+                <AuditHistoryTab
+                  tableName="goods_receipts"
+                  recordId={viewingReceipt.id}
+                  fieldLabels={{
+                    status: 'Status',
+                    receipt_date: 'Receipt Date',
+                    location_id: 'Location',
+                    vendor_id: 'Vendor',
+                    delivery_id: 'Delivery',
+                    notes: 'Notes',
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 interface GoodsReceiptsTableProps {
   receipts: GoodsReceipt[];
+  onView: (receipt: GoodsReceipt) => void;
   onEdit: (receipt: GoodsReceipt) => void;
   onDelete: (id: string) => void;
   onPost: (id: string, locationId: string) => void;
 }
 
-const GoodsReceiptsTable = ({ receipts, onEdit, onDelete, onPost }: GoodsReceiptsTableProps) => {
+const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: GoodsReceiptsTableProps) => {
   const {
     sortConfig,
     filters,
@@ -859,7 +1015,15 @@ const GoodsReceiptsTable = ({ receipts, onEdit, onDelete, onPost }: GoodsReceipt
           ) : (
             sortedAndFilteredData.map((receipt) => (
               <TableRow key={receipt.id}>
-                <TableCell className="font-mono">{receipt.receipt_number}</TableCell>
+                <TableCell className="font-mono">
+                  <button
+                    type="button"
+                    onClick={() => onView(receipt)}
+                    className="text-primary hover:underline cursor-pointer"
+                  >
+                    {receipt.receipt_number}
+                  </button>
+                </TableCell>
                 <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
                 <TableCell>{format(new Date(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
                 <TableCell>{receipt.location?.name || '-'}</TableCell>
@@ -871,27 +1035,36 @@ const GoodsReceiptsTable = ({ receipts, onEdit, onDelete, onPost }: GoodsReceipt
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    {receipt.status === 'pending' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onPost(receipt.id, receipt.location_id)}
-                        title="Post to inventory"
-                      >
-                        <Check className="w-4 h-4 text-green-600" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(receipt)}>
-                      <Pencil className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={() => onView(receipt)}>
+                      <Eye className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(receipt.id)}
-                      disabled={receipt.status === 'posted'}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {receipt.status === 'pending' && (
+                          <DropdownMenuItem onClick={() => onPost(receipt.id, receipt.location_id)}>
+                            <Check className="w-4 h-4 mr-2" />
+                            Post to Inventory
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => onEdit(receipt)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDelete(receipt.id)}
+                          disabled={receipt.status === 'posted'}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
