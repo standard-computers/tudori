@@ -135,17 +135,21 @@ export const ViewDeliveryItemsTab = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className={isEditable ? 'w-[45%]' : ''}>Product</TableHead>
+                <TableHead className="w-10">#</TableHead>
+                <TableHead className={isEditable ? 'w-[40%]' : ''}>Product</TableHead>
                 <TableHead>UoM</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 {isEditable && <TableHead className="w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {viewItems.map((item) => {
+              {viewItems.map((item, index) => {
                 const itemUoms = productUoms.filter(u => u.product_id === item.product_id);
                 return (
                   <TableRow key={item.id}>
+                    <TableCell className="text-muted-foreground text-sm font-mono">
+                      {index + 1}
+                    </TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{item.product?.name || 'Unknown'}</div>

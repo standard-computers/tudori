@@ -981,7 +981,8 @@ const Deliveries = () => {
                             <Table>
                               <TableHeader>
                                  <TableRow>
-                                  <TableHead className="w-[50%]">Product</TableHead>
+                                  <TableHead className="w-10">#</TableHead>
+                                  <TableHead className="w-[45%]">Product</TableHead>
                                   <TableHead className="w-[20%]">UoM</TableHead>
                                   <TableHead className="w-[20%] text-right">Qty</TableHead>
                                   <TableHead className="w-[10%]"></TableHead>
@@ -992,6 +993,9 @@ const Deliveries = () => {
                                   const itemUoms = productUoms.filter(u => u.product_id === item.product_id);
                                   return (
                                   <TableRow key={item.id}>
+                                    <TableCell className="p-2 text-muted-foreground text-sm font-mono">
+                                      {index + 1}
+                                    </TableCell>
                                     <TableCell className="p-2">
                                       <Select
                                         value={item.product_id}
@@ -1439,7 +1443,7 @@ const Deliveries = () => {
                   viewDelivery={viewDelivery}
                   products={products}
                   productUoms={productUoms}
-                  isEditable={!NON_EDITABLE_STATUSES.includes(viewDelivery.status)}
+                  isEditable={false}
                   onAddItem={handleViewAddItem}
                   onRemoveItem={handleViewRemoveItem}
                   onUpdateQuantity={handleViewUpdateItemQuantity}
