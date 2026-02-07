@@ -116,6 +116,8 @@ export type Database = {
           height: number | null
           height_uom: string | null
           id: string
+          is_goods_issue_enabled: boolean
+          is_goods_receipt_enabled: boolean
           is_production_enabled: boolean
           length: number | null
           length_uom: string | null
@@ -132,6 +134,8 @@ export type Database = {
           height?: number | null
           height_uom?: string | null
           id?: string
+          is_goods_issue_enabled?: boolean
+          is_goods_receipt_enabled?: boolean
           is_production_enabled?: boolean
           length?: number | null
           length_uom?: string | null
@@ -148,6 +152,8 @@ export type Database = {
           height?: number | null
           height_uom?: string | null
           id?: string
+          is_goods_issue_enabled?: boolean
+          is_goods_receipt_enabled?: boolean
           is_production_enabled?: boolean
           length?: number | null
           length_uom?: string | null

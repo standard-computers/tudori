@@ -88,6 +88,8 @@ interface Area {
   height?: number | null;
   height_uom?: string | null;
   is_production_enabled?: boolean;
+  is_goods_receipt_enabled?: boolean;
+  is_goods_issue_enabled?: boolean;
 }
 
 interface Bin {
@@ -218,6 +220,8 @@ const [areaFormData, setAreaFormData] = useState({
     height: '' as string | number,
     height_uom: 'in',
     is_production_enabled: false,
+    is_goods_receipt_enabled: true,
+    is_goods_issue_enabled: true,
   });
   const [areaDialogTab, setAreaDialogTab] = useState('general');
   const areaFormRef = useRef<HTMLFormElement>(null);
@@ -954,6 +958,8 @@ const [areaFormData, setAreaFormData] = useState({
         height: area.height ?? '',
         height_uom: area.height_uom || 'in',
         is_production_enabled: area.is_production_enabled ?? false,
+        is_goods_receipt_enabled: area.is_goods_receipt_enabled ?? true,
+        is_goods_issue_enabled: area.is_goods_issue_enabled ?? true,
       });
     } else {
       setEditingArea(null);
@@ -968,6 +974,8 @@ const [areaFormData, setAreaFormData] = useState({
         height: '',
         height_uom: 'in',
         is_production_enabled: false,
+        is_goods_receipt_enabled: true,
+        is_goods_issue_enabled: true,
       });
     }
     setAreaDialogTab('general');
@@ -993,6 +1001,8 @@ const [areaFormData, setAreaFormData] = useState({
       height: areaFormData.height === '' ? null : Number(areaFormData.height),
       height_uom: areaFormData.height === '' ? null : areaFormData.height_uom,
       is_production_enabled: areaFormData.is_production_enabled,
+      is_goods_receipt_enabled: areaFormData.is_goods_receipt_enabled,
+      is_goods_issue_enabled: areaFormData.is_goods_issue_enabled,
     };
 
     if (editingArea) {
@@ -2054,6 +2064,32 @@ const [areaFormData, setAreaFormData] = useState({
                     Configure how this area behaves in the system.
                   </p>
                   <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="area_is_goods_receipt_enabled" className="font-medium">Goods Receipt</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Allow goods receipts to be posted to this area.
+                        </p>
+                      </div>
+                      <Switch
+                        id="area_is_goods_receipt_enabled"
+                        checked={areaFormData.is_goods_receipt_enabled}
+                        onCheckedChange={(checked) => setAreaFormData({ ...areaFormData, is_goods_receipt_enabled: checked })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="area_is_goods_issue_enabled" className="font-medium">Goods Issue</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Allow goods issues to be posted from this area.
+                        </p>
+                      </div>
+                      <Switch
+                        id="area_is_goods_issue_enabled"
+                        checked={areaFormData.is_goods_issue_enabled}
+                        onCheckedChange={(checked) => setAreaFormData({ ...areaFormData, is_goods_issue_enabled: checked })}
+                      />
+                    </div>
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label htmlFor="area_is_production_enabled" className="font-medium">Production</Label>
