@@ -2480,6 +2480,7 @@ export type Database = {
           goods_issue_id: string | null
           id: string
           notes: string | null
+          purchase_order_id: string | null
           sales_order_id: string | null
           ship_to_address_line1: string | null
           ship_to_address_line2: string | null
@@ -2489,6 +2490,7 @@ export type Database = {
           ship_to_state: string | null
           shipped_date: string | null
           status: string
+          to_location_id: string | null
           tracking_number: string | null
           updated_at: string
         }
@@ -2503,6 +2505,7 @@ export type Database = {
           goods_issue_id?: string | null
           id?: string
           notes?: string | null
+          purchase_order_id?: string | null
           sales_order_id?: string | null
           ship_to_address_line1?: string | null
           ship_to_address_line2?: string | null
@@ -2512,6 +2515,7 @@ export type Database = {
           ship_to_state?: string | null
           shipped_date?: string | null
           status?: string
+          to_location_id?: string | null
           tracking_number?: string | null
           updated_at?: string
         }
@@ -2526,6 +2530,7 @@ export type Database = {
           goods_issue_id?: string | null
           id?: string
           notes?: string | null
+          purchase_order_id?: string | null
           sales_order_id?: string | null
           ship_to_address_line1?: string | null
           ship_to_address_line2?: string | null
@@ -2535,6 +2540,7 @@ export type Database = {
           ship_to_state?: string | null
           shipped_date?: string | null
           status?: string
+          to_location_id?: string | null
           tracking_number?: string | null
           updated_at?: string
         }
@@ -2575,10 +2581,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "outbound_deliveries_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "outbound_deliveries_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_deliveries_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]
