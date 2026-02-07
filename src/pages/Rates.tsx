@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
-import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
-import { ColumnToggle } from '@/components/ColumnToggle';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStatusBar } from '@/contexts/StatusBarContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useImportExportSettings } from '@/hooks/use-import-export-settings';
-import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { useEffect, useState } from "react";
+import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { ColumnToggle } from "@/components/ColumnToggle";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStatusBar } from "@/contexts/StatusBarContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -20,40 +20,27 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign } from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Kbd } from "@/components/ui/kbd";
+import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign } from "lucide-react";
+import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const RATE_COLUMNS: ColumnDefinition[] = [
-  { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'type', label: 'Type', defaultVisible: true },
-  { key: 'rate', label: 'Rate/Amount', defaultVisible: true },
-  { key: 'description', label: 'Description', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
+  { key: "name", label: "Name", defaultVisible: true },
+  { key: "type", label: "Type", defaultVisible: true },
+  { key: "rate", label: "Rate/Amount", defaultVisible: true },
+  { key: "description", label: "Description", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
 interface TaxRate {
@@ -74,20 +61,16 @@ const Rates = () => {
   const [loading, setLoading] = useState(true);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  
+
   // Column visibility
-  const {
-    visibleColumns,
-    isColumnVisible,
-    toggleColumn,
-    resetToDefaults,
-    showAll,
-    hideAll,
-  } = useColumnVisibility('rates', RATE_COLUMNS);
-  
+  const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
+    "rates",
+    RATE_COLUMNS,
+  );
+
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
-  
+
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,13 +82,13 @@ const Rates = () => {
       handleSubmit();
     }
   }, isDialogOpen);
-  
+
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    rate: '',
-    rate_type: 'percent' as 'percent' | 'flat',
-    description: '',
+    name: "",
+    rate: "",
+    rate_type: "percent" as "percent" | "flat",
+    description: "",
     is_default: false,
     is_active: true,
   });
@@ -113,15 +96,15 @@ const Rates = () => {
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
-      setTransaction(editingRate ? 'rate/edit' : 'rate/new');
+      setTransaction(editingRate ? "rate/edit" : "rate/new");
     } else {
-      setTransaction('rate');
+      setTransaction("rate");
     }
   }, [isDialogOpen, editingRate, setTransaction]);
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
   }, [user, authLoading, navigate]);
 
@@ -138,11 +121,7 @@ const Rates = () => {
   }, [companyId]);
 
   const fetchCompanyId = async () => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('user_id', user!.id)
-      .single();
+    const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
@@ -151,15 +130,11 @@ const Rates = () => {
   };
 
   const fetchTaxRates = async () => {
-    const { data, error } = await supabase
-      .from('tax_rates')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('name');
+    const { data, error } = await supabase.from("tax_rates").select("*").eq("company_id", companyId).order("name");
 
     if (error) {
-      console.error('Error fetching tax rates:', error);
-      toast.error('Failed to load tax rates');
+      console.error("Error fetching tax rates:", error);
+      toast.error("Failed to load tax rates");
       return;
     }
 
@@ -169,10 +144,10 @@ const Rates = () => {
   const handleAddClick = () => {
     setEditingRate(null);
     setFormData({
-      name: '',
-      rate: '',
-      rate_type: 'percent',
-      description: '',
+      name: "",
+      rate: "",
+      rate_type: "percent",
+      description: "",
       is_default: false,
       is_active: true,
     });
@@ -180,15 +155,15 @@ const Rates = () => {
   };
 
   // Keyboard shortcut for adding new rate
-  useKeyboardShortcut('n', handleAddClick);
+  useKeyboardShortcut("n", handleAddClick);
 
   const handleEditClick = (rate: TaxRate) => {
     setEditingRate(rate);
     setFormData({
       name: rate.name,
       rate: rate.rate.toString(),
-      rate_type: (rate.rate_type as 'percent' | 'flat') || 'percent',
-      description: rate.description || '',
+      rate_type: (rate.rate_type as "percent" | "flat") || "percent",
+      description: rate.description || "",
       is_default: rate.is_default,
       is_active: rate.is_active,
     });
@@ -197,18 +172,18 @@ const Rates = () => {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast.error('Please enter a name');
+      toast.error("Please enter a name");
       return;
     }
 
     const rateValue = parseFloat(formData.rate);
     if (isNaN(rateValue) || rateValue < 0) {
-      toast.error('Please enter a valid positive number');
+      toast.error("Please enter a valid positive number");
       return;
     }
-    
-    if (formData.rate_type === 'percent' && rateValue > 100) {
-      toast.error('Percentage rate cannot exceed 100%');
+
+    if (formData.rate_type === "percent" && rateValue > 100) {
+      toast.error("Percentage rate cannot exceed 100%");
       return;
     }
 
@@ -218,16 +193,16 @@ const Rates = () => {
       // If setting as default, unset other defaults first
       if (formData.is_default) {
         await supabase
-          .from('tax_rates')
+          .from("tax_rates")
           .update({ is_default: false })
-          .eq('company_id', companyId)
-          .eq('is_default', true);
+          .eq("company_id", companyId)
+          .eq("is_default", true);
       }
 
       if (editingRate) {
         // Update existing
         const { error } = await supabase
-          .from('tax_rates')
+          .from("tax_rates")
           .update({
             name: formData.name.trim(),
             rate: rateValue,
@@ -236,63 +211,55 @@ const Rates = () => {
             is_default: formData.is_default,
             is_active: formData.is_active,
           })
-          .eq('id', editingRate.id);
+          .eq("id", editingRate.id);
 
         if (error) throw error;
-        toast.success('Rate updated');
+        toast.success("Rate updated");
       } else {
         // Create new
-        const { error } = await supabase
-          .from('tax_rates')
-          .insert({
-            company_id: companyId,
-            name: formData.name.trim(),
-            rate: rateValue,
-            rate_type: formData.rate_type,
-            description: formData.description.trim() || null,
-            is_default: formData.is_default,
-            is_active: formData.is_active,
-          });
+        const { error } = await supabase.from("tax_rates").insert({
+          company_id: companyId,
+          name: formData.name.trim(),
+          rate: rateValue,
+          rate_type: formData.rate_type,
+          description: formData.description.trim() || null,
+          is_default: formData.is_default,
+          is_active: formData.is_active,
+        });
 
         if (error) throw error;
-        toast.success('Rate created');
+        toast.success("Rate created");
       }
 
       setIsDialogOpen(false);
       fetchTaxRates();
     } catch (error: any) {
-      console.error('Error saving rate:', error);
-      toast.error(error.message || 'Failed to save rate');
+      console.error("Error saving rate:", error);
+      toast.error(error.message || "Failed to save rate");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this tax rate?')) return;
+    if (!confirm("Are you sure you want to delete this tax rate?")) return;
 
-    const { error } = await supabase
-      .from('tax_rates')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from("tax_rates").delete().eq("id", id);
 
     if (error) {
-      toast.error('Failed to delete tax rate');
+      toast.error("Failed to delete tax rate");
       return;
     }
 
-    toast.success('Tax rate deleted');
+    toast.success("Tax rate deleted");
     fetchTaxRates();
   };
 
   const handleToggleActive = async (rate: TaxRate) => {
-    const { error } = await supabase
-      .from('tax_rates')
-      .update({ is_active: !rate.is_active })
-      .eq('id', rate.id);
+    const { error } = await supabase.from("tax_rates").update({ is_active: !rate.is_active }).eq("id", rate.id);
 
     if (error) {
-      toast.error('Failed to update tax rate');
+      toast.error("Failed to update tax rate");
       return;
     }
 
@@ -314,7 +281,7 @@ const Rates = () => {
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-3">
@@ -332,13 +299,13 @@ const Rates = () => {
                 onHideAll={hideAll}
               />
               <ImportExportButtons
-                importEnabled={isImportEnabled('tax_rate')}
-                exportEnabled={isExportEnabled('tax_rate')}
+                importEnabled={isImportEnabled("tax_rate")}
+                exportEnabled={isExportEnabled("tax_rate")}
                 entityName="Tax Rates"
               />
               <Button onClick={handleAddClick} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Rate
+                Rate
                 <Kbd>N</Kbd>
               </Button>
             </div>
@@ -352,9 +319,7 @@ const Rates = () => {
           <div className="text-center py-12">
             <Percent className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No tax rates yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Create tax rates to apply to purchase orders
-            </p>
+            <p className="text-muted-foreground mb-4">Create tax rates to apply to purchase orders</p>
             <Button onClick={handleAddClick}>
               <Plus className="w-4 h-4 mr-2" />
               Add First Tax Rate
@@ -365,58 +330,60 @@ const Rates = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {isColumnVisible('name') && <TableHead>Name</TableHead>}
-                  {isColumnVisible('type') && <TableHead>Type</TableHead>}
-                  {isColumnVisible('rate') && <TableHead className="text-right">Rate/Amount</TableHead>}
-                  {isColumnVisible('description') && <TableHead>Description</TableHead>}
-                  {isColumnVisible('status') && <TableHead>Status</TableHead>}
+                  {isColumnVisible("name") && <TableHead>Name</TableHead>}
+                  {isColumnVisible("type") && <TableHead>Type</TableHead>}
+                  {isColumnVisible("rate") && <TableHead className="text-right">Rate/Amount</TableHead>}
+                  {isColumnVisible("description") && <TableHead>Description</TableHead>}
+                  {isColumnVisible("status") && <TableHead>Status</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {taxRates.map((rate) => (
                   <TableRow key={rate.id}>
-                    {isColumnVisible('name') && (
+                    {isColumnVisible("name") && (
                       <TableCell className="font-medium">
                         {rate.name}
                         {rate.is_default && (
-                          <Badge variant="secondary" className="ml-2">Default</Badge>
+                          <Badge variant="secondary" className="ml-2">
+                            Default
+                          </Badge>
                         )}
                       </TableCell>
                     )}
-                    {isColumnVisible('type') && (
+                    {isColumnVisible("type") && (
                       <TableCell>
                         <Badge variant="outline" className="gap-1">
-                          {rate.rate_type === 'flat' ? (
-                            <><DollarSign className="w-3 h-3" /> Flat</>
+                          {rate.rate_type === "flat" ? (
+                            <>
+                              <DollarSign className="w-3 h-3" /> Flat
+                            </>
                           ) : (
-                            <><Percent className="w-3 h-3" /> Percent</>
+                            <>
+                              <Percent className="w-3 h-3" /> Percent
+                            </>
                           )}
                         </Badge>
                       </TableCell>
                     )}
-                    {isColumnVisible('rate') && (
+                    {isColumnVisible("rate") && (
                       <TableCell className="text-right font-mono">
-                        {rate.rate_type === 'flat' ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`}
+                        {rate.rate_type === "flat" ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`}
                       </TableCell>
                     )}
-                    {isColumnVisible('description') && (
-                      <TableCell className="text-muted-foreground">{rate.description || '-'}</TableCell>
+                    {isColumnVisible("description") && (
+                      <TableCell className="text-muted-foreground">{rate.description || "-"}</TableCell>
                     )}
-                    {isColumnVisible('status') && (
+                    {isColumnVisible("status") && (
                       <TableCell>
-                        <Badge className={rate.is_active ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'}>
-                          {rate.is_active ? 'Active' : 'Inactive'}
+                        <Badge className={rate.is_active ? "bg-green-500 text-white" : "bg-slate-500 text-white"}>
+                          {rate.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                     )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditClick(rate)}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(rate)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
                         <DropdownMenu>
@@ -427,7 +394,7 @@ const Rates = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleToggleActive(rate)}>
-                              {rate.is_active ? 'Deactivate' : 'Activate'}
+                              {rate.is_active ? "Deactivate" : "Activate"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDelete(rate.id)}
@@ -452,12 +419,12 @@ const Rates = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingRate ? 'Edit Rate' : 'Add Rate'}</DialogTitle>
+            <DialogTitle>{editingRate ? "Edit Rate" : "Add Rate"}</DialogTitle>
             <DialogDescription>
-              {editingRate ? 'Update the rate details' : 'Create a new rate for orders'}
+              {editingRate ? "Update the rate details" : "Create a new rate for orders"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 px-6">
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
@@ -473,7 +440,7 @@ const Rates = () => {
               <Label htmlFor="rate_type">Rate Type *</Label>
               <Select
                 value={formData.rate_type}
-                onValueChange={(value: 'percent' | 'flat') => setFormData({ ...formData, rate_type: value })}
+                onValueChange={(value: "percent" | "flat") => setFormData({ ...formData, rate_type: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -496,18 +463,16 @@ const Rates = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rate">
-                {formData.rate_type === 'percent' ? 'Rate (%) *' : 'Amount ($) *'}
-              </Label>
+              <Label htmlFor="rate">{formData.rate_type === "percent" ? "Rate (%) *" : "Amount ($) *"}</Label>
               <Input
                 id="rate"
                 type="number"
                 step="0.01"
                 min="0"
-                max={formData.rate_type === 'percent' ? '100' : undefined}
+                max={formData.rate_type === "percent" ? "100" : undefined}
                 value={formData.rate}
                 onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                placeholder={formData.rate_type === 'percent' ? 'e.g., 10' : 'e.g., 25.00'}
+                placeholder={formData.rate_type === "percent" ? "e.g., 10" : "e.g., 25.00"}
               />
             </div>
 
@@ -553,7 +518,7 @@ const Rates = () => {
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingRate ? 'Update' : 'Create'}
+              {editingRate ? "Update" : "Create"}
               <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
