@@ -1178,10 +1178,27 @@ const Deliveries = () => {
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>View Delivery</DialogTitle>
-            <DialogDescription>
-              {viewDelivery?.delivery_id}
-            </DialogDescription>
+            <div className="flex items-center justify-between pr-8">
+              <div>
+                <DialogTitle>View Delivery</DialogTitle>
+                <DialogDescription>
+                  {viewDelivery?.delivery_id}
+                </DialogDescription>
+              </div>
+              {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setIsViewOpen(false);
+                    if (viewDelivery) handleEdit(viewDelivery);
+                  }}
+                  title="Edit"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           {viewDelivery && (
             <Tabs defaultValue="details" className="flex-1 overflow-y-auto px-6">
@@ -1317,17 +1334,6 @@ const Deliveries = () => {
                 )}
               </TabsContent>
             </Tabs>
-          )}
-          {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
-            <DialogFooter className="shrink-0">
-              <Button onClick={() => {
-                setIsViewOpen(false);
-                if (viewDelivery) handleEdit(viewDelivery);
-              }}>
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
