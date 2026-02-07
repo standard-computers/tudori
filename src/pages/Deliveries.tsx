@@ -747,7 +747,7 @@ const Deliveries = () => {
                   <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
-              <DialogContent className={`transition-all duration-200 ${isDialogMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
+              <DialogContent className={`transition-all duration-200 ${isDialogMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[900px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
                 <button
                   type="button"
                   onClick={() => setIsDialogMaximized(!isDialogMaximized)}
@@ -1287,7 +1287,7 @@ const Deliveries = () => {
 
       {/* View Delivery Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className={`flex flex-col transition-all duration-200 ${isViewMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px] max-h-[85vh]'}`}>
+        <DialogContent className={`flex flex-col transition-all duration-200 ${isViewMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[900px] max-h-[85vh]'}`}>
               {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
                 <button
                   onClick={() => {
