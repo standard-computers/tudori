@@ -672,10 +672,6 @@ export const ReceiveDeliveryDialog = ({
               </Label>
             </div>
           )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-            <Kbd>Esc</Kbd>
-          </Button>
           <Button 
             onClick={handleReceive} 
             disabled={submitting || items.length === 0 || (isInternalTransfer && !isFulfilled)}
