@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Badge } from "@/components/ui/badge";
 import { Loader2, History, ArrowRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -141,60 +141,40 @@ export function AuditHistoryTab({ tableName, recordId, fieldLabels = {} }: Audit
 
   return (
     <ScrollArea className="h-[400px]">
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {entries.map((entry) => (
-          <div key={entry.id} className="border rounded-lg p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge className={actionColors[entry.action] || "bg-gray-500"}>
+          <div key={entry.id} className="border rounded-md px-3 py-2 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Badge className={`${actionColors[entry.action] || "bg-gray-500"} text-[11px] px-1.5 py-0`}>
                   {getActionLabel(entry.action, entry.changed_fields)}
                 </Badge>
-                {entry.changed_fields && entry.changed_fields.length > 0 && entry.action !== "INSERT" && (
-                  <span className="text-xs text-muted-foreground">
-                    {entry.changed_fields.map(f => formatFieldName(f)).join(", ")}
+                {entry.user && (
+                  <span className="text-[11px] text-muted-foreground truncate">
+                    {entry.user.first_name} {entry.user.last_name}
                   </span>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground text-right">
-                <div>{new Date(entry.created_at).toLocaleDateString()}</div>
-                <div>{new Date(entry.created_at).toLocaleTimeString()}</div>
-              </div>
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                {new Date(entry.created_at).toLocaleDateString()} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
-            
-            {entry.user && (
-              <div className="text-xs text-muted-foreground">
-                By: {entry.user.first_name} {entry.user.last_name}
-              </div>
-            )}
 
             {entry.action === "UPDATE" && entry.old_value && entry.new_value && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-1/3">Field</TableHead>
-                    <TableHead className="w-1/3">Previous</TableHead>
-                    <TableHead className="w-1/3">New</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(entry.changed_fields || []).map((field) => (
-                    <TableRow key={field}>
-                      <TableCell className="font-medium">{formatFieldName(field)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatValue(entry.old_value?.[field])}
-                      </TableCell>
-                      <TableCell className="flex items-center gap-1">
-                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                        {formatValue(entry.new_value?.[field])}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-0.5">
+                {(entry.changed_fields || []).map((field) => (
+                  <div key={field} className="flex items-center gap-1.5 text-xs">
+                    <span className="font-medium text-muted-foreground">{formatFieldName(field)}:</span>
+                    <span className="text-muted-foreground line-through">{formatValue(entry.old_value?.[field])}</span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                    <span>{formatValue(entry.new_value?.[field])}</span>
+                  </div>
+                ))}
+              </div>
             )}
 
             {entry.action === "INSERT" && entry.new_value && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground">
                 Initial values recorded
               </div>
             )}
