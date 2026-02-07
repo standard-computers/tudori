@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { AreaBinSelector } from '@/components/inventory/AreaBinSelector';
 import { format } from 'date-fns';
 
 interface InventoryCountDialogProps {
@@ -67,7 +68,7 @@ interface CountItem {
   bin: { name: string } | null;
 }
 
-type View = 'list' | 'detail';
+type View = 'list' | 'select_scope' | 'detail';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -92,7 +93,8 @@ export const InventoryCountDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CountSession | null>(null);
-
+  const [selectedBinIds, setSelectedBinIds] = useState<Set<string>>(new Set());
+  const [includeUnbinned, setIncludeUnbinned] = useState(true);
   const fetchCounts = useCallback(async () => {
     if (!companyId || !locationId) return;
     setIsLoading(true);
@@ -131,9 +133,27 @@ export const InventoryCountDialog = ({
     setCountItems((data as unknown as CountItem[]) || []);
   };
 
-  const handleCreateCount = async () => {
-    if (!companyId || !locationId || inventory.length === 0) {
-      toast.error('No inventory to count at this location');
+  const handleCreateCount = () => {
+    if (!locationId) {
+      toast.error('No location selected');
+      return;
+    }
+    setSelectedBinIds(new Set());
+    setIncludeUnbinned(true);
+    setView('select_scope');
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!companyId || !locationId) return;
+
+    // Filter inventory based on selected bins + unbinned
+    const filteredInventory = inventory.filter((inv) => {
+      if (!inv.bin?.id) return includeUnbinned;
+      return selectedBinIds.has(inv.bin.id);
+    });
+
+    if (filteredInventory.length === 0) {
+      toast.error('No inventory items match the selected areas/bins');
       return;
     }
 
@@ -168,8 +188,8 @@ export const InventoryCountDialog = ({
       return;
     }
 
-    // Create count items from current inventory snapshot
-    const items = inventory.map((inv) => ({
+    // Create count items from filtered inventory snapshot
+    const items = filteredInventory.map((inv) => ({
       count_id: newCount.id,
       product_id: inv.product?.id || '',
       bin_id: inv.bin?.id || null,
@@ -187,7 +207,7 @@ export const InventoryCountDialog = ({
       return;
     }
 
-    toast.success(`Count sheet ${countNumber} created`);
+    toast.success(`Count sheet ${countNumber} created with ${filteredInventory.length} item(s)`);
     // Open the new count
     setSelectedCount({ ...newCount, location: { name: locationName } } as CountSession);
     await fetchCountItems(newCount.id);
@@ -327,9 +347,13 @@ export const InventoryCountDialog = ({
   };
 
   const handleBack = () => {
-    setView('list');
-    setSelectedCount(null);
-    setCountItems([]);
+    if (view === 'detail') {
+      setView('list');
+      setSelectedCount(null);
+      setCountItems([]);
+    } else if (view === 'select_scope') {
+      setView('list');
+    }
   };
 
   const isEditable = selectedCount?.status === 'in_progress' || selectedCount?.status === 'draft';
@@ -339,7 +363,7 @@ export const InventoryCountDialog = ({
       <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            {view === 'detail' && (
+            {(view === 'detail' || view === 'select_scope') && (
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleBack}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -347,12 +371,16 @@ export const InventoryCountDialog = ({
             <DialogTitle>
               {view === 'list'
                 ? 'Physical Inventory Count Sheets'
+                : view === 'select_scope'
+                ? 'Select Areas & Bins to Count'
                 : `Count Sheet ${selectedCount?.count_number || ''}`}
             </DialogTitle>
           </div>
           <DialogDescription>
             {view === 'list'
               ? `Count sheets for ${locationName}`
+              : view === 'select_scope'
+              ? `Choose which areas and bins to include in the count for ${locationName}`
               : `Status: ${selectedCount?.status || ''} • ${selectedCount?.count_date ? format(new Date(selectedCount.count_date), 'MMM d, yyyy') : ''}`}
           </DialogDescription>
         </DialogHeader>
@@ -424,6 +452,16 @@ export const InventoryCountDialog = ({
                   </TableBody>
                 </Table>
               )}
+            </div>
+          ) : view === 'select_scope' ? (
+            <div className="space-y-4 px-1">
+              <AreaBinSelector
+                locationId={locationId}
+                selectedBinIds={selectedBinIds}
+                onSelectionChange={setSelectedBinIds}
+                includeUnbinned={includeUnbinned}
+                onIncludeUnbinnedChange={setIncludeUnbinned}
+              />
             </div>
           ) : (
             <div className="space-y-4">
@@ -504,6 +542,19 @@ export const InventoryCountDialog = ({
             </div>
           )}
         </div>
+
+        {/* Footer actions for scope selection */}
+        {view === 'select_scope' && (
+          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" size="sm" onClick={handleBack}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleConfirmCreate} disabled={isSaving || (selectedBinIds.size === 0 && !includeUnbinned)}>
+              <Plus className="h-4 w-4 mr-1" />
+              {isSaving ? 'Creating...' : 'Create Count Sheet'}
+            </Button>
+          </div>
+        )}
 
         {/* Footer actions for detail view */}
         {view === 'detail' && selectedCount && (
