@@ -37,7 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X, Eye, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Plus, Building, Pencil, Trash2, AlertCircle, Search, Loader2, X, Eye, MoreHorizontal, History } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +49,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 import { toast } from 'sonner';
 
 const VENDOR_COLUMNS: ColumnDefinition[] = [
@@ -1181,70 +1182,105 @@ const Vendors = () => {
             </DialogDescription>
           </DialogHeader>
           {viewingVendor && (
-            <div className="space-y-4 px-6 pb-6">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Vendor ID</Label>
-                  <p className="font-mono">{viewingVendor.vendor_id}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Type</Label>
-                  <p>{viewingVendor.type}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Status</Label>
-                  {(() => {
-                    const statusConfig = VENDOR_STATUSES.find(s => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
-                    return (
-                      <Badge className={`${statusConfig.color} text-white`}>
-                        {statusConfig.label}
-                      </Badge>
-                    );
-                  })()}
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-xs">Name</Label>
-                <p className="font-medium">{viewingVendor.name}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Contact Name</Label>
-                  <p>{viewingVendor.contact_name || '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Email</Label>
-                  <p>{viewingVendor.email || '-'}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Phone</Label>
-                  <p>{viewingVendor.phone || '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Website</Label>
-                  <p>{viewingVendor.website || '-'}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-xs">Address</Label>
-                <p>
-                  {viewingVendor.address_line1 || '-'}
-                  {viewingVendor.address_line2 && <><br />{viewingVendor.address_line2}</>}
-                  {(viewingVendor.city || viewingVendor.state || viewingVendor.postal_code) && (
-                    <><br />{[viewingVendor.city, viewingVendor.state, viewingVendor.postal_code].filter(Boolean).join(', ')}</>
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-1">
+                  <History className="w-3.5 h-3.5" /> History
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Vendor ID</Label>
+                      <p className="font-mono">{viewingVendor.vendor_id}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Type</Label>
+                      <p>{viewingVendor.type}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Status</Label>
+                      {(() => {
+                        const statusConfig = VENDOR_STATUSES.find(s => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
+                        return (
+                          <Badge className={`${statusConfig.color} text-white`}>
+                            {statusConfig.label}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Name</Label>
+                    <p className="font-medium">{viewingVendor.name}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Contact Name</Label>
+                      <p>{viewingVendor.contact_name || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Email</Label>
+                      <p>{viewingVendor.email || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Phone</Label>
+                      <p>{viewingVendor.phone || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Website</Label>
+                      <p>{viewingVendor.website || '-'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Address</Label>
+                    <p>
+                      {viewingVendor.address_line1 || '-'}
+                      {viewingVendor.address_line2 && <><br />{viewingVendor.address_line2}</>}
+                      {(viewingVendor.city || viewingVendor.state || viewingVendor.postal_code) && (
+                        <><br />{[viewingVendor.city, viewingVendor.state, viewingVendor.postal_code].filter(Boolean).join(', ')}</>
+                      )}
+                      {viewingVendor.country && <><br />{viewingVendor.country}</>}
+                    </p>
+                  </div>
+                  {viewingVendor.notes && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Notes</Label>
+                      <p className="whitespace-pre-wrap">{viewingVendor.notes}</p>
+                    </div>
                   )}
-                  {viewingVendor.country && <><br />{viewingVendor.country}</>}
-                </p>
-              </div>
-              {viewingVendor.notes && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Notes</Label>
-                  <p className="whitespace-pre-wrap">{viewingVendor.notes}</p>
                 </div>
-              )}
-            </div>
+              </TabsContent>
+
+              <TabsContent value="history">
+                <AuditHistoryTab 
+                  tableName="vendors" 
+                  recordId={viewingVendor.id}
+                  fieldLabels={{
+                    status: "Status",
+                    name: "Name",
+                    type: "Type",
+                    contact_name: "Contact Name",
+                    email: "Email",
+                    phone: "Phone",
+                    website: "Website",
+                    address_line1: "Address Line 1",
+                    address_line2: "Address Line 2",
+                    city: "City",
+                    state: "State",
+                    postal_code: "Postal Code",
+                    country: "Country",
+                    notes: "Notes",
+                    payment_terms: "Payment Terms",
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
