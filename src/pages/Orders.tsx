@@ -1766,55 +1766,96 @@ const Orders = () => {
 
     // Auto-create delivery when status changes to 'confirmed'
     if (newStatus === "confirmed" && autoCreateDelivery) {
-      // Get next delivery ID
-      const { data: deliveryId } = await supabase.rpc("get_next_delivery_id", {
-        p_company_id: companyId,
-      });
+      const isInternalTransfer = !!order.source_location_id;
 
-      // Create delivery
-      const { data: deliveryData, error: deliveryError } = await supabase
-        .from("deliveries")
-        .insert({
-          company_id: companyId,
-          delivery_id: deliveryId,
-          purchase_order_id: id,
-          vendor_id: order.vendor_id,
-          location_id: order.location_id,
-          status: "pending",
-          expected_date: order.expected_delivery_date,
-          notes: `Auto-created from PO ${order.po_number}`,
-        })
-        .select("id")
-        .single();
+      if (isInternalTransfer) {
+        // Internal transfer: create an outbound delivery from the source location
+        const { data: deliveryNumber } = await supabase.rpc("get_next_outbound_delivery_number", {
+          p_company_id: companyId,
+        });
 
-      if (!deliveryError && deliveryData && deliveryItems && deliveryItems.length > 0) {
-        // Insert delivery items
-        const itemsToInsert = deliveryItems.map((item) => ({
-          delivery_id: deliveryData.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-        }));
+        const { data: outboundData, error: outboundError } = await supabase
+          .from("outbound_deliveries" as any)
+          .insert({
+            company_id: companyId,
+            delivery_number: deliveryNumber,
+            purchase_order_id: id,
+            from_location_id: order.source_location_id,
+            to_location_id: order.location_id,
+            status: "pending",
+            notes: `Auto-created from PO ${order.po_number} (Internal Transfer)`,
+          })
+          .select("id")
+          .single();
 
-        await supabase.from("delivery_items").insert(itemsToInsert);
+        if (outboundError) {
+          console.error("Failed to create outbound delivery:", outboundError);
+          toast.error("Failed to create outbound delivery");
+        } else {
+          toast.success(`Outbound Delivery ${deliveryNumber} created with ${deliveryItems?.length || 0} items`);
+        }
+      } else {
+        // External vendor: create a regular inbound delivery
+        const { data: deliveryId } = await supabase.rpc("get_next_delivery_id", {
+          p_company_id: companyId,
+        });
+
+        const { data: deliveryData, error: deliveryError } = await supabase
+          .from("deliveries")
+          .insert({
+            company_id: companyId,
+            delivery_id: deliveryId,
+            purchase_order_id: id,
+            vendor_id: order.vendor_id,
+            location_id: order.location_id,
+            status: "pending",
+            expected_date: order.expected_delivery_date,
+            notes: `Auto-created from PO ${order.po_number}`,
+          })
+          .select("id")
+          .single();
+
+        if (!deliveryError && deliveryData && deliveryItems && deliveryItems.length > 0) {
+          const itemsToInsert = deliveryItems.map((item) => ({
+            delivery_id: deliveryData.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+          }));
+
+          await supabase.from("delivery_items").insert(itemsToInsert);
+        }
+
+        toast.success(`Delivery ${deliveryId} created with ${deliveryItems?.length || 0} items`);
       }
-
-      toast.success(`Delivery ${deliveryId} created with ${deliveryItems?.length || 0} items`);
     }
 
     // Auto-mark delivery as shipped when PO is marked shipped
     if (newStatus === "shipped" && autoMarkShipped) {
-      await supabase.from("deliveries").update({ status: "shipped" }).eq("purchase_order_id", id);
+      if (order.source_location_id) {
+        // Internal transfer: update outbound delivery
+        await supabase.from("outbound_deliveries" as any).update({ status: "in_transit", shipped_date: new Date().toISOString().split("T")[0] }).eq("purchase_order_id", id);
+      } else {
+        await supabase.from("deliveries").update({ status: "shipped" }).eq("purchase_order_id", id);
+      }
     }
 
     // Auto-mark delivery as delivered when PO is marked delivered
     if (newStatus === "delivered" && autoMarkDelivered) {
-      await supabase
-        .from("deliveries")
-        .update({
+      if (order.source_location_id) {
+        // Internal transfer: update outbound delivery
+        await supabase.from("outbound_deliveries" as any).update({
           status: "delivered",
           delivered_date: new Date().toISOString().split("T")[0],
-        })
-        .eq("purchase_order_id", id);
+        }).eq("purchase_order_id", id);
+      } else {
+        await supabase
+          .from("deliveries")
+          .update({
+            status: "delivered",
+            delivered_date: new Date().toISOString().split("T")[0],
+          })
+          .eq("purchase_order_id", id);
+      }
     }
 
     // Mark associated purchase requisition as completed when PO is delivered
