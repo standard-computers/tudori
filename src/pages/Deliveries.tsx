@@ -1445,7 +1445,7 @@ const Deliveries = () => {
             </DialogDescription>
           </DialogHeader>
           {detailVendor && (
-            <div className="space-y-4 px-6">
+            <div className="space-y-4 px-6 pb-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-xs">Name</Label>
@@ -1549,7 +1549,7 @@ const Deliveries = () => {
             </DialogDescription>
           </DialogHeader>
           {detailPO && (
-            <div className="space-y-4 px-6">
+            <div className="space-y-4 px-6 pb-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-xs">Status</Label>
