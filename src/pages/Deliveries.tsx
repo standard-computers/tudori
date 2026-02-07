@@ -46,7 +46,7 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2 } from 'lucide-react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -219,6 +219,8 @@ const Deliveries = () => {
   const [detailLocation, setDetailLocation] = useState<LocationDetail | null>(null);
   const [detailPO, setDetailPO] = useState<PODetail | null>(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [isDialogMaximized, setIsDialogMaximized] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useState(false);
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);
@@ -661,7 +663,14 @@ const Deliveries = () => {
                   <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <DialogContent className={`transition-all duration-200 ${isDialogMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
+                <button
+                  type="button"
+                  onClick={() => setIsDialogMaximized(!isDialogMaximized)}
+                  className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                >
+                  {isDialogMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
                 <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>
@@ -671,7 +680,7 @@ const Deliveries = () => {
                   </DialogHeader>
                   
                   {!isEditing && (
-                    <div className="absolute right-12 top-4 z-10">
+                    <div className="absolute right-16 top-4 z-10">
                       <CopyFromIdDialog<Delivery>
                         idLabel="Delivery ID"
                         onFetch={async (id) => {
@@ -1176,7 +1185,26 @@ const Deliveries = () => {
 
       {/* View Delivery Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col">
+        <DialogContent className={`flex flex-col transition-all duration-200 ${isViewMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px] max-h-[85vh]'}`}>
+              {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
+                <button
+                  onClick={() => {
+                    setIsViewOpen(false);
+                    if (viewDelivery) handleEdit(viewDelivery);
+                  }}
+                  title="Edit"
+                  className="absolute right-16 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsViewMaximized(!isViewMaximized)}
+                className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+              >
+                {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -1185,18 +1213,6 @@ const Deliveries = () => {
                   {viewDelivery?.delivery_id}
                 </DialogDescription>
               </div>
-              {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
-                <button
-                  onClick={() => {
-                    setIsViewOpen(false);
-                    if (viewDelivery) handleEdit(viewDelivery);
-                  }}
-                  title="Edit"
-                  className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-              )}
             </div>
           </DialogHeader>
           {viewDelivery && (
