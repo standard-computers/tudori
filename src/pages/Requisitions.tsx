@@ -1310,7 +1310,7 @@ const Requisitions = () => {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="details">
+                <TabsContent value="details" className="mt-4">
               <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1417,7 +1417,7 @@ const Requisitions = () => {
               </div>
                 </TabsContent>
 
-                <TabsContent value="history">
+                <TabsContent value="history" className="mt-4">
                   <AuditHistoryTab 
                     tableName="requisitions" 
                     recordId={viewRequisition.id}
