@@ -2469,6 +2469,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          delivery_id: string | null
           id: string
           product_id: string | null
           pu_number: string
@@ -2479,6 +2480,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          delivery_id?: string | null
           id?: string
           product_id?: string | null
           pu_number: string
@@ -2489,6 +2491,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          delivery_id?: string | null
           id?: string
           product_id?: string | null
           pu_number?: string
@@ -2502,6 +2505,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_units_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
             referencedColumns: ["id"]
           },
           {

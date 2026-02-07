@@ -37,6 +37,7 @@ interface DeliveryItem {
 interface PackingTabProps {
   deliveryItems: DeliveryItem[];
   companyId: string;
+  deliveryId: string;
   onRefreshItems: () => void;
 }
 
@@ -164,7 +165,7 @@ function DroppablePackage({
 }
 
 // ─── Main PackingTab component ─────────────────────────────────────────
-export function PackingTab({ deliveryItems, companyId, onRefreshItems }: PackingTabProps) {
+export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItems }: PackingTabProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [emptyPackages, setEmptyPackages] = useState<Array<{ id: string; pu_number: string }>>([]);
@@ -181,6 +182,7 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
       .from('packaging_units' as any)
       .select('id, pu_number')
       .eq('company_id', companyId)
+      .eq('delivery_id', deliveryId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
@@ -189,7 +191,7 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
         .filter((pu) => !usedPuIds.includes(pu.id));
       setEmptyPackages(empty);
     }
-  }, [companyId, deliveryItems]);
+  }, [companyId, deliveryId, deliveryItems]);
 
   useEffect(() => {
     fetchEmptyPackages();
@@ -245,6 +247,7 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
         .insert({
           pu_number: puNumber,
           company_id: companyId,
+          delivery_id: deliveryId,
           product_id: null,
           quantity: 0,
           status: 'active',
