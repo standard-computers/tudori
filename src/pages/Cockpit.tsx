@@ -220,8 +220,8 @@ const [areaFormData, setAreaFormData] = useState({
     height: '' as string | number,
     height_uom: 'in',
     is_production_enabled: false,
-    is_goods_receipt_enabled: true,
-    is_goods_issue_enabled: true,
+    is_goods_receipt_enabled: false,
+    is_goods_issue_enabled: false,
   });
   const [areaDialogTab, setAreaDialogTab] = useState('general');
   const areaFormRef = useRef<HTMLFormElement>(null);
@@ -958,8 +958,8 @@ const [areaFormData, setAreaFormData] = useState({
         height: area.height ?? '',
         height_uom: area.height_uom || 'in',
         is_production_enabled: area.is_production_enabled ?? false,
-        is_goods_receipt_enabled: area.is_goods_receipt_enabled ?? true,
-        is_goods_issue_enabled: area.is_goods_issue_enabled ?? true,
+        is_goods_receipt_enabled: area.is_goods_receipt_enabled ?? false,
+        is_goods_issue_enabled: area.is_goods_issue_enabled ?? false,
       });
     } else {
       setEditingArea(null);
@@ -974,8 +974,8 @@ const [areaFormData, setAreaFormData] = useState({
         height: '',
         height_uom: 'in',
         is_production_enabled: false,
-        is_goods_receipt_enabled: true,
-        is_goods_issue_enabled: true,
+        is_goods_receipt_enabled: false,
+        is_goods_issue_enabled: false,
       });
     }
     setAreaDialogTab('general');
