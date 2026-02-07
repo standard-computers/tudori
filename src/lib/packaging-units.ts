@@ -5,6 +5,7 @@ export interface PackagingUnit {
   pu_number: string;
   company_id: string;
   product_id: string | null;
+  delivery_id: string | null;
   quantity: number;
   status: string;
   created_at: string;

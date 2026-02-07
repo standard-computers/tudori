@@ -1129,6 +1129,7 @@ const Deliveries = () => {
                         <PackingTab
                           deliveryItems={deliveryItems}
                           companyId={companyId}
+                          deliveryId={editingId!}
                           onRefreshItems={() => editingId && fetchDeliveryItems(editingId)}
                         />
                       )}
