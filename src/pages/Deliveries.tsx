@@ -1178,7 +1178,7 @@ const Deliveries = () => {
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
+            <div className="flex items-center justify-between">
               <div>
                 <DialogTitle>View Delivery</DialogTitle>
                 <DialogDescription>
@@ -1186,22 +1186,21 @@ const Deliveries = () => {
                 </DialogDescription>
               </div>
               {viewDelivery && !NON_EDITABLE_STATUSES.includes(viewDelivery.status) && (
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={() => {
                     setIsViewOpen(false);
                     if (viewDelivery) handleEdit(viewDelivery);
                   }}
                   title="Edit"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7 absolute right-10 top-4 opacity-70 hover:opacity-100"
                 >
-                  <Pencil className="w-4 h-4" />
-                </Button>
+                  <Pencil className="h-4 w-4" />
+                </button>
               )}
             </div>
           </DialogHeader>
           {viewDelivery && (
-            <Tabs defaultValue="details" className="flex-1 overflow-y-auto px-6">
+            <Tabs defaultValue="details" className="flex-1 overflow-y-auto px-6 pb-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="items">
