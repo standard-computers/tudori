@@ -229,10 +229,6 @@ export const BulkInventoryActionsDialog = ({
             </Button>
           ) : (
             <>
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-                <Kbd>Esc</Kbd>
-              </Button>
               <Button onClick={handlePackageTogether} disabled={isProcessing}>
                 {isProcessing ? (
                   <>

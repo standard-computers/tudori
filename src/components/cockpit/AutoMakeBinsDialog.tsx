@@ -845,10 +845,6 @@ const AutoMakeBinsDialog = ({
         </Tabs>
 
         <DialogFooter className="shrink-0 px-6 py-4 border-t">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-            <Kbd>Esc</Kbd>
-          </Button>
           <Button onClick={handleCreate} disabled={isCreating || !selectedAreaId || !quantity}>
             {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create {quantity || 0} Bins
