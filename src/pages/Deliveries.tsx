@@ -156,8 +156,10 @@ interface DeliveryItem {
   quantity: number;
   notes: string | null;
   pu_id: string | null;
-  product?: { name: string; product_id: string };
+  uom_id: string | null;
+  product?: { name: string; product_id: string; unit?: string | null };
   packaging_unit?: { pu_number: string } | null;
+  uom?: { id: string; name: string; abbreviation: string | null } | null;
 }
 
 interface PackingItem {
@@ -174,6 +176,14 @@ interface Product {
   id: string;
   name: string;
   product_id: string;
+  unit?: string | null;
+}
+
+interface ProductUom {
+  id: string;
+  product_id: string;
+  name: string;
+  abbreviation: string | null;
 }
 
 interface Carrier {
@@ -373,11 +383,22 @@ const Deliveries = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id')
+      .select('id, name, product_id, unit')
       .eq('company_id', companyId!)
       .order('name');
     
     setProducts(data || []);
+  };
+
+  const [productUoms, setProductUoms] = useState<ProductUom[]>([]);
+
+  const fetchProductUoms = async (productIds: string[]) => {
+    if (productIds.length === 0) return;
+    const { data } = await supabase
+      .from('product_uoms')
+      .select('id, product_id, name, abbreviation')
+      .in('product_id', productIds);
+    setProductUoms(data || []);
   };
 
   const fetchCarriers = async () => {
@@ -396,12 +417,17 @@ const Deliveries = () => {
       .from('delivery_items')
       .select(`
         *,
-        product:products(name, product_id),
-        packaging_unit:packaging_units(pu_number)
+        product:products(name, product_id, unit),
+        packaging_unit:packaging_units(pu_number),
+        uom:product_uoms(id, name, abbreviation)
       `)
       .eq('delivery_id', deliveryId);
     
-    setDeliveryItems((data || []) as unknown as DeliveryItem[]);
+    const items = (data || []) as unknown as DeliveryItem[];
+    setDeliveryItems(items);
+    // Fetch UoMs for all products in the items
+    const productIds = [...new Set(items.map(i => i.product_id).filter(Boolean))];
+    if (productIds.length > 0) fetchProductUoms(productIds);
   };
 
   const handleAddItem = async () => {
@@ -459,6 +485,29 @@ const Deliveries = () => {
     fetchDeliveryItems(editingId);
   };
 
+  const handleUpdateItemUom = async (itemId: string, uomId: string | null) => {
+    if (!editingId) return;
+    const { error } = await supabase
+      .from('delivery_items')
+      .update({ uom_id: uomId })
+      .eq('id', itemId);
+    if (error) {
+      toast.error('Failed to update UoM');
+      return;
+    }
+    fetchDeliveryItems(editingId);
+  };
+
+  const handleViewUpdateItemUom = async (itemId: string, uomId: string | null) => {
+    if (!viewDelivery) return;
+    const { error } = await supabase
+      .from('delivery_items')
+      .update({ uom_id: uomId })
+      .eq('id', itemId);
+    if (error) { toast.error('Failed to update UoM'); return; }
+    fetchViewItems(viewDelivery.id);
+  };
+
   // fetchVendors removed - using useVendorSources hook instead
 
 
@@ -500,10 +549,14 @@ const Deliveries = () => {
       .from('delivery_items')
       .select(`
         *,
-        product:products(name, product_id)
+        product:products(name, product_id, unit),
+        uom:product_uoms(id, name, abbreviation)
       `)
       .eq('delivery_id', deliveryId);
-    setViewItems((data || []) as unknown as DeliveryItem[]);
+    const items = (data || []) as unknown as DeliveryItem[];
+    setViewItems(items);
+    const productIds = [...new Set(items.map(i => i.product_id).filter(Boolean))];
+    if (productIds.length > 0) fetchProductUoms(productIds);
   };
 
   const handleViewAddItem = async (productId: string, quantity: number) => {
@@ -908,6 +961,7 @@ const Deliveries = () => {
                                 product_id: '',
                                 quantity: 1,
                                 pu_id: null,
+                                uom_id: null,
                                 notes: null,
                                 product: null,
                               }]);
@@ -926,14 +980,17 @@ const Deliveries = () => {
                           <div className="border rounded-lg overflow-hidden">
                             <Table>
                               <TableHeader>
-                                <TableRow>
-                                  <TableHead className="w-[70%]">Product</TableHead>
+                                 <TableRow>
+                                  <TableHead className="w-[50%]">Product</TableHead>
+                                  <TableHead className="w-[20%]">UoM</TableHead>
                                   <TableHead className="w-[20%] text-right">Qty</TableHead>
                                   <TableHead className="w-[10%]"></TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {deliveryItems.map((item, index) => (
+                                {deliveryItems.map((item, index) => {
+                                  const itemUoms = productUoms.filter(u => u.product_id === item.product_id);
+                                  return (
                                   <TableRow key={item.id}>
                                     <TableCell className="p-2">
                                       <Select
@@ -944,9 +1001,13 @@ const Deliveries = () => {
                                           updated[index] = { 
                                             ...updated[index], 
                                             product_id: value,
-                                            product: product || null
+                                            product: product || null,
+                                            uom_id: null,
+                                            uom: null,
                                           };
                                           setDeliveryItems(updated);
+                                          // Fetch UoMs for newly selected product
+                                          fetchProductUoms([...new Set([...deliveryItems.map(i => i.product_id), value].filter(Boolean))]);
                                         }}
                                       >
                                         <SelectTrigger>
@@ -960,6 +1021,32 @@ const Deliveries = () => {
                                           ))}
                                         </SelectContent>
                                       </Select>
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      {itemUoms.length > 0 ? (
+                                        <Select
+                                          value={item.uom_id || '_base'}
+                                          onValueChange={(value) => handleUpdateItemUom(item.id, value === '_base' ? null : value)}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder={item.product?.unit || 'Base'} />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="_base">
+                                              {item.product?.unit || 'Base'}
+                                            </SelectItem>
+                                            {itemUoms.map((uom) => (
+                                              <SelectItem key={uom.id} value={uom.id}>
+                                                {uom.abbreviation || uom.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground px-2">
+                                          {item.product?.unit || '—'}
+                                        </span>
+                                      )}
                                     </TableCell>
                                     <TableCell className="p-2">
                                       <Input
@@ -981,7 +1068,9 @@ const Deliveries = () => {
                                       </Button>
                                     </TableCell>
                                   </TableRow>
-                                ))}
+                                  );
+                                })}
+
                               </TableBody>
                             </Table>
                           </div>
@@ -1349,10 +1438,12 @@ const Deliveries = () => {
                   viewItems={viewItems}
                   viewDelivery={viewDelivery}
                   products={products}
+                  productUoms={productUoms}
                   isEditable={!NON_EDITABLE_STATUSES.includes(viewDelivery.status)}
                   onAddItem={handleViewAddItem}
                   onRemoveItem={handleViewRemoveItem}
                   onUpdateQuantity={handleViewUpdateItemQuantity}
+                  onUpdateUom={handleViewUpdateItemUom}
                 />
               </TabsContent>
             </Tabs>

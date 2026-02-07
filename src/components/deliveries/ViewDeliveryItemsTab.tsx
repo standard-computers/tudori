@@ -26,33 +26,47 @@ interface DeliveryItem {
   quantity: number;
   notes: string | null;
   pu_id: string | null;
-  product?: { name: string; product_id: string };
+  uom_id: string | null;
+  product?: { name: string; product_id: string; unit?: string | null };
+  uom?: { id: string; name: string; abbreviation: string | null } | null;
 }
 
 interface Product {
   id: string;
   name: string;
   product_id: string;
+  unit?: string | null;
+}
+
+interface ProductUom {
+  id: string;
+  product_id: string;
+  name: string;
+  abbreviation: string | null;
 }
 
 interface ViewDeliveryItemsTabProps {
   viewItems: DeliveryItem[];
   viewDelivery: { id: string } | null;
   products: Product[];
+  productUoms: ProductUom[];
   isEditable: boolean;
   onAddItem: (productId: string, quantity: number) => Promise<void>;
   onRemoveItem: (itemId: string) => Promise<void>;
   onUpdateQuantity: (itemId: string, quantity: number) => Promise<void>;
+  onUpdateUom: (itemId: string, uomId: string | null) => Promise<void>;
 }
 
 export const ViewDeliveryItemsTab = ({
   viewItems,
   viewDelivery,
   products,
+  productUoms,
   isEditable,
   onAddItem,
   onRemoveItem,
   onUpdateQuantity,
+  onUpdateUom,
 }: ViewDeliveryItemsTabProps) => {
   const [newProductId, setNewProductId] = useState('');
   const [newQuantity, setNewQuantity] = useState(1);
@@ -62,6 +76,11 @@ export const ViewDeliveryItemsTab = ({
     await onAddItem(newProductId, newQuantity);
     setNewProductId('');
     setNewQuantity(1);
+  };
+
+  const getUomDisplay = (item: DeliveryItem) => {
+    if (item.uom) return item.uom.abbreviation || item.uom.name;
+    return item.product?.unit || '—';
   };
 
   return (
@@ -116,49 +135,77 @@ export const ViewDeliveryItemsTab = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className={isEditable ? 'w-[60%]' : ''}>Product</TableHead>
+                <TableHead className={isEditable ? 'w-[45%]' : ''}>Product</TableHead>
+                <TableHead>UoM</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 {isEditable && <TableHead className="w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {viewItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{item.product?.name || 'Unknown'}</div>
-                      <div className="text-sm text-muted-foreground font-mono">
-                        {item.product?.product_id}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {isEditable ? (
-                      <Input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        onChange={(e) => onUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
-                        className="w-20 text-right ml-auto"
-                      />
-                    ) : (
-                      item.quantity
-                    )}
-                  </TableCell>
-                  {isEditable && (
+              {viewItems.map((item) => {
+                const itemUoms = productUoms.filter(u => u.product_id === item.product_id);
+                return (
+                  <TableRow key={item.id}>
                     <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onRemoveItem(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div>
+                        <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                        <div className="text-sm text-muted-foreground font-mono">
+                          {item.product?.product_id}
+                        </div>
+                      </div>
                     </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    <TableCell>
+                      {isEditable && itemUoms.length > 0 ? (
+                        <Select
+                          value={item.uom_id || '_base'}
+                          onValueChange={(value) => onUpdateUom(item.id, value === '_base' ? null : value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={item.product?.unit || 'Base'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_base">
+                              {item.product?.unit || 'Base'}
+                            </SelectItem>
+                            {itemUoms.map((uom) => (
+                              <SelectItem key={uom.id} value={uom.id}>
+                                {uom.abbreviation || uom.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-sm">{getUomDisplay(item)}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isEditable ? (
+                        <Input
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(e) => onUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
+                          className="w-20 text-right ml-auto"
+                        />
+                      ) : (
+                        item.quantity
+                      )}
+                    </TableCell>
+                    {isEditable && (
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRemoveItem(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
