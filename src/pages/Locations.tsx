@@ -901,7 +901,7 @@ const Locations = () => {
                     </DialogHeader>
 
                     {!isEditing && !isViewMode && (
-                      <div className="absolute right-12 top-4 z-10">
+                      <div className="absolute right-[4.5rem] top-4 z-10">
                         <CopyFromIdDialog<Location>
                           idLabel="Location ID"
                           onFetch={async (id) => {
