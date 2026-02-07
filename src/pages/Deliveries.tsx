@@ -49,6 +49,7 @@ import { SearchableSelect, SearchableSelectOption } from '@/components/Searchabl
 import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2 } from 'lucide-react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ViewDeliveryItemsTab } from '@/components/deliveries/ViewDeliveryItemsTab';
+import { PackingTab } from '@/components/deliveries/PackingTab';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -1096,47 +1097,13 @@ const Deliveries = () => {
                     </TabsContent>
                     
                     <TabsContent value="packing" className="mt-4">
-                      <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                          Assign Packaging Units (PU) to items for ASN tracking. PU numbers will be generated when items are received.
-                        </p>
-                        {deliveryItems.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
-                            Add items first to configure packing
-                          </p>
-                        ) : (
-                          <div className="border rounded-lg overflow-hidden">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Product</TableHead>
-                                  <TableHead className="w-24 text-right">Qty</TableHead>
-                                  <TableHead className="w-32">PU #</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {deliveryItems.map((item) => (
-                                  <TableRow key={item.id}>
-                                    <TableCell>
-                                      <div>
-                                        <div className="font-medium">{item.product?.name || 'Unknown'}</div>
-                                        <div className="text-sm text-muted-foreground font-mono">
-                                          {item.product?.product_id}
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                                    <TableCell className="font-mono text-sm text-primary">
-                                      {item.packaging_unit?.pu_number || 
-                                        <span className="text-muted-foreground italic">Auto-generate on receipt</span>}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
-                      </div>
+                      {companyId && (
+                        <PackingTab
+                          deliveryItems={deliveryItems}
+                          companyId={companyId}
+                          onRefreshItems={() => editingId && fetchDeliveryItems(editingId)}
+                        />
+                      )}
                     </TabsContent>
                   </Tabs>
                   </div>
