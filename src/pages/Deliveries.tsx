@@ -46,7 +46,17 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ViewDeliveryItemsTab } from '@/components/deliveries/ViewDeliveryItemsTab';
 import { PackingTab } from '@/components/deliveries/PackingTab';
@@ -237,6 +247,8 @@ const Deliveries = () => {
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [inTransitConfirmOpen, setInTransitConfirmOpen] = useState(false);
+  const [inTransitDeliveryId, setInTransitDeliveryId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Table sorting and filtering
@@ -630,6 +642,22 @@ const Deliveries = () => {
       setDetailPO(po as unknown as PODetail);
       setIsPODetailOpen(true);
     }
+  };
+
+  const handleMarkInTransit = async () => {
+    if (!inTransitDeliveryId) return;
+    const { error } = await supabase
+      .from('deliveries')
+      .update({ status: 'in_transit' })
+      .eq('id', inTransitDeliveryId);
+    if (error) {
+      toast.error('Failed to update status');
+    } else {
+      toast.success('Delivery marked as In Transit');
+      fetchDeliveries();
+    }
+    setInTransitConfirmOpen(false);
+    setInTransitDeliveryId(null);
   };
 
   const handleEdit = (delivery: Delivery) => {
@@ -1257,6 +1285,17 @@ const Deliveries = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {delivery.status === 'pending' && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setInTransitDeliveryId(delivery.id);
+                                    setInTransitConfirmOpen(true);
+                                  }}
+                                >
+                                  <SendHorizonal className="w-4 h-4 mr-2" />
+                                  Mark In Transit
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => handleEdit(delivery)}
                                 disabled={!isEditable}
@@ -1284,6 +1323,24 @@ const Deliveries = () => {
           </div>
         )}
       </main>
+
+      {/* In Transit Confirmation Dialog */}
+      <AlertDialog open={inTransitConfirmOpen} onOpenChange={setInTransitConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as In Transit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once marked as In Transit, this delivery can no longer be edited. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleMarkInTransit}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* View Delivery Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
