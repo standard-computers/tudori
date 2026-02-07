@@ -385,7 +385,7 @@ export const InventoryCountDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
           {view === 'list' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1 py-2">
