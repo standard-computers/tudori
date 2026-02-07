@@ -774,17 +774,19 @@ const GoodsReceipts = () => {
       {/* View Goods Receipt Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
-          <button
-            type="button"
-            onClick={() => {
-              setIsViewDialogOpen(false);
-              if (viewingReceipt) handleEdit(viewingReceipt);
-            }}
-            className="absolute right-10 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            <Pencil className="h-4 w-4" />
-            <span className="sr-only">Edit</span>
-          </button>
+          {viewingReceipt?.status !== 'posted' && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewDialogOpen(false);
+                if (viewingReceipt) handleEdit(viewingReceipt);
+              }}
+              className="absolute right-10 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </button>
+          )}
           <DialogHeader>
             <DialogTitle>View Goods Receipt</DialogTitle>
             <DialogDescription>
@@ -1051,7 +1053,10 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
                             Post to Inventory
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => onEdit(receipt)}>
+                        <DropdownMenuItem
+                          onClick={() => onEdit(receipt)}
+                          disabled={receipt.status === 'posted'}
+                        >
                           <Pencil className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
