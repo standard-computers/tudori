@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { useExcel } from "@/hooks/use-excel";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -99,6 +100,9 @@ const LOCATION_COLUMNS: ColumnDefinition[] = [
   { key: "state", label: "State", defaultVisible: true },
   { key: "postal_code", label: "Postal Code", defaultVisible: true },
   { key: "country", label: "Country", defaultVisible: true },
+  { key: "user_count", label: "Users", defaultVisible: true },
+  { key: "payment_terms", label: "Payment Terms", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
   { key: "is_internal_vendor", label: "Internal Vendor", defaultVisible: true },
   { key: "is_pos_enabled", label: "POS", defaultVisible: true },
   { key: "is_production_enabled", label: "Production", defaultVisible: true },
@@ -110,16 +114,19 @@ const LocationTable = ({
   locations,
   onView,
   onEdit,
+  isColumnVisible,
 }: {
   locations: Location[];
   onView: (location: Location) => void;
   onEdit: (location: Location) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     locations,
     "location_id",
     "asc",
   );
+  const visibleColumnCount = LOCATION_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
@@ -151,200 +158,242 @@ const LocationTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="ID"
-                sortKey="location_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["location_id"]}
-                onFilter={(value) => setFilter("location_id", value)}
-                className="w-24"
-              />
-              <SortableTableHead
-                label="Name"
-                sortKey="name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["name"]}
-                onFilter={(value) => setFilter("name", value)}
-              />
-              <SortableTableHead
-                label="Type"
-                sortKey="type"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["type"]}
-                onFilter={(value) => setFilter("type", value)}
-              />
-              <SortableTableHead
-                label="Address"
-                sortKey="address_line1"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["address_line1"]}
-                onFilter={(value) => setFilter("address_line1", value)}
-              />
-              <SortableTableHead
-                label="City"
-                sortKey="city"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["city"]}
-                onFilter={(value) => setFilter("city", value)}
-              />
-              <SortableTableHead
-                label="State"
-                sortKey="state"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["state"]}
-                onFilter={(value) => setFilter("state", value)}
-              />
-              <SortableTableHead
-                label="Postal Code"
-                sortKey="postal_code"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["postal_code"]}
-                onFilter={(value) => setFilter("postal_code", value)}
-              />
-              <SortableTableHead
-                label="Country"
-                sortKey="country"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["country"]}
-                onFilter={(value) => setFilter("country", value)}
-              />
-              <SortableTableHead
-                label="Users"
-                sortKey="user_count"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-                className="w-20 text-center"
-              />
-              <SortableTableHead
-                label="Payment Terms"
-                sortKey="payment_terms"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-                className="w-28"
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["status"]}
-                onFilter={(value) => setFilter("status", value)}
-              />
-              <SortableTableHead
-                label="Internal Vendor"
-                sortKey="is_internal_vendor"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-                className="w-28 text-center"
-              />
-              <SortableTableHead
-                label="POS"
-                sortKey="is_pos_enabled"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-                className="w-20 text-center"
-              />
-              <SortableTableHead
-                label="Production"
-                sortKey="is_production_enabled"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-                className="w-24 text-center"
-              />
-              <SortableTableHead
-                label="Actions"
-                sortKey=""
-                currentSortKey=""
-                currentSortDirection={null}
-                onSort={() => {}}
-                filterable={false}
-                className="w-24"
-              />
+              {isColumnVisible("location_id") && (
+                <SortableTableHead
+                  label="ID"
+                  sortKey="location_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["location_id"]}
+                  onFilter={(value) => setFilter("location_id", value)}
+                  className="w-24"
+                />
+              )}
+              {isColumnVisible("name") && (
+                <SortableTableHead
+                  label="Name"
+                  sortKey="name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["name"]}
+                  onFilter={(value) => setFilter("name", value)}
+                />
+              )}
+              {isColumnVisible("type") && (
+                <SortableTableHead
+                  label="Type"
+                  sortKey="type"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["type"]}
+                  onFilter={(value) => setFilter("type", value)}
+                />
+              )}
+              {isColumnVisible("address_line1") && (
+                <SortableTableHead
+                  label="Address"
+                  sortKey="address_line1"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["address_line1"]}
+                  onFilter={(value) => setFilter("address_line1", value)}
+                />
+              )}
+              {isColumnVisible("city") && (
+                <SortableTableHead
+                  label="City"
+                  sortKey="city"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["city"]}
+                  onFilter={(value) => setFilter("city", value)}
+                />
+              )}
+              {isColumnVisible("state") && (
+                <SortableTableHead
+                  label="State"
+                  sortKey="state"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["state"]}
+                  onFilter={(value) => setFilter("state", value)}
+                />
+              )}
+              {isColumnVisible("postal_code") && (
+                <SortableTableHead
+                  label="Postal Code"
+                  sortKey="postal_code"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["postal_code"]}
+                  onFilter={(value) => setFilter("postal_code", value)}
+                />
+              )}
+              {isColumnVisible("country") && (
+                <SortableTableHead
+                  label="Country"
+                  sortKey="country"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["country"]}
+                  onFilter={(value) => setFilter("country", value)}
+                />
+              )}
+              {isColumnVisible("user_count") && (
+                <SortableTableHead
+                  label="Users"
+                  sortKey="user_count"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                  className="w-20 text-center"
+                />
+              )}
+              {isColumnVisible("payment_terms") && (
+                <SortableTableHead
+                  label="Payment Terms"
+                  sortKey="payment_terms"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                  className="w-28"
+                />
+              )}
+              {isColumnVisible("status") && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["status"]}
+                  onFilter={(value) => setFilter("status", value)}
+                />
+              )}
+              {isColumnVisible("is_internal_vendor") && (
+                <SortableTableHead
+                  label="Internal Vendor"
+                  sortKey="is_internal_vendor"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                  className="w-28 text-center"
+                />
+              )}
+              {isColumnVisible("is_pos_enabled") && (
+                <SortableTableHead
+                  label="POS"
+                  sortKey="is_pos_enabled"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                  className="w-20 text-center"
+                />
+              )}
+              {isColumnVisible("is_production_enabled") && (
+                <SortableTableHead
+                  label="Production"
+                  sortKey="is_production_enabled"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                  className="w-24 text-center"
+                />
+              )}
+              {isColumnVisible("actions") && (
+                <SortableTableHead
+                  label="Actions"
+                  sortKey=""
+                  currentSortKey=""
+                  currentSortDirection={null}
+                  onSort={() => {}}
+                  filterable={false}
+                  className="w-24"
+                />
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="text-center py-8 text-muted-foreground">
                   No locations match your filters
                 </TableCell>
               </TableRow>
             ) : (
               sortedAndFilteredData.map((location) => (
                 <TableRow key={location.id}>
-                  <TableCell className="font-mono text-sm">
-                    <button onClick={() => onView(location)} className="text-primary hover:underline cursor-pointer">
-                      {location.location_id}
-                    </button>
-                  </TableCell>
-                  <TableCell className="font-medium">{location.name}</TableCell>
-                  <TableCell>{location.type}</TableCell>
-                  <TableCell>{location.address_line1}</TableCell>
-                  <TableCell>{location.city}</TableCell>
-                  <TableCell>{location.state}</TableCell>
-                  <TableCell>{location.postal_code}</TableCell>
-                  <TableCell>{location.country}</TableCell>
-                  <TableCell className="text-center">{location.user_count || 0}</TableCell>
-                  <TableCell>{location.payment_terms ? `${location.payment_terms} days` : "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant={location.status === "Active" ? "default" : "secondary"}>{location.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {location.is_internal_vendor && <Badge variant="secondary">✓</Badge>}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {location.is_pos_enabled && <Badge variant="secondary">✓</Badge>}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {location.is_production_enabled && <Badge variant="secondary">✓</Badge>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => onView(location)}>
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEdit(location)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
+                  {isColumnVisible("location_id") && (
+                    <TableCell className="font-mono text-sm">
+                      <button onClick={() => onView(location)} className="text-primary hover:underline cursor-pointer">
+                        {location.location_id}
+                      </button>
+                    </TableCell>
+                  )}
+                  {isColumnVisible("name") && <TableCell className="font-medium">{location.name}</TableCell>}
+                  {isColumnVisible("type") && <TableCell>{location.type}</TableCell>}
+                  {isColumnVisible("address_line1") && <TableCell>{location.address_line1}</TableCell>}
+                  {isColumnVisible("city") && <TableCell>{location.city}</TableCell>}
+                  {isColumnVisible("state") && <TableCell>{location.state}</TableCell>}
+                  {isColumnVisible("postal_code") && <TableCell>{location.postal_code}</TableCell>}
+                  {isColumnVisible("country") && <TableCell>{location.country}</TableCell>}
+                  {isColumnVisible("user_count") && <TableCell className="text-center">{location.user_count || 0}</TableCell>}
+                  {isColumnVisible("payment_terms") && <TableCell>{location.payment_terms ? `${location.payment_terms} days` : "-"}</TableCell>}
+                  {isColumnVisible("status") && (
+                    <TableCell>
+                      <Badge variant={location.status === "Active" ? "default" : "secondary"}>{location.status}</Badge>
+                    </TableCell>
+                  )}
+                  {isColumnVisible("is_internal_vendor") && (
+                    <TableCell className="text-center">
+                      {location.is_internal_vendor && <Badge variant="secondary">✓</Badge>}
+                    </TableCell>
+                  )}
+                  {isColumnVisible("is_pos_enabled") && (
+                    <TableCell className="text-center">
+                      {location.is_pos_enabled && <Badge variant="secondary">✓</Badge>}
+                    </TableCell>
+                  )}
+                  {isColumnVisible("is_production_enabled") && (
+                    <TableCell className="text-center">
+                      {location.is_production_enabled && <Badge variant="secondary">✓</Badge>}
+                    </TableCell>
+                  )}
+                  {isColumnVisible("actions") && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => onView(location)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(location)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -354,7 +403,6 @@ const LocationTable = ({
     </div>
   );
 };
-
 const Locations = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -364,6 +412,11 @@ const Locations = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel } = useExcel();
+
+  // Column visibility
+  const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } =
+    useColumnVisibility("locations", LOCATION_COLUMNS);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -826,6 +879,33 @@ const Locations = () => {
     }
   };
 
+  const handleExport = useCallback(async () => {
+    const exportData = locations.map((location) => ({
+      "Location ID": location.location_id,
+      "Name": location.name,
+      "Type": location.type,
+      "Address": location.address_line1,
+      "Address Line 2": location.address_line2 || "",
+      "City": location.city,
+      "State": location.state,
+      "Postal Code": location.postal_code,
+      "Country": location.country,
+      "Status": location.status,
+      "Users": location.user_count || 0,
+      "Payment Terms": location.payment_terms ? `${location.payment_terms} days` : "",
+      "Internal Vendor": location.is_internal_vendor ? "Yes" : "No",
+      "POS Enabled": location.is_pos_enabled ? "Yes" : "No",
+      "Production Enabled": location.is_production_enabled ? "Yes" : "No",
+    }));
+
+    await exportToExcel(
+      exportData,
+      `locations_export_${new Date().toISOString().split("T")[0]}.xlsx`,
+      "Locations",
+    );
+    toast.success(`Exported ${exportData.length} locations`);
+  }, [locations, exportToExcel]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -849,10 +929,19 @@ const Locations = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={LOCATION_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled("location")}
                 exportEnabled={isExportEnabled("location")}
                 entityName="Locations"
+                onExport={handleExport}
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -1266,7 +1355,7 @@ const Locations = () => {
             </Button>
           </div>
         ) : (
-          <LocationTable locations={locations} onView={handleView} onEdit={handleEdit} />
+          <LocationTable locations={locations} onView={handleView} onEdit={handleEdit} isColumnVisible={isColumnVisible} />
         )}
       </main>
 
