@@ -474,6 +474,20 @@ export const ReceiveDeliveryDialog = ({
         if (poError) {
           console.error('Failed to update PO status:', poError);
         }
+
+        // Mark associated purchase requisition as completed
+        const { data: poData } = await supabase
+          .from('purchase_orders')
+          .select('requisition_id')
+          .eq('id', purchaseOrderId)
+          .single();
+
+        if (poData?.requisition_id) {
+          await supabase
+            .from('requisitions')
+            .update({ status: 'completed' })
+            .eq('id', poData.requisition_id);
+        }
       }
 
       onReceived();

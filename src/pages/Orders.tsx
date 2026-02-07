@@ -1732,6 +1732,14 @@ const Orders = () => {
         .eq('purchase_order_id', id);
     }
 
+    // Mark associated purchase requisition as completed when PO is delivered
+    if (newStatus === 'delivered' && order.requisition_id) {
+      await supabase
+        .from('requisitions')
+        .update({ status: 'completed' })
+        .eq('id', order.requisition_id);
+    }
+
     toast.success('Status updated');
     fetchOrders();
     
