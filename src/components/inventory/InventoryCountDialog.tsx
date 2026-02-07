@@ -454,7 +454,7 @@ export const InventoryCountDialog = ({
               )}
             </div>
           ) : view === 'select_scope' ? (
-            <div className="space-y-4 px-1">
+            <div className="space-y-4">
               <AreaBinSelector
                 locationId={locationId}
                 selectedBinIds={selectedBinIds}
@@ -545,7 +545,7 @@ export const InventoryCountDialog = ({
 
         {/* Footer actions for scope selection */}
         {view === 'select_scope' && (
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t">
             <Button variant="outline" size="sm" onClick={handleBack}>
               Cancel
             </Button>
