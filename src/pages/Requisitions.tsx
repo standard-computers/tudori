@@ -47,9 +47,11 @@ import {
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 interface Requisition {
   id: string;
   requisition_id: string;
@@ -1299,7 +1301,17 @@ const Requisitions = () => {
           
           <div className="flex-1 overflow-y-auto px-6 pb-6">
             {viewRequisition && (
-              <div className="space-y-4 py-2">
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="history" className="flex items-center gap-1">
+                    <History className="w-3.5 h-3.5" />
+                    History
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="details">
+              <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
@@ -1403,6 +1415,23 @@ const Requisitions = () => {
                 </div>
               </div>
               </div>
+                </TabsContent>
+
+                <TabsContent value="history">
+                  <AuditHistoryTab 
+                    tableName="requisitions" 
+                    recordId={viewRequisition.id}
+                    fieldLabels={{
+                      status: "Status",
+                      vendor_id: "Vendor",
+                      location_id: "Location",
+                      source_location_id: "Source Location",
+                      notes: "Notes",
+                      total_amount: "Total Amount",
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </DialogContent>
