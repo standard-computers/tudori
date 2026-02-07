@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Kbd } from '@/components/ui/kbd';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, PackageCheck, AlertCircle, Layers, Package } from 'lucide-react';
+import { Loader2, PackageCheck, AlertCircle, Layers, Package, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DeliveryItem {
@@ -72,14 +73,55 @@ export const ReceiveDeliveryDialog = ({
   const [explodeDelivery, setExplodeDelivery] = useState(false);
   const [isInternalTransfer, setIsInternalTransfer] = useState(false);
   const [isFulfilled, setIsFulfilled] = useState(true);
+  const [selectedBinId, setSelectedBinId] = useState('');
+  const [binOptions, setBinOptions] = useState<{ value: string; label: string; sublabel?: string; group?: string }[]>([]);
 
   useEffect(() => {
     if (open && deliveryId) {
       fetchDeliveryItems();
       checkInternalTransferStatus();
+      fetchBinsForLocation();
       setExplodeDelivery(false);
+      setSelectedBinId('');
     }
   }, [open, deliveryId]);
+
+  const fetchBinsForLocation = async () => {
+    // Fetch bins from areas that have goods receipt enabled at this location
+    const { data: areas } = await supabase
+      .from('areas')
+      .select('id, name, is_goods_receipt_enabled')
+      .eq('location_id', locationId)
+      .eq('is_goods_receipt_enabled', true);
+
+    if (!areas || areas.length === 0) {
+      setBinOptions([]);
+      return;
+    }
+
+    const areaIds = areas.map(a => a.id);
+    const { data: bins } = await supabase
+      .from('bins')
+      .select('id, bin_id, name, area_id, allow_put_away')
+      .in('area_id', areaIds)
+      .eq('allow_put_away', true)
+      .order('bin_id');
+
+    if (!bins) {
+      setBinOptions([]);
+      return;
+    }
+
+    const areaMap = Object.fromEntries(areas.map(a => [a.id, a.name]));
+    setBinOptions(
+      bins.map(bin => ({
+        value: bin.id,
+        label: bin.bin_id,
+        sublabel: bin.name,
+        group: areaMap[bin.area_id] || 'Unknown Area',
+      }))
+    );
+  };
 
   const checkInternalTransferStatus = async () => {
     // Check if this delivery is from an internal source and if it's fulfilled
@@ -285,7 +327,7 @@ export const ReceiveDeliveryDialog = ({
                 puId = pu?.id || null;
               }
               
-              // Create GR item with PU
+              // Create GR item with PU and selected bin
               await supabase
                 .from('goods_receipt_items')
                 .insert({
@@ -293,6 +335,7 @@ export const ReceiveDeliveryDialog = ({
                   product_id: item.product_id,
                   quantity: 1,
                   pu_id: puId,
+                  bin_id: selectedBinId || null,
                   notes: `Unit ${i + 1} of ${item.received_quantity}`,
                 });
             }
@@ -317,6 +360,7 @@ export const ReceiveDeliveryDialog = ({
               product_id: item.product_id,
               quantity: item.received_quantity,
               pu_id: puId,
+              bin_id: selectedBinId || null,
               notes: item.received_quantity !== item.expected_quantity 
                 ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
                 : null,
@@ -357,6 +401,7 @@ export const ReceiveDeliveryDialog = ({
                   product_id: item.product_id,
                   quantity: 1,
                   pu_id: pu?.id || null,
+                  bin_id: selectedBinId || null,
                 });
             }
           } else {
@@ -371,6 +416,7 @@ export const ReceiveDeliveryDialog = ({
                 product_id: item.product_id,
                 quantity: item.received_quantity,
                 pu_id: puId,
+                bin_id: selectedBinId || null,
               });
           }
         }
@@ -417,6 +463,24 @@ export const ReceiveDeliveryDialog = ({
             Confirm received quantities for each item. Adjust if there are discrepancies.
           </DialogDescription>
         </DialogHeader>
+
+        {!loading && items.length > 0 && binOptions.length > 0 && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap">
+              <Archive className="w-4 h-4" />
+              Put Away To
+            </div>
+            <SearchableSelect
+              options={binOptions}
+              value={selectedBinId}
+              onValueChange={setSelectedBinId}
+              placeholder="Select bin..."
+              allowClear
+              clearLabel="No bin (location level)"
+              className="flex-1"
+            />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
