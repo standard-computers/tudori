@@ -48,6 +48,7 @@ import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2 } from 'lucide-react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { ViewDeliveryItemsTab } from '@/components/deliveries/ViewDeliveryItemsTab';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -490,16 +491,44 @@ const Deliveries = () => {
 
   const handleView = async (delivery: Delivery) => {
     setViewDelivery(delivery);
-    // Fetch items for this delivery
+    await fetchViewItems(delivery.id);
+    setIsViewOpen(true);
+  };
+
+  const fetchViewItems = async (deliveryId: string) => {
     const { data } = await supabase
       .from('delivery_items')
       .select(`
         *,
         product:products(name, product_id)
       `)
-      .eq('delivery_id', delivery.id);
-    setViewItems(data || []);
-    setIsViewOpen(true);
+      .eq('delivery_id', deliveryId);
+    setViewItems((data || []) as unknown as DeliveryItem[]);
+  };
+
+  const handleViewAddItem = async (productId: string, quantity: number) => {
+    if (!viewDelivery) return;
+    const { error } = await supabase
+      .from('delivery_items')
+      .insert({ delivery_id: viewDelivery.id, product_id: productId, quantity });
+    if (error) { toast.error('Failed to add item'); return; }
+    toast.success('Item added');
+    fetchViewItems(viewDelivery.id);
+  };
+
+  const handleViewRemoveItem = async (itemId: string) => {
+    if (!viewDelivery) return;
+    const { error } = await supabase.from('delivery_items').delete().eq('id', itemId);
+    if (error) { toast.error('Failed to remove item'); return; }
+    toast.success('Item removed');
+    fetchViewItems(viewDelivery.id);
+  };
+
+  const handleViewUpdateItemQuantity = async (itemId: string, quantity: number) => {
+    if (!viewDelivery) return;
+    const { error } = await supabase.from('delivery_items').update({ quantity }).eq('id', itemId);
+    if (error) { toast.error('Failed to update quantity'); return; }
+    fetchViewItems(viewDelivery.id);
   };
 
   // Helper to open vendor detail dialog
@@ -1316,37 +1345,15 @@ const Deliveries = () => {
               </TabsContent>
               
               <TabsContent value="items" className="mt-4">
-                {viewItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-lg">
-                    No items in this delivery
-                  </p>
-                ) : (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead className="text-right">Qty</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {viewItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{item.product?.name || 'Unknown'}</div>
-                                <div className="text-sm text-muted-foreground font-mono">
-                                  {item.product?.product_id}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+                <ViewDeliveryItemsTab
+                  viewItems={viewItems}
+                  viewDelivery={viewDelivery}
+                  products={products}
+                  isEditable={!NON_EDITABLE_STATUSES.includes(viewDelivery.status)}
+                  onAddItem={handleViewAddItem}
+                  onRemoveItem={handleViewRemoveItem}
+                  onUpdateQuantity={handleViewUpdateItemQuantity}
+                />
               </TabsContent>
             </Tabs>
           )}
