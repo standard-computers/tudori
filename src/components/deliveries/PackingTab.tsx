@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { generatePUNumber } from '@/lib/packaging-units';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Package, Plus, GripVertical, Undo2 } from 'lucide-react';
+import { Package, Plus, GripVertical, Undo2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DeliveryItem {
@@ -42,7 +42,7 @@ interface PackingTabProps {
 
 // ─── Draggable item card ───────────────────────────────────────────────
 function DraggableItem({ item, overlay }: { item: DeliveryItem; overlay?: boolean }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
     data: { item },
   });
@@ -63,11 +63,17 @@ function DraggableItem({ item, overlay }: { item: DeliveryItem; overlay?: boolea
     );
   }
 
+  // Apply inline transform so the original element follows the pointer (prevents offset)
+  const style: React.CSSProperties = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: isDragging ? 50 : undefined }
+    : {};
+
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      style={style}
       className={`flex items-center gap-2 rounded-md border bg-card p-2 text-sm cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? 'opacity-30' : 'hover:border-primary/50'}`}
     >
       <GripVertical className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -88,11 +94,13 @@ function DroppablePackage({
   puNumber,
   items,
   onUnpack,
+  onDelete,
 }: {
   puId: string;
   puNumber: string;
   items: DeliveryItem[];
   onUnpack: (itemId: string) => void;
+  onDelete: (puId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `package-${puId}` });
 
@@ -107,6 +115,16 @@ function DroppablePackage({
         <span className="text-xs text-muted-foreground ml-auto">
           {items.length} item{items.length !== 1 ? 's' : ''}
         </span>
+        {items.length === 0 && (
+          <button
+            type="button"
+            onClick={() => onDelete(puId)}
+            className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+            title="Delete empty package"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -145,15 +163,6 @@ function DroppablePackage({
   );
 }
 
-// ─── Droppable "unpacked" zone ─────────────────────────────────────────
-function UnpackedDropZone({ children, isOver }: { children: React.ReactNode; isOver: boolean }) {
-  return (
-    <div className={`flex-1 min-h-0 transition-colors rounded-lg ${isOver ? 'bg-primary/5' : ''}`}>
-      {children}
-    </div>
-  );
-}
-
 // ─── Main PackingTab component ─────────────────────────────────────────
 export function PackingTab({ deliveryItems, companyId, onRefreshItems }: PackingTabProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -166,10 +175,8 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
 
   // Fetch packaging units that exist for this delivery's company but have no items assigned
   const fetchEmptyPackages = useCallback(async () => {
-    // Get all PU IDs that are already referenced by delivery items
     const usedPuIds = deliveryItems.filter((i) => i.pu_id).map((i) => i.pu_id!);
 
-    // Get all active packaging units for the company
     const { data } = await supabase
       .from('packaging_units' as any)
       .select('id, pu_number')
@@ -178,7 +185,6 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
       .order('created_at', { ascending: false });
 
     if (data) {
-      // Filter out ones already used by items
       const empty = (data as unknown as Array<{ id: string; pu_number: string }>)
         .filter((pu) => !usedPuIds.includes(pu.id));
       setEmptyPackages(empty);
@@ -210,7 +216,6 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
       }
     }
 
-    // Add empty packages that have no items yet
     for (const ep of emptyPackages) {
       if (!pkgMap.has(ep.id)) {
         pkgMap.set(ep.id, { puNumber: ep.pu_number, items: [] });
@@ -258,6 +263,23 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
     }
   };
 
+  // ─── Delete empty package ─────────────────────────────────────────
+  const handleDeletePackage = async (puId: string) => {
+    const { error } = await supabase
+      .from('packaging_units' as any)
+      .delete()
+      .eq('id', puId);
+
+    if (error) {
+      toast.error('Failed to delete package');
+      return;
+    }
+
+    toast.success('Package deleted');
+    setEmptyPackages((prev) => prev.filter((p) => p.id !== puId));
+    onRefreshItems();
+  };
+
   // ─── Assign / unassign item to package ────────────────────────────
   const assignItemToPackage = async (itemId: string, puId: string | null) => {
     const { error } = await supabase
@@ -287,11 +309,9 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
     const overId = over.id as string;
 
     if (overId === 'unpacked-zone') {
-      // Unpack the item
       assignItemToPackage(itemId, null);
     } else if (overId.startsWith('package-')) {
       const puId = overId.replace('package-', '');
-      // Don't re-assign if already in this package
       const item = deliveryItems.find((i) => i.id === itemId);
       if (item?.pu_id !== puId) {
         assignItemToPackage(itemId, puId);
@@ -385,6 +405,7 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
                     puNumber={pkg.puNumber}
                     items={pkg.items}
                     onUnpack={(itemId) => assignItemToPackage(itemId, null)}
+                    onDelete={handleDeletePackage}
                   />
                 ))}
               </div>
@@ -394,7 +415,7 @@ export function PackingTab({ deliveryItems, companyId, onRefreshItems }: Packing
       </div>
 
       {/* ─── Drag overlay ────────────────────────────────────────────── */}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeItem ? <DraggableItem item={activeItem} overlay /> : null}
       </DragOverlay>
     </DndContext>
