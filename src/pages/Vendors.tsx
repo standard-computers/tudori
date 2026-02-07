@@ -1182,7 +1182,7 @@ const Vendors = () => {
             </DialogDescription>
           </DialogHeader>
           {viewingVendor && (
-            <Tabs defaultValue="details" className="w-full px-4">
+            <Tabs defaultValue="details" className="w-full px-4 pb-4">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-1">
@@ -1190,7 +1190,7 @@ const Vendors = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details" className="mt-4">
+              <TabsContent value="details" className="mt-4 px-2">
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div>
@@ -1257,7 +1257,7 @@ const Vendors = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="history" className="mt-4">
+              <TabsContent value="history" className="mt-4 px-2">
                 <AuditHistoryTab 
                   tableName="vendors" 
                   recordId={viewingVendor.id}
