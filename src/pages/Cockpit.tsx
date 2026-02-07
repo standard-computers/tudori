@@ -2108,10 +2108,6 @@ const [areaFormData, setAreaFormData] = useState({
               </Tabs>
             </div>
             <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAreaDialogOpen(false)}>
-                Cancel
-                <Kbd>Esc</Kbd>
-              </Button>
               <Button type="submit">
                 {editingArea ? 'Save Changes' : 'Create'}
                 <Kbd className="ml-2">⌘S</Kbd>
@@ -2271,9 +2267,6 @@ const [areaFormData, setAreaFormData] = useState({
             </div>
           )}
           <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-            <Button variant="outline" onClick={() => setIsFulfillDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button onClick={handleFulfillOrder} disabled={isFulfilling || salesOrderItems.length === 0}>
               {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Fulfill Order
@@ -2349,9 +2342,6 @@ const [areaFormData, setAreaFormData] = useState({
             </div>
           )}
           <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-            <Button variant="outline" onClick={() => setIsInternalPOFulfillDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button onClick={handleFulfillInternalPO} disabled={isFulfilling || internalPOItems.length === 0}>
               {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Fulfill Transfer
@@ -2408,9 +2398,6 @@ const [areaFormData, setAreaFormData] = useState({
             </div>
           </div>
           <DialogFooter className="px-6 pb-6">
-            <Button variant="outline" onClick={() => setIsMoveDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button onClick={handleBulkMoveToBin} disabled={isMoving || !moveToBinId}>
               {isMoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Move Items
