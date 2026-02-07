@@ -23,9 +23,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Warehouse, X } from 'lucide-react';
+import { ArrowLeft, Warehouse, X, ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
 
 interface Location {
   id: string;
@@ -304,6 +305,7 @@ const Inventory = () => {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCountDialogOpen, setIsCountDialogOpen] = useState(false);
 
   // Column visibility
   const {
@@ -457,6 +459,15 @@ const Inventory = () => {
               onShowAll={showAll}
               onHideAll={hideAll}
             />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCountDialogOpen(true)}
+              disabled={!selectedLocationId}
+            >
+              <ClipboardList className="h-4 w-4 mr-1" />
+              Count
+            </Button>
             <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Select a location" />
@@ -510,6 +521,15 @@ const Inventory = () => {
           </div>
         )}
       </div>
+
+      <InventoryCountDialog
+        open={isCountDialogOpen}
+        onOpenChange={setIsCountDialogOpen}
+        companyId={companyId}
+        locationId={selectedLocationId}
+        locationName={selectedLocation?.name || ''}
+        inventory={inventory}
+      />
     </div>
   );
 };
