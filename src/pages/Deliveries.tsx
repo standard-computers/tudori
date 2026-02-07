@@ -1107,7 +1107,14 @@ const Deliveries = () => {
                   const isEditable = !NON_EDITABLE_STATUSES.includes(delivery.status);
                   return (
                     <TableRow key={delivery.id}>
-                      <TableCell className="font-mono text-sm">{delivery.delivery_id}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <button
+                          onClick={() => handleView(delivery)}
+                          className="text-primary hover:underline cursor-pointer"
+                        >
+                          {delivery.delivery_id}
+                        </button>
+                      </TableCell>
                       <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
                       <TableCell>{delivery.vendor?.name || '—'}</TableCell>
                       <TableCell>{delivery.location?.name || '—'}</TableCell>
