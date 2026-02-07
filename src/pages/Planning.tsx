@@ -27,8 +27,9 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X, Shield, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin, ShoppingCart, Factory, AlertTriangle, FileSpreadsheet, ChevronRight, Loader2, Check, X, Shield, RefreshCw, List } from 'lucide-react';
 import { SafetyStockDialog } from '@/components/planning/SafetyStockDialog';
+import { PlanningFlatList } from '@/components/planning/PlanningFlatList';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -114,6 +115,7 @@ const Planning = () => {
 
   // Safety stock dialog state
   const [isSafetyDialogOpen, setIsSafetyDialogOpen] = useState(false);
+  const [showFlatList, setShowFlatList] = useState(false);
 
   // Calculate number of requisitions that will be created (grouped by vendor)
   const vendorGroups = useMemo(() => {
@@ -768,6 +770,8 @@ const Planning = () => {
       setSelectedLocation(null);
       setShortfalls([]);
       setSelectedItems(new Set());
+    } else if (showFlatList) {
+      setShowFlatList(false);
     } else {
       navigate('/dashboard');
     }
@@ -954,20 +958,30 @@ const Planning = () => {
           </Button>
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
-            <h1 className="font-semibold">
-              {selectedLocation ? selectedLocation.name : 'Planning'}
-            </h1>
+             <h1 className="font-semibold">
+               {selectedLocation ? selectedLocation.name : (showFlatList ? 'Planning — All Locations' : 'Planning')}
+             </h1>
             {selectedLocation && (
               <Badge variant="outline" className="ml-2">
                 {shortfalls.length} shortfall{shortfalls.length !== 1 ? 's' : ''}
               </Badge>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsSafetyDialogOpen(true)}>
-              <Shield className="w-4 h-4 mr-2" />
-              Safety
-            </Button>
+           <div className="ml-auto flex items-center gap-2">
+             {!selectedLocation && (
+               <Button
+                 variant={showFlatList ? 'secondary' : 'outline'}
+                 size="sm"
+                 onClick={() => setShowFlatList(!showFlatList)}
+               >
+                 <List className="w-4 h-4 mr-2" />
+                 Flat List
+               </Button>
+             )}
+             <Button variant="outline" size="sm" onClick={() => setIsSafetyDialogOpen(true)}>
+               <Shield className="w-4 h-4 mr-2" />
+               Safety
+             </Button>
             <Button
               variant="outline"
               size="icon"
@@ -994,7 +1008,9 @@ const Planning = () => {
       </header>
 
       <main className="flex-1">
-        {!selectedLocation ? (
+        {showFlatList && !selectedLocation ? (
+          <PlanningFlatList companyId={companyId!} enforceRouteRecords={enforceRouteRecords} />
+        ) : !selectedLocation ? (
           // Location list view
           <div className="overflow-auto h-[calc(100vh-5.75rem)]">
             <Table>
