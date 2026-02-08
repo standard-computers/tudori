@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -62,7 +62,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
@@ -325,6 +325,16 @@ const [areaFormData, setAreaFormData] = useState({
       setSelectedLocation(location || null);
     }
   }, [selectedLocationId, locations]);
+
+  const refreshCockpit = useCallback(() => {
+    if (!selectedLocationId) return;
+    fetchAreas();
+    fetchPendingDeliveries();
+    fetchInventory();
+    fetchOutstandingSalesOrders();
+    fetchInternalPurchaseOrders();
+    fetchWorkOrders();
+  }, [selectedLocationId]);
 
   useEffect(() => {
     if (selectedLocationId) {
@@ -1631,6 +1641,15 @@ const [areaFormData, setAreaFormData] = useState({
                 </div>
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={refreshCockpit}
+              disabled={!selectedLocationId}
+              title="Refresh cockpit data"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
             <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
               <SelectTrigger className="w-64">
                 <SelectValue />
