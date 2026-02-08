@@ -185,7 +185,7 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-type SidebarTab = 'deliveries' | 'orders' | 'areas' | 'bins' | 'inventory';
+type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'areas' | 'bins' | 'inventory';
 
 const Cockpit = () => {
   const navigate = useNavigate();
@@ -267,6 +267,9 @@ const [areaFormData, setAreaFormData] = useState({
   const [isBulkFulfilling, setIsBulkFulfilling] = useState(false);
   const [isBulkFulfillDialogOpen, setIsBulkFulfillDialogOpen] = useState(false);
 
+  // Work orders (tasks) state
+  const [workOrders, setWorkOrders] = useState<{ id: string; title: string; description: string | null; status: string; priority: string; due_date: string | null; source_type: string | null; source_id: string | null; assigned_to: string | null; created_at: string; assignee?: { first_name: string; last_name: string } | null }[]>([]);
+
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
@@ -320,12 +323,14 @@ const [areaFormData, setAreaFormData] = useState({
       fetchInventory();
       fetchOutstandingSalesOrders();
       fetchInternalPurchaseOrders();
+      fetchWorkOrders();
     } else {
       setPendingDeliveriesCount(0);
       setInventory([]);
       setSalesOrders([]);
       setSalesOrdersCount(0);
       setInternalPOs([]);
+      setWorkOrders([]);
     }
   }, [selectedLocationId]);
 
@@ -676,6 +681,39 @@ const [areaFormData, setAreaFormData] = useState({
       .eq('purchase_order_id', orderId);
     
     setInternalPOItems((data as any) || []);
+  };
+
+  // Fetch work orders (tasks) for the selected location
+  const fetchWorkOrders = async () => {
+    if (!selectedLocationId || !companyId) return;
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('id, title, description, status, priority, due_date, source_type, source_id, assigned_to, created_at')
+      .eq('company_id', companyId)
+      .eq('location_id', selectedLocationId)
+      .in('status', ['todo', 'in_progress'])
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to fetch work orders:', error);
+      return;
+    }
+
+    // Fetch assignee names
+    const assigneeIds = [...new Set((data || []).filter(t => t.assigned_to).map(t => t.assigned_to!))];
+    let assigneeMap = new Map<string, { first_name: string; last_name: string }>();
+    if (assigneeIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', assigneeIds);
+      assigneeMap = new Map((profiles || []).map(p => [p.user_id, p]));
+    }
+
+    setWorkOrders((data || []).map(t => ({
+      ...t,
+      assignee: t.assigned_to ? assigneeMap.get(t.assigned_to) || null : null,
+    })));
   };
 
   const handleFulfillOrder = async () => {
@@ -1233,6 +1271,7 @@ const [areaFormData, setAreaFormData] = useState({
       toast.success(`Created ${tasksToCreate.length} work tasks for ${orderNumber}`);
       fetchOutstandingSalesOrders();
       fetchInternalPurchaseOrders();
+      fetchWorkOrders();
     } catch (error) {
       console.error('Create work tasks error:', error);
       toast.error('Failed to create work tasks');
@@ -1495,6 +1534,7 @@ const [areaFormData, setAreaFormData] = useState({
   const sidebarItems: { id: SidebarTab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: 'deliveries', label: 'Inbound Shipments', icon: Truck, count: pendingDeliveriesCount },
     { id: 'orders', label: 'Orders to Fulfill', icon: ShoppingCart, count: salesOrdersCount },
+    { id: 'work_orders', label: 'Work Orders', icon: ClipboardList, count: workOrders.length },
     { id: 'inventory', label: 'Inventory', icon: Boxes, count: inventory.length },
     { id: 'areas', label: 'Areas', icon: Grid3X3, count: areas.length },
     { id: 'bins', label: 'Bins', icon: Box, count: bins.length },
@@ -1891,6 +1931,123 @@ const [areaFormData, setAreaFormData] = useState({
                               >
                                 Fulfill
                               </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Work Orders Tab */}
+          {activeTab === 'work_orders' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5" />
+                    Work Orders
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Active picking, packing, and shipping tasks for this location</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
+                  View All Tasks
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto">
+                {workOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <ClipboardList className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No active work orders</p>
+                    <p className="text-xs mt-1">Use "Work" on orders to create picking & packing tasks</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Task</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Assigned To</TableHead>
+                        <TableHead className="w-28"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {workOrders.map((task) => (
+                        <TableRow key={task.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-sm">{task.title}</p>
+                              {task.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {task.source_type ? (
+                              <Badge variant="outline" className={
+                                task.source_type === 'sales_order' 
+                                  ? 'bg-violet-500/10 text-violet-600 border-violet-500/20' 
+                                  : 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                              }>
+                                {task.source_type === 'sales_order' ? 'Sales' : task.source_type === 'purchase_order' ? 'Transfer' : task.source_type}
+                              </Badge>
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              task.priority === 'urgent' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                              task.priority === 'high' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' :
+                              task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' :
+                              'bg-slate-500/10 text-slate-600 border-slate-500/20'
+                            }>
+                              {task.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              task.status === 'in_progress' 
+                                ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                : 'bg-muted text-muted-foreground'
+                            }>
+                              {task.status === 'in_progress' ? 'In Progress' : 'To Do'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {task.assignee 
+                              ? `${task.assignee.first_name} ${task.assignee.last_name}` 
+                              : <span className="text-muted-foreground">Unassigned</span>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {task.status === 'todo' && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={async () => {
+                                    await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', task.id);
+                                    fetchWorkOrders();
+                                  }}
+                                >
+                                  Start
+                                </Button>
+                              )}
+                              {task.status === 'in_progress' && (
+                                <Button 
+                                  size="sm"
+                                  onClick={async () => {
+                                    await supabase.from('tasks').update({ status: 'done' }).eq('id', task.id);
+                                    toast.success(`Completed: ${task.title}`);
+                                    fetchWorkOrders();
+                                  }}
+                                >
+                                  Done
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
