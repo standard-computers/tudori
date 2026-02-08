@@ -27,6 +27,7 @@ import {
   PackageMinus,
   Cog,
   Store,
+  Zap,
   Clock,
   Factory,
   ClipboardCheck,
@@ -45,6 +46,7 @@ export interface AppTile {
 }
 
 export const defaultApps: AppTile[] = [
+  { name: 'Go', icon: Zap, color: 'text-yellow-500', description: 'Mobile work execution', path: '/go' },
   { name: 'POS', icon: Store, color: 'text-pink-500', description: 'Point of sale', path: '/pos' },
   { name: 'Cockpit', icon: Gauge, color: 'text-orange-500', description: 'Location dashboard', path: '/cockpit' },
   { name: 'Planning', icon: CalendarClock, color: 'text-violet-500', description: 'Demand planning', path: '/planning' },

@@ -9,6 +9,7 @@ export interface TransactionCode {
 }
 
 export const TRANSACTION_CODES: TransactionCode[] = [
+  { code: 'go', name: 'Go', description: 'Mobile work execution', path: '/go' },
   { code: 'pos', name: 'POS', description: 'Point of sale', path: '/pos' },
   { code: 'cockpit', name: 'Cockpit', description: 'Location dashboard', path: '/cockpit' },
   { code: 'planning', name: 'Planning', description: 'Demand planning', path: '/planning' },
