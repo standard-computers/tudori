@@ -768,7 +768,7 @@ const Employees = () => {
               )}
             </DialogDescription>
           </DialogHeader>
-          <DialogBody>
+          <DialogBody className="pb-6">
             {viewingEmployee && (
               <Tabs defaultValue="details" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
