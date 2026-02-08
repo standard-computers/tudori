@@ -43,8 +43,8 @@ interface WorkTask {
   pu_id: string | null;
   status: string;
   product?: { name: string; product_id: string } | null;
-  source_bin?: { bin_id: string; name: string } | null;
-  destination_bin?: { bin_id: string; name: string } | null;
+  source_bin?: { bin_id: string; name: string; area?: { area_id: string; name: string } | null } | null;
+  destination_bin?: { bin_id: string; name: string; area?: { area_id: string; name: string } | null } | null;
   packaging_unit?: { pu_number: string } | null;
 }
 
@@ -56,7 +56,9 @@ interface AnticipatedTask {
   product_id_code?: string;
   quantity?: number;
   source_bin?: string;
+  source_area?: string;
   destination_bin?: string;
+  destination_area?: string;
 }
 
 interface ViewWorkOrderDialogProps {
@@ -107,8 +109,8 @@ const ViewWorkOrderDialog = ({
         id, task_type, sequence, description, product_id, quantity,
         source_bin_id, destination_bin_id, pu_id, status,
         product:products(name, product_id),
-        source_bin:bins!work_tasks_source_bin_id_fkey(bin_id, name),
-        destination_bin:bins!work_tasks_destination_bin_id_fkey(bin_id, name),
+        source_bin:bins!work_tasks_source_bin_id_fkey(bin_id, name, area:areas(area_id, name)),
+        destination_bin:bins!work_tasks_destination_bin_id_fkey(bin_id, name, area:areas(area_id, name)),
         packaging_unit:packaging_units(pu_number)
       `)
       .eq('work_order_id', workOrder.id)
@@ -151,7 +153,7 @@ const ViewWorkOrderDialog = ({
           .from('inventory')
           .select(`
             id, quantity, bin_id, product_id,
-            bin:bins(bin_id, name, picking_sequence, area_id)
+            bin:bins(bin_id, name, picking_sequence, area_id, area:areas(area_id, name))
           `)
           .eq('location_id', locationId)
           .eq('product_id', product?.id || '')
@@ -170,7 +172,8 @@ const ViewWorkOrderDialog = ({
         });
 
         const bestLine = inventoryLines[0];
-        const sourceBin = bestLine?.bin?.bin_id ? `${bestLine.bin.bin_id} (${bestLine.bin.name})` : 'Best available bin';
+        const sourceBinLabel = bestLine?.bin?.bin_id ? `${bestLine.bin.bin_id} (${bestLine.bin.name})` : 'Best available bin';
+        const sourceAreaLabel = bestLine?.bin?.area?.name ? `${bestLine.bin.area.area_id} — ${bestLine.bin.area.name}` : undefined;
 
         // Find GI staging area
         const { data: giAreas } = await supabase
@@ -181,7 +184,9 @@ const ViewWorkOrderDialog = ({
           .limit(1);
 
         let dropBin = 'GI staging area';
+        let dropArea: string | undefined;
         if (giAreas && giAreas.length > 0) {
+          dropArea = `${giAreas[0].area_id} — ${giAreas[0].name}`;
           const { data: giBins } = await supabase
             .from('bins')
             .select('bin_id, name, put_away_sequence')
@@ -199,11 +204,12 @@ const ViewWorkOrderDialog = ({
         anticipated.push({
           task_type: 'pick',
           sequence: 1,
-          description: `Pick ${qty} × ${product?.name || productCode} from ${sourceBin} into new PU`,
+          description: `Pick ${qty} × ${product?.name || productCode} from ${sourceBinLabel} into new PU`,
           product_name: product?.name,
           product_id_code: productCode,
           quantity: qty,
-          source_bin: sourceBin,
+          source_bin: sourceBinLabel,
+          source_area: sourceAreaLabel,
         });
 
         anticipated.push({
@@ -211,6 +217,7 @@ const ViewWorkOrderDialog = ({
           sequence: 2,
           description: `Drop PU in ${dropBin}`,
           destination_bin: dropBin,
+          destination_area: dropArea,
         });
       }
     } else if (isPackShip) {
@@ -415,7 +422,7 @@ const ViewWorkOrderDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) setIsMaximized(false); onOpenChange(o); }}>
-      <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[600px] max-h-[85vh]'}`}>
+      <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[900px] max-h-[85vh]'}`}>
         <button
           type="button"
           onClick={() => setIsMaximized(!isMaximized)}
@@ -544,6 +551,10 @@ const ViewWorkOrderDialog = ({
                           <TableHead className="w-10">#</TableHead>
                           <TableHead className="w-20">Type</TableHead>
                           <TableHead>Description</TableHead>
+                          <TableHead>Source Area</TableHead>
+                          <TableHead>Source Bin</TableHead>
+                          <TableHead>Dest. Area</TableHead>
+                          <TableHead>Dest. Bin</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -557,6 +568,10 @@ const ViewWorkOrderDialog = ({
                               </div>
                             </TableCell>
                             <TableCell className="text-sm">{task.description}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{task.source_area || '—'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{task.source_bin || '—'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{task.destination_area || '—'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{task.destination_bin || '—'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -578,6 +593,10 @@ const ViewWorkOrderDialog = ({
                         <TableHead className="w-10">#</TableHead>
                         <TableHead className="w-20">Type</TableHead>
                         <TableHead>Description</TableHead>
+                        <TableHead>Source Area</TableHead>
+                        <TableHead>Source Bin</TableHead>
+                        <TableHead>Dest. Area</TableHead>
+                        <TableHead>Dest. Bin</TableHead>
                         <TableHead className="w-24">Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -592,6 +611,18 @@ const ViewWorkOrderDialog = ({
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{task.description}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {task.source_bin?.area ? `${task.source_bin.area.area_id} — ${task.source_bin.area.name}` : '—'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {task.source_bin ? `${task.source_bin.bin_id} (${task.source_bin.name})` : '—'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {task.destination_bin?.area ? `${task.destination_bin.area.area_id} — ${task.destination_bin.area.name}` : '—'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {task.destination_bin ? `${task.destination_bin.bin_id} (${task.destination_bin.name})` : '—'}
+                          </TableCell>
                           <TableCell>{getStatusBadge(task.status)}</TableCell>
                         </TableRow>
                       ))}
