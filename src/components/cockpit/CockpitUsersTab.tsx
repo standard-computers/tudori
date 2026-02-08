@@ -71,15 +71,27 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
 
   const handleUserToggle = (userId: string, checked: boolean) => {
     if (checked) {
-      const isFirstUser = selectedUserIds.length === 0;
-      setSelectedUserIds((prev) => [...prev, userId]);
-      setUserRoles((prev) => ({ ...prev, [userId]: isFirstUser ? 'admin' : (prev[userId] || 'member') }));
+      const newSelected = [...selectedUserIds, userId];
+      setSelectedUserIds(newSelected);
+      // If this will be the only user, force admin
+      if (newSelected.length === 1) {
+        setUserRoles((prev) => ({ ...prev, [userId]: 'admin' }));
+      } else {
+        setUserRoles((prev) => ({ ...prev, [userId]: prev[userId] || 'member' }));
+      }
     } else {
-      setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
+      const newSelected = selectedUserIds.filter((id) => id !== userId);
+      setSelectedUserIds(newSelected);
+      // If only one user remains, force them to admin
+      if (newSelected.length === 1) {
+        setUserRoles((prev) => ({ ...prev, [newSelected[0]]: 'admin' }));
+      }
     }
   };
 
   const handleRoleChange = (userId: string, role: string) => {
+    // Prevent changing the sole user away from admin
+    if (selectedUserIds.length === 1 && role !== 'admin') return;
     setUserRoles((prev) => ({ ...prev, [userId]: role }));
   };
 
@@ -90,13 +102,19 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
     selectedUserIds.some((id) => userRoles[id] !== originalUserRoles[id]);
 
   const handleSave = async () => {
+    // Enforce: if only one user, they must be admin
+    const finalRoles = { ...userRoles };
+    if (selectedUserIds.length === 1) {
+      finalRoles[selectedUserIds[0]] = 'admin';
+    }
+    setUserRoles(finalRoles);
     setIsSaving(true);
 
     try {
       const toAdd = selectedUserIds.filter((id) => !originalUserIds.includes(id));
       const toRemove = originalUserIds.filter((id) => !selectedUserIds.includes(id));
       const toUpdateRole = selectedUserIds.filter(
-        (id) => originalUserIds.includes(id) && userRoles[id] !== originalUserRoles[id]
+        (id) => originalUserIds.includes(id) && finalRoles[id] !== originalUserRoles[id]
       );
 
       if (toAdd.length > 0) {
@@ -105,7 +123,7 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
           .insert(toAdd.map((userId) => ({
             location_id: locationId,
             user_id: userId,
-            role: userRoles[userId] || 'member',
+            role: finalRoles[userId] || 'member',
           })));
         if (error) throw error;
       }
@@ -122,14 +140,14 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
       for (const userId of toUpdateRole) {
         const { error } = await supabase
           .from('location_users')
-          .update({ role: userRoles[userId] })
+          .update({ role: finalRoles[userId] })
           .eq('location_id', locationId)
           .eq('user_id', userId);
         if (error) throw error;
       }
 
       setOriginalUserIds([...selectedUserIds]);
-      setOriginalUserRoles({ ...userRoles });
+      setOriginalUserRoles({ ...finalRoles });
       toast.success('Location users updated');
     } catch (err) {
       console.error('Failed to save location users:', err);

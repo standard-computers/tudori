@@ -765,19 +765,37 @@ const Locations = () => {
 
   const handleUserToggle = (userId: string, checked: boolean) => {
     if (checked) {
-      const isFirstUser = selectedUserIds.length === 0;
-      setSelectedUserIds((prev) => [...prev, userId]);
-      setUserRoles((prev) => ({ ...prev, [userId]: isFirstUser ? 'admin' : (prev[userId] || 'member') }));
+      const newSelected = [...selectedUserIds, userId];
+      setSelectedUserIds(newSelected);
+      // If this will be the only user, force admin
+      if (newSelected.length === 1) {
+        setUserRoles((prev) => ({ ...prev, [userId]: 'admin' }));
+      } else {
+        setUserRoles((prev) => ({ ...prev, [userId]: prev[userId] || 'member' }));
+      }
     } else {
-      setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
+      const newSelected = selectedUserIds.filter((id) => id !== userId);
+      setSelectedUserIds(newSelected);
+      // If only one user remains, force them to admin
+      if (newSelected.length === 1) {
+        setUserRoles((prev) => ({ ...prev, [newSelected[0]]: 'admin' }));
+      }
     }
   };
 
   const handleUserRoleChange = (userId: string, role: string) => {
+    // Prevent changing the sole user away from admin
+    if (selectedUserIds.length === 1 && role !== 'admin') return;
     setUserRoles((prev) => ({ ...prev, [userId]: role }));
   };
 
   const saveLocationUsers = async (locationId: string) => {
+    // Enforce: if only one user, force admin
+    if (selectedUserIds.length === 1) {
+      setUserRoles((prev) => ({ ...prev, [selectedUserIds[0]]: 'admin' }));
+      userRoles[selectedUserIds[0]] = 'admin';
+    }
+
     // Get current location users
     const { data: currentUsers } = await supabase
       .from("location_users")
