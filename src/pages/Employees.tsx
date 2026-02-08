@@ -25,7 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SortableTableHead } from "@/components/SortableTableHead";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2, Maximize2, Minimize2, UserPlus } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -251,6 +251,8 @@ const Employees = () => {
   const [isViewMaximized, setIsViewMaximized] = useState(false);
   const [isFormMaximized, setIsFormMaximized] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [createUserAccount, setCreateUserAccount] = useState(false);
+  const [userRole, setUserRole] = useState<'member' | 'admin' | 'viewer' | 'it'>('member');
 
   const [formData, setFormData] = useState({
     employee_id: "",
@@ -373,6 +375,8 @@ const Employees = () => {
     });
     setIsEditing(false);
     setEditingId(null);
+    setCreateUserAccount(false);
+    setUserRole('member');
     setIsDialogOpen(true);
   };
 
@@ -397,6 +401,8 @@ const Employees = () => {
     });
     setIsEditing(true);
     setEditingId(employee.id);
+    setCreateUserAccount(false);
+    setUserRole('member');
     setIsDialogOpen(true);
   };
 
@@ -414,6 +420,10 @@ const Employees = () => {
     e.preventDefault();
     if (!formData.first_name || !formData.last_name) {
       toast.error("First and last name are required");
+      return;
+    }
+    if (createUserAccount && !formData.email) {
+      toast.error("Email is required to create a user account");
       return;
     }
 
@@ -469,7 +479,33 @@ const Employees = () => {
         }
       }
 
+      // Create user invitation if requested
+      if (createUserAccount && formData.email && !formData.user_id) {
+        try {
+          const { error: inviteError } = await supabase.from("invitations").insert({
+            email: formData.email.toLowerCase(),
+            company_id: companyId!,
+            role: userRole,
+            invited_by: user!.id,
+          });
+          if (inviteError) {
+            if (inviteError.code === '23505') {
+              toast.error("This email already has a pending invitation");
+            } else {
+              console.error("Invitation error:", inviteError);
+              toast.error("Employee saved but invitation failed to send");
+            }
+          } else {
+            toast.success(`Invitation sent to ${formData.email}`);
+          }
+        } catch (invErr) {
+          console.error("Invitation error:", invErr);
+        }
+      }
+
       setIsDialogOpen(false);
+      setCreateUserAccount(false);
+      setUserRole('member');
       fetchEmployees();
       fetchNextEmployeeId();
     } catch (error: any) {
@@ -681,7 +717,10 @@ const Employees = () => {
                 <Label htmlFor="user_id">Linked User</Label>
                 <Select
                   value={formData.user_id || "none"}
-                  onValueChange={(v) => setFormData({ ...formData, user_id: v === "none" ? "" : v })}
+                  onValueChange={(v) => {
+                    setFormData({ ...formData, user_id: v === "none" ? "" : v });
+                    if (v !== "none") setCreateUserAccount(false);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select user to link" />
@@ -699,6 +738,47 @@ const Employees = () => {
                   Link this employee to a user account for time clock access
                 </p>
               </div>
+              {!formData.user_id && (
+                <div className="space-y-3 rounded-md border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="create_user"
+                      checked={createUserAccount}
+                      onCheckedChange={setCreateUserAccount}
+                    />
+                    <Label htmlFor="create_user" className="cursor-pointer flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      Create user account (optional)
+                    </Label>
+                  </div>
+                  {createUserAccount && (
+                    <div className="space-y-3 pl-1">
+                      {!formData.email && (
+                        <p className="text-sm text-destructive">
+                          An email address is required to create a user account. Please fill in the email field above.
+                        </p>
+                      )}
+                      <div className="space-y-2">
+                        <Label>Access Level</Label>
+                        <Select value={userRole} onValueChange={(v) => setUserRole(v as typeof userRole)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="it">IT</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="viewer">Viewer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        An invitation will be sent to the employee's email. They can sign up to access the system.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
