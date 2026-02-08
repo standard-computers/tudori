@@ -276,6 +276,9 @@ const [areaFormData, setAreaFormData] = useState({
   const [workPreviewOrderInfo, setWorkPreviewOrderInfo] = useState<{ orderType: 'so' | 'po'; orderId: string; orderNumber: string }[]>([]);
   const [isCreatingWorkTasks, setIsCreatingWorkTasks] = useState(false);
 
+  // Work orders multi-select state
+  const [selectedWorkOrderIds, setSelectedWorkOrderIds] = useState<Set<string>>(new Set());
+
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
@@ -1984,9 +1987,46 @@ const [areaFormData, setAreaFormData] = useState({
                   </h2>
                   <p className="text-sm text-muted-foreground">Active picking, packing, and shipping tasks for this location</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
-                  View All Tasks
-                </Button>
+                <div className="flex items-center gap-2">
+                  {selectedWorkOrderIds.size > 0 && (
+                    <>
+                      {workOrders.some(t => selectedWorkOrderIds.has(t.id) && t.status === 'todo') && (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            const ids = Array.from(selectedWorkOrderIds).filter(id => workOrders.find(t => t.id === id)?.status === 'todo');
+                            if (ids.length === 0) return;
+                            await supabase.from('tasks').update({ status: 'in_progress' }).in('id', ids);
+                            toast.success(`Started ${ids.length} task${ids.length !== 1 ? 's' : ''}`);
+                            setSelectedWorkOrderIds(new Set());
+                            fetchWorkOrders();
+                          }}
+                        >
+                          Start ({workOrders.filter(t => selectedWorkOrderIds.has(t.id) && t.status === 'todo').length})
+                        </Button>
+                      )}
+                      {workOrders.some(t => selectedWorkOrderIds.has(t.id) && t.status === 'in_progress') && (
+                        <Button 
+                          size="sm"
+                          onClick={async () => {
+                            const ids = Array.from(selectedWorkOrderIds).filter(id => workOrders.find(t => t.id === id)?.status === 'in_progress');
+                            if (ids.length === 0) return;
+                            await supabase.from('tasks').update({ status: 'done' }).in('id', ids);
+                            toast.success(`Completed ${ids.length} task${ids.length !== 1 ? 's' : ''}`);
+                            setSelectedWorkOrderIds(new Set());
+                            fetchWorkOrders();
+                          }}
+                        >
+                          Done ({workOrders.filter(t => selectedWorkOrderIds.has(t.id) && t.status === 'in_progress').length})
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
+                    View All Tasks
+                  </Button>
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
                 {workOrders.length === 0 ? (
@@ -1999,6 +2039,18 @@ const [areaFormData, setAreaFormData] = useState({
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={workOrders.length > 0 && selectedWorkOrderIds.size === workOrders.length}
+                            onCheckedChange={() => {
+                              if (selectedWorkOrderIds.size === workOrders.length) {
+                                setSelectedWorkOrderIds(new Set());
+                              } else {
+                                setSelectedWorkOrderIds(new Set(workOrders.map(t => t.id)));
+                              }
+                            }}
+                          />
+                        </TableHead>
                         <TableHead>Task</TableHead>
                         <TableHead>Source</TableHead>
                         <TableHead>Priority</TableHead>
@@ -2010,6 +2062,19 @@ const [areaFormData, setAreaFormData] = useState({
                     <TableBody>
                       {workOrders.map((task) => (
                         <TableRow key={task.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedWorkOrderIds.has(task.id)}
+                              onCheckedChange={() => {
+                                setSelectedWorkOrderIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(task.id)) next.delete(task.id);
+                                  else next.add(task.id);
+                                  return next;
+                                });
+                              }}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div>
                               <p className="font-medium text-sm">{task.title}</p>
