@@ -729,9 +729,29 @@ const [areaFormData, setAreaFormData] = useState({
     })));
   };
 
+  // Check if an order has outstanding (todo or in_progress) work orders
+  const checkOutstandingWorkOrders = async (sourceType: string, sourceId: string): Promise<number> => {
+    if (!companyId) return 0;
+    const { count } = await supabase
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('source_type', sourceType)
+      .eq('source_id', sourceId)
+      .in('status', ['todo', 'in_progress']);
+    return count || 0;
+  };
+
   const handleFulfillOrder = async () => {
     if (!selectedSalesOrder || !selectedLocationId || !companyId) return;
     
+    // Block if outstanding work orders exist
+    const outstandingCount = await checkOutstandingWorkOrders('sales_order', selectedSalesOrder.id);
+    if (outstandingCount > 0) {
+      toast.error(`Cannot fulfill: ${outstandingCount} outstanding work order${outstandingCount !== 1 ? 's' : ''} must be completed first.`);
+      return;
+    }
+
     setIsFulfilling(true);
     
     try {
@@ -873,6 +893,13 @@ const [areaFormData, setAreaFormData] = useState({
   const handleFulfillInternalPO = async () => {
     if (!selectedInternalPO || !selectedLocationId || !companyId) return;
     
+    // Block if outstanding work orders exist
+    const outstandingCount = await checkOutstandingWorkOrders('purchase_order', selectedInternalPO.id);
+    if (outstandingCount > 0) {
+      toast.error(`Cannot fulfill: ${outstandingCount} outstanding work order${outstandingCount !== 1 ? 's' : ''} must be completed first.`);
+      return;
+    }
+
     setIsFulfilling(true);
     
     try {
@@ -1021,6 +1048,10 @@ const [areaFormData, setAreaFormData] = useState({
         const [type, id] = [key.startsWith('po-') ? 'po' : 'so', key.replace(/^(po|so)-/, '')];
         
         try {
+          // Skip orders with outstanding work orders
+          const sourceType = type === 'so' ? 'sales_order' : 'purchase_order';
+          const woCount = await checkOutstandingWorkOrders(sourceType, id);
+          if (woCount > 0) { failCount++; continue; }
           if (type === 'so') {
             const order = salesOrders.find(o => o.id === id);
             if (!order) continue;
@@ -1902,7 +1933,12 @@ const [areaFormData, setAreaFormData] = useState({
                               </TooltipProvider>
                               <Button 
                                 size="sm" 
-                                onClick={() => {
+                                onClick={async () => {
+                                  const woCount = await checkOutstandingWorkOrders('purchase_order', po.id);
+                                  if (woCount > 0) {
+                                    toast.error(`Cannot fulfill: ${woCount} outstanding work order${woCount !== 1 ? 's' : ''} must be completed first.`);
+                                    return;
+                                  }
                                   setSelectedInternalPO(po);
                                   fetchInternalPOItems(po.id);
                                   setIsInternalPOFulfillDialogOpen(true);
@@ -1961,7 +1997,12 @@ const [areaFormData, setAreaFormData] = useState({
                               </TooltipProvider>
                               <Button 
                                 size="sm" 
-                                onClick={() => {
+                                onClick={async () => {
+                                  const woCount = await checkOutstandingWorkOrders('sales_order', order.id);
+                                  if (woCount > 0) {
+                                    toast.error(`Cannot fulfill: ${woCount} outstanding work order${woCount !== 1 ? 's' : ''} must be completed first.`);
+                                    return;
+                                  }
                                   setSelectedSalesOrder(order);
                                   fetchSalesOrderItems(order.id);
                                   setIsFulfillDialogOpen(true);
