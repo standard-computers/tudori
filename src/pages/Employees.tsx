@@ -25,7 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SortableTableHead } from "@/components/SortableTableHead";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2, Maximize2, Minimize2 } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -251,6 +251,8 @@ const Employees = () => {
   const [nextEmployeeId, setNextEmployeeId] = useState("0001");
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isViewMaximized, setIsViewMaximized] = useState(false);
+  const [isFormMaximized, setIsFormMaximized] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
 
   const [formData, setFormData] = useState({
@@ -513,8 +515,13 @@ const Employees = () => {
         <EmployeeTable employees={employees} onView={setViewingEmployee} onEdit={handleEdit} onDelete={handleDelete} />
       </main>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
+        <DialogContent className={isFormMaximized ? "max-w-[95vw] max-h-[95vh]" : "max-w-2xl"}>
+          <div className="absolute right-12 top-4 z-10">
+            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 hover:opacity-100" onClick={() => setIsFormMaximized(v => !v)}>
+              {isFormMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
           <DialogHeader>
             <DialogTitle>{isEditing ? "Edit Employee" : "Create Employee"}</DialogTitle>
             <DialogDescription>
@@ -716,9 +723,27 @@ const Employees = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View Employee Dialog */}
-      <Dialog open={!!viewingEmployee} onOpenChange={() => setViewingEmployee(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
+      <Dialog open={!!viewingEmployee} onOpenChange={(open) => { if (!open) { setViewingEmployee(null); setIsViewMaximized(false); } }}>
+        <DialogContent className={isViewMaximized ? "max-w-[95vw] max-h-[95vh]" : "max-w-2xl max-h-[85vh]"}>
+          <div className="absolute right-12 top-4 z-10 flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-70 hover:opacity-100"
+              onClick={() => {
+                if (viewingEmployee) {
+                  handleEdit(viewingEmployee);
+                  setViewingEmployee(null);
+                  setIsViewMaximized(false);
+                }
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 hover:opacity-100" onClick={() => setIsViewMaximized(v => !v)}>
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
@@ -816,19 +841,6 @@ const Employees = () => {
               </Tabs>
             )}
           </DialogBody>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                if (viewingEmployee) {
-                  handleEdit(viewingEmployee);
-                  setViewingEmployee(null);
-                }
-              }}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
