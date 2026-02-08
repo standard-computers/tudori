@@ -34,6 +34,7 @@ import {
   CalendarClock,
   Database,
   HelpCircle,
+  Heart,
   LucideIcon
 } from 'lucide-react';
 
@@ -70,6 +71,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Orders', icon: ShoppingCart, color: 'text-orange-500', description: 'Vendor orders', path: '/orders' },
   { name: 'Requisitions', icon: FileSpreadsheet, color: 'text-sky-500', description: 'Purchase requests', path: '/requisitions' },
   { name: 'Deliveries', icon: Truck, color: 'text-teal-500', description: 'Logistics & delivery', path: '/deliveries' },
+  { name: 'HR', icon: Heart, color: 'text-rose-500', description: 'Human resources', path: '/hr' },
   { name: 'Employees', icon: User, color: 'text-blue-500', description: 'Staff directory', path: '/employees' },
   { name: 'Time Clock', icon: Clock, color: 'text-cyan-500', description: 'Clock in/out', path: '/time-clock' },
   { name: 'Teams', icon: Users2, color: 'text-teal-500', description: 'Team management', path: '/teams' },
