@@ -1651,30 +1651,32 @@ const [areaFormData, setAreaFormData] = useState({
                 </div>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={refreshCockpit}
-              disabled={!selectedLocationId}
-              title="Refresh cockpit data"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-            <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-              <SelectTrigger className="w-64">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs">{location.location_id}</span>
-                      <span>{location.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={refreshCockpit}
+                disabled={!selectedLocationId}
+                title="Refresh cockpit data"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+              <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                <SelectTrigger className="w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs">{location.location_id}</span>
+                        <span>{location.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </header>
