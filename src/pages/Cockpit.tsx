@@ -25,6 +25,7 @@ import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
 import ViewWorkOrderDialog from '@/components/cockpit/ViewWorkOrderDialog';
+import CockpitUsersTab from '@/components/cockpit/CockpitUsersTab';
 import {
   Select,
   SelectContent,
@@ -188,7 +189,7 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'areas' | 'bins' | 'inventory';
+type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'areas' | 'bins' | 'users' | 'inventory';
 
 const Cockpit = () => {
   const navigate = useNavigate();
@@ -285,7 +286,7 @@ const [areaFormData, setAreaFormData] = useState({
   const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
   const [isDeleteWorkOrdersOpen, setIsDeleteWorkOrdersOpen] = useState(false);
   const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
-  
+
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -1605,6 +1606,7 @@ const [areaFormData, setAreaFormData] = useState({
     { id: 'inventory', label: 'Inventory', icon: Boxes, count: inventory.length },
     { id: 'areas', label: 'Areas', icon: Grid3X3, count: areas.length },
     { id: 'bins', label: 'Bins', icon: Box, count: bins.length },
+    { id: 'users', label: 'Users', icon: Users },
   ];
 
   // Location Dashboard with Sidebar
@@ -2394,6 +2396,11 @@ const [areaFormData, setAreaFormData] = useState({
                 )}
               </div>
             </div>
+          )}
+
+          {/* Users Tab */}
+          {activeTab === 'users' && selectedLocationId && companyId && (
+            <CockpitUsersTab locationId={selectedLocationId} companyId={companyId} />
           )}
 
           {/* Inventory Tab */}
