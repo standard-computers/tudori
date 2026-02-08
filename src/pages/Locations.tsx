@@ -86,6 +86,7 @@ interface LocationUser {
   id: string;
   location_id: string;
   user_id: string;
+  role: string;
 }
 
 const LOCATION_TYPES = ["Warehouse", "Store", "Office", "Distribution Center", "Manufacturing", "Showroom"];
@@ -450,6 +451,7 @@ const Locations = () => {
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [locationUsers, setLocationUsers] = useState<LocationUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     location_id: "",
@@ -555,11 +557,17 @@ const Locations = () => {
     const { data, error } = await supabase.from("location_users").select("*").eq("location_id", locationId);
 
     if (!error && data) {
-      setLocationUsers(data);
+      setLocationUsers(data as LocationUser[]);
       setSelectedUserIds(data.map((lu) => lu.user_id));
+      const roles: Record<string, string> = {};
+      data.forEach((lu: any) => {
+        roles[lu.user_id] = lu.role || 'member';
+      });
+      setUserRoles(roles);
     } else {
       setLocationUsers([]);
       setSelectedUserIds([]);
+      setUserRoles({});
     }
   };
 
@@ -586,6 +594,7 @@ const Locations = () => {
     setActiveTab("general");
     setSelectedUserIds([]);
     setLocationUsers([]);
+    setUserRoles({});
   };
 
   const handleOpenDialog = () => {
@@ -757,30 +766,47 @@ const Locations = () => {
   const handleUserToggle = (userId: string, checked: boolean) => {
     if (checked) {
       setSelectedUserIds((prev) => [...prev, userId]);
+      setUserRoles((prev) => ({ ...prev, [userId]: prev[userId] || 'member' }));
     } else {
       setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
     }
+  };
+
+  const handleUserRoleChange = (userId: string, role: string) => {
+    setUserRoles((prev) => ({ ...prev, [userId]: role }));
   };
 
   const saveLocationUsers = async (locationId: string) => {
     // Get current location users
     const { data: currentUsers } = await supabase
       .from("location_users")
-      .select("user_id")
+      .select("user_id, role")
       .eq("location_id", locationId);
 
     const currentUserIds = currentUsers?.map((u) => u.user_id) || [];
+    const currentRolesMap: Record<string, string> = {};
+    (currentUsers || []).forEach((u: any) => {
+      currentRolesMap[u.user_id] = u.role || 'member';
+    });
 
     // Users to add
     const toAdd = selectedUserIds.filter((id) => !currentUserIds.includes(id));
     // Users to remove
     const toRemove = currentUserIds.filter((id) => !selectedUserIds.includes(id));
+    // Users whose role changed
+    const toUpdateRole = selectedUserIds.filter(
+      (id) => currentUserIds.includes(id) && (userRoles[id] || 'member') !== (currentRolesMap[id] || 'member')
+    );
 
     // Add new users
     if (toAdd.length > 0) {
       const { error } = await supabase
         .from("location_users")
-        .insert(toAdd.map((userId) => ({ location_id: locationId, user_id: userId })));
+        .insert(toAdd.map((userId) => ({
+          location_id: locationId,
+          user_id: userId,
+          role: userRoles[userId] || 'member',
+        })));
 
       if (error) {
         console.error("Error adding location users:", error);
@@ -798,6 +824,20 @@ const Locations = () => {
 
       if (error) {
         console.error("Error removing location users:", error);
+        throw error;
+      }
+    }
+
+    // Update roles
+    for (const userId of toUpdateRole) {
+      const { error } = await supabase
+        .from("location_users")
+        .update({ role: userRoles[userId] || 'member' })
+        .eq("location_id", locationId)
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Error updating location user role:", error);
         throw error;
       }
     }
@@ -864,6 +904,7 @@ const Locations = () => {
             selectedUserIds.map((userId) => ({
               location_id: newLocation.id,
               user_id: userId,
+              role: userRoles[userId] || 'member',
             })),
           );
         }
@@ -1213,31 +1254,49 @@ const Locations = () => {
                               </div>
                             ) : (
                               <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
-                                {companyUsers.map((companyUser) => (
-                                  <div
-                                    key={companyUser.user_id}
-                                    className="flex items-center gap-3 p-3 hover:bg-muted/50"
-                                  >
-                                    <Checkbox
-                                      id={`user-${companyUser.user_id}`}
-                                      checked={selectedUserIds.includes(companyUser.user_id)}
-                                      onCheckedChange={(checked) =>
-                                        handleUserToggle(companyUser.user_id, checked as boolean)
-                                      }
-                                      disabled={isViewMode}
-                                    />
-                                    <label htmlFor={`user-${companyUser.user_id}`} className="flex-1 cursor-pointer">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-medium">
-                                          {companyUser.first_name} {companyUser.last_name}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground font-mono">
-                                          ({companyUser.id})
-                                        </span>
-                                      </div>
-                                    </label>
-                                  </div>
-                                ))}
+                                {companyUsers.map((companyUser) => {
+                                  const isSelected = selectedUserIds.includes(companyUser.user_id);
+                                  return (
+                                    <div
+                                      key={companyUser.user_id}
+                                      className="flex items-center gap-3 p-3 hover:bg-muted/50"
+                                    >
+                                      <Checkbox
+                                        id={`user-${companyUser.user_id}`}
+                                        checked={isSelected}
+                                        onCheckedChange={(checked) =>
+                                          handleUserToggle(companyUser.user_id, checked as boolean)
+                                        }
+                                        disabled={isViewMode}
+                                      />
+                                      <label htmlFor={`user-${companyUser.user_id}`} className="flex-1 cursor-pointer">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium">
+                                            {companyUser.first_name} {companyUser.last_name}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground font-mono">
+                                            ({companyUser.id})
+                                          </span>
+                                        </div>
+                                      </label>
+                                      {isSelected && (
+                                        <Select
+                                          value={userRoles[companyUser.user_id] || 'member'}
+                                          onValueChange={(value) => handleUserRoleChange(companyUser.user_id, value)}
+                                          disabled={isViewMode}
+                                        >
+                                          <SelectTrigger className="w-28 h-8 text-xs">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="member">Member</SelectItem>
+                                            <SelectItem value="admin">Admin</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             {selectedUserIds.length === 0 && (
