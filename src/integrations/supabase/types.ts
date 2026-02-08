@@ -413,6 +413,8 @@ export type Database = {
           length: number | null
           length_uom: string | null
           name: string
+          picking_sequence: number | null
+          put_away_sequence: number | null
           updated_at: string
           weight_capacity: number | null
           weight_capacity_uom: string | null
@@ -437,6 +439,8 @@ export type Database = {
           length?: number | null
           length_uom?: string | null
           name: string
+          picking_sequence?: number | null
+          put_away_sequence?: number | null
           updated_at?: string
           weight_capacity?: number | null
           weight_capacity_uom?: string | null
@@ -461,6 +465,8 @@ export type Database = {
           length?: number | null
           length_uom?: string | null
           name?: string
+          picking_sequence?: number | null
+          put_away_sequence?: number | null
           updated_at?: string
           weight_capacity?: number | null
           weight_capacity_uom?: string | null

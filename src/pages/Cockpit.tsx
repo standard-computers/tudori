@@ -21,6 +21,7 @@ import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import ViewBinDialog from '@/components/cockpit/ViewBinDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
+import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
 import {
@@ -59,7 +60,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
@@ -207,6 +208,7 @@ const Cockpit = () => {
   const [isBinDialogOpen, setIsBinDialogOpen] = useState(false);
   const [isViewBinDialogOpen, setIsViewBinDialogOpen] = useState(false);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
+  const [isBinSequenceDialogOpen, setIsBinSequenceDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
   const [viewingBin, setViewingBin] = useState<Bin | null>(null);
@@ -2324,6 +2326,10 @@ const [areaFormData, setAreaFormData] = useState({
                   <p className="text-sm text-muted-foreground">Storage locations within areas</p>
                 </div>
                 <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setIsBinSequenceDialogOpen(true)} disabled={bins.length === 0}>
+                    <ArrowUpDown className="w-4 h-4 mr-1" />
+                    Sequence
+                  </Button>
                   <Button size="sm" variant="secondary" onClick={() => setIsAutoMakeDialogOpen(true)} disabled={areas.length === 0}>
                     <Wand2 className="w-4 h-4 mr-1" />
                     AutoMake
@@ -2868,6 +2874,15 @@ const [areaFormData, setAreaFormData] = useState({
         areas={areas}
         companyId={companyId}
         onCreated={fetchAreas}
+      />
+
+      {/* Bin Sequence Dialog */}
+      <BinSequenceDialog
+        open={isBinSequenceDialogOpen}
+        onOpenChange={setIsBinSequenceDialogOpen}
+        bins={bins}
+        areas={areas}
+        onSaved={fetchAreas}
       />
 
       {/* Bin Dialog */}
