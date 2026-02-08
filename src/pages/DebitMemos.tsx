@@ -374,7 +374,7 @@ const DebitMemos = () => {
       <div className="border-b">
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <Plus className="h-6 w-6 text-red-500" />

@@ -52,8 +52,8 @@ const Analytics = () => {
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
 
-  // F1 to go back to dashboard
-  useKeyboardShortcut('F1', () => navigate('/dashboard'));
+  // F1 to go back
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   // Tab state
   const [tabs, setTabs] = useState<ReportTab[]>([]);
@@ -437,7 +437,7 @@ const Analytics = () => {
         {/* Header */}
         <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
           <div className="flex items-center gap-4 px-4 h-14">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-lg font-semibold">Analytics</h1>

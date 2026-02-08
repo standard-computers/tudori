@@ -313,7 +313,7 @@ export default function Go() {
               setTasks([]);
               setExpandedTaskId(null);
             } else {
-              navigate('/dashboard');
+              navigate(-1);
             }
           }}
         >

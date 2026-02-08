@@ -246,7 +246,7 @@ const Invoices = () => {
       <div className="border-b">
         <div className="px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <FileText className="h-6 w-6 text-cyan-500" />

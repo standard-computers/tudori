@@ -773,7 +773,7 @@ const Planning = () => {
     } else if (showFlatList) {
       setShowFlatList(false);
     } else {
-      navigate('/dashboard');
+      navigate(-1);
     }
   };
 

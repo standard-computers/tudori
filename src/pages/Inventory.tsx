@@ -442,7 +442,7 @@ const Inventory = () => {
       <div className="border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">

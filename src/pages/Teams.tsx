@@ -368,7 +368,7 @@ const Teams = () => {
       <header className="border-b border-border bg-card/50 sticky top-0 z-50">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
