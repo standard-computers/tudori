@@ -201,6 +201,8 @@ const Cockpit = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [activeTab, setActiveTab] = useState<SidebarTab>('deliveries');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isLocationAdmin, setIsLocationAdmin] = useState(false);
+  const locationRoleMapRef = useRef<Record<string, string>>({});
 
   // Areas & Bins state
   const [areas, setAreas] = useState<Area[]>([]);
@@ -323,6 +325,7 @@ const [areaFormData, setAreaFormData] = useState({
     if (selectedLocationId && locations.length > 0) {
       const location = locations.find(l => l.id === selectedLocationId);
       setSelectedLocation(location || null);
+      setIsLocationAdmin(locationRoleMapRef.current[selectedLocationId] === 'admin');
     }
   }, [selectedLocationId, locations]);
 
@@ -375,17 +378,24 @@ const [areaFormData, setAreaFormData] = useState({
   };
 
   const fetchAccessibleLocations = async () => {
-    const { data: accessibleLocationIds } = await supabase
+    const { data: accessibleLocationData } = await supabase
       .from('location_users')
-      .select('location_id')
+      .select('location_id, role')
       .eq('user_id', user!.id);
 
-    if (!accessibleLocationIds || accessibleLocationIds.length === 0) {
+    if (!accessibleLocationData || accessibleLocationData.length === 0) {
       setLocations([]);
       return;
     }
 
-    const locationIds = accessibleLocationIds.map(l => l.location_id);
+    // Store role map for quick lookup
+    const roleMap: Record<string, string> = {};
+    accessibleLocationData.forEach((l: any) => {
+      roleMap[l.location_id] = l.role || 'member';
+    });
+    locationRoleMapRef.current = roleMap;
+
+    const locationIds = accessibleLocationData.map(l => l.location_id);
 
     const { data } = await supabase
       .from('locations')
@@ -2345,10 +2355,12 @@ const [areaFormData, setAreaFormData] = useState({
                   <p className="text-sm text-muted-foreground">Storage locations within areas</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => setIsBinSequenceDialogOpen(true)} disabled={bins.length === 0}>
-                    <ArrowUpDown className="w-4 h-4 mr-1" />
-                    Sequence
-                  </Button>
+                  {isLocationAdmin && (
+                    <Button size="sm" variant="secondary" onClick={() => setIsBinSequenceDialogOpen(true)} disabled={bins.length === 0}>
+                      <ArrowUpDown className="w-4 h-4 mr-1" />
+                      Sequence
+                    </Button>
+                  )}
                   <Button size="sm" variant="secondary" onClick={() => setIsAutoMakeDialogOpen(true)} disabled={areas.length === 0}>
                     <Wand2 className="w-4 h-4 mr-1" />
                     AutoMake
