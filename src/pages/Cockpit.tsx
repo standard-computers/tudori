@@ -58,7 +58,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from 'sonner';
@@ -1137,6 +1137,123 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
+  // Create work tasks for an order (picking tasks per line item + pack/ship task)
+  const handleCreateWorkTasks = async (orderType: 'so' | 'po', orderId: string) => {
+    if (!companyId || !selectedLocationId) return;
+
+    try {
+      // Check if tasks already exist for this order
+      const sourceType = orderType === 'so' ? 'sales_order' : 'purchase_order';
+      const { data: existingTasks } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('source_type', sourceType)
+        .eq('source_id', orderId);
+
+      if (existingTasks && existingTasks.length > 0) {
+        toast.info('Work tasks already exist for this order');
+        return;
+      }
+
+      let orderNumber = '';
+      let shipTo = '';
+      let items: { product_id: string; quantity: number; product?: { name: string; product_id: string } }[] = [];
+
+      if (orderType === 'so') {
+        const order = salesOrders.find(o => o.id === orderId);
+        if (!order) return;
+        orderNumber = order.so_number;
+        shipTo = order.customer?.name || 'Customer';
+
+        const { data } = await supabase
+          .from('sales_order_items' as any)
+          .select('product_id, quantity, product:products(name, product_id)')
+          .eq('sales_order_id', orderId);
+        items = (data as any) || [];
+      } else {
+        const po = internalPOs.find(p => p.id === orderId);
+        if (!po) return;
+        orderNumber = po.po_number;
+        shipTo = po.location?.name || 'Destination';
+
+        const { data } = await supabase
+          .from('purchase_order_items' as any)
+          .select('product_id, quantity, product:products(name, product_id)')
+          .eq('purchase_order_id', orderId);
+        items = (data as any) || [];
+      }
+
+      if (items.length === 0) {
+        toast.error('No items found for this order');
+        return;
+      }
+
+      // Create picking tasks for each line item
+      const tasksToCreate = items.map((item, idx) => ({
+        company_id: companyId,
+        title: `Pick: ${item.product?.name || 'Product'} × ${item.quantity}`,
+        description: `Pick ${item.quantity} unit(s) of ${item.product?.product_id || ''} for ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber} → ${shipTo}`,
+        status: 'todo',
+        priority: 'medium',
+        location_id: selectedLocationId,
+        source_type: sourceType,
+        source_id: orderId,
+        created_by: user!.id,
+      }));
+
+      // Add a final pack & ship task
+      tasksToCreate.push({
+        company_id: companyId,
+        title: `Pack & Ship: ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber}`,
+        description: `Pack all picked items and complete shipment for ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber} → ${shipTo}`,
+        status: 'todo',
+        priority: 'medium',
+        location_id: selectedLocationId,
+        source_type: sourceType,
+        source_id: orderId,
+        created_by: user!.id,
+      });
+
+      const { error } = await supabase.from('tasks').insert(tasksToCreate);
+
+      if (error) {
+        console.error('Failed to create work tasks:', error);
+        toast.error('Failed to create work tasks');
+        return;
+      }
+
+      // Update order status to processing
+      if (orderType === 'so') {
+        await supabase.from('sales_orders' as any).update({ status: 'processing' }).eq('id', orderId);
+      } else {
+        await supabase.from('purchase_orders' as any).update({ status: 'processing' }).eq('id', orderId);
+      }
+
+      toast.success(`Created ${tasksToCreate.length} work tasks for ${orderNumber}`);
+      fetchOutstandingSalesOrders();
+      fetchInternalPurchaseOrders();
+    } catch (error) {
+      console.error('Create work tasks error:', error);
+      toast.error('Failed to create work tasks');
+    }
+  };
+
+  // Bulk create work tasks for selected orders
+  const handleBulkCreateWorkTasks = async () => {
+    if (selectedFulfillOrderIds.size === 0) return;
+
+    let created = 0;
+    for (const key of selectedFulfillOrderIds) {
+      const type = key.startsWith('po-') ? 'po' : 'so';
+      const id = key.replace(/^(po|so)-/, '');
+      await handleCreateWorkTasks(type as 'so' | 'po', id);
+      created++;
+    }
+
+    setSelectedFulfillOrderIds(new Set());
+  };
+
   const getNextAreaId = () => {
     if (areas.length === 0) return 'A001';
     const maxNum = Math.max(...areas.map(a => parseInt(a.area_id.replace(/\D/g, '') || '0', 10)));
@@ -1611,12 +1728,22 @@ const [areaFormData, setAreaFormData] = useState({
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedFulfillOrderIds.size > 0 && (
-                    <Button 
-                      size="sm" 
-                      onClick={() => setIsBulkFulfillDialogOpen(true)}
-                    >
-                      Fulfill Selected ({selectedFulfillOrderIds.size})
-                    </Button>
+                    <>
+                      <Button 
+                        variant="outline"
+                        size="sm" 
+                        onClick={handleBulkCreateWorkTasks}
+                      >
+                        <ClipboardList className="w-4 h-4 mr-1" />
+                        Work ({selectedFulfillOrderIds.size})
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setIsBulkFulfillDialogOpen(true)}
+                      >
+                        Fulfill ({selectedFulfillOrderIds.size})
+                      </Button>
+                    </>
                   )}
                   <Button variant="outline" size="sm" onClick={() => navigate('/sales-orders')}>
                     View All
@@ -1646,7 +1773,7 @@ const [areaFormData, setAreaFormData] = useState({
                         <TableHead>Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="w-24"></TableHead>
+                        <TableHead className="w-32"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1680,16 +1807,32 @@ const [areaFormData, setAreaFormData] = useState({
                             ${po.total_amount?.toFixed(2) || '0.00'}
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedInternalPO(po);
-                                fetchInternalPOItems(po.id);
-                                setIsInternalPOFulfillDialogOpen(true);
-                              }}
-                            >
-                              Fulfill
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="outline"
+                                      size="sm" 
+                                      onClick={() => handleCreateWorkTasks('po', po.id)}
+                                    >
+                                      <ClipboardList className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Create work tasks</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedInternalPO(po);
+                                  fetchInternalPOItems(po.id);
+                                  setIsInternalPOFulfillDialogOpen(true);
+                                }}
+                              >
+                                Fulfill
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1723,16 +1866,32 @@ const [areaFormData, setAreaFormData] = useState({
                             ${order.total_amount?.toFixed(2) || '0.00'}
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedSalesOrder(order);
-                                fetchSalesOrderItems(order.id);
-                                setIsFulfillDialogOpen(true);
-                              }}
-                            >
-                              Fulfill
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="outline"
+                                      size="sm" 
+                                      onClick={() => handleCreateWorkTasks('so', order.id)}
+                                    >
+                                      <ClipboardList className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Create work tasks</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedSalesOrder(order);
+                                  fetchSalesOrderItems(order.id);
+                                  setIsFulfillDialogOpen(true);
+                                }}
+                              >
+                                Fulfill
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
