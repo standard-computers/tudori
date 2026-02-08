@@ -282,6 +282,7 @@ const [areaFormData, setAreaFormData] = useState({
   const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
   const [isDeleteWorkOrdersOpen, setIsDeleteWorkOrdersOpen] = useState(false);
   const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
+  const [isWorkOrderMaximized, setIsWorkOrderMaximized] = useState(false);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -3233,8 +3234,15 @@ const [areaFormData, setAreaFormData] = useState({
       </Dialog>
 
       {/* View Work Order Dialog */}
-      <Dialog open={!!viewingWorkOrder} onOpenChange={(open) => { if (!open) setViewingWorkOrder(null); }}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog open={!!viewingWorkOrder} onOpenChange={(open) => { if (!open) { setViewingWorkOrder(null); setIsWorkOrderMaximized(false); } }}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isWorkOrderMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[500px] max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsWorkOrderMaximized(!isWorkOrderMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isWorkOrderMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader>
             <DialogTitle>Work Order Details</DialogTitle>
           </DialogHeader>
