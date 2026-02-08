@@ -901,33 +901,71 @@ const Orders = () => {
 
     yPos = Math.max(yPos, 50);
 
-    // Vendor info
-    if (viewOrder.vendor) {
+    // Helper to render an address block
+    const renderAddressBlock = (
+      label: string,
+      name: string,
+      address: { address_line1?: string | null; address_line2?: string | null; city?: string | null; state?: string | null; postal_code?: string | null; country?: string | null } | null,
+      xStart: number,
+    ) => {
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text("Vendor:", leftMargin, yPos);
+      doc.text(label, xStart, yPos);
+      const blockStartY = yPos;
+      let localY = yPos + 5;
+      doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.text(viewOrder.vendor.name, leftMargin + 20, yPos);
-      yPos += 6;
+      doc.text(name, xStart, localY);
+      localY += 4;
+      if (address?.address_line1) {
+        doc.text(address.address_line1, xStart, localY);
+        localY += 4;
+      }
+      if (address?.address_line2) {
+        doc.text(address.address_line2, xStart, localY);
+        localY += 4;
+      }
+      const cityLine = [address?.city, address?.state, address?.postal_code].filter(Boolean).join(", ");
+      if (cityLine) {
+        doc.text(cityLine, xStart, localY);
+        localY += 4;
+      }
+      if (address?.country) {
+        doc.text(address.country, xStart, localY);
+        localY += 4;
+      }
+      return localY;
+    };
+
+    // Layout: Vendor on left, Ship To in center, Bill To on right
+    const colWidth = (pageWidth - leftMargin * 2) / 3;
+    const savedY = yPos;
+    let maxY = yPos;
+
+    // Vendor info
+    if (viewOrder.vendor) {
+      const vendorDetail = allVendors.find((v) => v.id === viewOrder.vendor_id);
+      const endY = renderAddressBlock("Vendor:", viewOrder.vendor.name, vendorDetail || null, leftMargin);
+      maxY = Math.max(maxY, endY);
     }
 
     // Ship To
     if (viewOrder.location) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Ship To:", leftMargin, yPos);
-      doc.setFont("helvetica", "normal");
-      doc.text(viewOrder.location.name, leftMargin + 20, yPos);
-      yPos += 6;
+      yPos = savedY;
+      const shipDetail = locations.find((l) => l.id === viewOrder.location_id);
+      const endY = renderAddressBlock("Ship To:", viewOrder.location.name, shipDetail || null, leftMargin + colWidth);
+      maxY = Math.max(maxY, endY);
     }
 
     // Bill To
     if (viewOrder.bill_to_location) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Bill To:", leftMargin, yPos);
-      doc.setFont("helvetica", "normal");
-      doc.text(viewOrder.bill_to_location.name, leftMargin + 20, yPos);
-      yPos += 6;
+      yPos = savedY;
+      const billDetail = locations.find((l) => l.id === viewOrder.bill_to_location_id);
+      const endY = renderAddressBlock("Bill To:", viewOrder.bill_to_location.name, billDetail || null, leftMargin + colWidth * 2);
+      maxY = Math.max(maxY, endY);
     }
+
+    yPos = maxY + 2;
 
     yPos += 10;
 
