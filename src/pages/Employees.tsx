@@ -518,9 +518,9 @@ const Employees = () => {
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
         <DialogContent className={isFormMaximized ? "max-w-[95vw] max-h-[95vh]" : "max-w-2xl"}>
           <div className="absolute right-12 top-4 z-10">
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 hover:opacity-100" onClick={() => setIsFormMaximized(v => !v)}>
+            <button className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" onClick={() => setIsFormMaximized(v => !v)}>
               {isFormMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
+            </button>
           </div>
           <DialogHeader>
             <DialogTitle>{isEditing ? "Edit Employee" : "Create Employee"}</DialogTitle>
@@ -725,11 +725,9 @@ const Employees = () => {
 
       <Dialog open={!!viewingEmployee} onOpenChange={(open) => { if (!open) { setViewingEmployee(null); setIsViewMaximized(false); } }}>
         <DialogContent className={isViewMaximized ? "max-w-[95vw] max-h-[95vh]" : "max-w-2xl max-h-[85vh]"}>
-          <div className="absolute right-12 top-4 z-10 flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-70 hover:opacity-100"
+          <div className="absolute right-12 top-4 z-10 flex items-center gap-2">
+            <button
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               onClick={() => {
                 if (viewingEmployee) {
                   handleEdit(viewingEmployee);
@@ -739,10 +737,10 @@ const Employees = () => {
               }}
             >
               <Pencil className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 hover:opacity-100" onClick={() => setIsViewMaximized(v => !v)}>
+            </button>
+            <button className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" onClick={() => setIsViewMaximized(v => !v)}>
               {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
+            </button>
           </div>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
