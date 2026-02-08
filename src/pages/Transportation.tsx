@@ -113,8 +113,8 @@ const Transportation = () => {
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
 
-  // F1 to go back to dashboard
-  useKeyboardShortcut('F1', () => navigate('/dashboard'));
+  // F1 to go back
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('carriers');
@@ -727,7 +727,7 @@ const Transportation = () => {
         <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="h-16 px-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <h1 className="text-xl font-semibold">Transportation</h1>
