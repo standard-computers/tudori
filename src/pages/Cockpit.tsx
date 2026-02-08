@@ -278,6 +278,7 @@ const [areaFormData, setAreaFormData] = useState({
 
   // Work orders multi-select state
   const [selectedWorkOrderIds, setSelectedWorkOrderIds] = useState<Set<string>>(new Set());
+  const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -2120,6 +2121,21 @@ const [areaFormData, setAreaFormData] = useState({
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => setViewingWorkOrder(task)}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>View details</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                               {task.status === 'todo' && (
                                 <Button 
                                   variant="outline" 
@@ -3133,6 +3149,114 @@ const [areaFormData, setAreaFormData] = useState({
               {isCreatingWorkTasks && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isCreatingWorkTasks ? 'Creating...' : `Create ${workPreviewTasks.length} Task${workPreviewTasks.length !== 1 ? 's' : ''}`}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Work Order Dialog */}
+      <Dialog open={!!viewingWorkOrder} onOpenChange={(open) => { if (!open) setViewingWorkOrder(null); }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Work Order Details</DialogTitle>
+          </DialogHeader>
+          {viewingWorkOrder && (
+            <div className="space-y-4 px-6 py-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Title</Label>
+                <p className="text-sm font-medium">{viewingWorkOrder.title}</p>
+              </div>
+              {viewingWorkOrder.description && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Description</Label>
+                  <p className="text-sm">{viewingWorkOrder.description}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <div>
+                    <Badge variant="outline" className={
+                      viewingWorkOrder.status === 'in_progress'
+                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                        : 'bg-muted text-muted-foreground'
+                    }>
+                      {viewingWorkOrder.status === 'in_progress' ? 'In Progress' : 'To Do'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Priority</Label>
+                  <div>
+                    <Badge variant="outline" className={
+                      viewingWorkOrder.priority === 'urgent' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                      viewingWorkOrder.priority === 'high' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' :
+                      viewingWorkOrder.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' :
+                      'bg-slate-500/10 text-slate-600 border-slate-500/20'
+                    }>
+                      {viewingWorkOrder.priority}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Source</Label>
+                  <div>
+                    {viewingWorkOrder.source_type ? (
+                      <Badge variant="outline" className={
+                        viewingWorkOrder.source_type === 'sales_order'
+                          ? 'bg-violet-500/10 text-violet-600 border-violet-500/20'
+                          : 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                      }>
+                        {viewingWorkOrder.source_type === 'sales_order' ? 'Sales Order' : 'Purchase Order'}
+                      </Badge>
+                    ) : <span className="text-sm text-muted-foreground">—</span>}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Assigned To</Label>
+                  <p className="text-sm">
+                    {viewingWorkOrder.assignee
+                      ? `${viewingWorkOrder.assignee.first_name} ${viewingWorkOrder.assignee.last_name}`
+                      : <span className="text-muted-foreground">Unassigned</span>}
+                  </p>
+                </div>
+                {viewingWorkOrder.due_date && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Due Date</Label>
+                    <p className="text-sm">{new Date(viewingWorkOrder.due_date).toLocaleDateString()}</p>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Created</Label>
+                  <p className="text-sm">{new Date(viewingWorkOrder.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            {viewingWorkOrder?.status === 'todo' && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', viewingWorkOrder.id);
+                  setViewingWorkOrder(null);
+                  fetchWorkOrders();
+                }}
+              >
+                Start
+              </Button>
+            )}
+            {viewingWorkOrder?.status === 'in_progress' && (
+              <Button
+                onClick={async () => {
+                  await supabase.from('tasks').update({ status: 'done' }).eq('id', viewingWorkOrder.id);
+                  toast.success(`Completed: ${viewingWorkOrder.title}`);
+                  setViewingWorkOrder(null);
+                  fetchWorkOrders();
+                }}
+              >
+                Done
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
