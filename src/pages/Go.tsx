@@ -66,10 +66,12 @@ interface WorkTask {
 function classifyTask(task: { source_type: string | null; title: string }): ActivityType {
   const st = task.source_type?.toLowerCase() || '';
   const title = task.title.toLowerCase();
-  if (st === 'delivery' || st === 'purchase_order' || title.includes('receive') || title.includes('inbound')) {
+  // Inbound: only receiving inbound deliveries / put-away
+  if (st === 'delivery' || title.includes('receive') || title.includes('inbound') || title.includes('put away')) {
     return 'inbound';
   }
-  if (st === 'sales_order' || st === 'outbound_delivery' || title.includes('ship') || title.includes('outbound') || title.includes('fulfill')) {
+  // Outbound: order fulfillment (sales orders, outbound deliveries, PO internal transfers)
+  if (st === 'sales_order' || st === 'outbound_delivery' || st === 'purchase_order' || title.includes('ship') || title.includes('outbound') || title.includes('fulfill') || title.includes('pick') || title.includes('pack')) {
     return 'outbound';
   }
   return 'internal';
