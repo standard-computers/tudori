@@ -262,6 +262,11 @@ const [areaFormData, setAreaFormData] = useState({
   const [internalPOItems, setInternalPOItems] = useState<PurchaseOrderItem[]>([]);
   const [isInternalPOFulfillDialogOpen, setIsInternalPOFulfillDialogOpen] = useState(false);
 
+  // Multi-select fulfillment state
+  const [selectedFulfillOrderIds, setSelectedFulfillOrderIds] = useState<Set<string>>(new Set());
+  const [isBulkFulfilling, setIsBulkFulfilling] = useState(false);
+  const [isBulkFulfillDialogOpen, setIsBulkFulfillDialogOpen] = useState(false);
+
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
@@ -929,6 +934,209 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
+  // Helper to toggle order selection
+  const allFulfillableOrders = [
+    ...internalPOs.map(po => ({ key: `po-${po.id}`, type: 'po' as const, id: po.id })),
+    ...salesOrders.map(so => ({ key: `so-${so.id}`, type: 'so' as const, id: so.id })),
+  ];
+
+  const toggleFulfillOrderSelection = (key: string) => {
+    setSelectedFulfillOrderIds(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAllFulfillOrders = () => {
+    if (selectedFulfillOrderIds.size === allFulfillableOrders.length) {
+      setSelectedFulfillOrderIds(new Set());
+    } else {
+      setSelectedFulfillOrderIds(new Set(allFulfillableOrders.map(o => o.key)));
+    }
+  };
+
+  // Bulk fulfill handler - processes selected orders sequentially
+  const handleBulkFulfill = async () => {
+    if (selectedFulfillOrderIds.size === 0 || !selectedLocationId || !companyId) return;
+    
+    setIsBulkFulfilling(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const key of selectedFulfillOrderIds) {
+        const [type, id] = [key.startsWith('po-') ? 'po' : 'so', key.replace(/^(po|so)-/, '')];
+        
+        try {
+          if (type === 'so') {
+            const order = salesOrders.find(o => o.id === id);
+            if (!order) continue;
+
+            const { data: items } = await supabase
+              .from('sales_order_items' as any)
+              .select('product_id, quantity')
+              .eq('sales_order_id', id);
+            
+            if (!items || items.length === 0) { failCount++; continue; }
+
+            // Check inventory
+            let insufficientStock = false;
+            for (const item of items as any[]) {
+              const { data: invData } = await supabase
+                .from('inventory')
+                .select('id, quantity')
+                .eq('location_id', selectedLocationId)
+                .eq('product_id', item.product_id);
+              
+              const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
+              if (totalAvailable < item.quantity) {
+                insufficientStock = true;
+                break;
+              }
+            }
+            if (insufficientStock) { failCount++; continue; }
+
+            const { data: deliveryNumber } = await supabase.rpc('get_next_outbound_delivery_number', { p_company_id: companyId });
+            const customer = order.customer;
+            const { data: outboundDelivery, error: odError } = await supabase
+              .from('outbound_deliveries' as any)
+              .insert({
+                company_id: companyId,
+                delivery_number: deliveryNumber,
+                sales_order_id: id,
+                from_location_id: selectedLocationId,
+                customer_id: order.customer_id,
+                ship_to_address_line1: customer?.address_line1 || null,
+                ship_to_city: customer?.city || null,
+                ship_to_state: customer?.state || null,
+                ship_to_postal_code: customer?.postal_code || null,
+                ship_to_country: customer?.country || 'United States',
+                status: 'in_transit',
+                shipped_date: new Date().toISOString().split('T')[0],
+                notes: `Created from SO ${order.so_number}`,
+              })
+              .select()
+              .single();
+
+            if (odError) { failCount++; continue; }
+
+            const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
+            const { data: goodsIssue, error: giError } = await supabase
+              .from('goods_issues' as any)
+              .insert({
+                company_id: companyId,
+                issue_number: issueNumber,
+                location_id: selectedLocationId,
+                customer_id: order.customer_id,
+                sales_order_id: id,
+                outbound_delivery_id: (outboundDelivery as any).id,
+                status: 'pending',
+                notes: `Fulfillment for SO ${order.so_number}, OD ${deliveryNumber}`,
+              })
+              .select()
+              .single();
+
+            if (giError) { failCount++; continue; }
+
+            const giItems = (items as any[]).map(item => ({
+              goods_issue_id: (goodsIssue as any).id,
+              product_id: item.product_id,
+              quantity: item.quantity,
+            }));
+
+            await supabase.from('goods_issue_items' as any).insert(giItems);
+            await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id }).eq('id', (outboundDelivery as any).id);
+
+            const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
+            if (!postResult.success) { failCount++; continue; }
+
+            await supabase.from('sales_orders' as any).update({ status: 'shipped' }).eq('id', id);
+            successCount++;
+
+          } else {
+            // Internal PO fulfillment
+            const po = internalPOs.find(p => p.id === id);
+            if (!po) continue;
+
+            const { data: items } = await supabase
+              .from('purchase_order_items' as any)
+              .select('product_id, quantity')
+              .eq('purchase_order_id', id);
+            
+            if (!items || items.length === 0) { failCount++; continue; }
+
+            let insufficientStock = false;
+            for (const item of items as any[]) {
+              const { data: invData } = await supabase
+                .from('inventory')
+                .select('id, quantity')
+                .eq('location_id', selectedLocationId)
+                .eq('product_id', item.product_id);
+              
+              const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
+              if (totalAvailable < item.quantity) {
+                insufficientStock = true;
+                break;
+              }
+            }
+            if (insufficientStock) { failCount++; continue; }
+
+            const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
+            const { data: goodsIssue, error: giError } = await supabase
+              .from('goods_issues' as any)
+              .insert({
+                company_id: companyId,
+                issue_number: issueNumber,
+                location_id: selectedLocationId,
+                status: 'pending',
+                notes: `Internal transfer fulfillment for PO ${po.po_number}`,
+              })
+              .select()
+              .single();
+
+            if (giError) { failCount++; continue; }
+
+            const giItems = (items as any[]).map(item => ({
+              goods_issue_id: (goodsIssue as any).id,
+              product_id: item.product_id,
+              quantity: item.quantity,
+            }));
+
+            await supabase.from('goods_issue_items' as any).insert(giItems);
+            const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
+            if (!postResult.success) { failCount++; continue; }
+
+            await supabase.from('deliveries' as any).update({ is_fulfilled: true, status: 'shipped' }).eq('purchase_order_id', id);
+            await supabase.from('purchase_orders' as any).update({ status: 'shipped' }).eq('id', id);
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`Failed to fulfill ${key}:`, err);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Fulfilled ${successCount} order${successCount !== 1 ? 's' : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`);
+      } else {
+        toast.error(`Failed to fulfill ${failCount} order${failCount !== 1 ? 's' : ''} (insufficient inventory)`);
+      }
+
+      setSelectedFulfillOrderIds(new Set());
+      setIsBulkFulfillDialogOpen(false);
+      fetchOutstandingSalesOrders();
+      fetchInternalPurchaseOrders();
+      fetchInventory();
+    } catch (error) {
+      console.error('Bulk fulfillment error:', error);
+      toast.error('Bulk fulfillment failed');
+    } finally {
+      setIsBulkFulfilling(false);
+    }
+  };
+
   const getNextAreaId = () => {
     if (areas.length === 0) return 'A001';
     const maxNum = Math.max(...areas.map(a => parseInt(a.area_id.replace(/\D/g, '') || '0', 10)));
@@ -1401,9 +1609,19 @@ const [areaFormData, setAreaFormData] = useState({
                   </h2>
                   <p className="text-sm text-muted-foreground">Sales orders and internal transfers to fulfill from this location</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/sales-orders')}>
-                  View All
-                </Button>
+                <div className="flex items-center gap-2">
+                  {selectedFulfillOrderIds.size > 0 && (
+                    <Button 
+                      size="sm" 
+                      onClick={() => setIsBulkFulfillDialogOpen(true)}
+                    >
+                      Fulfill Selected ({selectedFulfillOrderIds.size})
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => navigate('/sales-orders')}>
+                    View All
+                  </Button>
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
                 {salesOrders.length === 0 && internalPOs.length === 0 ? (
@@ -1416,6 +1634,12 @@ const [areaFormData, setAreaFormData] = useState({
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allFulfillableOrders.length > 0 && selectedFulfillOrderIds.size === allFulfillableOrders.length}
+                            onCheckedChange={toggleAllFulfillOrders}
+                          />
+                        </TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Order #</TableHead>
                         <TableHead>Ship To</TableHead>
@@ -1429,6 +1653,12 @@ const [areaFormData, setAreaFormData] = useState({
                       {/* Internal Purchase Orders (this location is the vendor) */}
                       {internalPOs.map((po) => (
                         <TableRow key={`po-${po.id}`} className="bg-blue-500/5">
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedFulfillOrderIds.has(`po-${po.id}`)}
+                              onCheckedChange={() => toggleFulfillOrderSelection(`po-${po.id}`)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
                               Transfer
@@ -1466,6 +1696,12 @@ const [areaFormData, setAreaFormData] = useState({
                       {/* Sales Orders */}
                       {salesOrders.map((order) => (
                         <TableRow key={`so-${order.id}`}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedFulfillOrderIds.has(`so-${order.id}`)}
+                              onCheckedChange={() => toggleFulfillOrderSelection(`so-${order.id}`)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20">
                               Sales
@@ -2345,6 +2581,78 @@ const [areaFormData, setAreaFormData] = useState({
             <Button onClick={handleFulfillInternalPO} disabled={isFulfilling || internalPOItems.length === 0}>
               {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Fulfill Transfer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Fulfill Dialog */}
+      <Dialog open={isBulkFulfillDialogOpen} onOpenChange={(open) => {
+        if (!isBulkFulfilling) setIsBulkFulfillDialogOpen(open);
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Fulfill Selected Orders</DialogTitle>
+            <DialogDescription>
+              Process {selectedFulfillOrderIds.size} order{selectedFulfillOrderIds.size !== 1 ? 's' : ''} for fulfillment
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 pb-6">
+            <div className="border rounded-md max-h-48 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Order #</TableHead>
+                    <TableHead>Ship To</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from(selectedFulfillOrderIds).map((key) => {
+                    if (key.startsWith('po-')) {
+                      const po = internalPOs.find(p => p.id === key.replace('po-', ''));
+                      if (!po) return null;
+                      return (
+                        <TableRow key={key}>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Transfer</Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{po.po_number}</TableCell>
+                          <TableCell>{po.location?.name || '—'}</TableCell>
+                        </TableRow>
+                      );
+                    } else {
+                      const so = salesOrders.find(o => o.id === key.replace('so-', ''));
+                      if (!so) return null;
+                      return (
+                        <TableRow key={key}>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20">Sales</Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{so.so_number}</TableCell>
+                          <TableCell>{so.customer?.name || '—'}</TableCell>
+                        </TableRow>
+                      );
+                    }
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="bg-muted/50 p-3 rounded-md text-sm">
+              <p className="font-medium mb-1">This will for each order:</p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                <li>Create outbound deliveries / goods issues</li>
+                <li>Deduct inventory from this location</li>
+                <li>Update order statuses to "Shipped"</li>
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">Orders with insufficient inventory will be skipped.</p>
+            </div>
+          </div>
+          <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
+            <Button onClick={handleBulkFulfill} disabled={isBulkFulfilling}>
+              {isBulkFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isBulkFulfilling ? 'Processing...' : `Fulfill ${selectedFulfillOrderIds.size} Order${selectedFulfillOrderIds.size !== 1 ? 's' : ''}`}
             </Button>
           </DialogFooter>
         </DialogContent>
