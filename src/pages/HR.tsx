@@ -1,0 +1,429 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBar } from '@/contexts/StatusBarContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogBody,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  ArrowLeft,
+  Heart,
+  Loader2,
+  Search,
+  User,
+  Users2,
+  Clock,
+  UserCheck,
+  UserX,
+  Link2,
+  Maximize2,
+  Minimize2,
+  Mail,
+  Phone,
+} from 'lucide-react';
+import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
+import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
+
+interface Employee {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  job_title: string | null;
+  department: string | null;
+  status: string;
+  user_id: string | null;
+}
+
+interface ActivePunch {
+  employee_id: string;
+  punch_in: string;
+}
+
+const HR = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
+  const [loading, setLoading] = useState(true);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [activePunches, setActivePunches] = useState<ActivePunch[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  const [isViewMaximized, setIsViewMaximized] = useState(false);
+
+  useEffect(() => {
+    setTransaction('hr');
+  }, [setTransaction]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) fetchCompanyId();
+  }, [user]);
+
+  useEffect(() => {
+    if (companyId) fetchData();
+  }, [companyId]);
+
+  const fetchCompanyId = async () => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('user_id', user!.id)
+      .single();
+    if (profile?.company_id) {
+      setCompanyId(profile.company_id);
+    }
+    setLoading(false);
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([fetchEmployees(), fetchActivePunches()]);
+    setLoading(false);
+  };
+
+  const fetchEmployees = async () => {
+    const { data } = await supabase
+      .from('employees')
+      .select('id, employee_id, first_name, last_name, email, phone, job_title, department, status, user_id')
+      .eq('company_id', companyId!)
+      .order('last_name');
+    setEmployees(data || []);
+  };
+
+  const fetchActivePunches = async () => {
+    const today = new Date();
+    const { data } = await supabase
+      .from('time_punches')
+      .select('employee_id, punch_in')
+      .eq('company_id', companyId!)
+      .is('punch_out', null)
+      .gte('punch_in', startOfDay(today).toISOString())
+      .lte('punch_in', endOfDay(today).toISOString());
+    setActivePunches(data || []);
+  };
+
+  const activeCount = employees.filter(e => e.status === 'active').length;
+  const inactiveCount = employees.filter(e => e.status !== 'active').length;
+  const clockedInCount = activePunches.length;
+  const clockedInEmployeeIds = new Set(activePunches.map(p => p.employee_id));
+
+  const filteredEmployees = employees.filter(e => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      e.first_name.toLowerCase().includes(q) ||
+      e.last_name.toLowerCase().includes(q) ||
+      e.employee_id.toLowerCase().includes(q) ||
+      (e.email?.toLowerCase().includes(q)) ||
+      (e.job_title?.toLowerCase().includes(q)) ||
+      (e.department?.toLowerCase().includes(q))
+    );
+  });
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card/50 sticky top-0 z-50">
+        <div className="flex items-center justify-between h-16 px-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Heart className="h-6 w-6 text-rose-500" />
+              <h1 className="text-xl font-semibold">HR</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/employees')}>
+              <User className="h-4 w-4 mr-2" />
+              Employees
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/teams')}>
+              <Users2 className="h-4 w-4 mr-2" />
+              Teams
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/time-clock')}>
+              <Clock className="h-4 w-4 mr-2" />
+              Time Clock
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="px-4 py-4 space-y-4">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Employees</p>
+                  <p className="text-2xl font-bold">{employees.length}</p>
+                </div>
+                <User className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Active</p>
+                  <p className="text-2xl font-bold">{activeCount}</p>
+                </div>
+                <UserCheck className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Inactive</p>
+                  <p className="text-2xl font-bold">{inactiveCount}</p>
+                </div>
+                <UserX className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Clocked In</p>
+                  <p className="text-2xl font-bold">{clockedInCount}</p>
+                </div>
+                <Clock className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Employee directory */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search employees..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="border rounded-md overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell className="font-medium w-24">ID</TableCell>
+                  <TableCell className="font-medium">Name</TableCell>
+                  <TableCell className="font-medium">Job Title</TableCell>
+                  <TableCell className="font-medium">Team</TableCell>
+                  <TableCell className="font-medium">Contact</TableCell>
+                  <TableCell className="font-medium w-24">Status</TableCell>
+                  <TableCell className="font-medium w-20">Clock</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEmployees.map((employee) => {
+                  const isClockedIn = clockedInEmployeeIds.has(employee.id);
+                  return (
+                    <TableRow key={employee.id}>
+                      <TableCell>
+                        <button
+                          className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
+                          onClick={() => setViewingEmployee(employee)}
+                        >
+                          {employee.employee_id}
+                        </button>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {employee.first_name} {employee.last_name}
+                      </TableCell>
+                      <TableCell className="text-sm">{employee.job_title || '-'}</TableCell>
+                      <TableCell className="text-sm">{employee.department || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {employee.email && (
+                            <a href={`mailto:${employee.email}`} className="text-muted-foreground hover:text-foreground">
+                              <Mail className="h-4 w-4" />
+                            </a>
+                          )}
+                          {employee.phone && (
+                            <a href={`tel:${employee.phone}`} className="text-muted-foreground hover:text-foreground">
+                              <Phone className="h-4 w-4" />
+                            </a>
+                          )}
+                          {!employee.email && !employee.phone && <span className="text-xs text-muted-foreground">-</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                          {employee.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {isClockedIn ? (
+                          <Badge variant="outline" className="text-emerald-600 border-emerald-300">
+                            <Clock className="h-3 w-3 mr-1" />
+                            In
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredEmployees.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      No employees found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </main>
+
+      {/* View Employee Dialog */}
+      <Dialog open={!!viewingEmployee} onOpenChange={(open) => { if (!open) { setViewingEmployee(null); setIsViewMaximized(false); } }}>
+        <DialogContent className={isViewMaximized ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-2xl max-h-[85vh]'}>
+          <div className="absolute right-12 top-4 z-10 flex items-center gap-2">
+            <button
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              onClick={() => setIsViewMaximized(v => !v)}
+            >
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          </div>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              {viewingEmployee?.first_name} {viewingEmployee?.last_name}
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-2">
+              Employee ID: {viewingEmployee?.employee_id}
+              {viewingEmployee?.user_id && (
+                <Badge variant="outline" className="ml-2">
+                  <Link2 className="h-3 w-3 mr-1" />
+                  Linked to User
+                </Badge>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="pb-6">
+            {viewingEmployee && (
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
+                </TabsList>
+                <TabsContent value="details" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'secondary'}>
+                        {viewingEmployee.status}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Team</p>
+                      <p className="font-medium">{viewingEmployee.department || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Job Title</p>
+                      <p className="font-medium">{viewingEmployee.job_title || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Clock Status</p>
+                      {clockedInEmployeeIds.has(viewingEmployee.id) ? (
+                        <Badge variant="outline" className="text-emerald-600 border-emerald-300">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Clocked In
+                        </Badge>
+                      ) : (
+                        <p className="font-medium text-muted-foreground">Not clocked in</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      {viewingEmployee.email ? (
+                        <a href={`mailto:${viewingEmployee.email}`} className="font-medium text-primary hover:underline">
+                          {viewingEmployee.email}
+                        </a>
+                      ) : (
+                        <p className="font-medium">-</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      {viewingEmployee.phone ? (
+                        <a href={`tel:${viewingEmployee.phone}`} className="font-medium text-primary hover:underline">
+                          {viewingEmployee.phone}
+                        </a>
+                      ) : (
+                        <p className="font-medium">-</p>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="timesheets" className="mt-4">
+                  <TimesheetsTab employeeId={viewingEmployee.id} />
+                </TabsContent>
+              </Tabs>
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default HR;
