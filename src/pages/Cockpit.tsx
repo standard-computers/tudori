@@ -24,6 +24,7 @@ import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
 import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
+import ViewWorkOrderDialog from '@/components/cockpit/ViewWorkOrderDialog';
 import {
   Select,
   SelectContent,
@@ -284,7 +285,7 @@ const [areaFormData, setAreaFormData] = useState({
   const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
   const [isDeleteWorkOrdersOpen, setIsDeleteWorkOrdersOpen] = useState(false);
   const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
-  const [isWorkOrderMaximized, setIsWorkOrderMaximized] = useState(false);
+  
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -2203,10 +2204,7 @@ const [areaFormData, setAreaFormData] = useState({
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={async () => {
-                                      await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', task.id);
-                                      fetchWorkOrders();
-                                    }}
+                                    onClick={() => setViewingWorkOrder(task)}
                                   >
                                     Start
                                   </Button>
@@ -3249,133 +3247,29 @@ const [areaFormData, setAreaFormData] = useState({
       </Dialog>
 
       {/* View Work Order Dialog */}
-      <Dialog open={!!viewingWorkOrder} onOpenChange={(open) => { if (!open) { setViewingWorkOrder(null); setIsWorkOrderMaximized(false); } }}>
-        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isWorkOrderMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[500px] max-h-[85vh]'}`}>
-          <button
-            type="button"
-            onClick={() => setIsWorkOrderMaximized(!isWorkOrderMaximized)}
-            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-          >
-            {isWorkOrderMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-          <DialogHeader>
-            <DialogTitle>Work Order Details</DialogTitle>
-          </DialogHeader>
-          {viewingWorkOrder && (
-            <div className="space-y-4 px-6 py-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Title</Label>
-                <p className="text-sm font-medium">{viewingWorkOrder.title}</p>
-              </div>
-              {viewingWorkOrder.description && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Description</Label>
-                  <p className="text-sm">{viewingWorkOrder.description}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Status</Label>
-                  <div>
-                    <Badge variant="outline" className={
-                      viewingWorkOrder.status === 'in_progress'
-                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                        : 'bg-muted text-muted-foreground'
-                    }>
-                      {viewingWorkOrder.status === 'in_progress' ? 'In Progress' : 'To Do'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Priority</Label>
-                  <div>
-                    <Badge variant="outline" className={
-                      viewingWorkOrder.priority === 'urgent' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
-                      viewingWorkOrder.priority === 'high' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' :
-                      viewingWorkOrder.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' :
-                      'bg-slate-500/10 text-slate-600 border-slate-500/20'
-                    }>
-                      {viewingWorkOrder.priority}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Source</Label>
-                  <div>
-                    {viewingWorkOrder.source_type ? (
-                      <Badge variant="outline" className={
-                        viewingWorkOrder.source_type === 'sales_order'
-                          ? 'bg-violet-500/10 text-violet-600 border-violet-500/20'
-                          : 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                      }>
-                        {viewingWorkOrder.source_type === 'sales_order' ? 'Sales Order' : 'Purchase Order'}
-                      </Badge>
-                    ) : <span className="text-sm text-muted-foreground">—</span>}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Assigned To</Label>
-                  <p className="text-sm">
-                    {viewingWorkOrder.assignee
-                      ? `${viewingWorkOrder.assignee.first_name} ${viewingWorkOrder.assignee.last_name}`
-                      : <span className="text-muted-foreground">Unassigned</span>}
-                  </p>
-                </div>
-                {viewingWorkOrder.due_date && (
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Due Date</Label>
-                    <p className="text-sm">{new Date(viewingWorkOrder.due_date).toLocaleDateString()}</p>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Created</Label>
-                  <p className="text-sm">{new Date(viewingWorkOrder.created_at).toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            {viewingWorkOrder?.status === 'todo' && (
-              <Button
-                variant="outline"
-                className="text-destructive hover:text-destructive mr-auto"
-                onClick={() => {
-                  setWorkOrderIdsToDelete([viewingWorkOrder.id]);
-                  setIsDeleteWorkOrdersOpen(true);
-                  setViewingWorkOrder(null);
-                }}
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Delete
-              </Button>
-            )}
-            {viewingWorkOrder?.status === 'todo' && (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', viewingWorkOrder.id);
-                  setViewingWorkOrder(null);
-                  fetchWorkOrders();
-                }}
-              >
-                Start
-              </Button>
-            )}
-            {viewingWorkOrder?.status === 'in_progress' && (
-              <Button
-                onClick={async () => {
-                  await supabase.from('tasks').update({ status: 'done' }).eq('id', viewingWorkOrder.id);
-                  toast.success(`Completed: ${viewingWorkOrder.title}`);
-                  setViewingWorkOrder(null);
-                  fetchWorkOrders();
-                }}
-              >
-                Done
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ViewWorkOrderDialog
+        open={!!viewingWorkOrder}
+        onOpenChange={(open) => { if (!open) setViewingWorkOrder(null); }}
+        workOrder={viewingWorkOrder}
+        locationId={selectedLocationId}
+        companyId={companyId}
+        onStarted={() => {
+          setViewingWorkOrder(null);
+          fetchWorkOrders();
+        }}
+        onCompleted={async () => {
+          if (!viewingWorkOrder) return;
+          await supabase.from('tasks').update({ status: 'done' }).eq('id', viewingWorkOrder.id);
+          toast.success(`Completed: ${viewingWorkOrder.title}`);
+          setViewingWorkOrder(null);
+          fetchWorkOrders();
+        }}
+        onDelete={(id) => {
+          setWorkOrderIdsToDelete([id]);
+          setIsDeleteWorkOrdersOpen(true);
+          setViewingWorkOrder(null);
+        }}
+      />
 
       {/* Delete Work Orders Confirm Dialog */}
       <ConfirmDeleteDialog
