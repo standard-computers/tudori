@@ -765,8 +765,9 @@ const Locations = () => {
 
   const handleUserToggle = (userId: string, checked: boolean) => {
     if (checked) {
+      const isFirstUser = selectedUserIds.length === 0;
       setSelectedUserIds((prev) => [...prev, userId]);
-      setUserRoles((prev) => ({ ...prev, [userId]: prev[userId] || 'member' }));
+      setUserRoles((prev) => ({ ...prev, [userId]: isFirstUser ? 'admin' : (prev[userId] || 'member') }));
     } else {
       setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
     }
