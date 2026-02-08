@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Loader2, AlertCircle, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -10,6 +11,11 @@ interface CompanyUser {
   user_id: string;
   first_name: string;
   last_name: string;
+}
+
+interface LocationUserRecord {
+  user_id: string;
+  role: string;
 }
 
 interface CockpitUsersTabProps {
@@ -21,6 +27,8 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [originalUserIds, setOriginalUserIds] = useState<string[]>([]);
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
+  const [originalUserRoles, setOriginalUserRoles] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -34,7 +42,7 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
         .eq('company_id', companyId),
       supabase
         .from('location_users')
-        .select('user_id')
+        .select('user_id, role')
         .eq('location_id', locationId),
     ]);
 
@@ -44,9 +52,17 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
       setCompanyUsers(usersRes.data);
     }
 
-    const userIds = (locationUsersRes.data || []).map((lu) => lu.user_id);
+    const locationUsers = (locationUsersRes.data || []) as LocationUserRecord[];
+    const userIds = locationUsers.map((lu) => lu.user_id);
+    const roles: Record<string, string> = {};
+    locationUsers.forEach((lu) => {
+      roles[lu.user_id] = lu.role || 'member';
+    });
+
     setSelectedUserIds(userIds);
     setOriginalUserIds(userIds);
+    setUserRoles(roles);
+    setOriginalUserRoles({ ...roles });
   }, [locationId, companyId]);
 
   useEffect(() => {
@@ -54,14 +70,23 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
   }, [fetchData]);
 
   const handleUserToggle = (userId: string, checked: boolean) => {
-    setSelectedUserIds((prev) =>
-      checked ? [...prev, userId] : prev.filter((id) => id !== userId)
-    );
+    if (checked) {
+      setSelectedUserIds((prev) => [...prev, userId]);
+      setUserRoles((prev) => ({ ...prev, [userId]: prev[userId] || 'member' }));
+    } else {
+      setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
+    }
+  };
+
+  const handleRoleChange = (userId: string, role: string) => {
+    setUserRoles((prev) => ({ ...prev, [userId]: role }));
   };
 
   const hasChanges =
     selectedUserIds.length !== originalUserIds.length ||
-    selectedUserIds.some((id) => !originalUserIds.includes(id));
+    selectedUserIds.some((id) => !originalUserIds.includes(id)) ||
+    originalUserIds.some((id) => !selectedUserIds.includes(id)) ||
+    selectedUserIds.some((id) => userRoles[id] !== originalUserRoles[id]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -69,11 +94,18 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
     try {
       const toAdd = selectedUserIds.filter((id) => !originalUserIds.includes(id));
       const toRemove = originalUserIds.filter((id) => !selectedUserIds.includes(id));
+      const toUpdateRole = selectedUserIds.filter(
+        (id) => originalUserIds.includes(id) && userRoles[id] !== originalUserRoles[id]
+      );
 
       if (toAdd.length > 0) {
         const { error } = await supabase
           .from('location_users')
-          .insert(toAdd.map((userId) => ({ location_id: locationId, user_id: userId })));
+          .insert(toAdd.map((userId) => ({
+            location_id: locationId,
+            user_id: userId,
+            role: userRoles[userId] || 'member',
+          })));
         if (error) throw error;
       }
 
@@ -86,7 +118,17 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
         if (error) throw error;
       }
 
+      for (const userId of toUpdateRole) {
+        const { error } = await supabase
+          .from('location_users')
+          .update({ role: userRoles[userId] })
+          .eq('location_id', locationId)
+          .eq('user_id', userId);
+        if (error) throw error;
+      }
+
       setOriginalUserIds([...selectedUserIds]);
+      setOriginalUserRoles({ ...userRoles });
       toast.success('Location users updated');
     } catch (err) {
       console.error('Failed to save location users:', err);
@@ -143,33 +185,50 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
           </div>
         ) : (
           <div className="border rounded-lg divide-y max-h-[calc(100vh-16rem)] overflow-y-auto">
-            {companyUsers.map((companyUser) => (
-              <div
-                key={companyUser.user_id}
-                className="flex items-center gap-3 p-3 hover:bg-muted/50"
-              >
-                <Checkbox
-                  id={`cockpit-user-${companyUser.user_id}`}
-                  checked={selectedUserIds.includes(companyUser.user_id)}
-                  onCheckedChange={(checked) =>
-                    handleUserToggle(companyUser.user_id, checked as boolean)
-                  }
-                />
-                <label
-                  htmlFor={`cockpit-user-${companyUser.user_id}`}
-                  className="flex-1 cursor-pointer"
+            {companyUsers.map((companyUser) => {
+              const isSelected = selectedUserIds.includes(companyUser.user_id);
+              return (
+                <div
+                  key={companyUser.user_id}
+                  className="flex items-center gap-3 p-3 hover:bg-muted/50"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {companyUser.first_name} {companyUser.last_name}
-                    </span>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      ({companyUser.id})
-                    </span>
-                  </div>
-                </label>
-              </div>
-            ))}
+                  <Checkbox
+                    id={`cockpit-user-${companyUser.user_id}`}
+                    checked={isSelected}
+                    onCheckedChange={(checked) =>
+                      handleUserToggle(companyUser.user_id, checked as boolean)
+                    }
+                  />
+                  <label
+                    htmlFor={`cockpit-user-${companyUser.user_id}`}
+                    className="flex-1 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {companyUser.first_name} {companyUser.last_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        ({companyUser.id})
+                      </span>
+                    </div>
+                  </label>
+                  {isSelected && (
+                    <Select
+                      value={userRoles[companyUser.user_id] || 'member'}
+                      onValueChange={(value) => handleRoleChange(companyUser.user_id, value)}
+                    >
+                      <SelectTrigger className="w-28 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
