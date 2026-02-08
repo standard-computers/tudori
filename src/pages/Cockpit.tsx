@@ -14,6 +14,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
@@ -279,6 +280,8 @@ const [areaFormData, setAreaFormData] = useState({
   // Work orders multi-select state
   const [selectedWorkOrderIds, setSelectedWorkOrderIds] = useState<Set<string>>(new Set());
   const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
+  const [isDeleteWorkOrdersOpen, setIsDeleteWorkOrdersOpen] = useState(false);
+  const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
 
   // Save shortcuts
   useSaveShortcut(() => {
@@ -2022,6 +2025,21 @@ const [areaFormData, setAreaFormData] = useState({
                           Done ({workOrders.filter(t => selectedWorkOrderIds.has(t.id) && t.status === 'in_progress').length})
                         </Button>
                       )}
+                      {workOrders.some(t => selectedWorkOrderIds.has(t.id) && t.status === 'todo') && (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => {
+                            const ids = Array.from(selectedWorkOrderIds).filter(id => workOrders.find(t => t.id === id)?.status === 'todo');
+                            setWorkOrderIdsToDelete(ids);
+                            setIsDeleteWorkOrdersOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete ({workOrders.filter(t => selectedWorkOrderIds.has(t.id) && t.status === 'todo').length})
+                        </Button>
+                      )}
                     </>
                   )}
                   <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
@@ -2137,16 +2155,36 @@ const [areaFormData, setAreaFormData] = useState({
                                 </Tooltip>
                               </TooltipProvider>
                               {task.status === 'todo' && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={async () => {
-                                    await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', task.id);
-                                    fetchWorkOrders();
-                                  }}
-                                >
-                                  Start
-                                </Button>
+                                <>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={async () => {
+                                      await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', task.id);
+                                      fetchWorkOrders();
+                                    }}
+                                  >
+                                    Start
+                                  </Button>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                          onClick={() => {
+                                            setWorkOrderIdsToDelete([task.id]);
+                                            setIsDeleteWorkOrdersOpen(true);
+                                          }}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Delete</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </>
                               )}
                               {task.status === 'in_progress' && (
                                 <Button 
@@ -3236,6 +3274,20 @@ const [areaFormData, setAreaFormData] = useState({
             {viewingWorkOrder?.status === 'todo' && (
               <Button
                 variant="outline"
+                className="text-destructive hover:text-destructive mr-auto"
+                onClick={() => {
+                  setWorkOrderIdsToDelete([viewingWorkOrder.id]);
+                  setIsDeleteWorkOrdersOpen(true);
+                  setViewingWorkOrder(null);
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </Button>
+            )}
+            {viewingWorkOrder?.status === 'todo' && (
+              <Button
+                variant="outline"
                 onClick={async () => {
                   await supabase.from('tasks').update({ status: 'in_progress' }).eq('id', viewingWorkOrder.id);
                   setViewingWorkOrder(null);
@@ -3260,6 +3312,32 @@ const [areaFormData, setAreaFormData] = useState({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Work Orders Confirm Dialog */}
+      <ConfirmDeleteDialog
+        open={isDeleteWorkOrdersOpen}
+        onOpenChange={(open) => {
+          setIsDeleteWorkOrdersOpen(open);
+          if (!open) setWorkOrderIdsToDelete([]);
+        }}
+        title={workOrderIdsToDelete.length === 1 ? 'Delete Work Order' : `Delete ${workOrderIdsToDelete.length} Work Orders`}
+        description={workOrderIdsToDelete.length === 1 
+          ? 'Are you sure you want to delete this work order? This action cannot be undone.'
+          : `Are you sure you want to delete ${workOrderIdsToDelete.length} work orders? This action cannot be undone.`
+        }
+        onConfirm={async () => {
+          const { error } = await supabase.from('tasks').delete().in('id', workOrderIdsToDelete);
+          if (error) {
+            toast.error('Failed to delete work orders');
+            return;
+          }
+          toast.success(`Deleted ${workOrderIdsToDelete.length} work order${workOrderIdsToDelete.length !== 1 ? 's' : ''}`);
+          setIsDeleteWorkOrdersOpen(false);
+          setWorkOrderIdsToDelete([]);
+          setSelectedWorkOrderIds(new Set());
+          fetchWorkOrders();
+        }}
+      />
 
       <BulkInventoryActionsDialog
         open={isBulkPackageDialogOpen}
