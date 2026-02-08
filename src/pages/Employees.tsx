@@ -192,7 +192,14 @@ const EmployeeTable = ({
           <TableBody>
             {sortedAndFilteredData.map((employee) => (
               <TableRow key={employee.id}>
-                <TableCell className="font-mono text-xs">{employee.employee_id}</TableCell>
+                <TableCell>
+                  <button
+                    className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
+                    onClick={() => onView(employee)}
+                  >
+                    {employee.employee_id}
+                  </button>
+                </TableCell>
                 <TableCell className="font-medium">
                   {employee.first_name} {employee.last_name}
                 </TableCell>
