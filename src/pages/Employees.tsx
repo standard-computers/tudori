@@ -1,23 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
-import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
-import { useTableSort } from '@/hooks/use-table-sort';
-import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
-import { ColumnToggle } from '@/components/ColumnToggle';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStatusBar } from '@/contexts/StatusBarContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useEffect, useState, useRef } from "react";
+import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { ColumnToggle } from "@/components/ColumnToggle";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStatusBar } from "@/contexts/StatusBarContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -26,22 +20,16 @@ import {
   DialogHeader,
   DialogBody,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2 } from 'lucide-react';
-import { Kbd } from '@/components/ui/kbd';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2 } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { TimesheetsTab } from "@/components/employees/TimesheetsTab";
 
 interface Employee {
   id: string;
@@ -73,19 +61,19 @@ interface Team {
   name: string;
 }
 
-const STATUSES = ['active', 'inactive', 'on_leave'];
+const STATUSES = ["active", "inactive", "on_leave"];
 
 // Column definitions for Employees table
 const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
-  { key: 'employee_id', label: 'ID', defaultVisible: true },
-  { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'email', label: 'Email', defaultVisible: true },
-  { key: 'phone', label: 'Phone', defaultVisible: true },
-  { key: 'job_title', label: 'Job Title', defaultVisible: true },
-  { key: 'department', label: 'Department', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'wage', label: 'Wage', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
+  { key: "employee_id", label: "ID", defaultVisible: true },
+  { key: "name", label: "Name", defaultVisible: true },
+  { key: "email", label: "Email", defaultVisible: true },
+  { key: "phone", label: "Phone", defaultVisible: true },
+  { key: "job_title", label: "Job Title", defaultVisible: true },
+  { key: "department", label: "Department", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "wage", label: "Wage", defaultVisible: true },
+  { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
 const EmployeeTable = ({
@@ -99,14 +87,11 @@ const EmployeeTable = ({
   onEdit: (employee: Employee) => void;
   onDelete: (id: string) => void;
 }) => {
-  const {
-    sortConfig,
-    filters,
-    handleSort,
-    setFilter,
-    clearAllFilters,
-    sortedAndFilteredData,
-  } = useTableSort(employees, 'employee_id', 'asc');
+  const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
+    employees,
+    "employee_id",
+    "asc",
+  );
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
@@ -121,14 +106,17 @@ const EmployeeTable = ({
             <X className="w-3 h-3 mr-1" />
             Clear filters
           </Button>
-          {Object.entries(filters).map(([key, value]) => value && (
-            <Badge key={key} variant="secondary" className="text-xs">
-              {key}: {value}
-              <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
+          {Object.entries(filters).map(
+            ([key, value]) =>
+              value && (
+                <Badge key={key} variant="secondary" className="text-xs">
+                  {key}: {value}
+                  <button onClick={() => setFilter(key, "")} className="ml-1 hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ),
+          )}
         </div>
       )}
       <div className="overflow-hidden">
@@ -141,8 +129,8 @@ const EmployeeTable = ({
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['employee_id']}
-                onFilter={(value) => setFilter('employee_id', value)}
+                filterValue={filters["employee_id"]}
+                onFilter={(value) => setFilter("employee_id", value)}
                 className="w-24"
               />
               <SortableTableHead
@@ -151,8 +139,8 @@ const EmployeeTable = ({
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['last_name']}
-                onFilter={(value) => setFilter('last_name', value)}
+                filterValue={filters["last_name"]}
+                onFilter={(value) => setFilter("last_name", value)}
               />
               <SortableTableHead
                 label="Email"
@@ -160,8 +148,8 @@ const EmployeeTable = ({
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['email']}
-                onFilter={(value) => setFilter('email', value)}
+                filterValue={filters["email"]}
+                onFilter={(value) => setFilter("email", value)}
               />
               <SortableTableHead
                 label="Job Title"
@@ -169,8 +157,8 @@ const EmployeeTable = ({
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['job_title']}
-                onFilter={(value) => setFilter('job_title', value)}
+                filterValue={filters["job_title"]}
+                onFilter={(value) => setFilter("job_title", value)}
               />
               <SortableTableHead
                 label="Team"
@@ -178,8 +166,8 @@ const EmployeeTable = ({
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['department']}
-                onFilter={(value) => setFilter('department', value)}
+                filterValue={filters["department"]}
+                onFilter={(value) => setFilter("department", value)}
               />
               <SortableTableHead
                 label="Status"
@@ -187,8 +175,8 @@ const EmployeeTable = ({
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['status']}
-                onFilter={(value) => setFilter('status', value)}
+                filterValue={filters["status"]}
+                onFilter={(value) => setFilter("status", value)}
                 className="w-24"
               />
               <SortableTableHead
@@ -205,14 +193,14 @@ const EmployeeTable = ({
             {sortedAndFilteredData.map((employee) => (
               <TableRow key={employee.id}>
                 <TableCell className="font-mono text-xs">{employee.employee_id}</TableCell>
-                <TableCell className="font-medium">{employee.first_name} {employee.last_name}</TableCell>
-                <TableCell>{employee.email || '-'}</TableCell>
-                <TableCell>{employee.job_title || '-'}</TableCell>
-                <TableCell>{employee.department || '-'}</TableCell>
+                <TableCell className="font-medium">
+                  {employee.first_name} {employee.last_name}
+                </TableCell>
+                <TableCell>{employee.email || "-"}</TableCell>
+                <TableCell>{employee.job_title || "-"}</TableCell>
+                <TableCell>{employee.department || "-"}</TableCell>
                 <TableCell>
-                  <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                    {employee.status}
-                  </Badge>
+                  <Badge variant={employee.status === "active" ? "default" : "secondary"}>{employee.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
@@ -222,7 +210,12 @@ const EmployeeTable = ({
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(employee)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(employee.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => onDelete(employee.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -255,33 +248,33 @@ const Employees = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nextEmployeeId, setNextEmployeeId] = useState('0001');
+  const [nextEmployeeId, setNextEmployeeId] = useState("0001");
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
 
   const [formData, setFormData] = useState({
-    employee_id: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    job_title: '',
-    department: '',
-    hire_date: '',
-    status: 'active',
-    notes: '',
-    wage: '',
+    employee_id: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    job_title: "",
+    department: "",
+    hire_date: "",
+    status: "active",
+    notes: "",
+    wage: "",
     is_hourly: false,
     bonus_eligible: false,
-    user_id: '',
+    user_id: "",
   });
 
   useEffect(() => {
     if (isDialogOpen) {
-      setTransaction(isEditing ? 'emp/edit' : 'emp/new');
+      setTransaction(isEditing ? "emp/edit" : "emp/new");
     } else {
-      setTransaction('emp');
+      setTransaction("emp");
     }
   }, [isDialogOpen, isEditing, setTransaction]);
 
@@ -293,7 +286,7 @@ const Employees = () => {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
   }, [user, authLoading, navigate]);
 
@@ -314,30 +307,22 @@ const Employees = () => {
 
   const fetchUsers = async () => {
     const { data } = await supabase
-      .from('profiles')
-      .select('user_id, email, first_name, last_name')
-      .eq('company_id', companyId)
-      .order('last_name');
-    
+      .from("profiles")
+      .select("user_id, email, first_name, last_name")
+      .eq("company_id", companyId)
+      .order("last_name");
+
     setUsers(data || []);
   };
 
   const fetchTeams = async () => {
-    const { data } = await supabase
-      .from('teams')
-      .select('id, name')
-      .eq('company_id', companyId)
-      .order('name');
-    
+    const { data } = await supabase.from("teams").select("id, name").eq("company_id", companyId).order("name");
+
     setTeams(data || []);
   };
 
   const fetchCompanyId = async () => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('user_id', user!.id)
-      .single();
+    const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
@@ -347,14 +332,14 @@ const Employees = () => {
 
   const fetchEmployees = async () => {
     const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('employee_id');
+      .from("employees")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("employee_id");
 
     if (error) {
-      console.error('Error fetching employees:', error);
-      toast.error('Failed to load employees');
+      console.error("Error fetching employees:", error);
+      toast.error("Failed to load employees");
       return;
     }
 
@@ -362,7 +347,7 @@ const Employees = () => {
   };
 
   const fetchNextEmployeeId = async () => {
-    const { data } = await supabase.rpc('get_next_employee_id', {
+    const { data } = await supabase.rpc("get_next_employee_id", {
       p_company_id: companyId,
     });
     if (data) {
@@ -373,43 +358,43 @@ const Employees = () => {
   const handleOpenDialog = () => {
     setFormData({
       employee_id: nextEmployeeId,
-      first_name: '',
-      last_name: '',
-      email: '',
-      phone: '',
-      job_title: '',
-      department: '',
-      hire_date: '',
-      status: 'active',
-      notes: '',
-      wage: '',
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      job_title: "",
+      department: "",
+      hire_date: "",
+      status: "active",
+      notes: "",
+      wage: "",
       is_hourly: false,
       bonus_eligible: false,
-      user_id: '',
+      user_id: "",
     });
     setIsEditing(false);
     setEditingId(null);
     setIsDialogOpen(true);
   };
 
-  useKeyboardShortcut('n', handleOpenDialog);
+  useKeyboardShortcut("n", handleOpenDialog);
 
   const handleEdit = (employee: Employee) => {
     setFormData({
       employee_id: employee.employee_id,
       first_name: employee.first_name,
       last_name: employee.last_name,
-      email: employee.email || '',
-      phone: employee.phone || '',
-      job_title: employee.job_title || '',
-      department: employee.department || '',
-      hire_date: employee.hire_date || '',
+      email: employee.email || "",
+      phone: employee.phone || "",
+      job_title: employee.job_title || "",
+      department: employee.department || "",
+      hire_date: employee.hire_date || "",
       status: employee.status,
-      notes: employee.notes || '',
-      wage: employee.wage?.toString() || '',
+      notes: employee.notes || "",
+      wage: employee.wage?.toString() || "",
       is_hourly: employee.is_hourly || false,
       bonus_eligible: employee.bonus_eligible || false,
-      user_id: employee.user_id || '',
+      user_id: employee.user_id || "",
     });
     setIsEditing(true);
     setEditingId(employee.id);
@@ -417,19 +402,19 @@ const Employees = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('employees').delete().eq('id', id);
+    const { error } = await supabase.from("employees").delete().eq("id", id);
     if (error) {
-      toast.error('Failed to delete employee');
+      toast.error("Failed to delete employee");
       return;
     }
-    toast.success('Employee deleted');
+    toast.success("Employee deleted");
     fetchEmployees();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.first_name || !formData.last_name) {
-      toast.error('First and last name are required');
+      toast.error("First and last name are required");
       return;
     }
 
@@ -455,34 +440,31 @@ const Employees = () => {
       };
 
       let employeeId = editingId;
-      
+
       if (isEditing && editingId) {
-        const { error } = await supabase
-          .from('employees')
-          .update(employeeData)
-          .eq('id', editingId);
+        const { error } = await supabase.from("employees").update(employeeData).eq("id", editingId);
         if (error) throw error;
-        toast.success('Employee updated');
+        toast.success("Employee updated");
       } else {
-        const { data, error } = await supabase.from('employees').insert(employeeData).select('id').single();
+        const { data, error } = await supabase.from("employees").insert(employeeData).select("id").single();
         if (error) throw error;
         employeeId = data.id;
-        toast.success('Employee created');
+        toast.success("Employee created");
       }
 
       // Sync team membership based on department (team name)
       if (employeeId) {
         // Remove from all teams first
-        await supabase.from('team_members').delete().eq('employee_id', employeeId);
-        
+        await supabase.from("team_members").delete().eq("employee_id", employeeId);
+
         // If a team is selected, add to that team
         if (formData.department) {
-          const team = teams.find(t => t.name === formData.department);
+          const team = teams.find((t) => t.name === formData.department);
           if (team) {
-            await supabase.from('team_members').insert({
+            await supabase.from("team_members").insert({
               team_id: team.id,
               employee_id: employeeId,
-              role: 'member',
+              role: "member",
             });
           }
         }
@@ -492,7 +474,7 @@ const Employees = () => {
       fetchEmployees();
       fetchNextEmployeeId();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save employee');
+      toast.error(error.message || "Failed to save employee");
     } finally {
       setIsSubmitting(false);
     }
@@ -511,7 +493,7 @@ const Employees = () => {
       <header className="border-b border-border bg-card/50 sticky top-0 z-50">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
@@ -521,7 +503,7 @@ const Employees = () => {
           </div>
           <Button onClick={handleOpenDialog}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Employee
+            Employee
             <Kbd className="ml-2">N</Kbd>
           </Button>
         </div>
@@ -534,9 +516,9 @@ const Employees = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
+            <DialogTitle>{isEditing ? "Edit Employee" : "Create Employee"}</DialogTitle>
             <DialogDescription>
-              {isEditing ? 'Update employee information' : 'Add a new employee to your team'}
+              {isEditing ? "Update employee information" : "Add a new employee to your team"}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
@@ -559,7 +541,9 @@ const Employees = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -615,14 +599,19 @@ const Employees = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Team</Label>
-                  <Select value={formData.department || "none"} onValueChange={(v) => setFormData({ ...formData, department: v === "none" ? '' : v })}>
+                  <Select
+                    value={formData.department || "none"}
+                    onValueChange={(v) => setFormData({ ...formData, department: v === "none" ? "" : v })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select team" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No team</SelectItem>
                       {teams.map((t) => (
-                        <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                        <SelectItem key={t.id} value={t.name}>
+                          {t.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -652,7 +641,12 @@ const Employees = () => {
                   />
                   {formData.is_hourly && formData.wage && (
                     <p className="text-xs text-muted-foreground">
-                      ≈ ${(parseFloat(formData.wage) * 40 * 52).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year (40h/week)
+                      ≈ $
+                      {(parseFloat(formData.wage) * 40 * 52).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                      /year (40h/week)
                     </p>
                   )}
                 </div>
@@ -663,7 +657,9 @@ const Employees = () => {
                       checked={formData.is_hourly}
                       onCheckedChange={(checked) => setFormData({ ...formData, is_hourly: checked })}
                     />
-                    <Label htmlFor="is_hourly" className="cursor-pointer">Hourly</Label>
+                    <Label htmlFor="is_hourly" className="cursor-pointer">
+                      Hourly
+                    </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -671,13 +667,18 @@ const Employees = () => {
                       checked={formData.bonus_eligible}
                       onCheckedChange={(checked) => setFormData({ ...formData, bonus_eligible: checked })}
                     />
-                    <Label htmlFor="bonus_eligible" className="cursor-pointer">Bonus</Label>
+                    <Label htmlFor="bonus_eligible" className="cursor-pointer">
+                      Bonus
+                    </Label>
                   </div>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="user_id">Linked User</Label>
-                <Select value={formData.user_id || "none"} onValueChange={(v) => setFormData({ ...formData, user_id: v === "none" ? '' : v })}>
+                <Select
+                  value={formData.user_id || "none"}
+                  onValueChange={(v) => setFormData({ ...formData, user_id: v === "none" ? "" : v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select user to link" />
                   </SelectTrigger>
@@ -690,7 +691,9 @@ const Employees = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Link this employee to a user account for time clock access</p>
+                <p className="text-xs text-muted-foreground">
+                  Link this employee to a user account for time clock access
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
@@ -706,7 +709,7 @@ const Employees = () => {
           <DialogFooter>
             <Button type="submit" form="employee-form" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {isEditing ? 'Update' : 'Create'}
+              {isEditing ? "Update" : "Create"}
               <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
@@ -742,58 +745,61 @@ const Employees = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Status</p>
-                      <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'secondary'}>
+                      <Badge variant={viewingEmployee.status === "active" ? "default" : "secondary"}>
                         {viewingEmployee.status}
                       </Badge>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Team</p>
-                      <p className="font-medium">{viewingEmployee.department || '-'}</p>
+                      <p className="font-medium">{viewingEmployee.department || "-"}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Job Title</p>
-                      <p className="font-medium">{viewingEmployee.job_title || '-'}</p>
+                      <p className="font-medium">{viewingEmployee.job_title || "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Hire Date</p>
-                      <p className="font-medium">{viewingEmployee.hire_date || '-'}</p>
+                      <p className="font-medium">{viewingEmployee.hire_date || "-"}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="font-medium">{viewingEmployee.email || '-'}</p>
+                      <p className="font-medium">{viewingEmployee.email || "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="font-medium">{viewingEmployee.phone || '-'}</p>
+                      <p className="font-medium">{viewingEmployee.phone || "-"}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Wage</p>
                       <p className="font-medium">
-                        {viewingEmployee.wage 
-                          ? `$${viewingEmployee.wage.toLocaleString('en-US', { minimumFractionDigits: 2 })}${viewingEmployee.is_hourly ? '/hr' : ''}`
-                          : '-'}
+                        {viewingEmployee.wage
+                          ? `$${viewingEmployee.wage.toLocaleString("en-US", { minimumFractionDigits: 2 })}${viewingEmployee.is_hourly ? "/hr" : ""}`
+                          : "-"}
                       </p>
                       {viewingEmployee.is_hourly && viewingEmployee.wage && (
                         <p className="text-xs text-muted-foreground">
-                          ≈ ${(viewingEmployee.wage * 40 * 52).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/year
+                          ≈ $
+                          {(viewingEmployee.wage * 40 * 52).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                          /year
                         </p>
                       )}
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Compensation</p>
                       <div className="flex gap-2 mt-1">
-                        <Badge variant={viewingEmployee.is_hourly ? 'default' : 'secondary'}>
-                          {viewingEmployee.is_hourly ? 'Hourly' : 'Salary'}
+                        <Badge variant={viewingEmployee.is_hourly ? "default" : "secondary"}>
+                          {viewingEmployee.is_hourly ? "Hourly" : "Salary"}
                         </Badge>
-                        {viewingEmployee.bonus_eligible && (
-                          <Badge variant="outline">Bonus Eligible</Badge>
-                        )}
+                        {viewingEmployee.bonus_eligible && <Badge variant="outline">Bonus Eligible</Badge>}
                       </div>
                     </div>
                   </div>
@@ -811,12 +817,14 @@ const Employees = () => {
             )}
           </DialogBody>
           <DialogFooter>
-            <Button onClick={() => {
-              if (viewingEmployee) {
-                handleEdit(viewingEmployee);
-                setViewingEmployee(null);
-              }
-            }}>
+            <Button
+              onClick={() => {
+                if (viewingEmployee) {
+                  handleEdit(viewingEmployee);
+                  setViewingEmployee(null);
+                }
+              }}
+            >
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Button>
