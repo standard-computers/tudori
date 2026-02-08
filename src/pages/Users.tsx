@@ -429,44 +429,43 @@ const Users = () => {
                       Send an invitation to join your organization. They'll be able to sign up with this email.
                     </DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleInvite} className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="colleague@example.com"
-                        className={errors.email ? 'border-destructive' : ''}
-                      />
-                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Access Level</Label>
-                      <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'member' | 'viewer' | 'it')}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="it">IT</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">{roleDescriptions[role]}</p>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={inviteLoading}>
-                        {inviteLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                        Send Invitation
-                      </Button>
-                    </DialogFooter>
-                  </form>
+                  <DialogBody>
+                    <form id="invite-form" onSubmit={handleInvite} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="colleague@example.com"
+                          className={errors.email ? 'border-destructive' : ''}
+                        />
+                        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Access Level</Label>
+                        <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'member' | 'viewer' | 'it')}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="it">IT</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="viewer">Viewer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">{roleDescriptions[role]}</p>
+                      </div>
+                    </form>
+                  </DialogBody>
+                  <DialogFooter>
+                    <Button type="submit" form="invite-form" disabled={inviteLoading}>
+                      {inviteLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      Send Invitation
+                    </Button>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
