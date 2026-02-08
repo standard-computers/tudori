@@ -4174,6 +4174,87 @@ export type Database = {
           },
         ]
       }
+      work_tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          destination_bin_id: string | null
+          id: string
+          product_id: string | null
+          pu_id: string | null
+          quantity: number | null
+          sequence: number
+          source_bin_id: string | null
+          status: string
+          task_type: string
+          work_order_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          destination_bin_id?: string | null
+          id?: string
+          product_id?: string | null
+          pu_id?: string | null
+          quantity?: number | null
+          sequence?: number
+          source_bin_id?: string | null
+          status?: string
+          task_type?: string
+          work_order_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          destination_bin_id?: string | null
+          id?: string
+          product_id?: string | null
+          pu_id?: string | null
+          quantity?: number | null
+          sequence?: number
+          source_bin_id?: string | null
+          status?: string
+          task_type?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_tasks_destination_bin_id_fkey"
+            columns: ["destination_bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_tasks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_tasks_pu_id_fkey"
+            columns: ["pu_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_tasks_source_bin_id_fkey"
+            columns: ["source_bin_id"]
+            isOneToOne: false
+            referencedRelation: "bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_tasks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       customers_safe: {
