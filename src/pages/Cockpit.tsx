@@ -270,6 +270,12 @@ const [areaFormData, setAreaFormData] = useState({
   // Work orders (tasks) state
   const [workOrders, setWorkOrders] = useState<{ id: string; title: string; description: string | null; status: string; priority: string; due_date: string | null; source_type: string | null; source_id: string | null; assigned_to: string | null; created_at: string; assignee?: { first_name: string; last_name: string } | null }[]>([]);
 
+  // Work task preview dialog state
+  const [isWorkPreviewOpen, setIsWorkPreviewOpen] = useState(false);
+  const [workPreviewTasks, setWorkPreviewTasks] = useState<{ title: string; description: string }[]>([]);
+  const [workPreviewOrderInfo, setWorkPreviewOrderInfo] = useState<{ orderType: 'so' | 'po'; orderId: string; orderNumber: string }[]>([]);
+  const [isCreatingWorkTasks, setIsCreatingWorkTasks] = useState(false);
+
   // Save shortcuts
   useSaveShortcut(() => {
     if (isAreaDialogOpen) areaFormRef.current?.requestSubmit();
@@ -1175,13 +1181,17 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
-  // Create work tasks for an order (picking tasks per line item + pack/ship task)
-  const handleCreateWorkTasks = async (orderType: 'so' | 'po', orderId: string) => {
+  // Build a preview of anticipated work tasks for one or more orders
+  const prepareWorkTasksPreview = async (orders: { orderType: 'so' | 'po'; orderId: string }[]) => {
     if (!companyId || !selectedLocationId) return;
 
-    try {
-      // Check if tasks already exist for this order
+    const allTasks: { title: string; description: string }[] = [];
+    const orderInfos: { orderType: 'so' | 'po'; orderId: string; orderNumber: string }[] = [];
+
+    for (const { orderType, orderId } of orders) {
       const sourceType = orderType === 'so' ? 'sales_order' : 'purchase_order';
+      
+      // Check if tasks already exist
       const { data: existingTasks } = await supabase
         .from('tasks')
         .select('id')
@@ -1190,8 +1200,8 @@ const [areaFormData, setAreaFormData] = useState({
         .eq('source_id', orderId);
 
       if (existingTasks && existingTasks.length > 0) {
-        toast.info('Work tasks already exist for this order');
-        return;
+        toast.info(`Work tasks already exist for this order`);
+        continue;
       }
 
       let orderNumber = '';
@@ -1200,10 +1210,9 @@ const [areaFormData, setAreaFormData] = useState({
 
       if (orderType === 'so') {
         const order = salesOrders.find(o => o.id === orderId);
-        if (!order) return;
+        if (!order) continue;
         orderNumber = order.so_number;
         shipTo = order.customer?.name || 'Customer';
-
         const { data } = await supabase
           .from('sales_order_items' as any)
           .select('product_id, quantity, product:products(name, product_id)')
@@ -1211,10 +1220,9 @@ const [areaFormData, setAreaFormData] = useState({
         items = (data as any) || [];
       } else {
         const po = internalPOs.find(p => p.id === orderId);
-        if (!po) return;
+        if (!po) continue;
         orderNumber = po.po_number;
         shipTo = po.location?.name || 'Destination';
-
         const { data } = await supabase
           .from('purchase_order_items' as any)
           .select('product_id, quantity, product:products(name, product_id)')
@@ -1222,75 +1230,92 @@ const [areaFormData, setAreaFormData] = useState({
         items = (data as any) || [];
       }
 
-      if (items.length === 0) {
-        toast.error('No items found for this order');
-        return;
+      if (items.length === 0) continue;
+
+      orderInfos.push({ orderType, orderId, orderNumber });
+
+      for (const item of items) {
+        allTasks.push({
+          title: `Pick: ${item.product?.name || 'Product'} × ${item.quantity}`,
+          description: `Pick ${item.quantity} unit(s) of ${item.product?.product_id || ''} for ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber} → ${shipTo}`,
+        });
       }
 
-      // Create picking tasks for each line item
-      const tasksToCreate = items.map((item, idx) => ({
-        company_id: companyId,
-        title: `Pick: ${item.product?.name || 'Product'} × ${item.quantity}`,
-        description: `Pick ${item.quantity} unit(s) of ${item.product?.product_id || ''} for ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber} → ${shipTo}`,
-        status: 'todo',
-        priority: 'medium',
-        location_id: selectedLocationId,
-        source_type: sourceType,
-        source_id: orderId,
-        created_by: user!.id,
-      }));
-
-      // Add a final pack & ship task
-      tasksToCreate.push({
-        company_id: companyId,
+      allTasks.push({
         title: `Pack & Ship: ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber}`,
         description: `Pack all picked items and complete shipment for ${orderType === 'so' ? 'SO' : 'PO'} ${orderNumber} → ${shipTo}`,
-        status: 'todo',
-        priority: 'medium',
-        location_id: selectedLocationId,
-        source_type: sourceType,
-        source_id: orderId,
-        created_by: user!.id,
       });
+    }
 
-      const { error } = await supabase.from('tasks').insert(tasksToCreate);
+    if (allTasks.length === 0) return;
 
-      if (error) {
-        console.error('Failed to create work tasks:', error);
-        toast.error('Failed to create work tasks');
-        return;
+    setWorkPreviewTasks(allTasks);
+    setWorkPreviewOrderInfo(orderInfos);
+    setIsWorkPreviewOpen(true);
+  };
+
+  // Confirm and create the previewed work tasks
+  const handleConfirmCreateWorkTasks = async () => {
+    if (!companyId || !selectedLocationId || workPreviewOrderInfo.length === 0) return;
+
+    setIsCreatingWorkTasks(true);
+    try {
+      let taskIdx = 0;
+      for (const { orderType, orderId } of workPreviewOrderInfo) {
+        const sourceType = orderType === 'so' ? 'sales_order' : 'purchase_order';
+        
+        // Collect tasks for this order from the preview list
+        const tasksForOrder: { title: string; description: string }[] = [];
+        while (taskIdx < workPreviewTasks.length) {
+          const task = workPreviewTasks[taskIdx];
+          tasksForOrder.push(task);
+          taskIdx++;
+          // Pack & Ship is always the last task per order
+          if (task.title.startsWith('Pack & Ship:')) break;
+        }
+
+        const tasksToCreate = tasksForOrder.map(t => ({
+          company_id: companyId,
+          title: t.title,
+          description: t.description,
+          status: 'todo',
+          priority: 'medium',
+          location_id: selectedLocationId,
+          source_type: sourceType,
+          source_id: orderId,
+          created_by: user!.id,
+        }));
+
+        const { error } = await supabase.from('tasks').insert(tasksToCreate);
+        if (error) {
+          console.error('Failed to create work tasks:', error);
+          toast.error('Failed to create work tasks');
+          continue;
+        }
+
+        // Update order status to processing
+        if (orderType === 'so') {
+          await supabase.from('sales_orders' as any).update({ status: 'processing' }).eq('id', orderId);
+        } else {
+          await supabase.from('purchase_orders' as any).update({ status: 'processing' }).eq('id', orderId);
+        }
       }
 
-      // Update order status to processing
-      if (orderType === 'so') {
-        await supabase.from('sales_orders' as any).update({ status: 'processing' }).eq('id', orderId);
-      } else {
-        await supabase.from('purchase_orders' as any).update({ status: 'processing' }).eq('id', orderId);
-      }
-
-      toast.success(`Created ${tasksToCreate.length} work tasks for ${orderNumber}`);
+      const orderCount = workPreviewOrderInfo.length;
+      toast.success(`Created ${workPreviewTasks.length} work tasks for ${orderCount} order${orderCount !== 1 ? 's' : ''}`);
+      setIsWorkPreviewOpen(false);
+      setWorkPreviewTasks([]);
+      setWorkPreviewOrderInfo([]);
+      setSelectedFulfillOrderIds(new Set());
       fetchOutstandingSalesOrders();
       fetchInternalPurchaseOrders();
       fetchWorkOrders();
     } catch (error) {
       console.error('Create work tasks error:', error);
       toast.error('Failed to create work tasks');
+    } finally {
+      setIsCreatingWorkTasks(false);
     }
-  };
-
-  // Bulk create work tasks for selected orders
-  const handleBulkCreateWorkTasks = async () => {
-    if (selectedFulfillOrderIds.size === 0) return;
-
-    let created = 0;
-    for (const key of selectedFulfillOrderIds) {
-      const type = key.startsWith('po-') ? 'po' : 'so';
-      const id = key.replace(/^(po|so)-/, '');
-      await handleCreateWorkTasks(type as 'so' | 'po', id);
-      created++;
-    }
-
-    setSelectedFulfillOrderIds(new Set());
   };
 
   const getNextAreaId = () => {
@@ -1772,7 +1797,13 @@ const [areaFormData, setAreaFormData] = useState({
                       <Button 
                         variant="outline"
                         size="sm" 
-                        onClick={handleBulkCreateWorkTasks}
+                        onClick={() => {
+                          const orders = Array.from(selectedFulfillOrderIds).map(key => ({
+                            orderType: key.startsWith('po-') ? 'po' as const : 'so' as const,
+                            orderId: key.replace(/^(po|so)-/, ''),
+                          }));
+                          prepareWorkTasksPreview(orders);
+                        }}
                       >
                         <ClipboardList className="w-4 h-4 mr-1" />
                         Work ({selectedFulfillOrderIds.size})
@@ -1854,7 +1885,7 @@ const [areaFormData, setAreaFormData] = useState({
                                     <Button 
                                       variant="outline"
                                       size="sm" 
-                                      onClick={() => handleCreateWorkTasks('po', po.id)}
+                                      onClick={() => prepareWorkTasksPreview([{ orderType: 'po', orderId: po.id }])}
                                     >
                                       <ClipboardList className="w-4 h-4" />
                                     </Button>
@@ -1913,7 +1944,7 @@ const [areaFormData, setAreaFormData] = useState({
                                     <Button 
                                       variant="outline"
                                       size="sm" 
-                                      onClick={() => handleCreateWorkTasks('so', order.id)}
+                                      onClick={() => prepareWorkTasksPreview([{ orderType: 'so', orderId: order.id }])}
                                     >
                                       <ClipboardList className="w-4 h-4" />
                                     </Button>
@@ -2974,7 +3005,73 @@ const [areaFormData, setAreaFormData] = useState({
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Package Dialog */}
+      {/* Work Task Preview Dialog */}
+      <Dialog open={isWorkPreviewOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsWorkPreviewOpen(false);
+          setWorkPreviewTasks([]);
+          setWorkPreviewOrderInfo([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create Work Tasks</DialogTitle>
+            <DialogDescription>
+              The following {workPreviewTasks.length} work task{workPreviewTasks.length !== 1 ? 's' : ''} will be created for {workPreviewOrderInfo.length} order{workPreviewOrderInfo.length !== 1 ? 's' : ''}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
+            <div className="overflow-auto max-h-[50vh]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">#</TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {workPreviewTasks.map((task, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {task.title.startsWith('Pick:') ? (
+                            <Package className="w-4 h-4 text-muted-foreground shrink-0" />
+                          ) : (
+                            <Truck className="w-4 h-4 text-muted-foreground shrink-0" />
+                          )}
+                          {task.title}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        {task.description}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="bg-muted/50 p-3 rounded-md text-sm">
+              <p className="font-medium mb-1">This will:</p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                <li>Create individual picking tasks for each line item</li>
+                <li>Create a final pack &amp; ship task per order</li>
+                <li>Update order status to "Processing"</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsWorkPreviewOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmCreateWorkTasks} disabled={isCreatingWorkTasks}>
+              {isCreatingWorkTasks && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isCreatingWorkTasks ? 'Creating...' : `Create ${workPreviewTasks.length} Task${workPreviewTasks.length !== 1 ? 's' : ''}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <BulkInventoryActionsDialog
         open={isBulkPackageDialogOpen}
         onOpenChange={setIsBulkPackageDialogOpen}
