@@ -80,12 +80,10 @@ const EmployeeTable = ({
   employees,
   onView,
   onEdit,
-  onDelete,
 }: {
   employees: Employee[];
   onView: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
-  onDelete: (id: string) => void;
 }) => {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     employees,
@@ -216,14 +214,6 @@ const EmployeeTable = ({
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(employee)}>
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => onDelete(employee.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -519,7 +509,7 @@ const Employees = () => {
       </header>
 
       <main className="p-0">
-        <EmployeeTable employees={employees} onView={setViewingEmployee} onEdit={handleEdit} onDelete={handleDelete} />
+        <EmployeeTable employees={employees} onView={setViewingEmployee} onEdit={handleEdit} />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
@@ -721,6 +711,20 @@ const Employees = () => {
             </form>
           </DialogBody>
           <DialogFooter>
+            {isEditing && editingId && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  handleDelete(editingId);
+                  setIsDialogOpen(false);
+                }}
+                className="mr-auto"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
             <Button type="submit" form="employee-form" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {isEditing ? "Update" : "Create"}
