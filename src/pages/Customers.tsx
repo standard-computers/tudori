@@ -43,6 +43,9 @@ import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
+import { useChangeHistorySettings } from '@/hooks/use-change-history-settings';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -391,6 +394,7 @@ const Customers = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Import/Export settings
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
   const { exportToExcel } = useExcel();
 
@@ -1006,7 +1010,6 @@ const Customers = () => {
               </DialogContent>
             </Dialog>
 
-            {/* View Customer Dialog */}
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
@@ -1029,79 +1032,115 @@ const Customers = () => {
                 </button>
                 
                 {viewingCustomer && (
-                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Customer ID</Label>
-                        <p className="font-mono">{viewingCustomer.customer_id}</p>
+                  <Tabs defaultValue="details">
+                    <TabsList>
+                      <TabsTrigger value="details">Details</TabsTrigger>
+                      {isHistoryEnabled('customer') && (
+                        <TabsTrigger value="history">History</TabsTrigger>
+                      )}
+                    </TabsList>
+
+                    <TabsContent value="details">
+                      <div className="flex-1 overflow-y-auto px-2 py-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Customer ID</Label>
+                            <p className="font-mono">{viewingCustomer.customer_id}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Type</Label>
+                            <p>{viewingCustomer.type}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-xs">Customer Name</Label>
+                          <p className="font-medium">{viewingCustomer.name}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Contact Name</Label>
+                            <p>{viewingCustomer.contact_name || '-'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Email</Label>
+                            <p>{viewingCustomer.email || '-'}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Phone</Label>
+                            <p>{viewingCustomer.phone || '-'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Website</Label>
+                            <p>{viewingCustomer.website || '-'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-xs">Address</Label>
+                          <p>
+                            {viewingCustomer.address_line1 || '-'}
+                            {viewingCustomer.address_line2 && <><br />{viewingCustomer.address_line2}</>}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">City</Label>
+                            <p>{viewingCustomer.city || '-'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">State</Label>
+                            <p>{viewingCustomer.state || '-'}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Postal Code</Label>
+                            <p>{viewingCustomer.postal_code || '-'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Country</Label>
+                            <p>{viewingCustomer.country || '-'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-xs">Payment Terms</Label>
+                          <p>{viewingCustomer.payment_terms ? `${viewingCustomer.payment_terms} days` : '-'}</p>
+                        </div>
+                        {viewingCustomer.notes && (
+                          <div>
+                            <Label className="text-muted-foreground text-xs">Notes</Label>
+                            <p className="whitespace-pre-wrap">{viewingCustomer.notes}</p>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Type</Label>
-                        <p>{viewingCustomer.type}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Customer Name</Label>
-                      <p className="font-medium">{viewingCustomer.name}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Contact Name</Label>
-                        <p>{viewingCustomer.contact_name || '-'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Email</Label>
-                        <p>{viewingCustomer.email || '-'}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Phone</Label>
-                        <p>{viewingCustomer.phone || '-'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Website</Label>
-                        <p>{viewingCustomer.website || '-'}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Address</Label>
-                      <p>
-                        {viewingCustomer.address_line1 || '-'}
-                        {viewingCustomer.address_line2 && <><br />{viewingCustomer.address_line2}</>}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground text-xs">City</Label>
-                        <p>{viewingCustomer.city || '-'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground text-xs">State</Label>
-                        <p>{viewingCustomer.state || '-'}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Postal Code</Label>
-                        <p>{viewingCustomer.postal_code || '-'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Country</Label>
-                        <p>{viewingCustomer.country || '-'}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Payment Terms</Label>
-                      <p>{viewingCustomer.payment_terms ? `${viewingCustomer.payment_terms} days` : '-'}</p>
-                    </div>
-                    {viewingCustomer.notes && (
-                      <div>
-                        <Label className="text-muted-foreground text-xs">Notes</Label>
-                        <p className="whitespace-pre-wrap">{viewingCustomer.notes}</p>
-                      </div>
+                    </TabsContent>
+
+                    {isHistoryEnabled('customer') && (
+                      <TabsContent value="history">
+                        <AuditHistoryTab
+                          tableName="customers"
+                          recordId={viewingCustomer.id}
+                          fieldLabels={{
+                            name: 'Name',
+                            type: 'Type',
+                            contact_name: 'Contact Name',
+                            email: 'Email',
+                            phone: 'Phone',
+                            website: 'Website',
+                            address_line1: 'Address Line 1',
+                            address_line2: 'Address Line 2',
+                            city: 'City',
+                            state: 'State',
+                            postal_code: 'Postal Code',
+                            country: 'Country',
+                            notes: 'Notes',
+                            payment_terms: 'Payment Terms',
+                          }}
+                        />
+                      </TabsContent>
                     )}
-                  </div>
+                  </Tabs>
                 )}
               </DialogContent>
             </Dialog>
