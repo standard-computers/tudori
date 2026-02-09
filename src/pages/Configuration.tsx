@@ -62,6 +62,7 @@ interface ProcessControlSettings {
   require_delivery_receipt: boolean;
   track_bin_level_movements: boolean;
   enforce_route_records: boolean;
+  reduce_app_load: boolean;
 }
 
 interface ImportExportSettings {
@@ -124,6 +125,7 @@ const Configuration = () => {
     require_delivery_receipt: true,
     track_bin_level_movements: true,
     enforce_route_records: false,
+    reduce_app_load: false,
   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -259,6 +261,7 @@ const Configuration = () => {
           require_delivery_receipt: (val.require_delivery_receipt as boolean) ?? true,
           track_bin_level_movements: (val.track_bin_level_movements as boolean) ?? true,
           enforce_route_records: (val.enforce_route_records as boolean) ?? false,
+          reduce_app_load: (val.reduce_app_load as boolean) ?? false,
         });
       }
     } catch (error) {
@@ -484,6 +487,7 @@ const Configuration = () => {
         require_delivery_receipt: processControls.require_delivery_receipt,
         track_bin_level_movements: processControls.track_bin_level_movements,
         enforce_route_records: processControls.enforce_route_records,
+        reduce_app_load: processControls.reduce_app_load,
       };
 
       if (existing) {
@@ -982,6 +986,25 @@ const Configuration = () => {
                       checked={processControls.enforce_route_records}
                       onCheckedChange={(checked) => 
                         setProcessControls(prev => ({ ...prev, enforce_route_records: checked }))
+                      }
+                    />
+                  </div>
+
+                  {/* Reduce App Load */}
+                  <div className="flex items-center justify-between gap-8 py-4 border-t border-border">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Reduce App Load</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        When enabled, apps will not load all data immediately. Instead, users will see a query dialog to filter records before loading. This is recommended for organizations with large datasets.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        When disabled, apps will load all available data on entry (default behavior).
+                      </p>
+                    </div>
+                    <Switch
+                      checked={processControls.reduce_app_load}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, reduce_app_load: checked }))
                       }
                     />
                   </div>
