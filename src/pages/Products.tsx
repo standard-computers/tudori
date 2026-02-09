@@ -64,6 +64,15 @@ import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 import { SafetyStockTab } from "@/components/products/SafetyStockTab";
 import { toast } from "sonner";
 import { useExcel } from "@/hooks/use-excel";
+import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+
+const PRODUCT_QUERY_FIELDS: QueryField[] = [
+  { key: "product_id", label: "Product ID", placeholder: "Search by product ID..." },
+  { key: "name", label: "Name", placeholder: "Search by name..." },
+  { key: "sku", label: "SKU", placeholder: "Search by SKU..." },
+  { key: "category", label: "Category", placeholder: "e.g. Raw Materials..." },
+];
 
 interface SafetyStock {
   id?: string;
@@ -548,6 +557,9 @@ const Products = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const { reduceAppLoad } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -834,10 +846,14 @@ const Products = () => {
 
   useEffect(() => {
     if (companyId) {
-      fetchProducts();
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchProducts();
+      }
       fetchNextProductId();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad]);
 
   const fetchCompanyId = async () => {
     const { data } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
@@ -847,12 +863,18 @@ const Products = () => {
     }
   };
 
-  const fetchProducts = async () => {
-    const { data, error } = await supabase
+  const fetchProducts = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from("products")
       .select("*, vendors(name, vendor_id)")
-      .eq("company_id", companyId!)
-      .order("product_id");
+      .eq("company_id", companyId!);
+
+    if (filters?.product_id) query = query.ilike("product_id", `%${filters.product_id}%`);
+    if (filters?.name) query = query.ilike("name", `%${filters.name}%`);
+    if (filters?.sku) query = query.ilike("sku", `%${filters.sku}%`);
+    if (filters?.category) query = query.ilike("category", `%${filters.category}%`);
+
+    const { data, error } = await query.order("product_id");
 
     if (error) {
       toast.error("Failed to load products");
@@ -860,6 +882,20 @@ const Products = () => {
     }
 
     setProducts(data || []);
+  };
+
+  const handleQueryDialogQuery = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchProducts(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchProducts();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   // fetchVendors removed - using useVendorSources hook instead
@@ -2627,6 +2663,15 @@ const Products = () => {
           />
         )}
       </main>
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogQuery}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={PRODUCT_QUERY_FIELDS}
+        title="Load Products"
+        loading={queryLoading}
+      />
     </div>
   );
 };

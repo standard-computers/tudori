@@ -55,6 +55,15 @@ import { Badge } from "@/components/ui/badge";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { toast } from "sonner";
+import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+
+const LOCATION_QUERY_FIELDS: QueryField[] = [
+  { key: "location_id", label: "Location ID", placeholder: "Search by ID..." },
+  { key: "name", label: "Name", placeholder: "Search by name..." },
+  { key: "city", label: "City", placeholder: "Search by city..." },
+  { key: "state", label: "State", placeholder: "Search by state..." },
+];
 
 interface Location {
   id: string;
@@ -410,6 +419,9 @@ const Locations = () => {
   const { setTransaction } = useStatusBar();
   const [locations, setLocations] = useState<Location[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const { reduceAppLoad } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -484,11 +496,15 @@ const Locations = () => {
 
   useEffect(() => {
     if (companyId) {
-      fetchLocations();
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchLocations();
+      }
       fetchNextLocationId();
       fetchCompanyUsers();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad]);
 
   const fetchCompanyId = async () => {
     const { data } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
@@ -498,12 +514,18 @@ const Locations = () => {
     }
   };
 
-  const fetchLocations = async () => {
-    const { data, error } = await supabase
+  const fetchLocations = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from("locations")
       .select("*")
-      .eq("company_id", companyId!)
-      .order("location_id");
+      .eq("company_id", companyId!);
+
+    if (filters?.location_id) query = query.ilike("location_id", `%${filters.location_id}%`);
+    if (filters?.name) query = query.ilike("name", `%${filters.name}%`);
+    if (filters?.city) query = query.ilike("city", `%${filters.city}%`);
+    if (filters?.state) query = query.ilike("state", `%${filters.state}%`);
+
+    const { data, error } = await query.order("location_id");
 
     if (error) {
       toast.error("Failed to load locations");
@@ -530,6 +552,20 @@ const Locations = () => {
     }
 
     setLocations(locationsData as Location[]);
+  };
+
+  const handleQueryDialogQuery = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchLocations(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchLocations();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   const fetchNextLocationId = async () => {
@@ -1445,6 +1481,15 @@ const Locations = () => {
         onConfirm={handleDeleteConfirm}
         isBlocked={deleteBlocked}
         blockedReason={deleteBlockedReason}
+      />
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogQuery}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={LOCATION_QUERY_FIELDS}
+        title="Load Locations"
+        loading={queryLoading}
       />
     </div>
   );

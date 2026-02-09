@@ -51,6 +51,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+
+const SALES_ORDER_QUERY_FIELDS: QueryField[] = [
+  { key: "so_number", label: "SO #", placeholder: "Search by SO number..." },
+  { key: "status", label: "Status", placeholder: "e.g. draft, confirmed..." },
+  { key: "customer", label: "Customer", placeholder: "Search by customer name..." },
+  { key: "order_date", label: "Order Date", type: "date" },
+];
 
 interface TaxRate {
   id: string;
@@ -204,6 +213,9 @@ const SalesOrders = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const { reduceAppLoad } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
 
   // Use vendor sources hook for ship from options (vendors + all locations)
   const { vendorOptions: shipFromOptions, parseVendorValue } = useVendorSources(companyId, {
@@ -279,7 +291,11 @@ const SalesOrders = () => {
 
   useEffect(() => {
     if (companyId) {
-      fetchOrders();
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchOrders();
+      }
       fetchLocations();
       fetchCustomers();
       fetchProducts();
@@ -287,7 +303,7 @@ const SalesOrders = () => {
       fetchTaxRates();
       fetchLedgers();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad]);
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
@@ -298,8 +314,8 @@ const SalesOrders = () => {
     setLoading(false);
   };
 
-  const fetchOrders = async () => {
-    const { data, error } = await supabase
+  const fetchOrders = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from("sales_orders" as any)
       .select(
         `
@@ -311,8 +327,13 @@ const SalesOrders = () => {
         tax_rate:tax_rates(name, rate)
       `,
       )
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+      .eq("company_id", companyId);
+
+    if (filters?.so_number) query = query.ilike("so_number", `%${filters.so_number}%`);
+    if (filters?.status) query = query.ilike("status", `%${filters.status}%`);
+    if (filters?.order_date) query = query.eq("order_date", filters.order_date);
+
+    const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching orders:", error);
@@ -320,7 +341,28 @@ const SalesOrders = () => {
       return;
     }
 
-    setOrders((data as any) || []);
+    // Client-side filter for customer name (joined table)
+    let filtered = (data as any) || [];
+    if (filters?.customer) {
+      const term = filters.customer.toLowerCase();
+      filtered = filtered.filter((o: any) => o.customer?.name?.toLowerCase().includes(term));
+    }
+
+    setOrders(filtered);
+  };
+
+  const handleQueryDialogQuery = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchOrders(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchOrders();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   const fetchLocations = async () => {
@@ -1793,6 +1835,15 @@ const SalesOrders = () => {
           )}
         </DialogContent>
       </Dialog>
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogQuery}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={SALES_ORDER_QUERY_FIELDS}
+        title="Load Sales Orders"
+        loading={queryLoading}
+      />
     </div>
   );
 };
