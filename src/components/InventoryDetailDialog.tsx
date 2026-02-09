@@ -796,13 +796,14 @@ export const InventoryDetailDialog = ({
   const canMove = !!item.bin_id && (currentBin?.allow_picking ?? true);
   
   // Filter bins for move mode - only show bins with put away enabled
-  // Also filter out hazardous-only bins unless the product is hazardous
+  // Hazardous products can only go to hazardous bins; non-hazardous products cannot go to hazardous bins
   const isProductHazardous = item.product?.hazardous ?? false;
+  const hazardousFilter = (b: Bin) => isProductHazardous ? b.is_hazardous : !b.is_hazardous;
   const availableBinsForMove = bins.filter(b => 
-    b.allow_put_away && b.id !== item.bin_id && (isProductHazardous || !b.is_hazardous)
+    b.allow_put_away && b.id !== item.bin_id && hazardousFilter(b)
   );
   const availableBinsForPutAway = bins.filter(b => 
-    b.allow_put_away && (isProductHazardous || !b.is_hazardous)
+    b.allow_put_away && hazardousFilter(b)
   );
   const binsToShow = isMoveMode ? availableBinsForMove : isPutAwayMode ? availableBinsForPutAway : bins;
 
