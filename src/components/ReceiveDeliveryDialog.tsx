@@ -34,7 +34,7 @@ interface DeliveryItem {
   notes: string | null;
   pu_id?: string | null;
   packaging_unit?: { pu_number: string } | null;
-  product?: { name: string; product_id: string };
+  product?: { name: string; product_id: string; hazardous?: boolean };
 }
 
 interface ReceivedItem {
@@ -46,6 +46,7 @@ interface ReceivedItem {
   received_quantity: number;
   pu_id?: string | null;
   pu_number?: string | null;
+  hazardous?: boolean;
 }
 
 interface ReceiveDeliveryDialogProps {
@@ -74,7 +75,7 @@ export const ReceiveDeliveryDialog = ({
   const [isInternalTransfer, setIsInternalTransfer] = useState(false);
   const [isFulfilled, setIsFulfilled] = useState(true);
   const [selectedBinId, setSelectedBinId] = useState('');
-  const [binOptions, setBinOptions] = useState<{ value: string; label: string; sublabel?: string; group?: string }[]>([]);
+  const [binOptions, setBinOptions] = useState<{ value: string; label: string; sublabel?: string; group?: string; is_hazardous?: boolean }[]>([]);
 
   useEffect(() => {
     if (open && deliveryId) {
@@ -116,7 +117,7 @@ export const ReceiveDeliveryDialog = ({
     const areaIds = targetAreas.map(a => a.id);
     const { data: bins } = await supabase
       .from('bins')
-      .select('id, bin_id, name, area_id, allow_put_away')
+      .select('id, bin_id, name, area_id, allow_put_away, is_hazardous')
       .in('area_id', areaIds)
       .eq('allow_put_away', true)
       .order('bin_id');
@@ -128,11 +129,12 @@ export const ReceiveDeliveryDialog = ({
 
     const areaMap = Object.fromEntries(targetAreas.map(a => [a.id, a.name]));
     setBinOptions(
-      bins.map(bin => ({
+      bins.map((bin: any) => ({
         value: bin.id,
         label: bin.bin_id,
         sublabel: bin.name,
         group: areaMap[bin.area_id] || 'Unknown Area',
+        is_hazardous: bin.is_hazardous ?? false,
       }))
     );
 
@@ -203,7 +205,7 @@ export const ReceiveDeliveryDialog = ({
         notes,
         pu_id,
         packaging_unit:packaging_units(pu_number),
-        product:products(name, product_id)
+        product:products(name, product_id, hazardous)
       `)
       .eq('delivery_id', deliveryId);
 
@@ -222,6 +224,7 @@ export const ReceiveDeliveryDialog = ({
       received_quantity: item.quantity,
       pu_id: item.pu_id || null,
       pu_number: item.packaging_unit?.pu_number || null,
+      hazardous: item.product?.hazardous ?? false,
     }));
 
     setItems(receivedItems);
@@ -525,7 +528,10 @@ export const ReceiveDeliveryDialog = ({
               Put Away To
             </div>
             <SearchableSelect
-              options={binOptions}
+              options={(() => {
+                const anyHazardous = items.some(i => i.hazardous);
+                return binOptions.filter(b => anyHazardous || !b.is_hazardous);
+              })()}
               value={selectedBinId}
               onValueChange={setSelectedBinId}
               placeholder="Select bin..."

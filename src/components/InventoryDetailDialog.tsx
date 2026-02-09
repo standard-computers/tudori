@@ -43,7 +43,7 @@ interface InventoryItem {
   quantity: number;
   min_quantity: number | null;
   max_quantity: number | null;
-  product?: { name: string; product_id: string; sku: string | null; company_id: string };
+  product?: { name: string; product_id: string; sku: string | null; company_id: string; hazardous?: boolean };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
 }
@@ -55,6 +55,7 @@ interface Bin {
   allow_picking: boolean;
   allow_put_away: boolean;
   allow_auto_put_away: boolean;
+  is_hazardous: boolean;
 }
 
 interface InventoryDetailDialogProps {
@@ -126,7 +127,7 @@ export const InventoryDetailDialog = ({
     // Then get bins for those areas
     const { data: binsData } = await supabase
       .from('bins')
-      .select('id, bin_id, name, allow_picking, allow_put_away, allow_auto_put_away')
+      .select('id, bin_id, name, allow_picking, allow_put_away, allow_auto_put_away, is_hazardous')
       .in('area_id', areaIds)
       .order('bin_id');
 
@@ -795,8 +796,15 @@ export const InventoryDetailDialog = ({
   const canMove = !!item.bin_id && (currentBin?.allow_picking ?? true);
   
   // Filter bins for move mode - only show bins with put away enabled
-  const availableBinsForMove = bins.filter(b => b.allow_put_away && b.id !== item.bin_id);
-  const binsToShow = isMoveMode ? availableBinsForMove : bins;
+  // Also filter out hazardous-only bins unless the product is hazardous
+  const isProductHazardous = item.product?.hazardous ?? false;
+  const availableBinsForMove = bins.filter(b => 
+    b.allow_put_away && b.id !== item.bin_id && (isProductHazardous || !b.is_hazardous)
+  );
+  const availableBinsForPutAway = bins.filter(b => 
+    b.allow_put_away && (isProductHazardous || !b.is_hazardous)
+  );
+  const binsToShow = isMoveMode ? availableBinsForMove : isPutAwayMode ? availableBinsForPutAway : bins;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
