@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
+import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
@@ -479,13 +481,27 @@ const Requisitions = () => {
     }
   }, [user]);
 
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
+
+  const requisitionQueryFields: QueryField[] = [
+    { key: 'requisition_id', label: 'Requisition ID' },
+    { key: 'status', label: 'Status' },
+    { key: 'date', label: 'Date', type: 'date' },
+  ];
+
   useEffect(() => {
-    if (companyId) {
-      fetchRequisitions();
+    if (companyId && !reduceAppLoadLoading) {
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchRequisitions();
+      }
       fetchLocations();
       fetchProducts();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase
@@ -500,8 +516,8 @@ const Requisitions = () => {
     setLoading(false);
   };
 
-  const fetchRequisitions = async () => {
-    const { data, error } = await supabase
+  const fetchRequisitions = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from('requisitions')
       .select(`
         *,
@@ -509,8 +525,13 @@ const Requisitions = () => {
         source_location:locations!requisitions_source_location_id_fkey(name, location_id),
         vendor:vendors(name, vendor_id)
       `)
-      .eq('company_id', companyId)
-      .order('requisition_id', { ascending: false });
+      .eq('company_id', companyId) as any;
+
+    if (filters?.requisition_id) query = query.ilike('requisition_id', `%${filters.requisition_id}%`);
+    if (filters?.status) query = query.ilike('status', `%${filters.status}%`);
+    if (filters?.date) query = query.eq('requisition_date', filters.date);
+
+    const { data, error } = await query.order('requisition_id', { ascending: false });
 
     if (error) {
       console.error('Error fetching requisitions:', error);
@@ -545,6 +566,21 @@ const Requisitions = () => {
 
     setRequisitions(requisitionsWithCreator);
   };
+
+  const handleQueryDialogSearch = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchRequisitions(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchRequisitions();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
 
   const fetchLocations = async () => {
     const { data } = await supabase
@@ -1105,6 +1141,15 @@ const Requisitions = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogSearch}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={requisitionQueryFields}
+        title="Load Requisitions"
+        loading={queryLoading}
+      />
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">

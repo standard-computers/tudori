@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
+import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useNavigate } from 'react-router-dom';
 import { OutboundDeliveriesTab } from '@/components/deliveries/OutboundDeliveriesTab';
 import { useAuth } from '@/contexts/AuthContext';
@@ -323,16 +325,30 @@ const Deliveries = () => {
     }
   }, [user]);
 
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
+
+  const deliveryQueryFields: QueryField[] = [
+    { key: 'delivery_id', label: 'Delivery ID' },
+    { key: 'status', label: 'Status' },
+    { key: 'tracking_number', label: 'Tracking Number' },
+  ];
+
   useEffect(() => {
-    if (companyId) {
-      fetchDeliveries();
+    if (companyId && !reduceAppLoadLoading) {
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchDeliveries();
+      }
       fetchNextDeliveryId();
       fetchPurchaseOrders();
       fetchLocations();
       fetchProducts();
       fetchCarriers();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   const fetchCompanyId = async () => {
     const { data } = await supabase
@@ -346,8 +362,8 @@ const Deliveries = () => {
     }
   };
 
-  const fetchDeliveries = async () => {
-    const { data, error } = await supabase
+  const fetchDeliveries = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from('deliveries')
       .select(`
         *,
@@ -355,8 +371,13 @@ const Deliveries = () => {
         location:locations(name),
         vendor:vendors(name)
       `)
-      .eq('company_id', companyId!)
-      .order('delivery_id', { ascending: false });
+      .eq('company_id', companyId!);
+
+    if (filters?.delivery_id) query = query.ilike('delivery_id', `%${filters.delivery_id}%`);
+    if (filters?.status) query = query.ilike('status', `%${filters.status}%`);
+    if (filters?.tracking_number) query = query.ilike('tracking_number', `%${filters.tracking_number}%`);
+
+    const { data, error } = await query.order('delivery_id', { ascending: false });
 
     if (error) {
       toast.error('Failed to load deliveries');
@@ -364,6 +385,20 @@ const Deliveries = () => {
     }
 
     setDeliveries(data || []);
+  };
+
+  const handleQueryDialogSearch = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchDeliveries(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchDeliveries();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   const fetchNextDeliveryId = async () => {
@@ -757,6 +792,15 @@ const Deliveries = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogSearch}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={deliveryQueryFields}
+        title="Load Deliveries"
+        loading={queryLoading}
+      />
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
           <div className="flex items-center justify-between h-16">

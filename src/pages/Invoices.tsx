@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
+import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
@@ -128,11 +130,25 @@ const Invoices = () => {
     }
   }, [user]);
 
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
+
+  const invoiceQueryFields: QueryField[] = [
+    { key: 'invoice_number', label: 'Invoice Number' },
+    { key: 'status', label: 'Status' },
+    { key: 'invoice_date', label: 'Invoice Date', type: 'date' },
+  ];
+
   useEffect(() => {
-    if (companyId) {
-      fetchInvoices();
+    if (companyId && !reduceAppLoadLoading) {
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchInvoices();
+      }
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase
@@ -147,8 +163,8 @@ const Invoices = () => {
     setLoading(false);
   };
 
-  const fetchInvoices = async () => {
-    const { data, error } = await supabase
+  const fetchInvoices = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from('invoices' as any)
       .select(`
         *,
@@ -157,8 +173,13 @@ const Invoices = () => {
         sales_order:sales_orders(so_number, total_amount, ledger_id, customer:customers(name, customer_id), location:locations!sales_orders_location_id_fkey(name, location_id)),
         ledger:ledgers(name)
       `)
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false });
+      .eq('company_id', companyId);
+
+    if (filters?.invoice_number) query = query.ilike('invoice_number', `%${filters.invoice_number}%`);
+    if (filters?.status) query = query.ilike('status', `%${filters.status}%`);
+    if (filters?.invoice_date) query = query.eq('invoice_date', filters.invoice_date);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching invoices:', error);
@@ -167,6 +188,20 @@ const Invoices = () => {
     }
 
     setInvoices((data as any) || []);
+  };
+
+  const handleQueryDialogSearch = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchInvoices(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchInvoices();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   const handleCreateClick = () => {
@@ -243,6 +278,15 @@ const Invoices = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogSearch}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={invoiceQueryFields}
+        title="Load Invoices"
+        loading={queryLoading}
+      />
       <div className="border-b">
         <div className="px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
