@@ -68,6 +68,19 @@ interface Employee {
   user_id: string | null;
 }
 
+interface Position {
+  id: string;
+  name: string;
+  team_id: string;
+  open_date: string;
+  wage: number | null;
+  show_wage: boolean;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  team?: { name: string } | null;
+}
+
 interface ActivePunch {
   employee_id: string;
   punch_in: string;
@@ -85,8 +98,10 @@ const HR = () => {
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [activePunches, setActivePunches] = useState<ActivePunch[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [directoryTab, setDirectoryTab] = useState<'employees' | 'positions'>('employees');
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [isViewMaximized, setIsViewMaximized] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -125,7 +140,7 @@ const HR = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchEmployees(), fetchActivePunches(), fetchTeams()]);
+    await Promise.all([fetchEmployees(), fetchActivePunches(), fetchTeams(), fetchPositions()]);
     setLoading(false);
   };
 
@@ -159,6 +174,15 @@ const HR = () => {
     setTeams(data || []);
   };
 
+  const fetchPositions = async () => {
+    const { data } = await supabase
+      .from('positions')
+      .select('*, team:teams(name)')
+      .eq('company_id', companyId!)
+      .order('created_at', { ascending: false });
+    setPositions((data as any) || []);
+  };
+
   const handleCreatePosition = async () => {
     if (!positionForm.name || !positionForm.team_id || !companyId) {
       toast.error('Please fill in required fields');
@@ -181,6 +205,7 @@ const HR = () => {
       toast.success('Position created');
       setShowPositionDialog(false);
       setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', show_wage: false });
+      fetchPositions();
     }
   };
 
@@ -199,6 +224,16 @@ const HR = () => {
       (e.email?.toLowerCase().includes(q)) ||
       (e.job_title?.toLowerCase().includes(q)) ||
       (e.department?.toLowerCase().includes(q))
+    );
+  });
+
+  const filteredPositions = positions.filter(p => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      (p.team?.name?.toLowerCase().includes(q)) ||
+      p.status.toLowerCase().includes(q)
     );
   });
 
@@ -293,97 +328,155 @@ const HR = () => {
           </Card>
         </div>
 
-        {/* Employee directory */}
+        {/* Directory */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
+            <div className="flex items-center border rounded-md overflow-hidden h-9">
+              <button
+                className={`px-3 h-full text-sm font-medium transition-colors ${directoryTab === 'employees' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+                onClick={() => { setDirectoryTab('employees'); setSearchQuery(''); }}
+              >
+                Employees
+              </button>
+              <button
+                className={`px-3 h-full text-sm font-medium transition-colors ${directoryTab === 'positions' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+                onClick={() => { setDirectoryTab('positions'); setSearchQuery(''); }}
+              >
+                Positions
+              </button>
+            </div>
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search employees..."
+                placeholder={directoryTab === 'employees' ? 'Search employees...' : 'Search positions...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
             </div>
             <span className="text-sm text-muted-foreground">
-              {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
+              {directoryTab === 'employees'
+                ? `${filteredEmployees.length} employee${filteredEmployees.length !== 1 ? 's' : ''}`
+                : `${filteredPositions.length} position${filteredPositions.length !== 1 ? 's' : ''}`}
             </span>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableCell className="font-medium w-24">ID</TableCell>
-                  <TableCell className="font-medium">Name</TableCell>
-                  <TableCell className="font-medium">Job Title</TableCell>
-                  <TableCell className="font-medium">Team</TableCell>
-                  <TableCell className="font-medium">Contact</TableCell>
-                  <TableCell className="font-medium w-24">Status</TableCell>
-                  <TableCell className="font-medium w-20">Clock</TableCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmployees.map((employee) => {
-                  const isClockedIn = clockedInEmployeeIds.has(employee.id);
-                  return (
-                    <TableRow key={employee.id}>
-                      <TableCell>
-                        <button
-                          className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
-                          onClick={() => setViewingEmployee(employee)}
-                        >
-                          {employee.employee_id}
-                        </button>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {employee.first_name} {employee.last_name}
-                      </TableCell>
-                      <TableCell className="text-sm">{employee.job_title || '-'}</TableCell>
-                      <TableCell className="text-sm">{employee.department || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {employee.email && (
-                            <a href={`mailto:${employee.email}`} className="text-muted-foreground hover:text-foreground">
-                              <Mail className="h-4 w-4" />
-                            </a>
-                          )}
-                          {employee.phone && (
-                            <a href={`tel:${employee.phone}`} className="text-muted-foreground hover:text-foreground">
-                              <Phone className="h-4 w-4" />
-                            </a>
-                          )}
-                          {!employee.email && !employee.phone && <span className="text-xs text-muted-foreground">-</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                          {employee.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {isClockedIn ? (
-                          <Badge variant="outline" className="text-emerald-600 border-emerald-300">
-                            <Clock className="h-3 w-3 mr-1" />
-                            In
+          {directoryTab === 'employees' ? (
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableCell className="font-medium w-24">ID</TableCell>
+                    <TableCell className="font-medium">Name</TableCell>
+                    <TableCell className="font-medium">Job Title</TableCell>
+                    <TableCell className="font-medium">Team</TableCell>
+                    <TableCell className="font-medium">Contact</TableCell>
+                    <TableCell className="font-medium w-24">Status</TableCell>
+                    <TableCell className="font-medium w-20">Clock</TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.map((employee) => {
+                    const isClockedIn = clockedInEmployeeIds.has(employee.id);
+                    return (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <button
+                            className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
+                            onClick={() => setViewingEmployee(employee)}
+                          >
+                            {employee.employee_id}
+                          </button>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {employee.first_name} {employee.last_name}
+                        </TableCell>
+                        <TableCell className="text-sm">{employee.job_title || '-'}</TableCell>
+                        <TableCell className="text-sm">{employee.department || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {employee.email && (
+                              <a href={`mailto:${employee.email}`} className="text-muted-foreground hover:text-foreground">
+                                <Mail className="h-4 w-4" />
+                              </a>
+                            )}
+                            {employee.phone && (
+                              <a href={`tel:${employee.phone}`} className="text-muted-foreground hover:text-foreground">
+                                <Phone className="h-4 w-4" />
+                              </a>
+                            )}
+                            {!employee.email && !employee.phone && <span className="text-xs text-muted-foreground">-</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                            {employee.status}
                           </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
+                        </TableCell>
+                        <TableCell>
+                          {isClockedIn ? (
+                            <Badge variant="outline" className="text-emerald-600 border-emerald-300">
+                              <Clock className="h-3 w-3 mr-1" />
+                              In
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {filteredEmployees.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        No employees found
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-                {filteredEmployees.length === 0 && (
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      No employees found
-                    </TableCell>
+                    <TableCell className="font-medium">Position</TableCell>
+                    <TableCell className="font-medium">Team</TableCell>
+                    <TableCell className="font-medium">Open Date</TableCell>
+                    <TableCell className="font-medium">Wage</TableCell>
+                    <TableCell className="font-medium w-24">Status</TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredPositions.map((position) => (
+                    <TableRow key={position.id}>
+                      <TableCell className="font-medium">{position.name}</TableCell>
+                      <TableCell className="text-sm">{position.team?.name || '-'}</TableCell>
+                      <TableCell className="text-sm">{format(parseISO(position.open_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell className="text-sm">
+                        {position.show_wage && position.wage != null
+                          ? `$${position.wage.toFixed(2)}`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={position.status === 'open' ? 'default' : 'secondary'}>
+                          {position.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredPositions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                        No positions found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       </main>
 
