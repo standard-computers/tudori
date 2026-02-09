@@ -1165,7 +1165,7 @@ const Vendors = () => {
             </DialogDescription>
           </DialogHeader>
           {viewingVendor && (
-            <Tabs defaultValue="details" className="w-full">
+            <Tabs defaultValue="details" className="w-full px-6 py-4">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-1">
