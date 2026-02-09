@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -19,9 +21,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogBody,
+  DialogFooter,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
@@ -38,9 +48,11 @@ import {
   Minimize2,
   Mail,
   Phone,
+  Plus,
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
+import { toast } from 'sonner';
 
 interface Employee {
   id: string;
@@ -60,6 +72,11 @@ interface ActivePunch {
   punch_in: string;
 }
 
+interface Team {
+  id: string;
+  name: string;
+}
+
 const HR = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -71,16 +88,16 @@ const HR = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [isViewMaximized, setIsViewMaximized] = useState(false);
-
-  useEffect(() => {
-    setTransaction('hr');
-  }, [setTransaction]);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [showPositionDialog, setShowPositionDialog] = useState(false);
+  const [positionForm, setPositionForm] = useState({
+    name: '',
+    team_id: '',
+    open_date: format(new Date(), 'yyyy-MM-dd'),
+    wage: '',
+    show_wage: false,
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user) fetchCompanyId();
@@ -104,7 +121,7 @@ const HR = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchEmployees(), fetchActivePunches()]);
+    await Promise.all([fetchEmployees(), fetchActivePunches(), fetchTeams()]);
     setLoading(false);
   };
 
@@ -127,6 +144,40 @@ const HR = () => {
       .gte('punch_in', startOfDay(today).toISOString())
       .lte('punch_in', endOfDay(today).toISOString());
     setActivePunches(data || []);
+  };
+
+  const fetchTeams = async () => {
+    const { data } = await supabase
+      .from('teams')
+      .select('id, name')
+      .eq('company_id', companyId!)
+      .order('name');
+    setTeams(data || []);
+  };
+
+  const handleCreatePosition = async () => {
+    if (!positionForm.name || !positionForm.team_id || !companyId) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from('positions').insert({
+      company_id: companyId,
+      name: positionForm.name,
+      team_id: positionForm.team_id,
+      open_date: positionForm.open_date,
+      wage: positionForm.wage ? parseFloat(positionForm.wage) : null,
+      show_wage: positionForm.show_wage,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error('Failed to create position');
+      console.error(error);
+    } else {
+      toast.success('Position created');
+      setShowPositionDialog(false);
+      setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', show_wage: false });
+    }
   };
 
   const activeCount = employees.filter(e => e.status === 'active').length;
@@ -180,6 +231,10 @@ const HR = () => {
             <Button variant="outline" size="sm" onClick={() => navigate('/time-clock')}>
               <Clock className="h-4 w-4 mr-2" />
               Time Clock
+            </Button>
+            <Button size="sm" onClick={() => setShowPositionDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Position
             </Button>
           </div>
         </div>
@@ -420,6 +475,78 @@ const HR = () => {
               </Tabs>
             )}
           </DialogBody>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Position Dialog */}
+      <Dialog open={showPositionDialog} onOpenChange={setShowPositionDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Position</DialogTitle>
+            <DialogDescription>Create an open position on a team.</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="position-name">Position Name *</Label>
+              <Input
+                id="position-name"
+                placeholder="e.g. Warehouse Associate"
+                value={positionForm.name}
+                onChange={(e) => setPositionForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="position-team">Team *</Label>
+              <Select
+                value={positionForm.team_id}
+                onValueChange={(v) => setPositionForm(f => ({ ...f, team_id: v }))}
+              >
+                <SelectTrigger id="position-team">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="position-date">Open Date</Label>
+              <Input
+                id="position-date"
+                type="date"
+                value={positionForm.open_date}
+                onChange={(e) => setPositionForm(f => ({ ...f, open_date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="position-wage">Wage</Label>
+              <Input
+                id="position-wage"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={positionForm.wage}
+                onChange={(e) => setPositionForm(f => ({ ...f, wage: e.target.value }))}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="position-show-wage">Show wage for position</Label>
+              <Switch
+                id="position-show-wage"
+                checked={positionForm.show_wage}
+                onCheckedChange={(v) => setPositionForm(f => ({ ...f, show_wage: v }))}
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPositionDialog(false)}>Cancel</Button>
+            <Button onClick={handleCreatePosition} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create Position
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
