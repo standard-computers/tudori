@@ -319,10 +319,10 @@ const HR = () => {
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Clocked In</p>
-                  <p className="text-2xl font-bold">{clockedInCount}</p>
+                  <p className="text-xs text-muted-foreground">Open Positions</p>
+                  <p className="text-2xl font-bold">{positions.filter(p => p.status === 'open').length}</p>
                 </div>
-                <Clock className="h-8 w-8 text-muted-foreground/30" />
+                <Plus className="h-8 w-8 text-muted-foreground/30" />
               </div>
             </CardContent>
           </Card>
