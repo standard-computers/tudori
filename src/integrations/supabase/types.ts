@@ -2670,6 +2670,63 @@ export type Database = {
           },
         ]
       }
+      positions: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          open_date: string
+          show_wage: boolean
+          status: string
+          team_id: string
+          updated_at: string
+          wage: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          open_date?: string
+          show_wage?: boolean
+          status?: string
+          team_id: string
+          updated_at?: string
+          wage?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          open_date?: string
+          show_wage?: boolean
+          status?: string
+          team_id?: string
+          updated_at?: string
+          wage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "positions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_components: {
         Row: {
           component_product_id: string
