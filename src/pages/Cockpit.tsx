@@ -112,6 +112,8 @@ interface Bin {
   weight_capacity?: number | null;
   weight_capacity_uom?: string | null;
   is_production_enabled?: boolean;
+  is_hazardous?: boolean;
+  allow_put_away?: boolean;
 }
 
 interface Delivery {
@@ -138,7 +140,7 @@ interface InventoryItem {
   min_quantity: number | null;
   max_quantity: number | null;
   pu_id: string | null;
-  product?: { name: string; product_id: string; sku: string | null; company_id: string };
+  product?: { name: string; product_id: string; sku: string | null; company_id: string; hazardous?: boolean };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
 }
@@ -477,7 +479,7 @@ const [areaFormData, setAreaFormData] = useState({
         min_quantity,
         max_quantity,
         pu_id,
-        product:products(name, product_id, sku, company_id),
+        product:products(name, product_id, sku, company_id, hazardous),
         bin:bins(bin_id, name),
         packaging_unit:packaging_units(pu_number)
       `)
@@ -3367,7 +3369,15 @@ const [areaFormData, setAreaFormData] = useState({
                   <SelectValue placeholder="Select a bin..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {bins.map((bin) => {
+                  {bins.filter(bin => {
+                    if (!bin.allow_put_away) return false;
+                    // Hide hazardous bins unless all selected items are hazardous products
+                    if (bin.is_hazardous) {
+                      const selectedItems = inventory.filter(i => selectedInventoryIds.has(i.id));
+                      return selectedItems.length > 0 && selectedItems.every(i => i.product?.hazardous);
+                    }
+                    return true;
+                  }).map((bin) => {
                     const area = areas.find(a => a.id === bin.area_id);
                     return (
                       <SelectItem key={bin.id} value={bin.id}>
