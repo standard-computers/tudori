@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from "react";
+import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
@@ -490,12 +492,27 @@ const Vendors = () => {
     }
   }, [user]);
 
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
+
+  const vendorQueryFields: QueryField[] = [
+    { key: 'vendor_id', label: 'Vendor ID' },
+    { key: 'name', label: 'Vendor Name' },
+    { key: 'city', label: 'City' },
+    { key: 'type', label: 'Type' },
+  ];
+
   useEffect(() => {
-    if (companyId) {
-      fetchVendors();
+    if (companyId && !reduceAppLoadLoading) {
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchVendors();
+      }
       fetchNextVendorId();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   const fetchCompanyId = async () => {
     const { data } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
@@ -505,8 +522,15 @@ const Vendors = () => {
     }
   };
 
-  const fetchVendors = async () => {
-    const { data, error } = await supabase.from("vendors").select("*").eq("company_id", companyId!).order("vendor_id");
+  const fetchVendors = async (filters?: Record<string, string>) => {
+    let query = supabase.from("vendors").select("*").eq("company_id", companyId!);
+
+    if (filters?.vendor_id) query = query.ilike("vendor_id", `%${filters.vendor_id}%`);
+    if (filters?.name) query = query.ilike("name", `%${filters.name}%`);
+    if (filters?.city) query = query.ilike("city", `%${filters.city}%`);
+    if (filters?.type) query = query.ilike("type", `%${filters.type}%`);
+
+    const { data, error } = await query.order("vendor_id");
 
     if (error) {
       addMessage("Failed to load vendors", "error");
@@ -514,6 +538,20 @@ const Vendors = () => {
     }
 
     setVendors(data || []);
+  };
+
+  const handleQueryDialogSearch = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchVendors(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchVendors();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   const fetchNextVendorId = async () => {
@@ -809,6 +847,15 @@ const Vendors = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogSearch}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={vendorQueryFields}
+        title="Load Vendors"
+        loading={queryLoading}
+      />
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
