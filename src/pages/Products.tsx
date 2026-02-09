@@ -557,7 +557,7 @@ const Products = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const { reduceAppLoad } = useReduceAppLoad();
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
   const [showQueryDialog, setShowQueryDialog] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -845,7 +845,7 @@ const Products = () => {
   }, [user]);
 
   useEffect(() => {
-    if (companyId) {
+    if (companyId && !reduceAppLoadLoading) {
       if (reduceAppLoad) {
         setShowQueryDialog(true);
       } else {
@@ -853,7 +853,7 @@ const Products = () => {
       }
       fetchNextProductId();
     }
-  }, [companyId, reduceAppLoad]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   const fetchCompanyId = async () => {
     const { data } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();

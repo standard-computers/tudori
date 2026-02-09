@@ -305,7 +305,7 @@ const Orders = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const { reduceAppLoad } = useReduceAppLoad();
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
   const [showQueryDialog, setShowQueryDialog] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
@@ -421,7 +421,7 @@ const Orders = () => {
   }, [user]);
 
   useEffect(() => {
-    if (companyId) {
+    if (companyId && !reduceAppLoadLoading) {
       if (reduceAppLoad) {
         setShowQueryDialog(true);
       } else {
@@ -437,7 +437,7 @@ const Orders = () => {
       fetchAssignments();
       fetchRouteEnforcementSetting();
     }
-  }, [companyId, reduceAppLoad]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
