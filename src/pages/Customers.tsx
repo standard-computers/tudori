@@ -4,6 +4,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -391,6 +392,33 @@ const Customers = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel } = useExcel();
+
+  const handleExport = async () => {
+    if (customers.length === 0) {
+      toast.info('No customers to export');
+      return;
+    }
+    const exportData = customers.map((c) => ({
+      'Customer ID': c.customer_id,
+      'Name': c.name,
+      'Type': c.type,
+      'Contact': c.contact_name || '',
+      'Email': c.email || '',
+      'Phone': c.phone || '',
+      'Address': c.address_line1 || '',
+      'Address 2': c.address_line2 || '',
+      'City': c.city || '',
+      'State': c.state || '',
+      'Postal Code': c.postal_code || '',
+      'Country': c.country || '',
+      'Website': c.website || '',
+      'Payment Terms': c.payment_terms ?? '',
+      'Notes': c.notes || '',
+    }));
+    await exportToExcel(exportData, `customers_export_${new Date().toISOString().split('T')[0]}.xlsx`, 'Customers');
+    toast.success('Customers exported successfully');
+  };
 
   // Column visibility
   const {
@@ -737,6 +765,7 @@ const Customers = () => {
               <ImportExportButtons
                 importEnabled={isImportEnabled('customer')}
                 exportEnabled={isExportEnabled('customer')}
+                onExport={handleExport}
                 entityName="Customers"
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
