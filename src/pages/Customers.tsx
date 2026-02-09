@@ -1032,7 +1032,7 @@ const Customers = () => {
                 </button>
                 
                 {viewingCustomer && (
-                  <Tabs defaultValue="details">
+                  <Tabs defaultValue="details" className="px-6 py-4">
                     <TabsList>
                       <TabsTrigger value="details">Details</TabsTrigger>
                       {isHistoryEnabled('customer') && (
