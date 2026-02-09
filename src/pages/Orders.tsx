@@ -62,6 +62,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { DeliveryItemsDialog } from "@/components/DeliveryItemsDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+
+const ORDER_QUERY_FIELDS: QueryField[] = [
+  { key: "po_number", label: "PO #", placeholder: "Search by PO number..." },
+  { key: "status", label: "Status", placeholder: "e.g. draft, confirmed..." },
+  { key: "vendor", label: "Vendor", placeholder: "Search by vendor name..." },
+  { key: "order_date", label: "Order Date", type: "date" },
+];
 import jsPDF from "jspdf";
 
 interface TaxRate {
@@ -296,6 +305,9 @@ const Orders = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const { reduceAppLoad } = useReduceAppLoad();
+  const [showQueryDialog, setShowQueryDialog] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
 
   // Use vendor sources hook for combined vendors + DC/warehouse locations
@@ -410,7 +422,11 @@ const Orders = () => {
 
   useEffect(() => {
     if (companyId) {
-      fetchOrders();
+      if (reduceAppLoad) {
+        setShowQueryDialog(true);
+      } else {
+        fetchOrders();
+      }
       fetchLocations();
       fetchProducts();
       fetchPackagingUnits();
@@ -421,7 +437,7 @@ const Orders = () => {
       fetchAssignments();
       fetchRouteEnforcementSetting();
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad]);
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
@@ -443,8 +459,8 @@ const Orders = () => {
     setLoading(false);
   };
 
-  const fetchOrders = async () => {
-    const { data, error } = await supabase
+  const fetchOrders = async (filters?: Record<string, string>) => {
+    let query = supabase
       .from("purchase_orders")
       .select(
         `
@@ -458,8 +474,13 @@ const Orders = () => {
         tax_rate:tax_rates(name, rate)
       `,
       )
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+      .eq("company_id", companyId);
+
+    if (filters?.po_number) query = query.ilike("po_number", `%${filters.po_number}%`);
+    if (filters?.status) query = query.ilike("status", `%${filters.status}%`);
+    if (filters?.order_date) query = query.eq("order_date", filters.order_date);
+
+    const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching orders:", error);
@@ -468,7 +489,14 @@ const Orders = () => {
     }
 
     // Fetch creator profiles for orders with created_by
-    const ordersData = data || [];
+    let ordersData = data || [];
+
+    // Client-side filter for vendor name (joined table)
+    if (filters?.vendor) {
+      const term = filters.vendor.toLowerCase();
+      ordersData = ordersData.filter((o) => o.vendor?.name?.toLowerCase().includes(term));
+    }
+
     const createdByIds = [...new Set(ordersData.filter((o) => o.created_by).map((o) => o.created_by))] as string[];
 
     if (createdByIds.length > 0) {
@@ -490,6 +518,20 @@ const Orders = () => {
     } else {
       setOrders(ordersData.map((o) => ({ ...o, creator: null })));
     }
+  };
+
+  const handleQueryDialogQuery = async (filters: Record<string, string>) => {
+    setQueryLoading(true);
+    await fetchOrders(filters);
+    setQueryLoading(false);
+    setShowQueryDialog(false);
+  };
+
+  const handleQueryDialogLoadAll = async () => {
+    setQueryLoading(true);
+    await fetchOrders();
+    setQueryLoading(false);
+    setShowQueryDialog(false);
   };
 
   const fetchLocations = async () => {
@@ -3404,6 +3446,15 @@ const Orders = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AppLoadQueryDialog
+        open={showQueryDialog}
+        onClose={() => setShowQueryDialog(false)}
+        onQuery={handleQueryDialogQuery}
+        onLoadAll={handleQueryDialogLoadAll}
+        fields={ORDER_QUERY_FIELDS}
+        title="Load Purchase Orders"
+        loading={queryLoading}
+      />
     </div>
   );
 };
