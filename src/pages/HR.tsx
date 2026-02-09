@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -98,6 +99,9 @@ const HR = () => {
     show_wage: false,
   });
   const [saving, setSaving] = useState(false);
+
+  // F1 to go back
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   useEffect(() => {
     if (user) fetchCompanyId();
