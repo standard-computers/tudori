@@ -1260,6 +1260,60 @@ export type Database = {
           },
         ]
       }
+      employee_reviews: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          notes: string | null
+          rating: number | null
+          review_date: string
+          reviewer_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          review_date?: string
+          reviewer_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          review_date?: string
+          reviewer_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_reviews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reviews_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           bonus_eligible: boolean | null
@@ -2674,6 +2728,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          employee_id: string | null
           id: string
           name: string
           notes: string | null
@@ -2687,6 +2742,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          employee_id?: string | null
           id?: string
           name: string
           notes?: string | null
@@ -2700,6 +2756,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          employee_id?: string | null
           id?: string
           name?: string
           notes?: string | null
@@ -2716,6 +2773,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "positions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {

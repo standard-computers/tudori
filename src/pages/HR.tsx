@@ -50,6 +50,9 @@ import {
   Mail,
   Phone,
   Plus,
+  Briefcase,
+  ClipboardCheck,
+  Star,
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
@@ -114,6 +117,12 @@ const HR = () => {
     show_wage: false,
   });
   const [saving, setSaving] = useState(false);
+  const [assignPositionId, setAssignPositionId] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 0, notes: '', review_date: format(new Date(), 'yyyy-MM-dd') });
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [employeeReviews, setEmployeeReviews] = useState<any[]>([]);
+  const [employeePosition, setEmployeePosition] = useState<Position | null>(null);
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -208,6 +217,84 @@ const HR = () => {
       fetchPositions();
     }
   };
+
+  const openEmployeeView = async (employee: Employee) => {
+    setViewingEmployee(employee);
+    setAssignPositionId('');
+    setReviewForm({ rating: 0, notes: '', review_date: format(new Date(), 'yyyy-MM-dd') });
+    // Fetch current position assignment
+    const { data: pos } = await supabase
+      .from('positions')
+      .select('*, team:teams(name)')
+      .eq('company_id', companyId!)
+      .eq('employee_id', employee.id)
+      .maybeSingle();
+    setEmployeePosition((pos as any) || null);
+    // Fetch reviews
+    const { data: revs } = await supabase
+      .from('employee_reviews')
+      .select('*')
+      .eq('employee_id', employee.id)
+      .order('review_date', { ascending: false });
+    setEmployeeReviews(revs || []);
+  };
+
+  const handleAssignPosition = async () => {
+    if (!assignPositionId || !viewingEmployee || !companyId) return;
+    setAssignSaving(true);
+    const { error } = await supabase
+      .from('positions')
+      .update({ employee_id: viewingEmployee.id, status: 'filled' })
+      .eq('id', assignPositionId);
+    setAssignSaving(false);
+    if (error) {
+      toast.error('Failed to assign position');
+    } else {
+      toast.success('Employee assigned to position');
+      setAssignPositionId('');
+      fetchPositions();
+      // Refresh employee position
+      const { data: pos } = await supabase
+        .from('positions')
+        .select('*, team:teams(name)')
+        .eq('company_id', companyId)
+        .eq('employee_id', viewingEmployee.id)
+        .maybeSingle();
+      setEmployeePosition((pos as any) || null);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!viewingEmployee || !companyId || reviewForm.rating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+    setReviewSaving(true);
+    const { error } = await supabase.from('employee_reviews').insert({
+      company_id: companyId,
+      employee_id: viewingEmployee.id,
+      reviewer_id: user!.id,
+      review_date: reviewForm.review_date,
+      rating: reviewForm.rating,
+      notes: reviewForm.notes || null,
+      status: 'completed',
+    });
+    setReviewSaving(false);
+    if (error) {
+      toast.error('Failed to save review');
+    } else {
+      toast.success('Review saved');
+      setReviewForm({ rating: 0, notes: '', review_date: format(new Date(), 'yyyy-MM-dd') });
+      const { data: revs } = await supabase
+        .from('employee_reviews')
+        .select('*')
+        .eq('employee_id', viewingEmployee.id)
+        .order('review_date', { ascending: false });
+      setEmployeeReviews(revs || []);
+    }
+  };
+
+  const openPositions = positions.filter(p => p.status === 'open');
 
   const activeCount = employees.filter(e => e.status === 'active').length;
   const inactiveCount = employees.filter(e => e.status !== 'active').length;
@@ -383,7 +470,7 @@ const HR = () => {
                         <TableCell>
                           <button
                             className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
-                            onClick={() => setViewingEmployee(employee)}
+                            onClick={() => openEmployeeView(employee)}
                           >
                             {employee.employee_id}
                           </button>
@@ -509,8 +596,10 @@ const HR = () => {
           <DialogBody className="pb-6">
             {viewingEmployee && (
               <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="position">Position</TabsTrigger>
+                  <TabsTrigger value="review">Review</TabsTrigger>
                   <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
                 </TabsList>
                 <TabsContent value="details" className="space-y-4 mt-4">
@@ -566,6 +655,125 @@ const HR = () => {
                     </div>
                   </div>
                 </TabsContent>
+
+                {/* Assign to Position Tab */}
+                <TabsContent value="position" className="space-y-4 mt-4">
+                  {employeePosition ? (
+                    <Card>
+                      <CardContent className="pt-4 pb-3 px-4">
+                        <p className="text-xs text-muted-foreground mb-1">Current Position</p>
+                        <p className="font-medium">{employeePosition.name}</p>
+                        <p className="text-sm text-muted-foreground">{employeePosition.team?.name || '-'}</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No position currently assigned.</p>
+                  )}
+                  {openPositions.length > 0 ? (
+                    <div className="space-y-3">
+                      <Label>Assign to Open Position</Label>
+                      <Select value={assignPositionId} onValueChange={setAssignPositionId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a position..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {openPositions.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name} — {p.team?.name || 'No team'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={handleAssignPosition} disabled={!assignPositionId || assignSaving} size="sm">
+                        {assignSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        <Briefcase className="h-4 w-4 mr-2" />
+                        Assign
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No open positions available.</p>
+                  )}
+                </TabsContent>
+
+                {/* Review Tab */}
+                <TabsContent value="review" className="space-y-4 mt-4">
+                  <div className="space-y-3 border rounded-md p-4">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <ClipboardCheck className="h-4 w-4" />
+                      New Review
+                    </h4>
+                    <div className="space-y-2">
+                      <Label>Date</Label>
+                      <Input
+                        type="date"
+                        value={reviewForm.review_date}
+                        onChange={(e) => setReviewForm(f => ({ ...f, review_date: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rating</Label>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewForm(f => ({ ...f, rating: star }))}
+                            className="p-0.5"
+                          >
+                            <Star
+                              className={`h-6 w-6 ${star <= reviewForm.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Notes</Label>
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="Performance notes..."
+                        value={reviewForm.notes}
+                        onChange={(e) => setReviewForm(f => ({ ...f, notes: e.target.value }))}
+                      />
+                    </div>
+                    <Button onClick={handleSubmitReview} disabled={reviewSaving || reviewForm.rating === 0} size="sm">
+                      {reviewSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Submit Review
+                    </Button>
+                  </div>
+                  {employeeReviews.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">Past Reviews</h4>
+                      <div className="border rounded-md overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableCell className="font-medium">Date</TableCell>
+                              <TableCell className="font-medium">Rating</TableCell>
+                              <TableCell className="font-medium">Notes</TableCell>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {employeeReviews.map((rev) => (
+                              <TableRow key={rev.id}>
+                                <TableCell className="text-sm">{format(parseISO(rev.review_date), 'MMM d, yyyy')}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                      <Star key={s} className={`h-3.5 w-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`} />
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm max-w-[200px] truncate">{rev.notes || '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
                 <TabsContent value="timesheets" className="mt-4">
                   <TimesheetsTab employeeId={viewingEmployee.id} />
                 </TabsContent>
