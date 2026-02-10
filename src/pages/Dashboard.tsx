@@ -47,8 +47,11 @@ const Dashboard = () => {
   const [hiddenTiles, setHiddenTiles] = useState<Set<string>>(new Set());
   const [openAppsInNewTab, setOpenAppsInNewTab] = useState(false);
   
-  // Transaction access control
-  const { hasAccess, loading: accessLoading } = useTransactionAccess(profile?.company_id);
+  // Track whether profile/company check is still running
+  const [profileChecked, setProfileChecked] = useState(false);
+
+  // Transaction access control — only load once profile check is done
+  const { hasAccess, loading: accessLoading } = useTransactionAccess(profileChecked ? profile?.company_id : undefined);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -79,7 +82,7 @@ const Dashboard = () => {
       .from("profiles")
       .select("first_name, last_name, company_id")
       .eq("user_id", user!.id)
-      .single();
+      .maybeSingle();
 
     if (!profileData) {
       // No profile means setup was never completed
@@ -87,36 +90,37 @@ const Dashboard = () => {
       return;
     }
 
-    setProfile(profileData);
-
-    if (profileData.company_id) {
-      // Check if company exists and has required fields filled
-      const { data: companyData } = await supabase
-        .from("companies")
-        .select("name, logo_url, address_line1, city, state, postal_code, logo_url")
-        .eq("id", profileData.company_id)
-        .single();
-
-      if (!companyData || !companyData.name || !companyData.address_line1 || !companyData.city || !companyData.state || !companyData.postal_code) {
-        // Company setup is incomplete — check if this user is the sole member
-        const { count } = await supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("company_id", profileData.company_id);
-
-        if (count === 1) {
-          navigate("/complete-profile");
-          return;
-        }
-      }
-
-      if (companyData) {
-        setCompany({ name: companyData.name, logo_url: companyData.logo_url });
-      }
-    } else {
+    if (!profileData.company_id) {
       // Profile exists but no company assigned
       navigate("/complete-profile");
       return;
+    }
+
+    // Check if company exists and has required fields filled
+    const { data: companyData } = await supabase
+      .from("companies")
+      .select("name, logo_url, address_line1, city, state, postal_code")
+      .eq("id", profileData.company_id)
+      .single();
+
+    if (!companyData || !companyData.name || !companyData.address_line1 || !companyData.city || !companyData.state || !companyData.postal_code) {
+      // Company setup is incomplete — check if this user is the sole member
+      const { count } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", profileData.company_id);
+
+      if (count === 1) {
+        navigate("/complete-profile");
+        return;
+      }
+    }
+
+    setProfile(profileData);
+    setProfileChecked(true);
+
+    if (companyData) {
+      setCompany({ name: companyData.name, logo_url: companyData.logo_url });
     }
   };
 
@@ -189,7 +193,7 @@ const Dashboard = () => {
     navigate("/auth");
   };
 
-  if (loading || accessLoading) {
+  if (loading || !profileChecked || accessLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
