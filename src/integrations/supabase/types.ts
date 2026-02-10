@@ -2724,6 +2724,42 @@ export type Database = {
           },
         ]
       }
+      position_locations: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          position_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          position_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          position_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "position_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "position_locations_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       positions: {
         Row: {
           company_id: string

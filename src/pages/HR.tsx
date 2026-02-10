@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -71,6 +72,11 @@ interface Employee {
   user_id: string | null;
 }
 
+interface Location {
+  id: string;
+  name: string;
+}
+
 interface Position {
   id: string;
   name: string;
@@ -82,6 +88,7 @@ interface Position {
   notes: string | null;
   created_at: string;
   team?: { name: string } | null;
+  position_locations?: { location_id: string; locations?: { name: string } | null }[];
 }
 
 interface ActivePunch {
@@ -108,6 +115,7 @@ const HR = () => {
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [isViewMaximized, setIsViewMaximized] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [showPositionDialog, setShowPositionDialog] = useState(false);
   const [positionForm, setPositionForm] = useState({
     name: '',
@@ -115,6 +123,7 @@ const HR = () => {
     open_date: format(new Date(), 'yyyy-MM-dd'),
     wage: '',
     show_wage: false,
+    location_ids: [] as string[],
   });
   const [saving, setSaving] = useState(false);
   const [assignPositionId, setAssignPositionId] = useState('');
@@ -149,7 +158,7 @@ const HR = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchEmployees(), fetchActivePunches(), fetchTeams(), fetchPositions()]);
+    await Promise.all([fetchEmployees(), fetchActivePunches(), fetchTeams(), fetchPositions(), fetchLocations()]);
     setLoading(false);
   };
 
@@ -186,10 +195,19 @@ const HR = () => {
   const fetchPositions = async () => {
     const { data } = await supabase
       .from('positions')
-      .select('*, team:teams(name)')
+      .select('*, team:teams(name), position_locations(location_id, locations:locations(name))')
       .eq('company_id', companyId!)
       .order('created_at', { ascending: false });
     setPositions((data as any) || []);
+  };
+
+  const fetchLocations = async () => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name')
+      .eq('company_id', companyId!)
+      .order('name');
+    setLocations(data || []);
   };
 
   const handleCreatePosition = async () => {
@@ -198,24 +216,31 @@ const HR = () => {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from('positions').insert({
+    const { data: newPos, error } = await supabase.from('positions').insert({
       company_id: companyId,
       name: positionForm.name,
       team_id: positionForm.team_id,
       open_date: positionForm.open_date,
       wage: positionForm.wage ? parseFloat(positionForm.wage) : null,
       show_wage: positionForm.show_wage,
-    });
-    setSaving(false);
-    if (error) {
+    }).select('id').single();
+    if (error || !newPos) {
       toast.error('Failed to create position');
       console.error(error);
-    } else {
-      toast.success('Position created');
-      setShowPositionDialog(false);
-      setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', show_wage: false });
-      fetchPositions();
+      setSaving(false);
+      return;
     }
+    // Insert location assignments
+    if (positionForm.location_ids.length > 0) {
+      await supabase.from('position_locations').insert(
+        positionForm.location_ids.map(lid => ({ position_id: newPos.id, location_id: lid }))
+      );
+    }
+    setSaving(false);
+    toast.success('Position created');
+    setShowPositionDialog(false);
+    setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', show_wage: false, location_ids: [] });
+    fetchPositions();
   };
 
   const openEmployeeView = async (employee: Employee) => {
@@ -530,16 +555,23 @@ const HR = () => {
                   <TableRow>
                     <TableCell className="font-medium">Position</TableCell>
                     <TableCell className="font-medium">Team</TableCell>
+                    <TableCell className="font-medium">Location(s)</TableCell>
                     <TableCell className="font-medium">Open Date</TableCell>
                     <TableCell className="font-medium">Wage</TableCell>
                     <TableCell className="font-medium w-24">Status</TableCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPositions.map((position) => (
+                  {filteredPositions.map((position) => {
+                    const locationNames = position.position_locations
+                      ?.map(pl => pl.locations?.name)
+                      .filter(Boolean)
+                      .join(', ');
+                    return (
                     <TableRow key={position.id}>
                       <TableCell className="font-medium">{position.name}</TableCell>
                       <TableCell className="text-sm">{position.team?.name || '-'}</TableCell>
+                      <TableCell className="text-sm">{locationNames || '-'}</TableCell>
                       <TableCell className="text-sm">{format(parseISO(position.open_date), 'MMM d, yyyy')}</TableCell>
                       <TableCell className="text-sm">
                         {position.show_wage && position.wage != null
@@ -552,10 +584,11 @@ const HR = () => {
                         </Badge>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {filteredPositions.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         No positions found
                       </TableCell>
                     </TableRow>
@@ -836,6 +869,29 @@ const HR = () => {
                 onChange={(e) => setPositionForm(f => ({ ...f, wage: e.target.value }))}
               />
             </div>
+            {locations.length > 0 && (
+              <div className="space-y-2">
+                <Label>Locations (optional)</Label>
+                <div className="border rounded-md max-h-32 overflow-y-auto p-2 space-y-1">
+                  {locations.map((loc) => (
+                    <label key={loc.id} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
+                      <Checkbox
+                        checked={positionForm.location_ids.includes(loc.id)}
+                        onCheckedChange={(checked) => {
+                          setPositionForm(f => ({
+                            ...f,
+                            location_ids: checked
+                              ? [...f.location_ids, loc.id]
+                              : f.location_ids.filter(id => id !== loc.id),
+                          }));
+                        }}
+                      />
+                      {loc.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <Label htmlFor="position-show-wage">Show wage for position</Label>
               <Switch
