@@ -47,6 +47,7 @@ export interface AppTile {
 }
 
 export const defaultApps: AppTile[] = [
+  { name: 'Dashboard', icon: BarChart3, color: 'text-blue-500', description: 'Home dashboard', path: '/dashboard' },
   { name: 'Go', icon: Zap, color: 'text-yellow-500', description: 'Mobile work execution', path: '/go' },
   { name: 'POS', icon: Store, color: 'text-pink-500', description: 'Point of sale', path: '/pos' },
   { name: 'Cockpit', icon: Gauge, color: 'text-orange-500', description: 'Location dashboard', path: '/cockpit' },
