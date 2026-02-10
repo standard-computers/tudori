@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal, Search } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -813,14 +813,18 @@ const Deliveries = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Deliveries</h1>
               </div>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Delivery
-                  <Kbd>N</Kbd>
-                </Button>
-              </DialogTrigger>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search deliveries">
+                <Search className="w-4 h-4" />
+              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={handleOpenDialog}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Delivery
+                    <Kbd>N</Kbd>
+                  </Button>
+                </DialogTrigger>
               <DialogContent className={`transition-all duration-200 ${isDialogMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[900px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
                 <button
                   type="button"
@@ -1192,6 +1196,7 @@ const Deliveries = () => {
                 </form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </div>
       </header>

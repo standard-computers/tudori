@@ -56,6 +56,7 @@ import {
   Minimize2,
   Package,
   AlertTriangle,
+  Search,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2271,6 +2272,9 @@ const Orders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search purchase orders">
+                <Search className="w-4 h-4" />
+              </Button>
               {selectedOrderIds.size > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

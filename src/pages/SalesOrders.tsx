@@ -48,6 +48,7 @@ import {
   Maximize2,
   Minimize2,
   History,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
@@ -1036,6 +1037,9 @@ const SalesOrders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search sales orders">
+                <Search className="w-4 h-4" />
+              </Button>
               <ColumnToggle
                 columns={SALES_ORDER_COLUMNS}
                 visibleColumns={visibleColumns}
