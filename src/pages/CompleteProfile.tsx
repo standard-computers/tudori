@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransaction } from '@/contexts/StatusBarContext';
@@ -28,10 +28,12 @@ const companySchema = z.object({
 
 const CompleteProfile = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   useTransaction('setup');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Step 1 - Profile
@@ -48,6 +50,37 @@ const CompleteProfile = () => {
   const [state, setState] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [country, setCountry] = useState('United States');
+
+  // Check if user already has a profile on mount
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    const checkExisting = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        setHasExistingProfile(true);
+        setFirstName(data.first_name || '');
+        setLastName(data.last_name || '');
+        if (data.company_id) {
+          // Profile and company both exist — they don't need onboarding
+          navigate('/dashboard');
+          return;
+        }
+        // Has profile but no company — skip to step 2
+        setStep(2);
+      }
+      setCheckingProfile(false);
+    };
+    checkExisting();
+  }, [user, authLoading, navigate]);
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +128,59 @@ const CompleteProfile = () => {
 
     setLoading(true);
 
-    // Use the security definer function to create company, profile, and role in one transaction
+    if (hasExistingProfile) {
+      // User already has a profile but no company — create company and link it
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .insert({
+          name: companyName,
+          industry: industry || null,
+          size: size || null,
+          address_line1: addressLine1,
+          address_line2: addressLine2 || null,
+          city,
+          state,
+          postal_code: postalCode,
+          country,
+        })
+        .select('id')
+        .single();
+
+      if (companyError || !companyData) {
+        toast.error('Failed to create company: ' + (companyError?.message || 'Unknown error'));
+        setLoading(false);
+        return;
+      }
+
+      // Update profile with new company and name
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          company_id: companyData.id,
+          first_name: firstName,
+          last_name: lastName,
+        })
+        .eq('user_id', user.id);
+
+      if (profileError) {
+        toast.error('Failed to update profile: ' + profileError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Assign owner + IT roles
+      await supabase.from('user_roles').insert([
+        { user_id: user.id, company_id: companyData.id, role: 'owner' as const },
+        { user_id: user.id, company_id: companyData.id, role: 'it' as const },
+      ]);
+
+      toast.success('Company setup complete!');
+      navigate('/dashboard');
+      setLoading(false);
+      return;
+    }
+
+    // No existing profile — use the RPC to create everything in one transaction
     const { error } = await supabase.rpc('create_company_and_profile', {
       p_company_name: companyName,
       p_industry: industry || null,
@@ -120,6 +205,14 @@ const CompleteProfile = () => {
     navigate('/dashboard');
     setLoading(false);
   };
+
+  if (authLoading || checkingProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
