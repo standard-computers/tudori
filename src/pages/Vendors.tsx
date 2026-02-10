@@ -869,6 +869,9 @@ const Vendors = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search vendors">
+                <Search className="w-4 h-4" />
+              </Button>
               <ColumnToggle
                 columns={VENDOR_COLUMNS}
                 visibleColumns={visibleColumns}

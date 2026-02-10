@@ -47,6 +47,7 @@ import {
   ImageIcon,
   Maximize2,
   Minimize2,
+  Search,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -1523,6 +1524,9 @@ const Products = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search products">
+                <Search className="w-4 h-4" />
+              </Button>
               <ColumnToggle
                 columns={PRODUCT_COLUMNS}
                 visibleColumns={visibleColumns}

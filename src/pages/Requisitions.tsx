@@ -49,7 +49,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -1164,6 +1164,9 @@ const Requisitions = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search requisitions">
+                <Search className="w-4 h-4" />
+              </Button>
               <ImportExportButtons
                 importEnabled={isImportEnabled('requisition')}
                 exportEnabled={isExportEnabled('requisition')}

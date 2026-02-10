@@ -36,7 +36,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
-import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -297,6 +297,9 @@ const Invoices = () => {
             <h1 className="text-2xl font-bold">Invoices</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search invoices">
+              <Search className="w-4 h-4" />
+            </Button>
             <Button onClick={handleCreateClick}>
               <Plus className="h-4 w-4 mr-2" />
               New Invoice

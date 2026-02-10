@@ -41,6 +41,7 @@ import {
   Eye,
   Maximize2,
   Minimize2,
+  Search,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1025,6 +1026,9 @@ const Locations = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search locations">
+                <Search className="w-4 h-4" />
+              </Button>
               <ColumnToggle
                 columns={LOCATION_COLUMNS}
                 visibleColumns={visibleColumns}
