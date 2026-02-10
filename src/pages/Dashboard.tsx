@@ -81,20 +81,42 @@ const Dashboard = () => {
       .eq("user_id", user!.id)
       .single();
 
-    if (profileData) {
-      setProfile(profileData);
+    if (!profileData) {
+      // No profile means setup was never completed
+      navigate("/complete-profile");
+      return;
+    }
 
-      if (profileData.company_id) {
-        const { data: companyData } = await supabase
-          .from("companies")
-          .select("name, logo_url")
-          .eq("id", profileData.company_id)
-          .single();
+    setProfile(profileData);
 
-        if (companyData) {
-          setCompany(companyData);
+    if (profileData.company_id) {
+      // Check if company exists and has required fields filled
+      const { data: companyData } = await supabase
+        .from("companies")
+        .select("name, logo_url, address_line1, city, state, postal_code, logo_url")
+        .eq("id", profileData.company_id)
+        .single();
+
+      if (!companyData || !companyData.name || !companyData.address_line1 || !companyData.city || !companyData.state || !companyData.postal_code) {
+        // Company setup is incomplete — check if this user is the sole member
+        const { count } = await supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", profileData.company_id);
+
+        if (count === 1) {
+          navigate("/complete-profile");
+          return;
         }
       }
+
+      if (companyData) {
+        setCompany({ name: companyData.name, logo_url: companyData.logo_url });
+      }
+    } else {
+      // Profile exists but no company assigned
+      navigate("/complete-profile");
+      return;
     }
   };
 
