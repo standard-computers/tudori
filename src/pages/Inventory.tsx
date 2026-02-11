@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Warehouse, X, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
@@ -459,6 +459,16 @@ const Inventory = () => {
               onShowAll={showAll}
               onHideAll={hideAll}
             />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => { if (selectedLocationId) fetchInventory(); }}
+              disabled={!selectedLocationId || isLoading}
+              title="Refresh inventory"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
             <Button
               variant="outline"
               size="sm"
