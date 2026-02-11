@@ -1,0 +1,1 @@
+ALTER TABLE public.assignments ADD COLUMN price numeric DEFAULT 0;

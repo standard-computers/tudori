@@ -182,6 +182,7 @@ export type Database = {
           id: string
           is_active: boolean
           notes: string | null
+          price: number | null
           priority: number | null
           product_id: string
           source_location_id: string | null
@@ -196,6 +197,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          price?: number | null
           priority?: number | null
           product_id: string
           source_location_id?: string | null
@@ -210,6 +212,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          price?: number | null
           priority?: number | null
           product_id?: string
           source_location_id?: string | null

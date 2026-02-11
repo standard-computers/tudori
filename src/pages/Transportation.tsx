@@ -101,6 +101,7 @@ interface Assignment {
   source_location_id: string | null;
   destination_location_id: string;
   priority: number;
+  price: number;
   is_active: boolean;
   notes: string | null;
   product?: { id: string; product_id: string; name: string } | null;
@@ -171,6 +172,7 @@ const Transportation = () => {
     source_value: '', // Combined value: 'vendor:{id}' or 'location:{id}'
     destination_location_id: '',
     priority: 1,
+    price: 0,
     is_active: true,
     notes: '',
   });
@@ -623,6 +625,7 @@ const Transportation = () => {
       source_value: '',
       destination_location_id: '',
       priority: 1,
+      price: 0,
       is_active: true,
       notes: '',
     });
@@ -645,6 +648,7 @@ const Transportation = () => {
       source_value: sourceValue,
       destination_location_id: assignment.destination_location_id,
       priority: assignment.priority,
+      price: assignment.price || 0,
       is_active: assignment.is_active,
       notes: assignment.notes || '',
     });
@@ -670,6 +674,7 @@ const Transportation = () => {
       source_location_id: parsed.type === 'location' ? parsed.id : null,
       destination_location_id: assignmentForm.destination_location_id,
       priority: assignmentForm.priority,
+      price: assignmentForm.price,
       is_active: assignmentForm.is_active,
       notes: assignmentForm.notes || null,
     };
@@ -994,6 +999,7 @@ const Transportation = () => {
                   <TableHead>Source</TableHead>
                   <TableHead>Destination Location</TableHead>
                   <TableHead>Priority</TableHead>
+                  <TableHead>Price</TableHead>
                   <TableHead>Active</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -1001,7 +1007,7 @@ const Transportation = () => {
               <TableBody>
                 {sortedAssignments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No assignments configured. Create your first assignment to define vendor fulfillment.
                     </TableCell>
                   </TableRow>
@@ -1023,6 +1029,7 @@ const Transportation = () => {
                         {assignment.destination_location?.name || '-'}
                       </TableCell>
                       <TableCell>{assignment.priority}</TableCell>
+                      <TableCell>{Number(assignment.price || 0).toFixed(2)}</TableCell>
                       <TableCell>
                         <Checkbox checked={assignment.is_active} disabled />
                       </TableCell>
@@ -1407,6 +1414,18 @@ const Transportation = () => {
                   value={assignmentForm.destination_location_id}
                   onValueChange={(value) => setAssignmentForm({ ...assignmentForm, destination_location_id: value })}
                   placeholder="Select destination location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignment_price">Price</Label>
+                <Input
+                  id="assignment_price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={assignmentForm.price}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, price: parseFloat(e.target.value) || 0 })}
                 />
               </div>
 
