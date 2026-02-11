@@ -1,0 +1,1 @@
+ALTER TABLE public.positions ADD COLUMN is_hourly boolean NOT NULL DEFAULT false;

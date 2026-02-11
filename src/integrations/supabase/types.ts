@@ -2766,6 +2766,7 @@ export type Database = {
           created_at: string
           employee_id: string | null
           id: string
+          is_hourly: boolean
           name: string
           notes: string | null
           open_date: string
@@ -2780,6 +2781,7 @@ export type Database = {
           created_at?: string
           employee_id?: string | null
           id?: string
+          is_hourly?: boolean
           name: string
           notes?: string | null
           open_date?: string
@@ -2794,6 +2796,7 @@ export type Database = {
           created_at?: string
           employee_id?: string | null
           id?: string
+          is_hourly?: boolean
           name?: string
           notes?: string | null
           open_date?: string

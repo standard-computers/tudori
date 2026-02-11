@@ -83,6 +83,7 @@ interface Position {
   team_id: string;
   open_date: string;
   wage: number | null;
+  is_hourly: boolean;
   show_wage: boolean;
   status: string;
   notes: string | null;
@@ -122,6 +123,7 @@ const HR = () => {
     team_id: '',
     open_date: format(new Date(), 'yyyy-MM-dd'),
     wage: '',
+    is_hourly: false,
     show_wage: false,
     location_ids: [] as string[],
   });
@@ -223,6 +225,7 @@ const HR = () => {
       team_id: positionForm.team_id,
       open_date: positionForm.open_date,
       wage: positionForm.wage ? parseFloat(positionForm.wage) : null,
+      is_hourly: positionForm.is_hourly,
       show_wage: positionForm.show_wage,
     }).select('id').single();
     if (error || !newPos) {
@@ -240,7 +243,7 @@ const HR = () => {
     setSaving(false);
     toast.success('Position created');
     setShowPositionDialog(false);
-    setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', show_wage: false, location_ids: [] });
+    setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', is_hourly: false, show_wage: false, location_ids: [] });
     fetchPositions();
   };
 
@@ -869,6 +872,21 @@ const HR = () => {
                 value={positionForm.wage}
                 onChange={(e) => setPositionForm(f => ({ ...f, wage: e.target.value }))}
               />
+              {positionForm.is_hourly && positionForm.wage && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ ${(parseFloat(positionForm.wage) * 2080).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/yr
+                </p>
+              )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="position-is-hourly"
+                  checked={positionForm.is_hourly}
+                  onCheckedChange={(checked) => setPositionForm(f => ({ ...f, is_hourly: checked }))}
+                />
+                <Label htmlFor="position-is-hourly" className="cursor-pointer">
+                  Hourly
+                </Label>
+              </div>
             </div>
             {locations.length > 0 && (
               <div className="space-y-2">
