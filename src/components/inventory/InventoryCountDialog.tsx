@@ -351,6 +351,7 @@ export const InventoryCountDialog = ({
       setView('list');
       setSelectedCount(null);
       setCountItems([]);
+      fetchCounts();
     } else if (view === 'select_scope') {
       setView('list');
     }
@@ -388,7 +389,7 @@ export const InventoryCountDialog = ({
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
           {view === 'list' ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between px-1 py-2">
+              <div className="flex items-center justify-between px-1 py-3">
                 <span className="text-sm text-muted-foreground">
                   {counts.length} count sheet{counts.length !== 1 ? 's' : ''}
                 </span>
@@ -558,7 +559,7 @@ export const InventoryCountDialog = ({
 
         {/* Footer actions for detail view */}
         {view === 'detail' && selectedCount && (
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t">
             {isEditable && (
               <>
                 <Button variant="outline" size="sm" onClick={handleSaveItems} disabled={isSaving}>
