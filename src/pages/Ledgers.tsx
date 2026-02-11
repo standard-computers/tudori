@@ -43,7 +43,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2, Maximize2, Minimize2 } from 'lucide-react';
 import { AutoMakeLedgersDialog } from '@/components/ledgers/AutoMakeLedgersDialog';
 import {
   AlertDialog,
@@ -130,6 +130,11 @@ const Ledgers = () => {
   const [isDeletingTx, setIsDeletingTx] = useState(false);
   const [isAdjustingOff, setIsAdjustingOff] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  
+  // Maximize states
+  const [isCreateMaximized, setIsCreateMaximized] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useState(false);
+  const [isTxDetailMaximized, setIsTxDetailMaximized] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -611,7 +616,7 @@ const Ledgers = () => {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className={isCreateMaximized ? "sm:max-w-[95vw] h-[95vh]" : "sm:max-w-[500px]"} onOpenAutoFocus={(e) => e.preventDefault()}>
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader>
               <DialogTitle>{isEditing ? 'Edit Ledger' : 'Create Ledger'}</DialogTitle>
@@ -620,8 +625,17 @@ const Ledgers = () => {
               </DialogDescription>
             </DialogHeader>
             
+            <button
+              type="button"
+              onClick={() => setIsCreateMaximized(prev => !prev)}
+              className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+            >
+              {isCreateMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <span className="sr-only">{isCreateMaximized ? 'Minimize' : 'Maximize'}</span>
+            </button>
+            
             {!isEditing && (
-              <div className="absolute right-12 top-4 z-10">
+              <div className="absolute right-20 top-4 z-10">
                 <CopyFromIdDialog<Ledger>
                   idLabel="Ledger ID"
                   onFetch={async (id) => {
@@ -741,7 +755,7 @@ const Ledgers = () => {
 
       {/* View Transactions Dialog */}
       <Dialog open={!!viewingLedger} onOpenChange={() => setViewingLedger(null)}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent className={isViewMaximized ? "sm:max-w-[95vw] h-[95vh]" : "sm:max-w-[700px]"}>
           <DialogHeader>
             <DialogTitle>
               {viewingLedger?.name} - Transactions
@@ -753,7 +767,16 @@ const Ledgers = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 max-h-[400px] overflow-y-auto">
+          <button
+            type="button"
+            onClick={() => setIsViewMaximized(prev => !prev)}
+            className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <span className="sr-only">{isViewMaximized ? 'Minimize' : 'Maximize'}</span>
+          </button>
+
+          <div className={isViewMaximized ? "mt-4 flex-1 overflow-y-auto" : "mt-4 max-h-[400px] overflow-y-auto"}>
             {loadingTransactions ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -811,7 +834,7 @@ const Ledgers = () => {
 
       {/* Transaction Detail Dialog */}
       <Dialog open={!!viewingTransaction} onOpenChange={() => setViewingTransaction(null)}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className={isTxDetailMaximized ? "sm:max-w-[95vw] h-[95vh]" : "sm:max-w-[450px]"}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {viewingTransaction && viewingTransaction.amount < 0 ? (
@@ -825,6 +848,15 @@ const Ledgers = () => {
               View and manage this transaction
             </DialogDescription>
           </DialogHeader>
+
+          <button
+            type="button"
+            onClick={() => setIsTxDetailMaximized(prev => !prev)}
+            className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isTxDetailMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <span className="sr-only">{isTxDetailMaximized ? 'Minimize' : 'Maximize'}</span>
+          </button>
 
           {viewingTransaction && (
             <div className="space-y-4 py-4">
