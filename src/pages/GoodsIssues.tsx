@@ -40,7 +40,14 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, PackageMinus, Pencil, Trash2, Check, X } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AuditHistoryTab } from '@/components/AuditHistoryTab';
+import { ArrowLeft, Plus, PackageMinus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -50,12 +57,14 @@ interface GoodsIssue {
   location_id: string;
   customer_id: string | null;
   sales_order_id: string | null;
+  outbound_delivery_id: string | null;
   issue_date: string;
   status: string;
   notes: string | null;
   location?: { name: string } | null;
   customer?: { name: string } | null;
   sales_order?: { so_number: string } | null;
+  outbound_delivery?: { delivery_number: string } | null;
 }
 
 interface GoodsIssueItem {
@@ -119,6 +128,9 @@ const GoodsIssues = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingIssue, setViewingIssue] = useState<GoodsIssue | null>(null);
+  const [viewIssueItems, setViewIssueItems] = useState<GoodsIssueItem[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextIssueNumber, setNextIssueNumber] = useState('GI-0001');
@@ -352,6 +364,20 @@ const GoodsIssues = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+
+  const handleView = async (issue: GoodsIssue) => {
+    setViewingIssue(issue);
+    const { data } = await supabase
+      .from('goods_issue_items' as any)
+      .select(`
+        *,
+        product:products(name, product_id),
+        bin:bins(name)
+      `)
+      .eq('goods_issue_id', issue.id);
+    setViewIssueItems((data as any) || []);
+    setIsViewDialogOpen(true);
+  };
 
   const handleEdit = (issue: GoodsIssue) => {
     setFormData({
@@ -637,22 +663,155 @@ const GoodsIssues = () => {
 
       <GoodsIssuesTable
         issues={issues}
+        onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPost={handlePostIssue}
       />
+
+      {/* View Goods Issue Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          {viewingIssue?.status !== 'posted' && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewDialogOpen(false);
+                if (viewingIssue) handleEdit(viewingIssue);
+              }}
+              className="absolute right-10 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </button>
+          )}
+          <DialogHeader>
+            <DialogTitle>View Goods Issue</DialogTitle>
+            <DialogDescription>
+              {viewingIssue?.issue_number}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingIssue && (
+            <Tabs defaultValue="details" className="w-full px-4 pb-4">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="items">Items</TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-1">
+                  <History className="w-3.5 h-3.5" /> History
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="px-2">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Issue #</Label>
+                      <p className="font-mono">{viewingIssue.issue_number}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Date</Label>
+                      <p>{format(new Date(viewingIssue.issue_date), 'MMM d, yyyy')}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Status</Label>
+                      <Badge variant="outline" className={getStatusColor(viewingIssue.status)}>
+                        {viewingIssue.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Location</Label>
+                      <p>{viewingIssue.location?.name || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Customer</Label>
+                      <p>{viewingIssue.customer?.name || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Sales Order</Label>
+                      <p className="font-mono">{viewingIssue.sales_order?.so_number || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Outbound Delivery</Label>
+                      <p className="font-mono">{viewingIssue.outbound_delivery?.delivery_number || '-'}</p>
+                    </div>
+                  </div>
+                  {viewingIssue.notes && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Notes</Label>
+                      <p className="whitespace-pre-wrap">{viewingIssue.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="items" className="px-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Bin</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {viewIssueItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.product?.name}</div>
+                            <div className="text-xs text-muted-foreground">{item.product?.product_id}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.bin?.name || '-'}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                      </TableRow>
+                    ))}
+                    {viewIssueItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          No items
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="history" className="px-2">
+                <AuditHistoryTab
+                  tableName="goods_issues"
+                  recordId={viewingIssue.id}
+                  fieldLabels={{
+                    status: 'Status',
+                    issue_date: 'Issue Date',
+                    location_id: 'Location',
+                    customer_id: 'Customer',
+                    sales_order_id: 'Sales Order',
+                    notes: 'Notes',
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 interface GoodsIssuesTableProps {
   issues: GoodsIssue[];
+  onView: (issue: GoodsIssue) => void;
   onEdit: (issue: GoodsIssue) => void;
   onDelete: (id: string) => void;
   onPost: (id: string, locationId: string) => void;
 }
 
-const GoodsIssuesTable = ({ issues, onEdit, onDelete, onPost }: GoodsIssuesTableProps) => {
+const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost }: GoodsIssuesTableProps) => {
   const {
     sortConfig,
     filters,
@@ -747,7 +906,15 @@ const GoodsIssuesTable = ({ issues, onEdit, onDelete, onPost }: GoodsIssuesTable
           ) : (
             sortedAndFilteredData.map((issue) => (
               <TableRow key={issue.id}>
-                <TableCell className="font-mono">{issue.issue_number}</TableCell>
+                <TableCell className="font-mono">
+                  <button
+                    type="button"
+                    onClick={() => onView(issue)}
+                    className="text-primary hover:underline cursor-pointer"
+                  >
+                    {issue.issue_number}
+                  </button>
+                </TableCell>
                 <TableCell>{format(new Date(issue.issue_date), 'MMM d, yyyy')}</TableCell>
                 <TableCell>{issue.location?.name || '-'}</TableCell>
                 <TableCell>{issue.customer?.name || '-'}</TableCell>
@@ -758,27 +925,39 @@ const GoodsIssuesTable = ({ issues, onEdit, onDelete, onPost }: GoodsIssuesTable
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    {issue.status === 'pending' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onPost(issue.id, issue.location_id)}
-                        title="Post to inventory"
-                      >
-                        <Check className="w-4 h-4 text-green-600" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(issue)}>
-                      <Pencil className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={() => onView(issue)}>
+                      <Eye className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(issue.id)}
-                      disabled={issue.status === 'posted'}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {issue.status === 'pending' && (
+                          <DropdownMenuItem onClick={() => onPost(issue.id, issue.location_id)}>
+                            <Check className="w-4 h-4 mr-2" />
+                            Post to Inventory
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => onEdit(issue)}
+                          disabled={issue.status === 'posted'}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDelete(issue.id)}
+                          disabled={issue.status === 'posted'}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
