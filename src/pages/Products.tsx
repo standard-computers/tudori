@@ -224,6 +224,11 @@ const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: "height", label: "Height", defaultVisible: true },
   { key: "weight", label: "Weight", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
+  { key: "serialized", label: "Serialized", defaultVisible: false },
+  { key: "is_batched", label: "Batched", defaultVisible: false },
+  { key: "hazardous", label: "Hazardous", defaultVisible: false },
+  { key: "keep_inventory", label: "Keep Inventory", defaultVisible: false },
+  { key: "is_consumable", label: "Consumable", defaultVisible: false },
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
@@ -434,6 +439,21 @@ const ProductTable = ({
                   onFilter={(value) => setFilter("status", value)}
                 />
               )}
+              {isColumnVisible("serialized") && (
+                <SortableTableHead label="Serialized" sortKey="serialized" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              )}
+              {isColumnVisible("is_batched") && (
+                <SortableTableHead label="Batched" sortKey="is_batched" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              )}
+              {isColumnVisible("hazardous") && (
+                <SortableTableHead label="Hazardous" sortKey="hazardous" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              )}
+              {isColumnVisible("keep_inventory") && (
+                <SortableTableHead label="Keep Inv." sortKey="keep_inventory" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              )}
+              {isColumnVisible("is_consumable") && (
+                <SortableTableHead label="Consumable" sortKey="is_consumable" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              )}
               {isColumnVisible("actions") && (
                 <SortableTableHead
                   label="Actions"
@@ -506,6 +526,21 @@ const ProductTable = ({
                       <TableCell>
                         <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>
                       </TableCell>
+                    )}
+                    {isColumnVisible("serialized") && (
+                      <TableCell>{(product as any).serialized ? "Yes" : "No"}</TableCell>
+                    )}
+                    {isColumnVisible("is_batched") && (
+                      <TableCell>{product.is_batched ? "Yes" : "No"}</TableCell>
+                    )}
+                    {isColumnVisible("hazardous") && (
+                      <TableCell>{(product as any).hazardous ? "Yes" : "No"}</TableCell>
+                    )}
+                    {isColumnVisible("keep_inventory") && (
+                      <TableCell>{product.keep_inventory ? "Yes" : "No"}</TableCell>
+                    )}
+                    {isColumnVisible("is_consumable") && (
+                      <TableCell>{product.is_consumable ? "Yes" : "No"}</TableCell>
                     )}
                     {isColumnVisible("actions") && (
                       <TableCell>
