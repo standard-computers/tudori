@@ -3168,6 +3168,7 @@ export type Database = {
           name: string
           price: number | null
           product_id: string
+          serialized: boolean
           sku: string | null
           status: string
           transport_time_days: number | null
@@ -3200,6 +3201,7 @@ export type Database = {
           name: string
           price?: number | null
           product_id: string
+          serialized?: boolean
           sku?: string | null
           status?: string
           transport_time_days?: number | null
@@ -3232,6 +3234,7 @@ export type Database = {
           name?: string
           price?: number | null
           product_id?: string
+          serialized?: boolean
           sku?: string | null
           status?: string
           transport_time_days?: number | null

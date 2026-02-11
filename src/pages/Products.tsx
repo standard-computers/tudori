@@ -607,6 +607,7 @@ const Products = () => {
     manufacture_time_days: "",
     lead_time_days: "",
     hazardous: false,
+    serialized: false,
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -1004,6 +1005,7 @@ const Products = () => {
       manufacture_time_days: "",
       lead_time_days: "",
       hazardous: false,
+      serialized: false,
     });
     setImageFile(null);
     setImagePreview(null);
@@ -1055,6 +1057,7 @@ const Products = () => {
       manufacture_time_days: product.manufacture_time_days?.toString() || "",
       lead_time_days: product.lead_time_days?.toString() || "",
       hazardous: (product as any).hazardous || false,
+      serialized: (product as any).serialized || false,
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
@@ -1369,6 +1372,7 @@ const Products = () => {
           manufacture_time_days: formData.manufacture_time_days ? parseInt(formData.manufacture_time_days) : null,
           lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
           hazardous: formData.hazardous,
+          serialized: formData.serialized,
         } as any)
         .eq("id", editingId);
 
@@ -1407,6 +1411,7 @@ const Products = () => {
           manufacture_time_days: formData.manufacture_time_days ? parseInt(formData.manufacture_time_days) : null,
           lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
           hazardous: formData.hazardous,
+          serialized: formData.serialized,
         } as any)
         .select("id")
         .single();
@@ -2579,6 +2584,31 @@ const Products = () => {
                               <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
                                 This product will be flagged as hazardous material. Special handling and documentation
                                 may be required.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="border rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label htmlFor="serialized" className="text-base">
+                                  Serialized
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Track individual serial numbers at the base unit of measure
+                                </p>
+                              </div>
+                              <Switch
+                                id="serialized"
+                                checked={formData.serialized}
+                                onCheckedChange={(checked) => setFormData({ ...formData, serialized: checked })}
+                              />
+                            </div>
+
+                            {formData.serialized && (
+                              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                                Each unit of this product will require a unique serial number for tracking through
+                                receiving, inventory, and issuing.
                               </p>
                             )}
                           </div>
