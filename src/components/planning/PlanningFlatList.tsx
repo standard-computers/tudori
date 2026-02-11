@@ -24,7 +24,7 @@ import {
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
-import { AlertTriangle, ShoppingCart, Factory, FileSpreadsheet, Loader2, Check, X, MapPin } from 'lucide-react';
+import { AlertTriangle, ShoppingCart, Factory, FileSpreadsheet, Loader2, Check, X, MapPin, Maximize2, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -75,6 +75,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
 
   // Requisition dialog
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [requisitionItems, setRequisitionItems] = useState<RequisitionItem[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createProgress, setCreateProgress] = useState({ current: 0, total: 0, currentAction: '' });
@@ -703,7 +704,14 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
 
       {/* Requisition Creation Dialog */}
       <Dialog open={isReqDialogOpen} onOpenChange={setIsReqDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader className="shrink-0">
             <DialogTitle>Create Purchase Requisitions</DialogTitle>
             <DialogDescription>

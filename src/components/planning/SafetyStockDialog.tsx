@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin } from 'lucide-react';
+import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin, Maximize2, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -71,6 +71,7 @@ interface SafetyStockDialogProps {
 
 export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStockDialogProps) => {
   const [activeTab, setActiveTab] = useState('view');
+  const [isMaximized, setIsMaximized] = useState(false);
   const [safetyStocks, setSafetyStocks] = useState<SafetyStock[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -423,7 +424,14 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[85vh] flex flex-col">
+      <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[800px] max-h-[85vh]'}`}>
+        <button
+          type="button"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5" />

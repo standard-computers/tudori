@@ -35,7 +35,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronsUpDown, Check, Plus, Trash2, Loader2, Wand2 } from 'lucide-react';
+import { ChevronsUpDown, Check, Plus, Trash2, Loader2, Wand2, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -92,6 +92,7 @@ const AutoMakeBinsDialog = ({
   onCreated,
 }: AutoMakeBinsDialogProps) => {
   const [activeTab, setActiveTab] = useState('general');
+  const [isMaximized, setIsMaximized] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   // General settings
@@ -328,7 +329,14 @@ const AutoMakeBinsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[85vh] flex flex-col">
+      <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[560px] max-h-[85vh]'}`}>
+        <button
+          type="button"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="w-5 h-5" />
