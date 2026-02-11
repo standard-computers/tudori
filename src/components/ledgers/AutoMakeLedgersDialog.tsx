@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Wand2, Loader2, MapPin, Search } from 'lucide-react';
+import { Wand2, Loader2, MapPin, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Location {
@@ -55,6 +55,7 @@ export const AutoMakeLedgersDialog = ({
 }: AutoMakeLedgersDialogProps) => {
   const [activeTab, setActiveTab] = useState('general');
   const [isCreating, setIsCreating] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // General settings
   const [ledgerIdTemplate, setLedgerIdTemplate] = useState('@-LDGR');
@@ -69,6 +70,7 @@ export const AutoMakeLedgersDialog = ({
       setLedgerNameTemplate('$ Ledger');
       setSelectedLocationIds(new Set());
       setLocationSearch('');
+      setIsMaximized(false);
     }
   }, [open]);
 
@@ -171,7 +173,7 @@ export const AutoMakeLedgersDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+      <DialogContent className={isMaximized ? "sm:max-w-[95vw] h-[95vh] flex flex-col" : "sm:max-w-[600px] max-h-[85vh] flex flex-col"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="w-5 h-5" />
@@ -181,6 +183,15 @@ export const AutoMakeLedgersDialog = ({
             Bulk create ledgers for selected locations using templates. Use @ for location ID and $ for location name.
           </DialogDescription>
         </DialogHeader>
+
+        <button
+          type="button"
+          onClick={() => setIsMaximized(prev => !prev)}
+          className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          <span className="sr-only">{isMaximized ? 'Minimize' : 'Maximize'}</span>
+        </button>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col mt-2">
           <TabsList className="mx-6 grid grid-cols-2">
