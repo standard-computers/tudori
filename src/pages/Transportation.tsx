@@ -756,20 +756,31 @@ const Transportation = () => {
                 </TabsTrigger>
               </TabsList>
             </div>
+            <div className="flex items-center gap-2">
+              {activeTab === 'carriers' && (
+                <Button onClick={openNewCarrierDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Carrier
+                </Button>
+              )}
+              {activeTab === 'routes' && (
+                <Button onClick={openNewRouteDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Route
+                </Button>
+              )}
+              {activeTab === 'assignments' && (
+                <Button onClick={openNewAssignmentDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Assignment
+                </Button>
+              )}
+            </div>
           </div>
         </header>
 
         <div className="p-4">
           <TabsContent value="carriers" className="mt-0">
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-muted-foreground">
-                Manage shipping carriers and logistics partners
-              </p>
-              <Button onClick={openNewCarrierDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Carrier
-              </Button>
-            </div>
 
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
@@ -883,15 +894,6 @@ const Transportation = () => {
           </TabsContent>
 
           <TabsContent value="routes" className="mt-4">
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-muted-foreground">
-                Define fulfillment routes between locations
-              </p>
-              <Button onClick={openNewRouteDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Route
-              </Button>
-            </div>
 
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
@@ -973,15 +975,6 @@ const Transportation = () => {
           </TabsContent>
 
           <TabsContent value="assignments" className="mt-4">
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-sm text-muted-foreground">
-                Assign vendors to fulfill products at specific locations
-              </p>
-              <Button onClick={openNewAssignmentDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Assignment
-              </Button>
-            </div>
 
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
