@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { Loader2, PackageCheck, AlertCircle, Layers, Package, Archive } from 'lucide-react';
 import { toast } from 'sonner';
+import { BatchAssignmentDialog, BatchedProduct } from '@/components/cockpit/BatchAssignmentDialog';
 
 interface DeliveryItem {
   id: string;
@@ -34,7 +35,7 @@ interface DeliveryItem {
   notes: string | null;
   pu_id?: string | null;
   packaging_unit?: { pu_number: string } | null;
-  product?: { name: string; product_id: string; hazardous?: boolean };
+  product?: { name: string; product_id: string; hazardous?: boolean; is_batched?: boolean };
 }
 
 interface ReceivedItem {
@@ -47,6 +48,7 @@ interface ReceivedItem {
   pu_id?: string | null;
   pu_number?: string | null;
   hazardous?: boolean;
+  is_batched?: boolean;
 }
 
 interface ReceiveDeliveryDialogProps {
@@ -76,6 +78,9 @@ export const ReceiveDeliveryDialog = ({
   const [isFulfilled, setIsFulfilled] = useState(true);
   const [selectedBinId, setSelectedBinId] = useState('');
   const [binOptions, setBinOptions] = useState<{ value: string; label: string; sublabel?: string; group?: string; is_hazardous?: boolean }[]>([]);
+  const [showBatchDialog, setShowBatchDialog] = useState(false);
+  const [batchedProducts, setBatchedProducts] = useState<BatchedProduct[]>([]);
+  const [pendingBatchData, setPendingBatchData] = useState<BatchedProduct[] | null>(null);
 
   useEffect(() => {
     if (open && deliveryId) {
@@ -205,7 +210,7 @@ export const ReceiveDeliveryDialog = ({
         notes,
         pu_id,
         packaging_unit:packaging_units(pu_number),
-        product:products(name, product_id, hazardous)
+        product:products(name, product_id, hazardous, is_batched)
       `)
       .eq('delivery_id', deliveryId);
 
@@ -225,6 +230,7 @@ export const ReceiveDeliveryDialog = ({
       pu_id: item.pu_id || null,
       pu_number: item.packaging_unit?.pu_number || null,
       hazardous: item.product?.hazardous ?? false,
+      is_batched: item.product?.is_batched ?? false,
     }));
 
     setItems(receivedItems);
@@ -258,7 +264,36 @@ export const ReceiveDeliveryDialog = ({
     return explodedItems;
   };
 
-  const handleReceive = async () => {
+  const handleConfirmClick = () => {
+    // Check if any received items are batch-managed
+    const batchItems = items.filter(item => item.is_batched && item.received_quantity > 0);
+    
+    if (batchItems.length > 0) {
+      // Build batched products for the dialog
+      const bp: BatchedProduct[] = batchItems.map(item => ({
+        itemId: item.id,
+        productId: item.product_id,
+        productName: item.product_name,
+        productCode: item.product_code,
+        totalQuantity: item.received_quantity,
+        batchLines: [{ batchNumber: '', expirationDate: '', quantity: item.received_quantity }],
+      }));
+      setBatchedProducts(bp);
+      setShowBatchDialog(true);
+      return;
+    }
+
+    // No batched products — proceed directly
+    handleReceive(null);
+  };
+
+  const handleBatchConfirm = (confirmedProducts: BatchedProduct[]) => {
+    setShowBatchDialog(false);
+    setPendingBatchData(confirmedProducts);
+    handleReceive(confirmedProducts);
+  };
+
+  const handleReceive = async (batchData: BatchedProduct[] | null) => {
     setSubmitting(true);
 
     try {
@@ -386,7 +421,7 @@ export const ReceiveDeliveryDialog = ({
         } else {
           // Standard behavior: create GR items without individual PUs
           // But still create PUs if not already assigned
-          const grItems = [];
+          const grItems: any[] = [];
           for (const item of items) {
             if (item.received_quantity <= 0) continue;
             
@@ -397,17 +432,68 @@ export const ReceiveDeliveryDialog = ({
               const pu = await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity);
               puId = pu?.id || null;
             }
+
+            // Check if this item has batch data
+            const batchProduct = batchData?.find(bp => bp.itemId === item.id);
             
-            grItems.push({
-              goods_receipt_id: goodsReceipt.id,
-              product_id: item.product_id,
-              quantity: item.received_quantity,
-              pu_id: puId,
-              bin_id: selectedBinId || null,
-              notes: item.received_quantity !== item.expected_quantity 
-                ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
-                : null,
-            });
+            if (batchProduct && batchProduct.batchLines.length > 0) {
+              // Create separate GR items for each batch line
+              for (const batchLine of batchProduct.batchLines) {
+                // Create or find the batch record
+                const { data: existingBatch } = await supabase
+                  .from('batches')
+                  .select('id')
+                  .eq('company_id', profile.company_id)
+                  .eq('product_id', item.product_id)
+                  .eq('batch_number', batchLine.batchNumber)
+                  .maybeSingle();
+
+                let batchId: string;
+                if (existingBatch) {
+                  batchId = existingBatch.id;
+                  // Update expiration if provided
+                  if (batchLine.expirationDate) {
+                    await supabase
+                      .from('batches')
+                      .update({ expiration_date: batchLine.expirationDate })
+                      .eq('id', batchId);
+                  }
+                } else {
+                  const { data: newBatch } = await supabase
+                    .from('batches')
+                    .insert({
+                      company_id: profile.company_id,
+                      product_id: item.product_id,
+                      batch_number: batchLine.batchNumber,
+                      expiration_date: batchLine.expirationDate || null,
+                    })
+                    .select('id')
+                    .single();
+                  batchId = newBatch!.id;
+                }
+
+                grItems.push({
+                  goods_receipt_id: goodsReceipt.id,
+                  product_id: item.product_id,
+                  quantity: batchLine.quantity,
+                  pu_id: puId,
+                  bin_id: selectedBinId || null,
+                  batch_id: batchId,
+                  notes: `Batch: ${batchLine.batchNumber}`,
+                });
+              }
+            } else {
+              grItems.push({
+                goods_receipt_id: goodsReceipt.id,
+                product_id: item.product_id,
+                quantity: item.received_quantity,
+                pu_id: puId,
+                bin_id: selectedBinId || null,
+                notes: item.received_quantity !== item.expected_quantity 
+                  ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
+                  : null,
+              });
+            }
           }
           
           if (grItems.length > 0) {
@@ -509,6 +595,7 @@ export const ReceiveDeliveryDialog = ({
   const totalReceived = items.reduce((sum, item) => sum + item.received_quantity, 0);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
         <DialogHeader>
@@ -693,7 +780,7 @@ export const ReceiveDeliveryDialog = ({
             </div>
           )}
           <Button 
-            onClick={handleReceive} 
+            onClick={handleConfirmClick} 
             disabled={submitting || items.length === 0 || (isInternalTransfer && !isFulfilled)}
             title={isInternalTransfer && !isFulfilled ? 'Source location must fulfill this transfer first' : undefined}
           >
@@ -714,5 +801,13 @@ export const ReceiveDeliveryDialog = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <BatchAssignmentDialog
+      open={showBatchDialog}
+      onOpenChange={setShowBatchDialog}
+      batchedProducts={batchedProducts}
+      onConfirm={handleBatchConfirm}
+    />
+    </>
   );
 };

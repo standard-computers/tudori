@@ -301,6 +301,51 @@ export type Database = {
           },
         ]
       }
+      batches: {
+        Row: {
+          batch_number: string
+          company_id: string
+          created_at: string
+          expiration_date: string | null
+          id: string
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          company_id: string
+          created_at?: string
+          expiration_date?: string | null
+          id?: string
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          company_id?: string
+          created_at?: string
+          expiration_date?: string | null
+          id?: string
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_of_materials: {
         Row: {
           bom_id: string
@@ -1537,6 +1582,7 @@ export type Database = {
       }
       goods_receipt_items: {
         Row: {
+          batch_id: string | null
           bin_id: string | null
           created_at: string
           goods_receipt_id: string
@@ -1547,6 +1593,7 @@ export type Database = {
           quantity: number
         }
         Insert: {
+          batch_id?: string | null
           bin_id?: string | null
           created_at?: string
           goods_receipt_id: string
@@ -1557,6 +1604,7 @@ export type Database = {
           quantity?: number
         }
         Update: {
+          batch_id?: string | null
           bin_id?: string | null
           created_at?: string
           goods_receipt_id?: string
@@ -1567,6 +1615,13 @@ export type Database = {
           quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "goods_receipt_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "goods_receipt_items_bin_id_fkey"
             columns: ["bin_id"]
@@ -1773,6 +1828,7 @@ export type Database = {
       }
       inventory: {
         Row: {
+          batch_id: string | null
           bin_id: string | null
           created_at: string
           id: string
@@ -1787,6 +1843,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_id?: string | null
           bin_id?: string | null
           created_at?: string
           id?: string
@@ -1801,6 +1858,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_id?: string | null
           bin_id?: string | null
           created_at?: string
           id?: string
@@ -1815,6 +1873,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_bin_id_fkey"
             columns: ["bin_id"]
