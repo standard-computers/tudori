@@ -3719,6 +3719,7 @@ export type Database = {
           destination_location_id: string
           id: string
           is_active: boolean
+          lead_time_days: number | null
           name: string
           notes: string | null
           priority: number | null
@@ -3733,6 +3734,7 @@ export type Database = {
           destination_location_id: string
           id?: string
           is_active?: boolean
+          lead_time_days?: number | null
           name: string
           notes?: string | null
           priority?: number | null
@@ -3747,6 +3749,7 @@ export type Database = {
           destination_location_id?: string
           id?: string
           is_active?: boolean
+          lead_time_days?: number | null
           name?: string
           notes?: string | null
           priority?: number | null

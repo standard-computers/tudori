@@ -73,6 +73,7 @@ interface RouteRecord {
   destination_location_id: string;
   carrier_id: string | null;
   priority: number;
+  lead_time_days: number;
   is_active: boolean;
   notes: string | null;
   source_location?: { id: string; location_id: string; name: string } | null;
@@ -156,6 +157,7 @@ const Transportation = () => {
     destination_location_id: '',
     carrier_id: '',
     priority: 1,
+    lead_time_days: 0,
     is_active: true,
     notes: '',
   });
@@ -505,6 +507,7 @@ const Transportation = () => {
       destination_location_id: '',
       carrier_id: '',
       priority: 1,
+      lead_time_days: 0,
       is_active: true,
       notes: '',
     });
@@ -520,6 +523,7 @@ const Transportation = () => {
       destination_location_id: route.destination_location_id,
       carrier_id: route.carrier_id || '',
       priority: route.priority,
+      lead_time_days: route.lead_time_days || 0,
       is_active: route.is_active,
       notes: route.notes || '',
     });
@@ -543,6 +547,7 @@ const Transportation = () => {
       destination_location_id: routeForm.destination_location_id,
       carrier_id: routeForm.carrier_id || null,
       priority: routeForm.priority,
+      lead_time_days: routeForm.lead_time_days,
       is_active: routeForm.is_active,
       notes: routeForm.notes || null,
     };
@@ -909,6 +914,7 @@ const Transportation = () => {
                   <TableHead>Destination Location</TableHead>
                   <TableHead>Carrier</TableHead>
                   <TableHead>Priority</TableHead>
+                  <TableHead>Lead Time (Days)</TableHead>
                   <TableHead>Active</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -916,7 +922,7 @@ const Transportation = () => {
               <TableBody>
                 {sortedRoutes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No routes configured. Create your first route to define fulfillment paths.
                     </TableCell>
                   </TableRow>
@@ -932,6 +938,7 @@ const Transportation = () => {
                       <TableCell>{route.destination_location?.name || '-'}</TableCell>
                       <TableCell>{route.carrier?.name || '-'}</TableCell>
                       <TableCell>{route.priority}</TableCell>
+                      <TableCell>{route.lead_time_days || 0}</TableCell>
                       <TableCell>
                         <Checkbox checked={route.is_active} disabled />
                       </TableCell>
@@ -1291,6 +1298,17 @@ const Transportation = () => {
                   value={routeForm.carrier_id}
                   onValueChange={(value) => setRouteForm({ ...routeForm, carrier_id: value })}
                   placeholder="Select carrier (optional)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="route_lead_time">Lead Time (Days)</Label>
+                <Input
+                  id="route_lead_time"
+                  type="number"
+                  min={0}
+                  value={routeForm.lead_time_days}
+                  onChange={(e) => setRouteForm({ ...routeForm, lead_time_days: parseInt(e.target.value) || 0 })}
                 />
               </div>
 
