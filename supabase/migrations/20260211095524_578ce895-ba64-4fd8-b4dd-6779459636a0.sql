@@ -1,0 +1,1 @@
+ALTER TABLE public.routes ADD COLUMN lead_time_days integer DEFAULT 0;
