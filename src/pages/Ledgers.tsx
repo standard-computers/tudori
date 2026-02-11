@@ -616,7 +616,7 @@ const Ledgers = () => {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={isCreateMaximized ? "sm:max-w-[95vw] h-[95vh]" : "sm:max-w-[500px]"} onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className={isCreateMaximized ? "!max-w-[95vw] !h-[95vh]" : "sm:max-w-[500px]"} onOpenAutoFocus={(e) => e.preventDefault()}>
           <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader>
               <DialogTitle>{isEditing ? 'Edit Ledger' : 'Create Ledger'}</DialogTitle>
@@ -755,7 +755,7 @@ const Ledgers = () => {
 
       {/* View Transactions Dialog */}
       <Dialog open={!!viewingLedger} onOpenChange={() => setViewingLedger(null)}>
-        <DialogContent className={isViewMaximized ? "sm:max-w-[95vw] h-[95vh]" : "sm:max-w-[700px]"}>
+        <DialogContent className={isViewMaximized ? "!max-w-[95vw] !h-[95vh]" : "sm:max-w-[700px]"}>
           <DialogHeader>
             <DialogTitle>
               {viewingLedger?.name} - Transactions
@@ -834,7 +834,7 @@ const Ledgers = () => {
 
       {/* Transaction Detail Dialog */}
       <Dialog open={!!viewingTransaction} onOpenChange={() => setViewingTransaction(null)}>
-        <DialogContent className={isTxDetailMaximized ? "sm:max-w-[95vw] h-[95vh]" : "sm:max-w-[450px]"}>
+        <DialogContent className={isTxDetailMaximized ? "!max-w-[95vw] !h-[95vh]" : "sm:max-w-[450px]"}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {viewingTransaction && viewingTransaction.amount < 0 ? (

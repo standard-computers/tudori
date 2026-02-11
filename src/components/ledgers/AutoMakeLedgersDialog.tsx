@@ -173,7 +173,7 @@ export const AutoMakeLedgersDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isMaximized ? "sm:max-w-[95vw] h-[95vh] flex flex-col" : "sm:max-w-[600px] max-h-[85vh] flex flex-col"}>
+      <DialogContent className={isMaximized ? "!max-w-[95vw] !h-[95vh] flex flex-col" : "sm:max-w-[600px] max-h-[85vh] flex flex-col"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="w-5 h-5" />
