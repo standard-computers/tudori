@@ -455,7 +455,7 @@ const [areaFormData, setAreaFormData] = useState({
         )
       `, { count: 'exact' })
       .eq('location_id', selectedLocationId)
-      .eq('status', 'in_transit')
+      .in('status', ['in_transit', 'partially_delivered'])
       .order('expected_date', { ascending: true });
     
     if (error) {
@@ -1827,6 +1827,8 @@ const [areaFormData, setAreaFormData] = useState({
                                   ? 'bg-blue-500/10 text-blue-500' 
                                   : delivery.status === 'pending'
                                   ? 'bg-amber-500/10 text-amber-500'
+                                  : delivery.status === 'partially_delivered'
+                                  ? 'bg-orange-500/10 text-orange-500'
                                   : 'bg-muted text-muted-foreground'
                               }`}>
                                 {delivery.status === 'shipped' && isInternalTransfer 
