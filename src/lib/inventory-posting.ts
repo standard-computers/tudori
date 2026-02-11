@@ -27,6 +27,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
     for (const item of items as any[]) {
       // Check if item has a PU assigned
       const puId = item.pu_id || null;
+      const batchId = item.batch_id || null;
       
       if (puId) {
         // PU-based inventory: each PU is a separate inventory record
@@ -38,17 +39,25 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
             quantity: item.quantity,
             bin_id: item.bin_id || null,
             pu_id: puId,
+            batch_id: batchId,
           });
       } else {
-        // Legacy behavior: aggregate by location/product/bin
-        const { data: existingInventory } = await supabase
+        // Legacy behavior: aggregate by location/product/bin/batch
+        const query = supabase
           .from('inventory')
           .select('id, quantity')
           .eq('location_id', locationId)
           .eq('product_id', item.product_id)
           .is('bin_id', item.bin_id || null)
-          .is('pu_id', null)
-          .maybeSingle();
+          .is('pu_id', null);
+        
+        if (batchId) {
+          query.eq('batch_id', batchId);
+        } else {
+          query.is('batch_id', null);
+        }
+
+        const { data: existingInventory } = await query.maybeSingle();
 
         if (existingInventory) {
           await supabase
@@ -67,6 +76,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
               quantity: item.quantity,
               bin_id: item.bin_id || null,
               pu_id: null,
+              batch_id: batchId,
             });
         }
       }
