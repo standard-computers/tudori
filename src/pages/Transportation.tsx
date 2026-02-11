@@ -779,7 +779,7 @@ const Transportation = () => {
           </div>
         </header>
 
-        <div className="p-4">
+        <div>
           <TabsContent value="carriers" className="mt-0">
 
             <Table>
