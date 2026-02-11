@@ -126,6 +126,7 @@ const HR = () => {
     location_ids: [] as string[],
   });
   const [saving, setSaving] = useState(false);
+  const [positionLocationSearch, setPositionLocationSearch] = useState('');
   const [assignPositionId, setAssignPositionId] = useState('');
   const [assignSaving, setAssignSaving] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 0, notes: '', review_date: format(new Date(), 'yyyy-MM-dd') });
@@ -872,23 +873,41 @@ const HR = () => {
             {locations.length > 0 && (
               <div className="space-y-2">
                 <Label>Locations (optional)</Label>
-                <div className="border rounded-md max-h-32 overflow-y-auto p-2 space-y-1">
-                  {locations.map((loc) => (
-                    <label key={loc.id} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
-                      <Checkbox
-                        checked={positionForm.location_ids.includes(loc.id)}
-                        onCheckedChange={(checked) => {
-                          setPositionForm(f => ({
-                            ...f,
-                            location_ids: checked
-                              ? [...f.location_ids, loc.id]
-                              : f.location_ids.filter(id => id !== loc.id),
-                          }));
-                        }}
+                <div className="border rounded-md overflow-hidden">
+                  <div className="px-2 py-1.5 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Search locations..."
+                        className="h-7 pl-7 text-sm"
+                        value={positionLocationSearch}
+                        onChange={(e) => setPositionLocationSearch(e.target.value)}
                       />
-                      {loc.name}
-                    </label>
-                  ))}
+                    </div>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto p-2 space-y-1">
+                    {locations
+                      .filter(loc => !positionLocationSearch.trim() || loc.name.toLowerCase().includes(positionLocationSearch.toLowerCase()))
+                      .map((loc) => (
+                        <label key={loc.id} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
+                          <Checkbox
+                            checked={positionForm.location_ids.includes(loc.id)}
+                            onCheckedChange={(checked) => {
+                              setPositionForm(f => ({
+                                ...f,
+                                location_ids: checked
+                                  ? [...f.location_ids, loc.id]
+                                  : f.location_ids.filter(id => id !== loc.id),
+                              }));
+                            }}
+                          />
+                          {loc.name}
+                        </label>
+                      ))}
+                    {locations.filter(loc => !positionLocationSearch.trim() || loc.name.toLowerCase().includes(positionLocationSearch.toLowerCase())).length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No locations found</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
