@@ -324,11 +324,14 @@ export const ReceiveDeliveryDialog = ({
           ? ((processControlsSetting.setting_value as Record<string, unknown>).require_gr_on_delivery as boolean) ?? true
           : true;
 
-      // Update delivery status to delivered
+      // Determine if this is a partial receipt
+      const isPartialReceipt = items.some(item => item.received_quantity < item.expected_quantity);
+
+      // Update delivery status - use 'partially_delivered' if not all quantities received
       const { error: deliveryError } = await supabase
         .from('deliveries')
         .update({ 
-          status: 'delivered',
+          status: isPartialReceipt ? 'partially_delivered' : 'delivered',
           delivered_date: new Date().toISOString().split('T')[0]
         })
         .eq('id', deliveryId);
@@ -339,20 +342,8 @@ export const ReceiveDeliveryDialog = ({
         return;
       }
 
-      // Update delivery items with received quantities if different
-      for (const item of items) {
-        if (item.received_quantity !== item.expected_quantity) {
-          await supabase
-            .from('delivery_items')
-            .update({ 
-              quantity: item.received_quantity,
-              notes: item.received_quantity < item.expected_quantity 
-                ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
-                : null
-            })
-            .eq('id', item.id);
-        }
-      }
+      // Do NOT update delivery_items quantities - preserve the original delivery record
+      // The goods receipt items will reflect the actual received quantities
 
       if (requireGR) {
         // Create goods receipt
