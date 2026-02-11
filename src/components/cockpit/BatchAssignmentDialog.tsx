@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,20 +49,17 @@ export const BatchAssignmentDialog = ({
   batchedProducts: initialProducts,
   onConfirm,
 }: BatchAssignmentDialogProps) => {
-  const [products, setProducts] = useState<BatchedProduct[]>(initialProducts);
+  const [products, setProducts] = useState<BatchedProduct[]>([]);
 
   // Reset state when dialog opens with new data
-  const resetProducts = () => {
-    setProducts(initialProducts.map(p => ({
-      ...p,
-      batchLines: p.batchLines.length > 0 ? p.batchLines : [{ batchNumber: '', expirationDate: '', quantity: p.totalQuantity }],
-    })));
-  };
-
-  // Reset on open
-  useState(() => {
-    resetProducts();
-  });
+  useEffect(() => {
+    if (open && initialProducts.length > 0) {
+      setProducts(initialProducts.map(p => ({
+        ...p,
+        batchLines: p.batchLines.length > 0 ? p.batchLines : [{ batchNumber: '', expirationDate: '', quantity: p.totalQuantity }],
+      })));
+    }
+  }, [open, initialProducts]);
 
   const addLine = (productIndex: number) => {
     setProducts(prev => {
