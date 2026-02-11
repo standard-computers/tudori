@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN serialized boolean NOT NULL DEFAULT false;
