@@ -64,7 +64,7 @@ interface CountItem {
   counted_quantity: number | null;
   variance: number | null;
   notes: string | null;
-  product: { product_id: string; name: string } | null;
+  product: { product_id: string; name: string; price: number | null } | null;
   bin: { name: string } | null;
 }
 
@@ -122,7 +122,7 @@ export const InventoryCountDialog = ({
   const fetchCountItems = async (countId: string) => {
     const { data, error } = await supabase
       .from('inventory_count_items')
-      .select('id, product_id, bin_id, system_quantity, counted_quantity, variance, notes, product:products(product_id, name), bin:bins(name)')
+      .select('id, product_id, bin_id, system_quantity, counted_quantity, variance, notes, product:products(product_id, name, price), bin:bins(name)')
       .eq('count_id', countId)
       .order('created_at');
 
@@ -283,50 +283,161 @@ export const InventoryCountDialog = ({
     if (!selectedCount || !companyId) return;
     setIsSaving(true);
 
-    // Apply variance adjustments to inventory
+    // Separate items with variance into gains (positive) and losses (negative)
+    const gains: CountItem[] = [];
+    const losses: CountItem[] = [];
+    let netValuationChange = 0;
+
     for (const item of countItems) {
       if (item.variance && item.variance !== 0) {
-        // Update inventory quantity to match counted quantity
-        const { error } = await supabase
-          .from('inventory')
-          .update({ quantity: item.counted_quantity!, last_counted_at: new Date().toISOString() })
-          .eq('location_id', locationId)
-          .eq('product_id', item.product_id)
-          .eq(item.bin_id ? 'bin_id' : 'id', item.bin_id || '');
+        const price = item.product?.price || 0;
+        if (item.variance > 0) {
+          gains.push(item);
+          netValuationChange += item.variance * price;
+        } else {
+          losses.push(item);
+          netValuationChange += item.variance * price; // negative
+        }
+      }
+    }
 
-        // If bin_id match doesn't work, try without bin
-        if (error && item.bin_id) {
-          await supabase
+    try {
+      // Create Goods Receipt for gains (positive variances)
+      if (gains.length > 0) {
+        const { data: grNumber } = await supabase.rpc('get_next_goods_receipt_number', { p_company_id: companyId });
+
+        const { data: gr, error: grError } = await supabase
+          .from('goods_receipts' as any)
+          .insert({
+            company_id: companyId,
+            location_id: locationId,
+            receipt_number: grNumber,
+            receipt_date: new Date().toISOString().split('T')[0],
+            status: 'posted',
+            notes: `Physical inventory adjustment – Count ${selectedCount.count_number}`,
+          })
+          .select('id')
+          .single();
+
+        if (grError) throw grError;
+
+        const grItems = gains.map((item) => ({
+          goods_receipt_id: (gr as any).id,
+          product_id: item.product_id,
+          quantity: item.variance!,
+          bin_id: item.bin_id || null,
+          notes: `Count adjustment +${item.variance}`,
+        }));
+
+        const { error: grItemsError } = await supabase
+          .from('goods_receipt_items' as any)
+          .insert(grItems);
+        if (grItemsError) throw grItemsError;
+      }
+
+      // Create Goods Issue for losses (negative variances)
+      if (losses.length > 0) {
+        const { data: giNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
+
+        const { data: gi, error: giError } = await supabase
+          .from('goods_issues' as any)
+          .insert({
+            company_id: companyId,
+            location_id: locationId,
+            issue_number: giNumber,
+            issue_date: new Date().toISOString().split('T')[0],
+            status: 'posted',
+            notes: `Physical inventory adjustment – Count ${selectedCount.count_number}`,
+          })
+          .select('id')
+          .single();
+
+        if (giError) throw giError;
+
+        const giItems = losses.map((item) => ({
+          goods_issue_id: (gi as any).id,
+          product_id: item.product_id,
+          quantity: Math.abs(item.variance!),
+          bin_id: item.bin_id || null,
+          notes: `Count adjustment ${item.variance}`,
+        }));
+
+        const { error: giItemsError } = await supabase
+          .from('goods_issue_items' as any)
+          .insert(giItems);
+        if (giItemsError) throw giItemsError;
+      }
+
+      // Create a single ledger adjustment for the net valuation change
+      if (netValuationChange !== 0) {
+        // Find ledger for this location
+        const { data: ledger } = await supabase
+          .from('ledgers' as any)
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('location_id', locationId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (ledger) {
+          await supabase.from('ledger_transactions' as any).insert({
+            ledger_id: (ledger as any).id,
+            transaction_type: 'inventory_adjustment',
+            reference_id: selectedCount.id,
+            reference_number: selectedCount.count_number,
+            amount: netValuationChange,
+            description: `Inventory count adjustment – ${selectedCount.count_number}${netValuationChange > 0 ? ' (net gain)' : ' (net loss)'}`,
+            transaction_date: new Date().toISOString().split('T')[0],
+          });
+        }
+      }
+
+      // Apply variance adjustments to inventory
+      for (const item of countItems) {
+        if (item.variance && item.variance !== 0) {
+          const { error } = await supabase
             .from('inventory')
             .update({ quantity: item.counted_quantity!, last_counted_at: new Date().toISOString() })
             .eq('location_id', locationId)
             .eq('product_id', item.product_id)
-            .eq('bin_id', item.bin_id);
+            .eq(item.bin_id ? 'bin_id' : 'id', item.bin_id || '');
+
+          if (error && item.bin_id) {
+            await supabase
+              .from('inventory')
+              .update({ quantity: item.counted_quantity!, last_counted_at: new Date().toISOString() })
+              .eq('location_id', locationId)
+              .eq('product_id', item.product_id)
+              .eq('bin_id', item.bin_id);
+          }
+        } else {
+          await supabase
+            .from('inventory')
+            .update({ last_counted_at: new Date().toISOString() })
+            .eq('location_id', locationId)
+            .eq('product_id', item.product_id);
         }
-      } else {
-        // Even items with no variance get last_counted_at updated
-        await supabase
-          .from('inventory')
-          .update({ last_counted_at: new Date().toISOString() })
-          .eq('location_id', locationId)
-          .eq('product_id', item.product_id);
       }
+
+      // Mark count as posted
+      const { error } = await supabase
+        .from('inventory_counts')
+        .update({ status: 'posted' })
+        .eq('id', selectedCount.id);
+
+      setIsSaving(false);
+      if (error) {
+        toast.error('Failed to post adjustments');
+        return;
+      }
+
+      toast.success('Inventory adjustments posted');
+      setSelectedCount({ ...selectedCount, status: 'posted' });
+    } catch (err: any) {
+      console.error('Failed to post inventory adjustments:', err);
+      setIsSaving(false);
+      toast.error(err.message || 'Failed to post adjustments');
     }
-
-    // Mark count as posted
-    const { error } = await supabase
-      .from('inventory_counts')
-      .update({ status: 'posted' })
-      .eq('id', selectedCount.id);
-
-    setIsSaving(false);
-    if (error) {
-      toast.error('Failed to post adjustments');
-      return;
-    }
-
-    toast.success('Inventory adjustments posted');
-    setSelectedCount({ ...selectedCount, status: 'posted' });
   };
 
   const handleDeleteCount = async () => {
