@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, X, AlertTriangle, ChevronRight, MapPin, Clock, Package } from 'lucide-react';
+import { Check, X, AlertTriangle, ChevronRight, MapPin, Clock, Package, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BomStep {
@@ -85,6 +85,7 @@ export function StepByStepProductionDialog({
   initialCompletedStepIds = [],
 }: StepByStepProductionDialogProps) {
   const [steps, setSteps] = useState<BomStep[]>([]);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [stepItems, setStepItems] = useState<Record<string, BomStepItem[]>>({});
   const [binInventory, setBinInventory] = useState<Record<string, InventoryRecord[]>>({});
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -580,7 +581,14 @@ export function StepByStepProductionDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />

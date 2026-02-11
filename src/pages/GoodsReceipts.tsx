@@ -48,7 +48,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
-import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History } from 'lucide-react';
+import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -133,6 +133,7 @@ const GoodsReceipts = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<GoodsReceipt | null>(null);
   const [viewReceiptItems, setViewReceiptItems] = useState<GoodsReceiptItem[]>([]);
@@ -579,7 +580,14 @@ const GoodsReceipts = () => {
                   <Kbd>N</Kbd>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
+                <button
+                  type="button"
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                >
+                  {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
                 <DialogHeader>
                   <DialogTitle>{isEditing ? 'Edit Goods Receipt' : 'New Goods Receipt'}</DialogTitle>
                   <DialogDescription>
@@ -773,20 +781,28 @@ const GoodsReceipts = () => {
 
       {/* View Goods Receipt Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
-          {viewingReceipt?.status !== 'posted' && (
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`}>
+          <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
+            {viewingReceipt?.status !== 'posted' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsViewDialogOpen(false);
+                  if (viewingReceipt) handleEdit(viewingReceipt);
+                }}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => {
-                setIsViewDialogOpen(false);
-                if (viewingReceipt) handleEdit(viewingReceipt);
-              }}
-              className="absolute right-10 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              onClick={() => setIsMaximized(!isMaximized)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
-              <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
+              {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
-          )}
+          </div>
           <DialogHeader>
             <DialogTitle>View Goods Receipt</DialogTitle>
             <DialogDescription>

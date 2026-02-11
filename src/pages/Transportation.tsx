@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/select';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { ArrowLeft, Plus, Pencil, Trash2, Truck, Route, Users, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Truck, Route, Users, ArrowRight, Maximize2, Minimize2 } from 'lucide-react';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from 'sonner';
@@ -130,6 +130,7 @@ const Transportation = () => {
 
   // Carrier dialog state
   const [isCarrierDialogOpen, setIsCarrierDialogOpen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const [carrierForm, setCarrierForm] = useState({
     carrier_id: '',
@@ -1054,7 +1055,14 @@ const Transportation = () => {
 
         {/* Carrier Dialog */}
       <Dialog open={isCarrierDialogOpen} onOpenChange={setIsCarrierDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader className="shrink-0">
             <DialogTitle>{editingCarrier ? 'Edit Carrier' : 'New Carrier'}</DialogTitle>
             <DialogDescription>
@@ -1222,7 +1230,14 @@ const Transportation = () => {
 
       {/* Route Dialog */}
       <Dialog open={isRouteDialogOpen} onOpenChange={setIsRouteDialogOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader className="shrink-0">
             <DialogTitle>{editingRoute ? 'Edit Route' : 'New Route'}</DialogTitle>
             <DialogDescription>
@@ -1348,7 +1363,14 @@ const Transportation = () => {
 
       {/* Assignment Dialog */}
       <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader className="shrink-0">
             <DialogTitle>{editingAssignment ? 'Edit Assignment' : 'New Assignment'}</DialogTitle>
             <DialogDescription>
