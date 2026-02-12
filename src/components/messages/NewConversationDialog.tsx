@@ -161,7 +161,7 @@ export function NewConversationDialog({ open, onOpenChange, onConversationCreate
           <DialogTitle>New Conversation</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 px-1">
           <div className="flex items-center space-x-2">
             <Checkbox id="is-group" checked={isGroup} onCheckedChange={(checked) => setIsGroup(checked === true)} />
             <Label htmlFor="is-group">Create group chat</Label>
