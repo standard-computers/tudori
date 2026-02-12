@@ -133,6 +133,39 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
   );
 };
 
+const ViewUserPasswordSection = ({ invitation }: { invitation: Invitation }) => {
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!invitation.temp_password) return;
+    await navigator.clipboard.writeText(invitation.temp_password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+      <Label className="text-muted-foreground flex items-center gap-2">
+        <Mail className="w-4 h-4" />
+        Outstanding Invitation
+      </Label>
+      <p className="text-xs text-muted-foreground">This user has a pending invitation. Share the temporary password so they can log in.</p>
+      <div className="flex items-center gap-2">
+        <code className="text-xs bg-muted px-2 py-1 rounded font-mono flex-1">
+          {visible ? invitation.temp_password : '••••••••••••'}
+        </code>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setVisible(!visible)} title={visible ? "Hide" : "Show"}>
+          <Eye className="w-3 h-3" />
+        </Button>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleCopy} title="Copy">
+          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const Users = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -803,6 +836,15 @@ const Users = () => {
                       {viewingMember && roleDescriptions[viewingMember.role]}
                     </p>
                   </div>
+                  {(() => {
+                    const matchingInvitation = viewingMember && canManageUsers
+                      ? invitations.find((inv) => inv.email === viewingMember.email)
+                      : null;
+                    if (!matchingInvitation?.temp_password) return null;
+                    return (
+                      <ViewUserPasswordSection invitation={matchingInvitation} />
+                    );
+                  })()}
                 </TabsContent>
                 <TabsContent value="access" className="mt-4">
                   {viewingMember && companyId && (
