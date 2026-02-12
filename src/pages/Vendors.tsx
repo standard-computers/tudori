@@ -420,7 +420,108 @@ const Vendors = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
-  const { exportToExcel } = useExcel();
+  const { exportToExcel, readExcel } = useExcel();
+
+  const VENDOR_TEMPLATE_COLUMNS = [
+    { header: "Name", key: "Name", width: 25 },
+    { header: "Type", key: "Type", width: 18 },
+    { header: "Status", key: "Status", width: 12 },
+    { header: "Contact", key: "Contact", width: 20 },
+    { header: "Email", key: "Email", width: 25 },
+    { header: "Phone", key: "Phone", width: 18 },
+    { header: "Address", key: "Address", width: 25 },
+    { header: "Address 2", key: "Address 2", width: 20 },
+    { header: "City", key: "City", width: 15 },
+    { header: "State", key: "State", width: 12 },
+    { header: "Postal Code", key: "Postal Code", width: 14 },
+    { header: "Country", key: "Country", width: 15 },
+    { header: "Website", key: "Website", width: 25 },
+    { header: "Payment Terms", key: "Payment Terms", width: 16 },
+    { header: "Notes", key: "Notes", width: 30 },
+  ];
+
+  const handleDownloadTemplate = async () => {
+    const sampleRow = {
+      "Name": "Example Corp",
+      "Type": "Supplier",
+      "Status": "active",
+      "Contact": "John Doe",
+      "Email": "john@example.com",
+      "Phone": "555-0100",
+      "Address": "123 Main St",
+      "Address 2": "",
+      "City": "New York",
+      "State": "NY",
+      "Postal Code": "10001",
+      "Country": "United States",
+      "Website": "https://example.com",
+      "Payment Terms": "30",
+      "Notes": "",
+    };
+    await exportToExcel([sampleRow], "vendor_import_template.xlsx", "Vendors", VENDOR_TEMPLATE_COLUMNS);
+    toast.success("Template downloaded");
+  };
+
+  const handleImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error("No data found in file");
+        return;
+      }
+
+      let imported = 0;
+      let failed = 0;
+
+      for (const row of rows) {
+        const name = row["Name"]?.toString()?.trim();
+        if (!name) {
+          failed++;
+          continue;
+        }
+
+        // Get next vendor ID for each row
+        const { data: vid } = await supabase.rpc("get_next_vendor_id", { p_company_id: companyId });
+
+        const { error } = await supabase.from("vendors").insert({
+          company_id: companyId,
+          vendor_id: vid || `IMP-${Date.now()}`,
+          name,
+          type: row["Type"]?.toString()?.trim() || "Supplier",
+          status: row["Status"]?.toString()?.trim()?.toLowerCase() === "blocked" ? "blocked" : "active",
+          contact_name: row["Contact"]?.toString()?.trim() || null,
+          email: row["Email"]?.toString()?.trim() || null,
+          phone: row["Phone"]?.toString()?.trim() || null,
+          address_line1: row["Address"]?.toString()?.trim() || null,
+          address_line2: row["Address 2"]?.toString()?.trim() || null,
+          city: row["City"]?.toString()?.trim() || null,
+          state: row["State"]?.toString()?.trim() || null,
+          postal_code: row["Postal Code"]?.toString()?.trim() || null,
+          country: row["Country"]?.toString()?.trim() || "United States",
+          website: row["Website"]?.toString()?.trim() || null,
+          notes: row["Notes"]?.toString()?.trim() || null,
+          payment_terms: row["Payment Terms"] ? parseInt(row["Payment Terms"].toString(), 10) || null : null,
+        });
+
+        if (error) {
+          failed++;
+        } else {
+          imported++;
+        }
+      }
+
+      if (imported > 0) {
+        toast.success(`Imported ${imported} vendor${imported > 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`);
+        fetchVendors();
+        fetchNextVendorId();
+      } else {
+        toast.error(`Import failed: ${failed} row${failed > 1 ? "s" : ""} could not be imported`);
+      }
+    } catch (err) {
+      toast.error("Failed to read file");
+    }
+  };
 
   const handleExport = async () => {
     if (vendors.length === 0) {
@@ -886,7 +987,9 @@ const Vendors = () => {
               <ImportExportButtons
                 importEnabled={isImportEnabled("vendor")}
                 exportEnabled={isExportEnabled("vendor")}
+                onImport={handleImport}
                 onExport={handleExport}
+                onDownloadTemplate={handleDownloadTemplate}
                 entityName="Vendors"
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
