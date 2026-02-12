@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check } from 'lucide-react';
 import { z } from 'zod';
 import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
 
@@ -36,6 +36,7 @@ interface Invitation {
   role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
   created_at: string;
   expires_at: string;
+  temp_password?: string;
 }
 
 interface UserRole {
@@ -62,6 +63,74 @@ const roleDescriptions: Record<string, string> = {
   admin: 'Can manage users and most settings',
   member: 'Can access and edit business data',
   viewer: 'Read-only access to data',
+};
+
+const InvitationRow = ({ invitation, canManageUsers, onCancel }: { 
+  invitation: Invitation; 
+  canManageUsers: boolean; 
+  onCancel: (id: string) => void;
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyPassword = async () => {
+    if (!invitation.temp_password) return;
+    await navigator.clipboard.writeText(invitation.temp_password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+            <Mail className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <span className="font-medium">{invitation.email}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline" className={roleColors[invitation.role]}>
+          {invitation.role}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        {invitation.temp_password ? (
+          <div className="flex items-center gap-2">
+            <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+              {invitation.temp_password}
+            </code>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={handleCopyPassword}
+              title="Copy password"
+            >
+              {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+            </Button>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        )}
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {new Date(invitation.created_at).toLocaleDateString()}
+      </TableCell>
+      <TableCell className="text-right">
+        {canManageUsers && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onCancel(invitation.id)}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
+      </TableCell>
+    </TableRow>
+  );
 };
 
 const Users = () => {
@@ -148,7 +217,7 @@ const Users = () => {
     // Get pending invitations
     const { data: invitationsData } = await supabase
       .from('invitations')
-      .select('id, email, role, created_at, expires_at')
+      .select('id, email, role, created_at, expires_at, temp_password')
       .eq('company_id', profileData.company_id)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString());
@@ -228,33 +297,28 @@ const Users = () => {
         return;
       }
 
-      // Check if user already exists in the company
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('company_id', companyId);
-
-      // Create invitation
-      const { error: inviteError } = await supabase
-        .from('invitations')
-        .insert({
+      // Call edge function to create user with temp password
+      const { data, error: fnError } = await supabase.functions.invoke('create-invited-user', {
+        body: {
           email: email.toLowerCase(),
-          company_id: companyId,
           role,
-          invited_by: user!.id,
-        });
+          company_id: companyId,
+        },
+      });
 
-      if (inviteError) {
-        if (inviteError.code === '23505') {
-          toast.error('This email has already been invited');
-        } else {
-          toast.error('Failed to create invitation: ' + inviteError.message);
-        }
+      if (fnError) {
+        toast.error('Failed to create invitation: ' + fnError.message);
         setInviteLoading(false);
         return;
       }
 
-      toast.success(`Invitation sent to ${email}! They can now sign up to join your company.`);
+      if (data?.error) {
+        toast.error(data.error);
+        setInviteLoading(false);
+        return;
+      }
+
+      toast.success(`User created for ${email}. They can log in with the temporary password.`);
       setIsDialogOpen(false);
       resetForm();
       fetchTeamData();
@@ -428,7 +492,7 @@ const Users = () => {
                   <DialogHeader>
                     <DialogTitle>Invite Team Member</DialogTitle>
                     <DialogDescription>
-                      Send an invitation to join your organization. They'll be able to sign up with this email.
+                      Create a user account with a temporary password. Share the credentials with them so they can log in.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogBody>
@@ -507,7 +571,7 @@ const Users = () => {
                 <Clock className="w-5 h-5" />
                 Pending Invitations
               </CardTitle>
-              <CardDescription>Users who have been invited but haven't signed up yet</CardDescription>
+              <CardDescription>Users who have been created but haven't logged in yet. Share the temporary password with them.</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -515,42 +579,19 @@ const Users = () => {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Temp Password</TableHead>
                     <TableHead>Invited</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {invitations.map((invitation) => (
-                    <TableRow key={invitation.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <Mail className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                          <span className="font-medium">{invitation.email}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={roleColors[invitation.role]}>
-                          {invitation.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(invitation.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {canManageUsers && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCancelInvitation(invitation.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                    <InvitationRow
+                      key={invitation.id}
+                      invitation={invitation}
+                      canManageUsers={canManageUsers}
+                      onCancel={handleCancelInvitation}
+                    />
                   ))}
                 </TableBody>
               </Table>
