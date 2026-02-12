@@ -2326,7 +2326,11 @@ const [areaFormData, setAreaFormData] = useState({
                     <TableBody>
                       {areas.map((area) => (
                         <TableRow key={area.id}>
-                          <TableCell className="font-mono">{area.area_id}</TableCell>
+                          <TableCell className="font-mono">
+                            <button type="button" className="text-primary hover:underline" onClick={() => openAreaDialog(area)}>
+                              {area.area_id}
+                            </button>
+                          </TableCell>
                           <TableCell className="font-medium">{area.name}</TableCell>
                           <TableCell className="text-muted-foreground">{area.description || '—'}</TableCell>
                           <TableCell className="text-right">{bins.filter(b => b.area_id === area.id).length}</TableCell>
@@ -2400,7 +2404,11 @@ const [areaFormData, setAreaFormData] = useState({
                         const area = areas.find(a => a.id === bin.area_id);
                         return (
                           <TableRow key={bin.id}>
-                            <TableCell className="font-mono">{bin.bin_id}</TableCell>
+                            <TableCell className="font-mono">
+                              <button type="button" className="text-primary hover:underline" onClick={() => { setViewingBin(bin); setIsViewBinDialogOpen(true); }}>
+                                {bin.bin_id}
+                              </button>
+                            </TableCell>
                             <TableCell className="font-medium">{bin.name}</TableCell>
                             <TableCell>{area?.name || '—'}</TableCell>
                             <TableCell className="text-muted-foreground">{bin.capacity || '—'}</TableCell>
