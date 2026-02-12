@@ -138,6 +138,7 @@ const ProductionOrderTable = ({
   onStartForeground,
   onConfirm,
   onCompleteForeground,
+  onAssignEmployee,
 }: {
   orders: ProductionOrder[];
   onView: (order: ProductionOrder) => void;
@@ -147,6 +148,7 @@ const ProductionOrderTable = ({
   onStartForeground: (order: ProductionOrder) => void;
   onConfirm: (order: ProductionOrder) => void;
   onCompleteForeground: (order: ProductionOrder) => void;
+  onAssignEmployee: (order: ProductionOrder) => void;
 }) => {
   const {
     sortConfig,
@@ -333,6 +335,10 @@ const ProductionOrderTable = ({
                           )}
                           {order.status === 'in_progress' && (
                             <>
+                              <DropdownMenuItem onClick={() => onAssignEmployee(order)}>
+                                <User className="w-4 h-4 mr-2" />
+                                Assign Employee
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onConfirm(order)}>
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 Confirm
@@ -396,6 +402,7 @@ const Production = () => {
   const [foregroundOrder, setForegroundOrder] = useState<ProductionOrder | null>(null);
   const [isForegroundDialogOpen, setIsForegroundDialogOpen] = useState(false);
   const [locationEmployees, setLocationEmployees] = useState<LocationEmployee[]>([]);
+  const [isAssignMode, setIsAssignMode] = useState(false);
 
   const [formData, setFormData] = useState({
     order_number: '',
@@ -666,6 +673,7 @@ const Production = () => {
     });
     setIsEditing(false);
     setIsViewMode(false);
+    setIsAssignMode(false);
     setEditingId(null);
     setBomItems([]);
   };
@@ -715,6 +723,27 @@ const Production = () => {
     });
     setIsViewMode(false);
     setIsEditing(true);
+    setEditingId(order.id);
+    if (order.bom_id) {
+      await fetchBomItems(order.bom_id);
+    }
+    setIsDialogOpen(true);
+  };
+
+  const handleAssignEmployee = async (order: ProductionOrder) => {
+    setFormData({
+      order_number: order.order_number,
+      bom_id: order.bom_id || '',
+      location_id: order.location_id,
+      quantity: order.quantity,
+      status: order.status,
+      scheduled_date: order.scheduled_date || '',
+      notes: order.notes || '',
+      assigned_employee_id: order.assigned_employee_id || '',
+    });
+    setIsViewMode(false);
+    setIsEditing(true);
+    setIsAssignMode(true);
     setEditingId(order.id);
     if (order.bom_id) {
       await fetchBomItems(order.bom_id);
@@ -927,7 +956,17 @@ const Production = () => {
     }
 
     try {
-      if (isEditing && editingId) {
+      if (isAssignMode && editingId) {
+        const { error } = await supabase
+          .from('production_orders')
+          .update({
+            assigned_employee_id: formData.assigned_employee_id || null,
+          })
+          .eq('id', editingId);
+
+        if (error) throw error;
+        toast.success('Employee assigned successfully');
+      } else if (isEditing && editingId) {
         const { error } = await supabase
           .from('production_orders')
           .update({
@@ -1028,6 +1067,7 @@ const Production = () => {
           onStartForeground={handleStartForeground}
           onConfirm={handleConfirm}
           onCompleteForeground={handleCompleteForeground}
+          onAssignEmployee={handleAssignEmployee}
         />
       </main>
 
@@ -1042,14 +1082,16 @@ const Production = () => {
           </button>
           <DialogHeader className="shrink-0">
             <DialogTitle>
-              {isViewMode ? 'View Production Order' : isEditing ? 'Edit Production Order' : 'New Production Order'}
+              {isAssignMode ? 'Assign Employee' : isViewMode ? 'View Production Order' : isEditing ? 'Edit Production Order' : 'New Production Order'}
             </DialogTitle>
             <DialogDescription>
-              {isViewMode 
-                ? 'View production order details' 
-                : isEditing 
-                  ? 'Update production order details' 
-                  : 'Create a new production order from a Bill of Materials'}
+              {isAssignMode
+                ? 'Assign an employee to this production order'
+                : isViewMode 
+                  ? 'View production order details' 
+                  : isEditing 
+                    ? 'Update production order details' 
+                    : 'Create a new production order from a Bill of Materials'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1080,7 +1122,7 @@ const Production = () => {
                       <Select
                         value={formData.status}
                         onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                        disabled={isViewMode}
+                        disabled={isViewMode || isAssignMode}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1144,7 +1186,7 @@ const Production = () => {
                     <Select
                       value={formData.location_id}
                       onValueChange={(value) => setFormData(prev => ({ ...prev, location_id: value, assigned_employee_id: '' }))}
-                      disabled={isViewMode}
+                      disabled={isViewMode || isAssignMode}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a production-enabled location" />
@@ -1193,7 +1235,7 @@ const Production = () => {
                         min={1}
                         value={formData.quantity}
                         onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-                        disabled={isViewMode}
+                        disabled={isViewMode || isAssignMode}
                       />
                       {selectedBom && (
                         <p className="text-xs text-muted-foreground">
@@ -1207,7 +1249,7 @@ const Production = () => {
                         type="date"
                         value={formData.scheduled_date}
                         onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
-                        disabled={isViewMode}
+                        disabled={isViewMode || isAssignMode}
                       />
                     </div>
                   </div>
@@ -1306,7 +1348,7 @@ const Production = () => {
                     <Textarea
                       value={formData.notes}
                       onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                      disabled={isViewMode}
+                      disabled={isViewMode || isAssignMode}
                       rows={6}
                       placeholder="Add any additional notes about this production order..."
                     />
