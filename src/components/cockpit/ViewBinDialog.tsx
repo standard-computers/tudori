@@ -10,7 +10,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Boxes, Info, Maximize2, Minimize2 } from 'lucide-react';
+import { Pencil, Boxes, Info, Maximize2, Minimize2, Printer } from 'lucide-react';
+import { printLocationLabel } from '@/lib/print-label';
 
 interface Bin {
   id: string;
@@ -106,6 +107,13 @@ const ViewBinDialog = ({ open, onOpenChange, bin, area, onEdit }: ViewBinDialogP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[600px] max-h-[85vh]'}`}>
+        <button
+          type="button"
+          onClick={() => printLocationLabel('Bin', bin.bin_id, bin.name)}
+          className="absolute right-[5.5rem] top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          <Printer className="h-4 w-4" />
+        </button>
         <button
           type="button"
           onClick={onEdit}
