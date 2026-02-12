@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NavLink } from "@/components/NavLink";
 import { Plus, GripVertical, Calendar, MapPin, User, Package, Trash2, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import {
   DndContext,
   closestCenter,

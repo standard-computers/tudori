@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
   AlertDialog,
   AlertDialogAction,

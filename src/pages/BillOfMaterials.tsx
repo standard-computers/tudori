@@ -50,7 +50,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface BillOfMaterial {
   id: string;

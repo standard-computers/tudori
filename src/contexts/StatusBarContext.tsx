@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { registerStatusBarHandler, unregisterStatusBarHandler } from '@/lib/toast';
 
 interface StatusMessage {
   id: string;
@@ -52,6 +53,12 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
+
+  // Register global toast bridge
+  useEffect(() => {
+    registerStatusBarHandler(addMessage);
+    return () => unregisterStatusBarHandler();
+  }, [addMessage]);
 
   // Auto-remove messages after 5 seconds
   useEffect(() => {

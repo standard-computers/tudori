@@ -34,7 +34,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { defaultApps, AppTile } from '@/config/apps';
 import { APP_NAME_TO_CODE } from '@/config/transaction-codes';
 

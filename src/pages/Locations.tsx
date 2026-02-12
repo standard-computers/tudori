@@ -55,7 +55,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
 

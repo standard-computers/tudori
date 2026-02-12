@@ -35,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus } from 'lucide-react';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface Account {
   id: string;

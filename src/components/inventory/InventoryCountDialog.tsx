@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { AreaBinSelector } from '@/components/inventory/AreaBinSelector';

@@ -52,7 +52,7 @@ import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 interface Requisition {
   id: string;

@@ -25,7 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Loader2, PackageCheck, AlertCircle, Layers, Package, Archive } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { BatchAssignmentDialog, BatchedProduct } from '@/components/cockpit/BatchAssignmentDialog';
 
 interface DeliveryItem {
