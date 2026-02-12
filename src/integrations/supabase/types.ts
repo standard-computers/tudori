@@ -4141,6 +4141,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          leader_employee_id: string | null
           name: string
           team_id: string
           updated_at: string
@@ -4150,6 +4151,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          leader_employee_id?: string | null
           name: string
           team_id: string
           updated_at?: string
@@ -4159,6 +4161,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          leader_employee_id?: string | null
           name?: string
           team_id?: string
           updated_at?: string
@@ -4169,6 +4172,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_leader_employee_id_fkey"
+            columns: ["leader_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
