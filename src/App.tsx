@@ -13,6 +13,7 @@ import { GlobalSearchHandler } from "@/components/GlobalSearchHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeSync } from "@/components/ThemeSync";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { usePageTitle } from "@/hooks/use-page-title";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -59,6 +60,8 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const PageTitle = () => { usePageTitle(); return null; };
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
@@ -69,6 +72,7 @@ const App = () => (
           <AuthProvider>
             <ThemeSync />
             <ScrollToTop />
+            <PageTitle />
             <SearchProvider>
               <StatusBarProvider>
                 <GlobalSearchHandler />
