@@ -28,16 +28,26 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { TeamEmployeesTab } from '@/components/teams/TeamEmployeesTab';
+import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, Users2, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
+
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  job_title: string | null;
+}
 
 interface Team {
   id: string;
   team_id: string;
   name: string;
   description: string | null;
+  leader_employee_id: string | null;
+  leader_name?: string;
   member_count?: number;
 }
 
@@ -187,11 +197,13 @@ const Teams = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nextTeamId, setNextTeamId] = useState('0001');
   const [viewingTeam, setViewingTeam] = useState<Team | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [formData, setFormData] = useState({
     team_id: '',
     name: '',
     description: '',
+    leader_employee_id: '',
   });
 
   useEffect(() => {
@@ -226,6 +238,7 @@ const Teams = () => {
     if (companyId) {
       fetchTeams();
       fetchNextTeamId();
+      fetchEmployees();
     }
   }, [companyId]);
 
@@ -242,10 +255,20 @@ const Teams = () => {
     setLoading(false);
   };
 
+  const fetchEmployees = async () => {
+    const { data } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name, job_title')
+      .eq('company_id', companyId!)
+      .eq('status', 'active')
+      .order('last_name');
+    setEmployees(data || []);
+  };
+
   const fetchTeams = async () => {
     const { data, error } = await supabase
       .from('teams')
-      .select('*')
+      .select('*, leader:employees!teams_leader_employee_id_fkey(id, first_name, last_name)')
       .eq('company_id', companyId)
       .order('team_id');
 
@@ -265,8 +288,9 @@ const Teams = () => {
       countMap.set(m.team_id, (countMap.get(m.team_id) || 0) + 1);
     });
 
-    const teamsWithCounts = (data || []).map(t => ({
+    const teamsWithCounts = (data || []).map((t: any) => ({
       ...t,
+      leader_name: t.leader ? `${t.leader.first_name} ${t.leader.last_name}` : null,
       member_count: countMap.get(t.id) || 0,
     }));
 
@@ -287,6 +311,7 @@ const Teams = () => {
       team_id: nextTeamId,
       name: '',
       description: '',
+      leader_employee_id: '',
     });
     setIsEditing(false);
     setEditingId(null);
@@ -300,6 +325,7 @@ const Teams = () => {
       team_id: team.team_id,
       name: team.name,
       description: team.description || '',
+      leader_employee_id: team.leader_employee_id || '',
     });
     setIsEditing(true);
     setEditingId(team.id);
@@ -331,6 +357,7 @@ const Teams = () => {
         team_id: formData.team_id,
         name: formData.name,
         description: formData.description || null,
+        leader_employee_id: formData.leader_employee_id || null,
       };
 
       if (isEditing && editingId) {
@@ -440,6 +467,19 @@ const Teams = () => {
                       rows={3}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Leader</Label>
+                    <SearchableSelect
+                      options={employees.map(e => ({
+                        value: e.id,
+                        label: `${e.first_name} ${e.last_name}`,
+                        sublabel: e.job_title || undefined,
+                      }))}
+                      value={formData.leader_employee_id}
+                      onValueChange={(v) => setFormData({ ...formData, leader_employee_id: v })}
+                      placeholder="Select leader..."
+                    />
+                  </div>
                 </form>
               </TabsContent>
               <TabsContent value="employees" className="mt-4">
@@ -506,6 +546,10 @@ const Teams = () => {
                   <div>
                     <p className="text-xs text-muted-foreground">Description</p>
                     <p className="font-medium">{viewingTeam.description || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Leader</p>
+                    <p className="font-medium">{viewingTeam.leader_name || '-'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Members</p>
