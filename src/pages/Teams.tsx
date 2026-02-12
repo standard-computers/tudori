@@ -455,9 +455,6 @@ const Teams = () => {
             </Tabs>
           </DialogBody>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
             <Button type="submit" form="team-form" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {isEditing ? 'Update' : 'Create'}
