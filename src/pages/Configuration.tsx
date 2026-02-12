@@ -27,29 +27,29 @@ interface DocumentIdConfig {
 }
 
 const DOCUMENT_TYPES = [
-  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-', icon: ShoppingCart },
-  { value: 'sales_order', label: 'Sales Order', prefix_placeholder: 'SO-', icon: ClipboardList },
-  { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-', icon: FileText },
-  { value: 'delivery', label: 'Delivery', prefix_placeholder: 'DEL-', icon: Truck },
-  { value: 'outbound_delivery', label: 'Outbound Delivery', prefix_placeholder: 'OD', icon: Truck },
-  { value: 'goods_receipt', label: 'Goods Receipt', prefix_placeholder: 'GR-', icon: PackageCheck },
-  { value: 'goods_issue', label: 'Goods Issue', prefix_placeholder: 'GI-', icon: PackageMinus },
-  { value: 'packaging_unit', label: 'Packaging Unit', prefix_placeholder: 'PU-', icon: Boxes },
-  { value: 'bill_of_materials', label: 'Bill of Materials', prefix_placeholder: 'BOM-', icon: ClipboardList },
-  { value: 'invoice', label: 'Invoice', prefix_placeholder: 'INV-', icon: FileSpreadsheet },
-  { value: 'credit_memo', label: 'Credit Memo', prefix_placeholder: 'CM-', icon: CreditCard },
-  { value: 'debit_memo', label: 'Debit Memo', prefix_placeholder: 'DM-', icon: Wallet },
   { value: 'account', label: 'Account', prefix_placeholder: 'ACC-', icon: Receipt },
-  { value: 'ledger', label: 'Ledger', prefix_placeholder: 'LED-', icon: Book },
-  { value: 'vendor', label: 'Vendor', prefix_placeholder: 'VND-', icon: Users },
-  { value: 'customer', label: 'Customer', prefix_placeholder: 'CUS-', icon: UserCheck },
-  { value: 'employee', label: 'Employee', prefix_placeholder: 'EMP-', icon: UserCheck },
-  { value: 'product', label: 'Product', prefix_placeholder: 'PRD-', icon: Package },
-  { value: 'location', label: 'Location', prefix_placeholder: 'LOC-', icon: MapPin },
-  { value: 'carrier', label: 'Carrier', prefix_placeholder: 'CAR-', icon: Truck },
-  { value: 'route', label: 'Route', prefix_placeholder: 'RTE-', icon: Truck },
   { value: 'assignment', label: 'Assignment', prefix_placeholder: 'ASN-', icon: Users },
+  { value: 'bill_of_materials', label: 'Bill of Materials', prefix_placeholder: 'BOM-', icon: ClipboardList },
+  { value: 'carrier', label: 'Carrier', prefix_placeholder: 'CAR-', icon: Truck },
+  { value: 'credit_memo', label: 'Credit Memo', prefix_placeholder: 'CM-', icon: CreditCard },
+  { value: 'customer', label: 'Customer', prefix_placeholder: 'CUS-', icon: UserCheck },
+  { value: 'debit_memo', label: 'Debit Memo', prefix_placeholder: 'DM-', icon: Wallet },
+  { value: 'delivery', label: 'Delivery', prefix_placeholder: 'DEL-', icon: Truck },
+  { value: 'employee', label: 'Employee', prefix_placeholder: 'EMP-', icon: UserCheck },
+  { value: 'goods_issue', label: 'Goods Issue', prefix_placeholder: 'GI-', icon: PackageMinus },
+  { value: 'goods_receipt', label: 'Goods Receipt', prefix_placeholder: 'GR-', icon: PackageCheck },
+  { value: 'invoice', label: 'Invoice', prefix_placeholder: 'INV-', icon: FileSpreadsheet },
+  { value: 'ledger', label: 'Ledger', prefix_placeholder: 'LED-', icon: Book },
+  { value: 'location', label: 'Location', prefix_placeholder: 'LOC-', icon: MapPin },
+  { value: 'outbound_delivery', label: 'Outbound Delivery', prefix_placeholder: 'OD', icon: Truck },
+  { value: 'packaging_unit', label: 'Packaging Unit', prefix_placeholder: 'PU-', icon: Boxes },
+  { value: 'product', label: 'Product', prefix_placeholder: 'PRD-', icon: Package },
+  { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-', icon: ShoppingCart },
+  { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-', icon: FileText },
+  { value: 'route', label: 'Route', prefix_placeholder: 'RTE-', icon: Truck },
+  { value: 'sales_order', label: 'Sales Order', prefix_placeholder: 'SO-', icon: ClipboardList },
   { value: 'tax_rate', label: 'Tax Rate', prefix_placeholder: '', icon: Receipt },
+  { value: 'vendor', label: 'Vendor', prefix_placeholder: 'VND-', icon: Users },
 ];
 
 interface POAutomationSettings {
@@ -113,7 +113,7 @@ const Configuration = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
   const [activeTab, setActiveTab] = useState('ids');
-  const [activeConfigTab, setActiveConfigTab] = useState('purchase_order');
+  const [activeConfigTab, setActiveConfigTab] = useState('account');
   const [currentUserRoles, setCurrentUserRoles] = useState<AppRole[]>([]);
   const [poSettings, setPOSettings] = useState<POAutomationSettings>({
     auto_create_delivery_on_confirmed: true,
