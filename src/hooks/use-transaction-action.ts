@@ -4,10 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 /**
  * Hook that reads ?action= from URL search params and triggers a callback.
  * Cleans up the param after triggering to avoid re-firing.
- * 
- * @param action - The action to listen for (e.g., 'new')
- * @param callback - Function to call when the action is detected
- * @param enabled - Whether the hook is active (default: true)
  */
 export const useTransactionAction = (
   action: string,
@@ -17,23 +13,34 @@ export const useTransactionAction = (
   const [searchParams, setSearchParams] = useSearchParams();
   const callbackRef = useRef(callback);
   callbackRef.current = callback;
+  const handledRef = useRef(false);
+
+  const currentAction = searchParams.get('action');
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || handledRef.current) return;
     
-    const currentAction = searchParams.get('action');
     if (currentAction === action) {
-      // Remove the action param first to prevent re-firing
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('action');
-      setSearchParams(newParams, { replace: true });
+      handledRef.current = true;
       
-      // Small delay to let the page finish loading/rendering
-      const timer = setTimeout(() => {
+      // Remove the action param
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('action');
+        return next;
+      }, { replace: true });
+      
+      // Delay to let the page finish rendering
+      setTimeout(() => {
         callbackRef.current();
-      }, 300);
-      
-      return () => clearTimeout(timer);
+      }, 400);
     }
-  }, [searchParams, action, enabled, setSearchParams]);
+  }, [currentAction, action, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset handled flag when action changes
+  useEffect(() => {
+    if (currentAction !== action) {
+      handledRef.current = false;
+    }
+  }, [currentAction, action]);
 };
