@@ -1,15 +1,15 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
-import { useTransactionAction } from '@/hooks/use-transaction-action';
-import { useTableSort } from '@/hooks/use-table-sort';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStatusBar } from '@/contexts/StatusBarContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { useEffect, useState, useMemo } from "react";
+import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useTransactionAction } from "@/hooks/use-transaction-action";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStatusBar } from "@/contexts/StatusBarContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -17,28 +17,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { SortableTableHead } from '@/components/SortableTableHead';
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/SortableTableHead";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { Kbd } from '@/components/ui/kbd';
-import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Minus, Plus, Loader2, MoreHorizontal, Trash2, Eye, X } from 'lucide-react';
-import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Kbd } from "@/components/ui/kbd";
+import { SearchableSelect, SearchableSelectOption } from "@/components/SearchableSelect";
+import { ArrowLeft, Minus, Plus, Loader2, MoreHorizontal, Trash2, Eye, X } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { format } from "date-fns";
 
 interface CreditMemo {
   id: string;
@@ -76,9 +69,9 @@ interface Ledger {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-500',
-  applied: 'bg-green-500',
-  cancelled: 'bg-red-500',
+  pending: "bg-yellow-500",
+  applied: "bg-green-500",
+  cancelled: "bg-red-500",
 };
 
 const CreditMemos = () => {
@@ -91,7 +84,7 @@ const CreditMemos = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -101,22 +94,23 @@ const CreditMemos = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    account_id: '',
-    invoice_id: '',
-    ledger_id: '',
-    amount: '',
-    notes: '',
+    account_id: "",
+    invoice_id: "",
+    ledger_id: "",
+    amount: "",
+    notes: "",
   });
 
-  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter, clearAllFilters } = useTableSort<CreditMemo>(memos, 'memo_number', 'desc');
+  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter, clearAllFilters } =
+    useTableSort<CreditMemo>(memos, "memo_number", "desc");
 
   useEffect(() => {
     if (isCreateDialogOpen) {
-      setTransaction('cm/new');
+      setTransaction("cm/new");
     } else if (isViewDialogOpen) {
-      setTransaction('cm/view');
+      setTransaction("cm/view");
     } else {
-      setTransaction('cm');
+      setTransaction("cm");
     }
   }, [isCreateDialogOpen, isViewDialogOpen, setTransaction]);
 
@@ -128,7 +122,7 @@ const CreditMemos = () => {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
   }, [user, authLoading, navigate]);
 
@@ -148,11 +142,7 @@ const CreditMemos = () => {
   }, [companyId]);
 
   const fetchCompanyId = async () => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('user_id', user!.id)
-      .single();
+    const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user!.id).single();
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
@@ -162,19 +152,21 @@ const CreditMemos = () => {
 
   const fetchMemos = async () => {
     const { data, error } = await supabase
-      .from('credit_memos' as any)
-      .select(`
+      .from("credit_memos" as any)
+      .select(
+        `
         *,
         account:accounts(name, account_id),
         invoice:invoices(invoice_number, ledger_id),
         ledger:ledgers(name)
-      `)
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false });
+      `,
+      )
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Error fetching credit memos:', error);
-      toast.error('Failed to load credit memos');
+      console.error("Error fetching credit memos:", error);
+      toast.error("Failed to load credit memos");
       return;
     }
 
@@ -183,30 +175,30 @@ const CreditMemos = () => {
 
   const fetchAccounts = async () => {
     const { data } = await supabase
-      .from('accounts' as any)
-      .select('id, name, account_id')
-      .eq('company_id', companyId)
-      .eq('is_active', true)
-      .order('name');
+      .from("accounts" as any)
+      .select("id, name, account_id")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("name");
     setAccounts((data as any) || []);
   };
 
   const fetchInvoices = async () => {
     const { data } = await supabase
-      .from('invoices' as any)
-      .select('id, invoice_number, amount, ledger_id, account_id')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false });
+      .from("invoices" as any)
+      .select("id, invoice_number, amount, ledger_id, account_id")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
     setInvoices((data as any) || []);
   };
 
   const fetchLedgers = async () => {
     const { data } = await supabase
-      .from('ledgers' as any)
-      .select('id, name')
-      .eq('company_id', companyId)
-      .eq('is_active', true)
-      .order('name');
+      .from("ledgers" as any)
+      .select("id, name")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("name");
     setLedgers((data as any) || []);
   };
 
@@ -220,7 +212,7 @@ const CreditMemos = () => {
 
   const filteredInvoices = useMemo(() => {
     if (!formData.account_id) return invoices;
-    return invoices.filter(inv => inv.account_id === formData.account_id);
+    return invoices.filter((inv) => inv.account_id === formData.account_id);
   }, [invoices, formData.account_id]);
 
   const invoiceOptions: SearchableSelectOption[] = useMemo(() => {
@@ -245,54 +237,54 @@ const CreditMemos = () => {
       (memo) =>
         memo.memo_number.toLowerCase().includes(query) ||
         memo.account?.name?.toLowerCase().includes(query) ||
-        memo.status.toLowerCase().includes(query)
+        memo.status.toLowerCase().includes(query),
     );
   }, [sortedAndFilteredData, searchQuery]);
 
   const handleCreateClick = () => {
     setFormData({
-      account_id: '',
-      invoice_id: '',
-      ledger_id: '',
-      amount: '',
-      notes: '',
+      account_id: "",
+      invoice_id: "",
+      ledger_id: "",
+      amount: "",
+      notes: "",
     });
     setIsCreateDialogOpen(true);
   };
 
-  useKeyboardShortcut('n', handleCreateClick);
-  useTransactionAction('new', handleCreateClick);
+  useKeyboardShortcut("n", handleCreateClick);
+  useTransactionAction("new", handleCreateClick);
 
   const handleCreate = async () => {
     if (!formData.account_id) {
-      toast.error('Please select an account');
+      toast.error("Please select an account");
       return;
     }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount');
+      toast.error("Please enter a valid amount");
       return;
     }
 
     // Need either invoice or ledger
-    const selectedInvoice = invoices.find(inv => inv.id === formData.invoice_id);
+    const selectedInvoice = invoices.find((inv) => inv.id === formData.invoice_id);
     const ledgerId = selectedInvoice?.ledger_id || formData.ledger_id;
 
     if (!ledgerId) {
-      toast.error('Please select an invoice or ledger');
+      toast.error("Please select an invoice or ledger");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const { data: memoNumber } = await supabase.rpc('get_next_credit_memo_number', {
+      const { data: memoNumber } = await supabase.rpc("get_next_credit_memo_number", {
         p_company_id: companyId,
       });
 
       const { data: memo, error: memoError } = await supabase
-        .from('credit_memos' as any)
+        .from("credit_memos" as any)
         .insert({
           company_id: companyId,
           memo_number: memoNumber,
@@ -301,7 +293,7 @@ const CreditMemos = () => {
           ledger_id: ledgerId,
           amount,
           notes: formData.notes || null,
-          status: 'applied',
+          status: "applied",
         })
         .select()
         .single();
@@ -309,22 +301,22 @@ const CreditMemos = () => {
       if (memoError) throw memoError;
 
       // Create ledger transaction (negative for credit memo)
-      await supabase.from('ledger_transactions' as any).insert({
+      await supabase.from("ledger_transactions" as any).insert({
         ledger_id: ledgerId,
-        transaction_type: 'credit_memo',
+        transaction_type: "credit_memo",
         reference_id: (memo as any).id,
         reference_number: memoNumber,
         amount: -amount,
         description: formData.notes || `Credit memo ${memoNumber}`,
-        transaction_date: new Date().toISOString().split('T')[0],
+        transaction_date: new Date().toISOString().split("T")[0],
       });
 
-      toast.success('Credit memo created successfully');
+      toast.success("Credit memo created successfully");
       setIsCreateDialogOpen(false);
       fetchMemos();
     } catch (error: any) {
-      console.error('Error creating credit memo:', error);
-      toast.error(error.message || 'Failed to create credit memo');
+      console.error("Error creating credit memo:", error);
+      toast.error(error.message || "Failed to create credit memo");
     } finally {
       setIsSubmitting(false);
     }
@@ -343,23 +335,23 @@ const CreditMemos = () => {
     try {
       // Delete associated ledger transaction
       await supabase
-        .from('ledger_transactions' as any)
+        .from("ledger_transactions" as any)
         .delete()
-        .eq('reference_id', memo.id)
-        .eq('transaction_type', 'credit_memo');
+        .eq("reference_id", memo.id)
+        .eq("transaction_type", "credit_memo");
 
       const { error } = await supabase
-        .from('credit_memos' as any)
+        .from("credit_memos" as any)
         .delete()
-        .eq('id', memo.id);
+        .eq("id", memo.id);
 
       if (error) throw error;
 
-      toast.success('Credit memo deleted successfully');
+      toast.success("Credit memo deleted successfully");
       fetchMemos();
     } catch (error: any) {
-      console.error('Error deleting credit memo:', error);
-      toast.error(error.message || 'Failed to delete credit memo');
+      console.error("Error deleting credit memo:", error);
+      toast.error(error.message || "Failed to delete credit memo");
     }
   };
 
@@ -384,7 +376,7 @@ const CreditMemos = () => {
           </div>
           <Button onClick={handleCreateClick}>
             <Plus className="h-4 w-4 mr-2" />
-            New Credit Memo
+            Credit Memo
             <Kbd className="ml-2">N</Kbd>
           </Button>
         </div>
@@ -400,14 +392,17 @@ const CreditMemos = () => {
               <X className="w-3 h-3 mr-1" />
               Clear filters
             </Button>
-            {Object.entries(filters).map(([key, value]) => value && (
-              <Badge key={key} variant="secondary" className="text-xs">
-                {key}: {value}
-                <button onClick={() => setFilter(key, '')} className="ml-1 hover:text-destructive">
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            ))}
+            {Object.entries(filters).map(
+              ([key, value]) =>
+                value && (
+                  <Badge key={key} variant="secondary" className="text-xs">
+                    {key}: {value}
+                    <button onClick={() => setFilter(key, "")} className="ml-1 hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ),
+            )}
           </div>
         )}
         <Table>
@@ -419,8 +414,8 @@ const CreditMemos = () => {
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['memo_number']}
-                onFilter={(value) => setFilter('memo_number', value)}
+                filterValue={filters["memo_number"]}
+                onFilter={(value) => setFilter("memo_number", value)}
               />
               <SortableTableHead
                 label="Date"
@@ -436,8 +431,8 @@ const CreditMemos = () => {
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['account.name']}
-                onFilter={(value) => setFilter('account.name', value)}
+                filterValue={filters["account.name"]}
+                onFilter={(value) => setFilter("account.name", value)}
               />
               <SortableTableHead
                 label="Invoice"
@@ -445,8 +440,8 @@ const CreditMemos = () => {
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['invoice.invoice_number']}
-                onFilter={(value) => setFilter('invoice.invoice_number', value)}
+                filterValue={filters["invoice.invoice_number"]}
+                onFilter={(value) => setFilter("invoice.invoice_number", value)}
               />
               <SortableTableHead
                 label="Amount"
@@ -462,8 +457,8 @@ const CreditMemos = () => {
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['ledger.name']}
-                onFilter={(value) => setFilter('ledger.name', value)}
+                filterValue={filters["ledger.name"]}
+                onFilter={(value) => setFilter("ledger.name", value)}
               />
               <SortableTableHead
                 label="Status"
@@ -471,8 +466,8 @@ const CreditMemos = () => {
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['status']}
-                onFilter={(value) => setFilter('status', value)}
+                filterValue={filters["status"]}
+                onFilter={(value) => setFilter("status", value)}
               />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -481,24 +476,22 @@ const CreditMemos = () => {
             {filteredMemos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  {memos.length === 0 
-                    ? 'No credit memos found. Create your first credit memo to get started.'
-                    : 'No memos match your filters'}
+                  {memos.length === 0
+                    ? "No credit memos found. Create your first credit memo to get started."
+                    : "No memos match your filters"}
                 </TableCell>
               </TableRow>
             ) : (
               filteredMemos.map((memo) => (
                 <TableRow key={memo.id}>
                   <TableCell className="font-mono">{memo.memo_number}</TableCell>
-                  <TableCell>{format(new Date(memo.memo_date), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>{memo.account?.name || '-'}</TableCell>
-                  <TableCell>{memo.invoice?.invoice_number || '-'}</TableCell>
+                  <TableCell>{format(new Date(memo.memo_date), "MMM d, yyyy")}</TableCell>
+                  <TableCell>{memo.account?.name || "-"}</TableCell>
+                  <TableCell>{memo.invoice?.invoice_number || "-"}</TableCell>
                   <TableCell className="font-medium text-green-600">-${memo.amount.toFixed(2)}</TableCell>
-                  <TableCell>{memo.ledger?.name || '-'}</TableCell>
+                  <TableCell>{memo.ledger?.name || "-"}</TableCell>
                   <TableCell>
-                    <Badge className={`${statusColors[memo.status]} text-white`}>
-                      {memo.status}
-                    </Badge>
+                    <Badge className={`${statusColors[memo.status]} text-white`}>{memo.status}</Badge>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -512,10 +505,7 @@ const CreditMemos = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(memo)}
-                          className="text-destructive"
-                        >
+                        <DropdownMenuItem onClick={() => handleDelete(memo)} className="text-destructive">
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -534,9 +524,7 @@ const CreditMemos = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create Credit Memo</DialogTitle>
-            <DialogDescription>
-              Create a credit memo to reduce the amount owed on an account.
-            </DialogDescription>
+            <DialogDescription>Create a credit memo to reduce the amount owed on an account.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 px-6">
@@ -545,7 +533,7 @@ const CreditMemos = () => {
               <SearchableSelect
                 options={accountOptions}
                 value={formData.account_id}
-                onValueChange={(value) => setFormData({ ...formData, account_id: value, invoice_id: '' })}
+                onValueChange={(value) => setFormData({ ...formData, account_id: value, invoice_id: "" })}
                 placeholder="Select account"
               />
             </div>
@@ -556,9 +544,9 @@ const CreditMemos = () => {
                 options={invoiceOptions}
                 value={formData.invoice_id}
                 onValueChange={(value) => {
-                  const inv = invoices.find(i => i.id === value);
-                  setFormData({ 
-                    ...formData, 
+                  const inv = invoices.find((i) => i.id === value);
+                  setFormData({
+                    ...formData,
                     invoice_id: value,
                     ledger_id: inv?.ledger_id || formData.ledger_id,
                   });
@@ -627,13 +615,11 @@ const CreditMemos = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Date</p>
-                  <p className="font-medium">{format(new Date(viewMemo.memo_date), 'MMM d, yyyy')}</p>
+                  <p className="font-medium">{format(new Date(viewMemo.memo_date), "MMM d, yyyy")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge className={`${statusColors[viewMemo.status]} text-white`}>
-                    {viewMemo.status}
-                  </Badge>
+                  <Badge className={`${statusColors[viewMemo.status]} text-white`}>{viewMemo.status}</Badge>
                 </div>
               </div>
 
@@ -656,7 +642,7 @@ const CreditMemos = () => {
 
               <div>
                 <p className="text-sm text-muted-foreground">Ledger</p>
-                <p className="font-medium">{viewMemo.ledger?.name || '-'}</p>
+                <p className="font-medium">{viewMemo.ledger?.name || "-"}</p>
               </div>
 
               {viewMemo.notes && (
@@ -668,8 +654,7 @@ const CreditMemos = () => {
             </div>
           )}
 
-          <DialogFooter>
-          </DialogFooter>
+          <DialogFooter></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
