@@ -23,12 +23,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw, Download } from 'lucide-react';
+import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw, Download, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
 import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import { useExcel } from '@/hooks/use-excel';
+import { Checkbox } from '@/components/ui/checkbox';
+import { printInventoryLabels, LabelItem } from '@/lib/print-label';
 
 interface Location {
   id: string;
@@ -83,10 +85,16 @@ const InventoryTable = ({
   inventory,
   isColumnVisible,
   onRowClick,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: {
   inventory: InventoryItem[];
   isColumnVisible: (key: string) => boolean;
   onRowClick: (item: InventoryItem) => void;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: (checked: boolean) => void;
 }) => {
   const {
     sortConfig,
@@ -98,7 +106,8 @@ const InventoryTable = ({
   } = useTableSort(inventory, 'product.product_id', 'asc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const visibleColumnCount = INVENTORY_COLUMNS.filter(c => isColumnVisible(c.key)).length;
+  const visibleColumnCount = INVENTORY_COLUMNS.filter(c => isColumnVisible(c.key)).length + 1; // +1 for checkbox
+  const allFilteredSelected = sortedAndFilteredData.length > 0 && sortedAndFilteredData.every(i => selectedIds.has(i.id));
 
   return (
     <div className="space-y-2">
@@ -125,6 +134,13 @@ const InventoryTable = ({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={(checked) => onToggleSelectAll(!!checked)}
+                  aria-label="Select all"
+                />
+              </TableHead>
               {isColumnVisible('product_id') && (
                 <SortableTableHead
                   label="Product ID"
@@ -255,6 +271,13 @@ const InventoryTable = ({
                 
                 return (
                   <TableRow key={item.id} className="cursor-pointer" onClick={() => onRowClick(item)}>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={() => onToggleSelect(item.id)}
+                        aria-label={`Select ${item.product?.name}`}
+                      />
+                    </TableCell>
                     {isColumnVisible('product_id') && (
                       <TableCell className="font-mono text-sm">{item.product?.product_id || '-'}</TableCell>
                     )}
@@ -312,6 +335,7 @@ const Inventory = () => {
   const [isCountDialogOpen, setIsCountDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { exportToExcel } = useExcel();
   // Column visibility
   const {
@@ -528,30 +552,56 @@ const Inventory = () => {
                   <strong className="text-foreground">{totalQuantity.toLocaleString()}</strong> total units
                 </span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const rows = inventory.map(item => ({
-                    'Product ID': item.product?.product_id || '',
-                    'Product Name': item.product?.name || '',
-                    'SKU': item.product?.sku || '',
-                    'Category': item.product?.category || '',
-                    'Area': item.bin?.area?.name || '',
-                    'Bin': item.bin?.name || '',
-                    'Quantity': item.quantity,
-                    'Unit': item.product?.unit || '',
-                    'Min': item.min_quantity ?? '',
-                    'Max': item.max_quantity ?? '',
-                  }));
-                  exportToExcel(rows, `inventory-${selectedLocation?.name || 'export'}`);
-                  toast.success('Inventory exported');
-                }}
-                disabled={inventory.length === 0}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Export
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedIds.size > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const items: LabelItem[] = inventory
+                        .filter(i => selectedIds.has(i.id))
+                        .map(item => ({
+                          productId: item.product?.product_id || '',
+                          productName: item.product?.name || '',
+                          sku: item.product?.sku || null,
+                          bin: item.bin?.name || null,
+                          area: item.bin?.area?.name || null,
+                          quantity: item.quantity,
+                          puNumber: (item as any).packaging_unit?.pu_number || null,
+                        }));
+                      printInventoryLabels(items);
+                      toast.success(`Printing ${items.length} label(s)`);
+                    }}
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print Labels ({selectedIds.size})
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const rows = inventory.map(item => ({
+                      'Product ID': item.product?.product_id || '',
+                      'Product Name': item.product?.name || '',
+                      'SKU': item.product?.sku || '',
+                      'Category': item.product?.category || '',
+                      'Area': item.bin?.area?.name || '',
+                      'Bin': item.bin?.name || '',
+                      'Quantity': item.quantity,
+                      'Unit': item.product?.unit || '',
+                      'Min': item.min_quantity ?? '',
+                      'Max': item.max_quantity ?? '',
+                    }));
+                    exportToExcel(rows, `inventory-${selectedLocation?.name || 'export'}`);
+                    toast.success('Inventory exported');
+                  }}
+                  disabled={inventory.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </div>
             </div>
 
             {inventory.length === 0 ? (
@@ -565,6 +615,22 @@ const Inventory = () => {
                 onRowClick={(item) => {
                   setSelectedItem(item);
                   setIsDetailOpen(true);
+                }}
+                selectedIds={selectedIds}
+                onToggleSelect={(id) => {
+                  setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  });
+                }}
+                onToggleSelectAll={(checked) => {
+                  if (checked) {
+                    setSelectedIds(new Set(inventory.map(i => i.id)));
+                  } else {
+                    setSelectedIds(new Set());
+                  }
                 }}
               />
             )}
