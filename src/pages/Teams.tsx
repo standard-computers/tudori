@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -319,6 +320,7 @@ const Teams = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+  useTransactionAction('new', handleOpenDialog);
 
   const handleEdit = (team: Team) => {
     setFormData({

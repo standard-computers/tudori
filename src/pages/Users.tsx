@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
@@ -188,6 +189,7 @@ const Users = () => {
 
   // Keyboard shortcut for adding new user (only if can manage)
   useKeyboardShortcut('n', openInviteDialog, canManageUsers);
+  useTransactionAction('new', openInviteDialog, canManageUsers);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();

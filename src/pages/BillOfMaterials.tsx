@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
 import { ColumnToggle } from '@/components/ColumnToggle';
@@ -792,6 +793,7 @@ const BillOfMaterials = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+  useTransactionAction('new', handleOpenDialog);
 
   const handleView = async (bom: BillOfMaterial) => {
     setFormData({

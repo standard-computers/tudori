@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
 import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -210,6 +211,7 @@ const Invoices = () => {
   };
 
   useKeyboardShortcut('n', handleCreateClick);
+  useTransactionAction('new', handleCreateClick);
 
   const handleViewClick = async (invoice: Invoice) => {
     setViewingInvoice(invoice);

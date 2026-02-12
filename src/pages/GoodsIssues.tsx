@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { postGoodsIssue } from '@/lib/inventory-posting';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
@@ -365,6 +366,7 @@ const GoodsIssues = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+  useTransactionAction('new', handleOpenDialog);
 
   const handleView = async (issue: GoodsIssue) => {
     setViewingIssue(issue);

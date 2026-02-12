@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -260,6 +261,7 @@ const CreditMemos = () => {
   };
 
   useKeyboardShortcut('n', handleCreateClick);
+  useTransactionAction('new', handleCreateClick);
 
   const handleCreate = async () => {
     if (!formData.account_id) {

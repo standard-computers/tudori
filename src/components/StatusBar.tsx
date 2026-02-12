@@ -8,77 +8,68 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input';
 
 // Transaction code to route mapping
-const TRANSACTION_ROUTES: Record<string, string> = {
+interface TransactionRoute {
+  path: string;
+  action?: string;
+}
+
+const TRANSACTION_ROUTES: Record<string, TransactionRoute> = {
   // Main list views
-  'vend': '/vendors',
-  'prod': '/products',
-  'cust': '/customers',
-  'so': '/sales-orders',
-  'ord': '/orders',
-  'req': '/requisitions',
-  'del': '/deliveries',
-  'inv': '/inventory',
-  'acc': '/accounts',
-  'ldgr': '/ledgers',
-  'loc': '/locations',
-  'gr': '/goods-receipts',
-  'gi': '/goods-issues',
-  'cm': '/credit-memos',
-  'dm': '/debit-memos',
-  'task': '/tasks',
-  'rate': '/rates',
-  'user': '/users',
+  'vend': { path: '/vendors' },
+  'prod': { path: '/products' },
+  'cust': { path: '/customers' },
+  'so': { path: '/sales-orders' },
+  'ord': { path: '/orders' },
+  'req': { path: '/requisitions' },
+  'del': { path: '/deliveries' },
+  'inv': { path: '/inventory' },
+  'invc': { path: '/invoices' },
+  'acc': { path: '/accounts' },
+  'ldgr': { path: '/ledgers' },
+  'loc': { path: '/locations' },
+  'gr': { path: '/goods-receipts' },
+  'gi': { path: '/goods-issues' },
+  'cm': { path: '/credit-memos' },
+  'dm': { path: '/debit-memos' },
+  'task': { path: '/tasks' },
+  'rate': { path: '/rates' },
+  'user': { path: '/users' },
+  'emp': { path: '/employees' },
+  'bom': { path: '/bill-of-materials' },
+  'prod_ord': { path: '/production' },
+  'team': { path: '/teams' },
   
   // System views
-  'cpit': '/cockpit',
-  'dash': '/dashboard',
-  'uset': '/user-settings',
-  'config': '/configuration',
-  'set': '/settings',
-  'auth': '/auth',
+  'cpit': { path: '/cockpit' },
+  'dash': { path: '/dashboard' },
+  'uset': { path: '/user-settings' },
+  'config': { path: '/configuration' },
+  'set': { path: '/settings' },
+  'auth': { path: '/auth' },
   
-  // Sub-views (these will navigate to base and won't trigger actions)
-  'vend/new': '/vendors',
-  'vend/edit': '/vendors',
-  'prod/new': '/products',
-  'prod/edit': '/products',
-  'cust/new': '/customers',
-  'cust/edit': '/customers',
-  'so/new': '/sales-orders',
-  'so/view': '/sales-orders',
-  'ord/new': '/orders',
-  'ord/view': '/orders',
-  'req/new': '/requisitions',
-  'req/view': '/requisitions',
-  'req/run': '/requisitions',
-  'del/new': '/deliveries',
-  'del/edit': '/deliveries',
-  'inv/new': '/invoices',
-  'inv/view': '/invoices',
-  'acc/new': '/accounts',
-  'acc/edit': '/accounts',
-  'acc/view': '/accounts',
-  'ldgr/new': '/ledgers',
-  'ldgr/edit': '/ledgers',
-  'ldgr/view': '/ledgers',
-  'loc/new': '/locations',
-  'loc/edit': '/locations',
-  'gr/new': '/goods-receipts',
-  'gr/edit': '/goods-receipts',
-  'gi/new': '/goods-issues',
-  'gi/edit': '/goods-issues',
-  'cm/new': '/credit-memos',
-  'cm/view': '/credit-memos',
-  'dm/new': '/debit-memos',
-  'dm/view': '/debit-memos',
-  
-  // Config tabs
-  'config/ids': '/configuration',
-  'config/controls': '/configuration',
-  
-  // Settings tabs
-  'set/company': '/settings',
-  'set/team': '/settings',
+  // Sub-views with actions
+  'vend/new': { path: '/vendors', action: 'new' },
+  'prod/new': { path: '/products', action: 'new' },
+  'cust/new': { path: '/customers', action: 'new' },
+  'so/new': { path: '/sales-orders', action: 'new' },
+  'ord/new': { path: '/orders', action: 'new' },
+  'req/new': { path: '/requisitions', action: 'new' },
+  'del/new': { path: '/deliveries', action: 'new' },
+  'invc/new': { path: '/invoices', action: 'new' },
+  'acc/new': { path: '/accounts', action: 'new' },
+  'ldgr/new': { path: '/ledgers', action: 'new' },
+  'loc/new': { path: '/locations', action: 'new' },
+  'gr/new': { path: '/goods-receipts', action: 'new' },
+  'gi/new': { path: '/goods-issues', action: 'new' },
+  'cm/new': { path: '/credit-memos', action: 'new' },
+  'dm/new': { path: '/debit-memos', action: 'new' },
+  'emp/new': { path: '/employees', action: 'new' },
+  'bom/new': { path: '/bill-of-materials', action: 'new' },
+  'prod_ord/new': { path: '/production', action: 'new' },
+  'team/new': { path: '/teams', action: 'new' },
+  'task/new': { path: '/tasks', action: 'new' },
+  'rate/new': { path: '/rates', action: 'new' },
+  'user/new': { path: '/users', action: 'new' },
 };
 
 export function StatusBar() {
@@ -121,7 +112,8 @@ export function StatusBar() {
     const route = TRANSACTION_ROUTES[code];
     
     if (route) {
-      navigate(route);
+      const target = route.action ? `${route.path}?action=${route.action}` : route.path;
+      navigate(target);
       setIsPopoverOpen(false);
       setInputValue('');
     } else {
@@ -185,17 +177,17 @@ export function StatusBar() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="e.g., vend, so, gr"
+                placeholder="e.g., so, so/new, vend"
                 className="h-8 text-sm font-mono"
               />
               <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-                <span className="px-1.5 py-0.5 bg-muted rounded">vend</span>
-                <span className="px-1.5 py-0.5 bg-muted rounded">prod</span>
                 <span className="px-1.5 py-0.5 bg-muted rounded">so</span>
-                <span className="px-1.5 py-0.5 bg-muted rounded">ord</span>
+                <span className="px-1.5 py-0.5 bg-muted rounded">so/new</span>
+                <span className="px-1.5 py-0.5 bg-muted rounded">vend</span>
+                <span className="px-1.5 py-0.5 bg-muted rounded">vend/new</span>
+                <span className="px-1.5 py-0.5 bg-muted rounded">prod</span>
                 <span className="px-1.5 py-0.5 bg-muted rounded">gr</span>
                 <span className="px-1.5 py-0.5 bg-muted rounded">gi</span>
-                <span className="px-1.5 py-0.5 bg-muted rounded">inv</span>
                 <span className="px-1.5 py-0.5 bg-muted rounded">cpit</span>
               </div>
             </div>

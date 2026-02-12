@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
@@ -419,6 +420,7 @@ const GoodsReceipts = () => {
   };
 
   useKeyboardShortcut('n', handleOpenDialog);
+  useTransactionAction('new', handleOpenDialog);
 
   const handleView = async (receipt: GoodsReceipt) => {
     setViewingReceipt(receipt);

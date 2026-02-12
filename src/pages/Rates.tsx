@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useNavigate } from "react-router-dom";
@@ -165,6 +166,7 @@ const Rates = () => {
 
   // Keyboard shortcut for adding new rate
   useKeyboardShortcut("n", handleAddClick);
+  useTransactionAction('new', handleAddClick);
 
   const handleEditClick = (rate: TaxRate) => {
     setEditingRate(rate);

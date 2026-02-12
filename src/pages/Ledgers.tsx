@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { Button } from '@/components/ui/button';
@@ -305,6 +306,7 @@ const Ledgers = () => {
   };
 
   useKeyboardShortcut('n', openCreateDialog, isAdmin);
+  useTransactionAction('new', openCreateDialog, isAdmin);
   
   useSaveShortcut(() => {
     if (isDialogOpen && !isSubmitting) {
