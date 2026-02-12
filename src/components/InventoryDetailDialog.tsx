@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace, Printer } from 'lucide-react';
+import { printInventoryLabels } from '@/lib/print-label';
 import { toast } from '@/lib/toast';
 import {
   AlertDialog,
@@ -1062,6 +1063,24 @@ export const InventoryDetailDialog = ({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  printInventoryLabels([{
+                    productId: item.product?.product_id || '',
+                    productName: item.product?.name || '',
+                    sku: item.product?.sku || null,
+                    bin: item.bin?.name || null,
+                    area: null,
+                    quantity: item.quantity,
+                    puNumber: item.packaging_unit?.pu_number || null,
+                  }]);
+                }}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print Label
+              </Button>
               <div className="flex-1" />
               {item.bin_id && (
                 <Button 
