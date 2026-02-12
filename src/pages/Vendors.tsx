@@ -57,7 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
-import { toast } from '@/lib/toast';
+import { toast } from "@/lib/toast";
 
 const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: "vendor_id", label: "ID", defaultVisible: true },
@@ -412,7 +412,13 @@ const Vendors = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState("0001");
   const [isLookingUp, setIsLookingUp] = useState(false);
-  const [importProgress, setImportProgress] = useState<{ open: boolean; total: number; current: number; imported: number; failed: number }>({ open: false, total: 0, current: 0, imported: 0, failed: 0 });
+  const [importProgress, setImportProgress] = useState<{
+    open: boolean;
+    total: number;
+    current: number;
+    imported: number;
+    failed: number;
+  }>({ open: false, total: 0, current: 0, imported: 0, failed: 0 });
 
   // Column visibility
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
@@ -444,21 +450,21 @@ const Vendors = () => {
 
   const handleDownloadTemplate = async () => {
     const sampleRow = {
-      "Name": "Example Corp",
-      "Type": "Supplier",
-      "Status": "active",
-      "Contact": "John Doe",
-      "Email": "john@example.com",
-      "Phone": "555-0100",
-      "Address": "123 Main St",
+      Name: "Example Corp",
+      Type: "Supplier",
+      Status: "active",
+      Contact: "John Doe",
+      Email: "john@example.com",
+      Phone: "555-0100",
+      Address: "123 Main St",
       "Address 2": "",
-      "City": "New York",
-      "State": "NY",
+      City: "New York",
+      State: "NY",
       "Postal Code": "10001",
-      "Country": "United States",
-      "Website": "https://example.com",
+      Country: "United States",
+      Website: "https://example.com",
       "Payment Terms": "30",
-      "Notes": "",
+      Notes: "",
     };
     await exportToExcel([sampleRow], "vendor_import_template.xlsx", "Vendors", VENDOR_TEMPLATE_COLUMNS);
     toast.success("Template downloaded");
@@ -482,7 +488,7 @@ const Vendors = () => {
         const name = row["Name"]?.toString()?.trim();
         if (!name) {
           failed++;
-          setImportProgress(p => ({ ...p, current: i + 1, failed }));
+          setImportProgress((p) => ({ ...p, current: i + 1, failed }));
           continue;
         }
 
@@ -514,11 +520,13 @@ const Vendors = () => {
         } else {
           imported++;
         }
-        setImportProgress(p => ({ ...p, current: i + 1, imported, failed }));
+        setImportProgress((p) => ({ ...p, current: i + 1, imported, failed }));
       }
 
       if (imported > 0) {
-        toast.success(`Imported ${imported} vendor${imported > 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`);
+        toast.success(
+          `Imported ${imported} vendor${imported > 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`,
+        );
         fetchVendors();
         fetchNextVendorId();
       } else {
@@ -528,7 +536,7 @@ const Vendors = () => {
       toast.error("Failed to read file");
     } finally {
       // Auto-close after a short delay so the user sees 100%
-      setTimeout(() => setImportProgress(p => ({ ...p, open: false })), 1500);
+      setTimeout(() => setImportProgress((p) => ({ ...p, open: false })), 1500);
     }
   };
 
@@ -539,21 +547,21 @@ const Vendors = () => {
     }
     const exportData = vendors.map((v) => ({
       "Vendor ID": v.vendor_id,
-      "Name": v.name,
-      "Type": v.type,
-      "Status": v.status,
-      "Contact": v.contact_name || "",
-      "Email": v.email || "",
-      "Phone": v.phone || "",
-      "Address": v.address_line1 || "",
+      Name: v.name,
+      Type: v.type,
+      Status: v.status,
+      Contact: v.contact_name || "",
+      Email: v.email || "",
+      Phone: v.phone || "",
+      Address: v.address_line1 || "",
       "Address 2": v.address_line2 || "",
-      "City": v.city || "",
-      "State": v.state || "",
+      City: v.city || "",
+      State: v.state || "",
       "Postal Code": v.postal_code || "",
-      "Country": v.country || "",
-      "Website": v.website || "",
+      Country: v.country || "",
+      Website: v.website || "",
       "Payment Terms": v.payment_terms ?? "",
-      "Notes": v.notes || "",
+      Notes: v.notes || "",
     }));
     await exportToExcel(exportData, `vendors_export_${new Date().toISOString().split("T")[0]}.xlsx`, "Vendors");
     toast.success("Vendors exported successfully");
@@ -610,10 +618,10 @@ const Vendors = () => {
   const [queryLoading, setQueryLoading] = useState(false);
 
   const vendorQueryFields: QueryField[] = [
-    { key: 'vendor_id', label: 'Vendor ID' },
-    { key: 'name', label: 'Vendor Name' },
-    { key: 'city', label: 'City' },
-    { key: 'type', label: 'Type' },
+    { key: "vendor_id", label: "Vendor ID" },
+    { key: "name", label: "Vendor Name" },
+    { key: "city", label: "City" },
+    { key: "type", label: "Type" },
   ];
 
   useEffect(() => {
@@ -717,7 +725,7 @@ const Vendors = () => {
 
   // Keyboard shortcut for adding new vendor
   useKeyboardShortcut("n", handleOpenDialog);
-  useTransactionAction('new', handleOpenDialog);
+  useTransactionAction("new", handleOpenDialog);
 
   const handleEdit = (vendor: Vendor) => {
     setFormData({
@@ -983,7 +991,13 @@ const Vendors = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search vendors">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowQueryDialog(true)}
+                title="Search vendors"
+              >
                 <Search className="w-4 h-4" />
               </Button>
               <ColumnToggle
@@ -1010,7 +1024,9 @@ const Vendors = () => {
                     <Kbd>N</Kbd>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[600px]'}`}>
+                <DialogContent
+                  className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[600px]"}`}
+                >
                   <button
                     type="button"
                     onClick={() => setIsMaximized(!isMaximized)}
@@ -1319,7 +1335,9 @@ const Vendors = () => {
 
       {/* View Vendor Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`}>
+        <DialogContent
+          className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[550px]"}`}
+        >
           <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
             <button
               type="button"
@@ -1368,11 +1386,13 @@ const Vendors = () => {
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Status</Label>
-                      {(() => {
-                        const statusConfig =
-                          VENDOR_STATUSES.find((s) => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
-                        return <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>;
-                      })()}
+                      <p>
+                        {(() => {
+                          const statusConfig =
+                            VENDOR_STATUSES.find((s) => s.value === viewingVendor.status) || VENDOR_STATUSES[0];
+                          return <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>;
+                        })()}
+                      </p>
                     </div>
                   </div>
                   <div>
@@ -1485,11 +1505,16 @@ const Vendors = () => {
             <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
               <div
                 className="bg-primary h-full rounded-full transition-all duration-300"
-                style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+                style={{
+                  width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
+                }}
               />
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{Math.round(importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0)}% complete</span>
+              <span>
+                {Math.round(importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0)}%
+                complete
+              </span>
               <div className="flex gap-4">
                 <span className="text-success">{importProgress.imported} imported</span>
                 {importProgress.failed > 0 && <span className="text-destructive">{importProgress.failed} failed</span>}
