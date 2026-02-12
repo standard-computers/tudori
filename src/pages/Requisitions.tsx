@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
 import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useExcel } from '@/hooks/use-excel';
@@ -611,6 +612,7 @@ const Requisitions = () => {
 
   // Keyboard shortcut for running requisition
   useKeyboardShortcut('n', handleRunClick);
+  useTransactionAction('new', handleRunClick);
 
   const generateSuggestions = () => {
     // Filter products by selected vendor if one is selected

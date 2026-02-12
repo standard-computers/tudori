@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
@@ -716,6 +717,7 @@ const Vendors = () => {
 
   // Keyboard shortcut for adding new vendor
   useKeyboardShortcut("n", handleOpenDialog);
+  useTransactionAction('new', handleOpenDialog);
 
   const handleEdit = (vendor: Vendor) => {
     setFormData({
