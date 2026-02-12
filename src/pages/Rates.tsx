@@ -35,6 +35,7 @@ import { toast } from '@/lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const RATE_COLUMNS: ColumnDefinition[] = [
+  { key: "rate_id", label: "Rate ID", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "type", label: "Type", defaultVisible: true },
   { key: "rate", label: "Rate/Amount", defaultVisible: true },
@@ -45,6 +46,7 @@ const RATE_COLUMNS: ColumnDefinition[] = [
 
 interface TaxRate {
   id: string;
+  rate_id: string;
   name: string;
   rate: number;
   rate_type: string;
@@ -85,6 +87,7 @@ const Rates = () => {
 
   // Form state
   const [formData, setFormData] = useState({
+    rate_id: "",
     name: "",
     rate: "",
     rate_type: "percent" as "percent" | "flat",
@@ -141,9 +144,15 @@ const Rates = () => {
     setTaxRates(data || []);
   };
 
-  const handleAddClick = () => {
+  const handleAddClick = async () => {
     setEditingRate(null);
+    let nextId = '';
+    if (companyId) {
+      const { data } = await supabase.rpc('get_next_rate_id', { p_company_id: companyId });
+      nextId = data || '';
+    }
     setFormData({
+      rate_id: nextId,
       name: "",
       rate: "",
       rate_type: "percent",
@@ -160,6 +169,7 @@ const Rates = () => {
   const handleEditClick = (rate: TaxRate) => {
     setEditingRate(rate);
     setFormData({
+      rate_id: rate.rate_id,
       name: rate.name,
       rate: rate.rate.toString(),
       rate_type: (rate.rate_type as "percent" | "flat") || "percent",
@@ -219,6 +229,7 @@ const Rates = () => {
         // Create new
         const { error } = await supabase.from("tax_rates").insert({
           company_id: companyId,
+          rate_id: formData.rate_id,
           name: formData.name.trim(),
           rate: rateValue,
           rate_type: formData.rate_type,
@@ -330,6 +341,7 @@ const Rates = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isColumnVisible("rate_id") && <TableHead>Rate ID</TableHead>}
                   {isColumnVisible("name") && <TableHead>Name</TableHead>}
                   {isColumnVisible("type") && <TableHead>Type</TableHead>}
                   {isColumnVisible("rate") && <TableHead className="text-right">Rate/Amount</TableHead>}
@@ -341,6 +353,9 @@ const Rates = () => {
               <TableBody>
                 {taxRates.map((rate) => (
                   <TableRow key={rate.id}>
+                    {isColumnVisible("rate_id") && (
+                      <TableCell className="font-mono text-muted-foreground">{rate.rate_id}</TableCell>
+                    )}
                     {isColumnVisible("name") && (
                       <TableCell className="font-medium">
                         {rate.name}
@@ -426,6 +441,18 @@ const Rates = () => {
           </DialogHeader>
 
           <div className="space-y-4 px-6">
+            <div className="space-y-2">
+              <Label htmlFor="rate_id">Rate ID</Label>
+              <Input
+                id="rate_id"
+                value={formData.rate_id}
+                onChange={(e) => setFormData({ ...formData, rate_id: e.target.value })}
+                placeholder="Auto-generated"
+                readOnly={!!editingRate}
+                className={editingRate ? 'bg-muted' : ''}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
               <Input

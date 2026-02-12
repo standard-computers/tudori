@@ -49,6 +49,7 @@ const DOCUMENT_TYPES = [
   { value: 'carrier', label: 'Carrier', prefix_placeholder: 'CAR-', icon: Truck },
   { value: 'route', label: 'Route', prefix_placeholder: 'RTE-', icon: Truck },
   { value: 'assignment', label: 'Assignment', prefix_placeholder: 'ASN-', icon: Users },
+  { value: 'tax_rate', label: 'Tax Rate', prefix_placeholder: '', icon: Receipt },
 ];
 
 interface POAutomationSettings {
