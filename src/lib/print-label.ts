@@ -77,8 +77,8 @@ export function printInventoryLabels(items: LabelItem[]) {
     doc.setFont('helvetica', 'bold');
     doc.text(qtyLine, 3, 23);
 
-    // Barcode - use SKU if available, otherwise Product ID
-    const barcodeValue = item.sku || item.productId;
+    // Barcode - use PU number if assigned, otherwise Product ID
+    const barcodeValue = item.puNumber || item.productId;
     const barcodeUrl = generateBarcodeDataUrl(barcodeValue);
     if (barcodeUrl) {
       try {
