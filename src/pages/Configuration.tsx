@@ -134,16 +134,16 @@ const Configuration = () => {
     setTransaction(`config/${activeTab}`);
   }, [activeTab, setTransaction]);
 
-  const isIT = currentUserRoles.includes('it');
+  const hasConfigAccess = currentUserRoles.includes('it') || currentUserRoles.includes('owner') || currentUserRoles.includes('admin');
 
   useSaveShortcut(() => {
-    if (!isIT) return;
+    if (!hasConfigAccess) return;
     if (activeTab === 'ids' && !savingConfig) {
       handleSaveConfigs();
     } else if (activeTab === 'controls' && !savingControls) {
       handleSaveControls();
     }
-  }, isIT);
+  }, hasConfigAccess);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -541,7 +541,7 @@ const Configuration = () => {
     );
   }
 
-  if (!isIT && !loading) {
+  if (!hasConfigAccess && !loading) {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
