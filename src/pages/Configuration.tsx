@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useSaveShortcut, useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet, Boxes } from 'lucide-react';
+import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet, Boxes, Search, X } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Database } from '@/integrations/supabase/types';
 
@@ -130,6 +130,26 @@ const Configuration = () => {
   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Ctrl+F shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [searchOpen]);
 
   useEffect(() => {
     setTransaction(`config/${activeTab}`);
@@ -596,38 +616,64 @@ const Configuration = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Configuration</h1>
               </div>
             </div>
-            {activeTab === 'ids' && (
-              <Button onClick={handleSaveConfigs} disabled={savingConfig}>
-                {savingConfig ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save
-                    <Kbd className="ml-2">⌘S</Kbd>
-                  </>
-                )}
-              </Button>
-            )}
-            {activeTab === 'controls' && (
-              <Button onClick={handleSaveControls} disabled={savingControls}>
-                {savingControls ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save
-                    <Kbd className="ml-2">⌘S</Kbd>
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {searchOpen ? (
+                <div className="flex items-center gap-1 border border-border rounded-md bg-background px-2">
+                  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search configuration..."
+                    className="border-0 h-8 w-52 focus-visible:ring-0 shadow-none px-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="icon" onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}>
+                  <Search className="w-4 h-4" />
+                </Button>
+              )}
+              {activeTab === 'ids' && (
+                <Button onClick={handleSaveConfigs} disabled={savingConfig}>
+                  {savingConfig ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save
+                      <Kbd className="ml-2">⌘S</Kbd>
+                    </>
+                  )}
+                </Button>
+              )}
+              {activeTab === 'controls' && (
+                <Button onClick={handleSaveControls} disabled={savingControls}>
+                  {savingControls ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save
+                      <Kbd className="ml-2">⌘S</Kbd>
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -658,7 +704,7 @@ const Configuration = () => {
               {/* Vertical Sidebar */}
               <div className="w-48 shrink-0">
                 <nav className="flex flex-col gap-1">
-                  {DOCUMENT_TYPES.map((docType) => {
+                  {DOCUMENT_TYPES.filter(dt => !searchQuery || dt.label.toLowerCase().includes(searchQuery.toLowerCase())).map((docType) => {
                     const Icon = docType.icon;
                     const isActive = activeConfigTab === docType.value;
                     return (
@@ -922,6 +968,7 @@ const Configuration = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
+                  {(!searchQuery || 'required delivery receipt'.includes(searchQuery.toLowerCase())) && (
                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">Required Delivery Receipt</Label>
@@ -939,6 +986,8 @@ const Configuration = () => {
                       }
                     />
                   </div>
+                  )}
+                  {(!searchQuery || 'require goods receipt'.includes(searchQuery.toLowerCase())) && (
                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">Require Goods Receipt</Label>
@@ -956,6 +1005,8 @@ const Configuration = () => {
                       }
                     />
                   </div>
+                  )}
+                  {(!searchQuery || 'track bin level movements'.includes(searchQuery.toLowerCase())) && (
                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">Track Bin Level Movements</Label>
@@ -973,6 +1024,8 @@ const Configuration = () => {
                       }
                     />
                   </div>
+                  )}
+                  {(!searchQuery || 'enforce route records'.includes(searchQuery.toLowerCase())) && (
                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                     <div className="space-y-1">
                       <Label className="font-medium text-base">Enforce Route Records</Label>
@@ -990,8 +1043,10 @@ const Configuration = () => {
                       }
                     />
                   </div>
+                  )}
 
                   {/* Reduce App Load */}
+                  {(!searchQuery || 'reduce app load'.includes(searchQuery.toLowerCase())) && (
                   <div className="flex items-center justify-between gap-8 py-4 border-t border-border">
                     <div>
                       <p className="text-sm font-medium text-foreground">Reduce App Load</p>
@@ -1009,6 +1064,7 @@ const Configuration = () => {
                       }
                     />
                   </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
