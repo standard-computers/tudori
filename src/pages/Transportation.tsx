@@ -5,11 +5,15 @@ import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -35,9 +39,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { useTableSort } from '@/hooks/use-table-sort';
 import { ArrowLeft, Plus, Pencil, Trash2, Truck, Route, Users, ArrowRight, Maximize2, Minimize2 } from 'lucide-react';
 import { SearchableSelect } from '@/components/SearchableSelect';
+import { useTableSort } from '@/hooks/use-table-sort';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
 
@@ -127,7 +131,11 @@ const Transportation = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importProgress, setImportProgress] = useState<{ open: boolean; total: number; current: number; imported: number; failed: number }>({ open: false, total: 0, current: 0, imported: 0, failed: 0 });
 
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
   // Carrier dialog state
   const [isCarrierDialogOpen, setIsCarrierDialogOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -728,6 +736,236 @@ const Transportation = () => {
     }
   };
 
+  // ---- Import/Export: Carriers ----
+  const CARRIER_TEMPLATE_COLUMNS = [
+    { header: "Name", key: "Name", width: 25 },
+    { header: "Type", key: "Type", width: 15 },
+    { header: "Contact", key: "Contact", width: 20 },
+    { header: "Email", key: "Email", width: 25 },
+    { header: "Phone", key: "Phone", width: 18 },
+    { header: "Address", key: "Address", width: 25 },
+    { header: "Address 2", key: "Address 2", width: 20 },
+    { header: "City", key: "City", width: 15 },
+    { header: "State", key: "State", width: 12 },
+    { header: "Postal Code", key: "Postal Code", width: 14 },
+    { header: "Country", key: "Country", width: 15 },
+    { header: "Notes", key: "Notes", width: 30 },
+    { header: "Active", key: "Active", width: 10 },
+  ];
+
+  const handleCarrierDownloadTemplate = async () => {
+    await exportToExcel([{
+      "Name": "Sample Carrier", "Type": "external", "Contact": "Jane Doe",
+      "Email": "jane@example.com", "Phone": "555-0100", "Address": "123 Main St",
+      "Address 2": "", "City": "New York", "State": "NY", "Postal Code": "10001",
+      "Country": "USA", "Notes": "", "Active": "true",
+    }], "carrier_import_template.xlsx", "Carriers", CARRIER_TEMPLATE_COLUMNS);
+    toast.success("Template downloaded");
+  };
+
+  const handleCarrierImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error("No data found in file"); return; }
+      let imported = 0, failed = 0;
+      setImportProgress({ open: true, total: rows.length, current: 0, imported: 0, failed: 0 });
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const name = row["Name"]?.toString()?.trim();
+        if (!name) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+        const { data: cid } = await supabase.rpc("generate_carrier_id", { p_company_id: companyId });
+        const { error } = await supabase.from("carriers").insert({
+          company_id: companyId, carrier_id: cid || `IMP-${Date.now()}`, name,
+          type: row["Type"]?.toString()?.trim() || "external",
+          contact_name: row["Contact"]?.toString()?.trim() || null,
+          email: row["Email"]?.toString()?.trim() || null,
+          phone: row["Phone"]?.toString()?.trim() || null,
+          address_line1: row["Address"]?.toString()?.trim() || null,
+          address_line2: row["Address 2"]?.toString()?.trim() || null,
+          city: row["City"]?.toString()?.trim() || null,
+          state: row["State"]?.toString()?.trim() || null,
+          postal_code: row["Postal Code"]?.toString()?.trim() || null,
+          country: row["Country"]?.toString()?.trim() || "USA",
+          notes: row["Notes"]?.toString()?.trim() || null,
+          is_active: row["Active"]?.toString()?.toLowerCase() !== "false",
+        });
+        if (error) { failed++; } else { imported++; }
+        setImportProgress(p => ({ ...p, current: i + 1, imported, failed }));
+      }
+      if (imported > 0) { toast.success(`Imported ${imported} carrier${imported > 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`); fetchCarriers(); }
+      else { toast.error(`Import failed: ${failed} row${failed > 1 ? "s" : ""} could not be imported`); }
+    } catch { toast.error("Failed to read file"); }
+    finally { setTimeout(() => setImportProgress(p => ({ ...p, open: false })), 1500); }
+  };
+
+  const handleCarrierExport = async () => {
+    if (carriers.length === 0) { toast.info("No carriers to export"); return; }
+    const data = carriers.map(c => ({
+      "Carrier ID": c.carrier_id, "Name": c.name, "Type": c.type,
+      "Contact": c.contact_name || "", "Email": c.email || "", "Phone": c.phone || "",
+      "Address": c.address_line1 || "", "Address 2": c.address_line2 || "",
+      "City": c.city || "", "State": c.state || "", "Postal Code": c.postal_code || "",
+      "Country": c.country || "", "Notes": c.notes || "", "Active": c.is_active ? "true" : "false",
+    }));
+    await exportToExcel(data, `carriers_export_${new Date().toISOString().split("T")[0]}.xlsx`, "Carriers");
+    toast.success("Carriers exported");
+  };
+
+  // ---- Import/Export: Routes ----
+  const ROUTE_TEMPLATE_COLUMNS = [
+    { header: "Name", key: "Name", width: 25 },
+    { header: "Source Location", key: "Source Location", width: 25 },
+    { header: "Destination Location", key: "Destination Location", width: 25 },
+    { header: "Carrier", key: "Carrier", width: 20 },
+    { header: "Priority", key: "Priority", width: 10 },
+    { header: "Lead Time (Days)", key: "Lead Time (Days)", width: 16 },
+    { header: "Notes", key: "Notes", width: 30 },
+    { header: "Active", key: "Active", width: 10 },
+  ];
+
+  const handleRouteDownloadTemplate = async () => {
+    await exportToExcel([{
+      "Name": "Warehouse to Store", "Source Location": "LOC-0001",
+      "Destination Location": "LOC-0002", "Carrier": "CAR-0001",
+      "Priority": "1", "Lead Time (Days)": "3", "Notes": "", "Active": "true",
+    }], "route_import_template.xlsx", "Routes", ROUTE_TEMPLATE_COLUMNS);
+    toast.success("Template downloaded");
+  };
+
+  const handleRouteImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error("No data found in file"); return; }
+      let imported = 0, failed = 0;
+      setImportProgress({ open: true, total: rows.length, current: 0, imported: 0, failed: 0 });
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const name = row["Name"]?.toString()?.trim();
+        const srcId = row["Source Location"]?.toString()?.trim();
+        const dstId = row["Destination Location"]?.toString()?.trim();
+        if (!name || !srcId || !dstId) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+        // Resolve location IDs by location_id
+        const srcLoc = locations.find(l => l.location_id === srcId);
+        const dstLoc = locations.find(l => l.location_id === dstId);
+        if (!srcLoc || !dstLoc) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+        const carrierIdStr = row["Carrier"]?.toString()?.trim();
+        const carrierMatch = carrierIdStr ? carriers.find(c => c.carrier_id === carrierIdStr) : null;
+        const { data: rid } = await supabase.rpc("generate_route_id", { p_company_id: companyId });
+        const { error } = await supabase.from("routes").insert({
+          company_id: companyId, route_id: rid || `IMP-${Date.now()}`, name,
+          source_location_id: srcLoc.id, destination_location_id: dstLoc.id,
+          carrier_id: carrierMatch?.id || null,
+          priority: parseInt(row["Priority"]?.toString()) || 1,
+          lead_time_days: parseInt(row["Lead Time (Days)"]?.toString()) || 0,
+          is_active: row["Active"]?.toString()?.toLowerCase() !== "false",
+          notes: row["Notes"]?.toString()?.trim() || null,
+        });
+        if (error) { failed++; } else { imported++; }
+        setImportProgress(p => ({ ...p, current: i + 1, imported, failed }));
+      }
+      if (imported > 0) { toast.success(`Imported ${imported} route${imported > 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`); fetchRoutes(); }
+      else { toast.error(`Import failed: ${failed} row${failed > 1 ? "s" : ""} could not be imported`); }
+    } catch { toast.error("Failed to read file"); }
+    finally { setTimeout(() => setImportProgress(p => ({ ...p, open: false })), 1500); }
+  };
+
+  const handleRouteExport = async () => {
+    if (routes.length === 0) { toast.info("No routes to export"); return; }
+    const data = routes.map(r => ({
+      "Route ID": r.route_id, "Name": r.name,
+      "Source Location": r.source_location?.location_id || "", "Destination Location": r.destination_location?.location_id || "",
+      "Carrier": r.carrier?.carrier_id || "", "Priority": r.priority,
+      "Lead Time (Days)": r.lead_time_days || 0, "Notes": r.notes || "", "Active": r.is_active ? "true" : "false",
+    }));
+    await exportToExcel(data, `routes_export_${new Date().toISOString().split("T")[0]}.xlsx`, "Routes");
+    toast.success("Routes exported");
+  };
+
+  // ---- Import/Export: Assignments ----
+  const ASSIGNMENT_TEMPLATE_COLUMNS = [
+    { header: "Product", key: "Product", width: 20 },
+    { header: "Source Type", key: "Source Type", width: 15 },
+    { header: "Source ID", key: "Source ID", width: 20 },
+    { header: "Destination Location", key: "Destination Location", width: 25 },
+    { header: "Priority", key: "Priority", width: 10 },
+    { header: "Price", key: "Price", width: 12 },
+    { header: "Notes", key: "Notes", width: 30 },
+    { header: "Active", key: "Active", width: 10 },
+  ];
+
+  const handleAssignmentDownloadTemplate = async () => {
+    await exportToExcel([{
+      "Product": "PRD-0001", "Source Type": "vendor", "Source ID": "VEN-0001",
+      "Destination Location": "LOC-0001", "Priority": "1", "Price": "10.00",
+      "Notes": "", "Active": "true",
+    }], "assignment_import_template.xlsx", "Assignments", ASSIGNMENT_TEMPLATE_COLUMNS);
+    toast.success("Template downloaded");
+  };
+
+  const handleAssignmentImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error("No data found in file"); return; }
+      let imported = 0, failed = 0;
+      setImportProgress({ open: true, total: rows.length, current: 0, imported: 0, failed: 0 });
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const productIdStr = row["Product"]?.toString()?.trim();
+        const sourceType = row["Source Type"]?.toString()?.trim()?.toLowerCase();
+        const sourceIdStr = row["Source ID"]?.toString()?.trim();
+        const destLocStr = row["Destination Location"]?.toString()?.trim();
+        if (!productIdStr || !sourceType || !sourceIdStr || !destLocStr) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+        const productMatch = products.find(p => p.product_id === productIdStr);
+        const destLoc = locations.find(l => l.location_id === destLocStr);
+        if (!productMatch || !destLoc) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+        let vendorId: string | null = null;
+        let sourceLocationId: string | null = null;
+        if (sourceType === "vendor") {
+          const v = vendors.find(v => v.vendor_id === sourceIdStr);
+          if (!v) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+          vendorId = v.id;
+        } else {
+          const l = locations.find(l => l.location_id === sourceIdStr);
+          if (!l) { failed++; setImportProgress(p => ({ ...p, current: i + 1, failed })); continue; }
+          sourceLocationId = l.id;
+        }
+        const { data: aid } = await supabase.rpc("generate_assignment_id", { p_company_id: companyId });
+        const { error } = await supabase.from("assignments").insert({
+          company_id: companyId, assignment_id: aid || `IMP-${Date.now()}`,
+          product_id: productMatch.id, vendor_id: vendorId, source_location_id: sourceLocationId,
+          destination_location_id: destLoc.id,
+          priority: parseInt(row["Priority"]?.toString()) || 1,
+          price: parseFloat(row["Price"]?.toString()) || 0,
+          is_active: row["Active"]?.toString()?.toLowerCase() !== "false",
+          notes: row["Notes"]?.toString()?.trim() || null,
+        });
+        if (error) { failed++; } else { imported++; }
+        setImportProgress(p => ({ ...p, current: i + 1, imported, failed }));
+      }
+      if (imported > 0) { toast.success(`Imported ${imported} assignment${imported > 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`); fetchAssignments(); }
+      else { toast.error(`Import failed: ${failed} row${failed > 1 ? "s" : ""} could not be imported`); }
+    } catch { toast.error("Failed to read file"); }
+    finally { setTimeout(() => setImportProgress(p => ({ ...p, open: false })), 1500); }
+  };
+
+  const handleAssignmentExport = async () => {
+    if (assignments.length === 0) { toast.info("No assignments to export"); return; }
+    const data = assignments.map(a => ({
+      "Assignment ID": a.assignment_id,
+      "Product": a.product?.product_id || "",
+      "Source Type": a.vendor_id ? "vendor" : "location",
+      "Source ID": a.vendor ? a.vendor.vendor_id : a.source_location?.location_id || "",
+      "Destination Location": a.destination_location?.location_id || "",
+      "Priority": a.priority, "Price": Number(a.price || 0).toFixed(2),
+      "Notes": a.notes || "", "Active": a.is_active ? "true" : "false",
+    }));
+    await exportToExcel(data, `assignments_export_${new Date().toISOString().split("T")[0]}.xlsx`, "Assignments");
+    toast.success("Assignments exported");
+  };
+
   if (authLoading || !user) {
     return null;
   }
@@ -759,22 +997,52 @@ const Transportation = () => {
             </div>
             <div className="flex items-center gap-2">
               {activeTab === 'carriers' && (
-                <Button onClick={openNewCarrierDialog}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Carrier
-                </Button>
+                <>
+                  <ImportExportButtons
+                    importEnabled={isImportEnabled("carrier")}
+                    exportEnabled={isExportEnabled("carrier")}
+                    onImport={handleCarrierImport}
+                    onExport={handleCarrierExport}
+                    onDownloadTemplate={handleCarrierDownloadTemplate}
+                    entityName="Carriers"
+                  />
+                  <Button onClick={openNewCarrierDialog}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Carrier
+                  </Button>
+                </>
               )}
               {activeTab === 'routes' && (
-                <Button onClick={openNewRouteDialog}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Route
-                </Button>
+                <>
+                  <ImportExportButtons
+                    importEnabled={isImportEnabled("route")}
+                    exportEnabled={isExportEnabled("route")}
+                    onImport={handleRouteImport}
+                    onExport={handleRouteExport}
+                    onDownloadTemplate={handleRouteDownloadTemplate}
+                    entityName="Routes"
+                  />
+                  <Button onClick={openNewRouteDialog}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Route
+                  </Button>
+                </>
               )}
               {activeTab === 'assignments' && (
-                <Button onClick={openNewAssignmentDialog}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Assignment
-                </Button>
+                <>
+                  <ImportExportButtons
+                    importEnabled={isImportEnabled("assignment")}
+                    exportEnabled={isExportEnabled("assignment")}
+                    onImport={handleAssignmentImport}
+                    onExport={handleAssignmentExport}
+                    onDownloadTemplate={handleAssignmentDownloadTemplate}
+                    entityName="Assignments"
+                  />
+                  <Button onClick={openNewAssignmentDialog}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Assignment
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -1475,6 +1743,24 @@ const Transportation = () => {
               <Kbd>⌘S</Kbd>
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Import Progress Dialog */}
+      <Dialog open={importProgress.open}>
+        <DialogContent draggable={false} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Importing...</DialogTitle>
+            <DialogDescription>
+              Processing {importProgress.current} of {importProgress.total} rows
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 pb-6">
+            <Progress value={importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0} />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span className="text-success">{importProgress.imported} imported</span>
+              {importProgress.failed > 0 && <span className="text-destructive">{importProgress.failed} failed</span>}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
       </Tabs>
