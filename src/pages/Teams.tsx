@@ -469,6 +469,18 @@ const Teams = () => {
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
           <button
             type="button"
+            onClick={() => {
+              if (viewingTeam) {
+                handleEdit(viewingTeam);
+                setViewingTeam(null);
+              }
+            }}
+            className="absolute right-[4.5rem] top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsMaximized(!isMaximized)}
             className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
           >
@@ -511,17 +523,6 @@ const Teams = () => {
               </Tabs>
             )}
           </DialogBody>
-          <DialogFooter>
-            <Button onClick={() => {
-              if (viewingTeam) {
-                handleEdit(viewingTeam);
-                setViewingTeam(null);
-              }
-            }}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
