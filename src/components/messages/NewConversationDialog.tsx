@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { SearchableSelect, type SearchableSelectOption } from "@/components/SearchableSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from '@/lib/toast';
@@ -161,7 +164,7 @@ export function NewConversationDialog({ open, onOpenChange, onConversationCreate
           <DialogTitle>New Conversation</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4 px-1">
+        <div className="space-y-4 py-4 px-4">
           <div className="flex items-center space-x-2">
             <Checkbox id="is-group" checked={isGroup} onCheckedChange={(checked) => setIsGroup(checked === true)} />
             <Label htmlFor="is-group">Create group chat</Label>
@@ -181,26 +184,41 @@ export function NewConversationDialog({ open, onOpenChange, onConversationCreate
 
           <div className="space-y-2">
             <Label>Select {isGroup ? "participants" : "user"}</Label>
-            <div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1">
-              {profiles.length === 0 ? (
-                <p className="text-sm text-muted-foreground p-2">No other users found</p>
-              ) : (
-                profiles.map((profile) => (
-                  <div
-                    key={profile.user_id}
-                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${
-                      selectedUsers.includes(profile.user_id) ? "bg-accent" : ""
-                    }`}
-                    onClick={() => toggleUser(profile.user_id)}
-                  >
-                    <Checkbox checked={selectedUsers.includes(profile.user_id)} />
-                    <span>
-                      {profile.first_name} {profile.last_name}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+            <SearchableSelect
+              options={profiles.map((p) => ({
+                value: p.user_id,
+                label: `${p.first_name} ${p.last_name}`,
+              }))}
+              value={isGroup ? "" : selectedUsers[0] || ""}
+              onValueChange={(val) => {
+                if (!val) return;
+                if (isGroup) {
+                  if (!selectedUsers.includes(val)) {
+                    setSelectedUsers((prev) => [...prev, val]);
+                  }
+                } else {
+                  setSelectedUsers([val]);
+                }
+              }}
+              placeholder="Search users..."
+              emptyMessage="No users found"
+            />
+            {isGroup && selectedUsers.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {selectedUsers.map((uid) => {
+                  const p = profiles.find((pr) => pr.user_id === uid);
+                  return (
+                    <Badge key={uid} variant="secondary" className="gap-1">
+                      {p ? `${p.first_name} ${p.last_name}` : uid}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setSelectedUsers((prev) => prev.filter((id) => id !== uid))}
+                      />
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
