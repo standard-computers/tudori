@@ -2335,9 +2335,6 @@ const [areaFormData, setAreaFormData] = useState({
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openAreaDialog(area)}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteArea(area.id)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -2900,6 +2897,20 @@ const [areaFormData, setAreaFormData] = useState({
               </Tabs>
             </div>
             <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
+              {editingArea && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="mr-auto"
+                  onClick={() => {
+                    handleDeleteArea(editingArea.id);
+                    setIsAreaDialogOpen(false);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              )}
               <Button type="submit">
                 {editingArea ? 'Save Changes' : 'Create'}
                 <Kbd className="ml-2">⌘S</Kbd>
