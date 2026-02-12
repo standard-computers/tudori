@@ -23,10 +23,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
 import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
+import { useExcel } from '@/hooks/use-excel';
 
 interface Location {
   id: string;
@@ -306,7 +307,7 @@ const Inventory = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCountDialogOpen, setIsCountDialogOpen] = useState(false);
-
+  const { exportToExcel } = useExcel();
   // Column visibility
   const {
     visibleColumns,
@@ -506,19 +507,45 @@ const Inventory = () => {
         ) : (
           <div className="space-y-4">
             {/* Summary stats */}
-            <div className="flex items-center gap-6 text-sm text-muted-foreground pb-2 border-b">
-              <span>
-                <strong className="text-foreground">{selectedLocation?.name}</strong>
-              </span>
-              <span>
-                <strong className="text-foreground">{inventory.length}</strong> inventory records
-              </span>
-              <span>
-                <strong className="text-foreground">{uniqueProducts}</strong> unique products
-              </span>
-              <span>
-                <strong className="text-foreground">{totalQuantity.toLocaleString()}</strong> total units
-              </span>
+            <div className="flex items-center justify-between pb-2 border-b">
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <span>
+                  <strong className="text-foreground">{selectedLocation?.name}</strong>
+                </span>
+                <span>
+                  <strong className="text-foreground">{inventory.length}</strong> inventory records
+                </span>
+                <span>
+                  <strong className="text-foreground">{uniqueProducts}</strong> unique products
+                </span>
+                <span>
+                  <strong className="text-foreground">{totalQuantity.toLocaleString()}</strong> total units
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const rows = inventory.map(item => ({
+                    'Product ID': item.product?.product_id || '',
+                    'Product Name': item.product?.name || '',
+                    'SKU': item.product?.sku || '',
+                    'Category': item.product?.category || '',
+                    'Area': item.bin?.area?.name || '',
+                    'Bin': item.bin?.name || '',
+                    'Quantity': item.quantity,
+                    'Unit': item.product?.unit || '',
+                    'Min': item.min_quantity ?? '',
+                    'Max': item.max_quantity ?? '',
+                  }));
+                  exportToExcel(rows, `inventory-${selectedLocation?.name || 'export'}`);
+                  toast.success('Inventory exported');
+                }}
+                disabled={inventory.length === 0}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Export
+              </Button>
             </div>
 
             {inventory.length === 0 ? (
