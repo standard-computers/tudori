@@ -3136,6 +3136,7 @@ export type Database = {
       }
       production_orders: {
         Row: {
+          assigned_employee_id: string | null
           bom_id: string | null
           company_id: string
           completed_date: string | null
@@ -3152,6 +3153,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_employee_id?: string | null
           bom_id?: string | null
           company_id: string
           completed_date?: string | null
@@ -3168,6 +3170,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_employee_id?: string | null
           bom_id?: string | null
           company_id?: string
           completed_date?: string | null
@@ -3184,6 +3187,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "production_orders_assigned_employee_id_fkey"
+            columns: ["assigned_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "production_orders_bom_id_fkey"
             columns: ["bom_id"]

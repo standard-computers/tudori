@@ -41,7 +41,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle, CheckCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle, CheckCircle, Maximize2, Minimize2, User } from 'lucide-react';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
@@ -58,10 +59,12 @@ interface ProductionOrder {
   scheduled_date: string | null;
   completed_date: string | null;
   notes: string | null;
+  assigned_employee_id: string | null;
   created_at: string;
   product?: { name: string; product_id: string };
   location?: { name: string; location_id: string };
   bom?: { name: string; bom_id: string; output_quantity: number };
+  assigned_employee?: { id: string; employee_id: string; first_name: string; last_name: string } | null;
   total_duration?: number; // Total estimated minutes from BOM steps
 }
 
@@ -86,6 +89,13 @@ interface BomItem {
   product_id: string;
   quantity: number;
   product?: { name: string; product_id: string };
+}
+
+interface LocationEmployee {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
 }
 
 interface InventoryRecord {
@@ -233,6 +243,15 @@ const ProductionOrderTable = ({
                 className="w-28"
               />
               <SortableTableHead
+                label="Assigned To"
+                sortKey="assigned_employee.last_name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['assigned_employee.last_name']}
+                onFilter={(value) => setFilter('assigned_employee.last_name', value)}
+              />
+              <SortableTableHead
                 label="Scheduled"
                 sortKey="scheduled_date"
                 currentSortKey={sortConfig.key}
@@ -256,7 +275,7 @@ const ProductionOrderTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No production orders found
                 </TableCell>
               </TableRow>
@@ -279,6 +298,11 @@ const ProductionOrderTable = ({
                         <span>{formatDuration(order.total_duration)}</span>
                       </div>
                     ) : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {order.assigned_employee 
+                      ? `${order.assigned_employee.first_name} ${order.assigned_employee.last_name}`
+                      : '-'}
                   </TableCell>
                   <TableCell>
                     {order.scheduled_date ? format(new Date(order.scheduled_date), 'MMM d, yyyy') : '-'}
@@ -371,6 +395,7 @@ const Production = () => {
   const [nextOrderNumber, setNextOrderNumber] = useState('PRO-0001');
   const [foregroundOrder, setForegroundOrder] = useState<ProductionOrder | null>(null);
   const [isForegroundDialogOpen, setIsForegroundDialogOpen] = useState(false);
+  const [locationEmployees, setLocationEmployees] = useState<LocationEmployee[]>([]);
 
   const [formData, setFormData] = useState({
     order_number: '',
@@ -380,6 +405,7 @@ const Production = () => {
     status: 'pending',
     scheduled_date: '',
     notes: '',
+    assigned_employee_id: '',
   });
 
   // Filter orders by selected location
@@ -443,7 +469,8 @@ const Production = () => {
         *,
         product:products(name, product_id),
         location:locations(name, location_id),
-        bom:bill_of_materials(name, bom_id, output_quantity)
+        bom:bill_of_materials(name, bom_id, output_quantity),
+        assigned_employee:employees!production_orders_assigned_employee_id_fkey(id, employee_id, first_name, last_name)
       `)
       .eq('company_id', companyId!)
       .order('created_at', { ascending: false });
@@ -558,12 +585,40 @@ const Production = () => {
     setLocationInventory((data as any) || []);
   };
 
-  // Effect to fetch inventory when location changes in dialog
+  // Fetch employees belonging to a location via location_users
+  const fetchLocationEmployees = async (locationId: string) => {
+    // Get user_ids assigned to this location
+    const { data: locationUsers } = await supabase
+      .from('location_users')
+      .select('user_id')
+      .eq('location_id', locationId);
+
+    if (!locationUsers || locationUsers.length === 0) {
+      setLocationEmployees([]);
+      return;
+    }
+
+    const userIds = locationUsers.map(lu => lu.user_id);
+    
+    // Get employees linked to these users
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('id, employee_id, first_name, last_name')
+      .in('user_id', userIds)
+      .eq('status', 'active')
+      .order('last_name');
+
+    setLocationEmployees(employees || []);
+  };
+
+  // Effect to fetch inventory and employees when location changes in dialog
   useEffect(() => {
     if (isDialogOpen && formData.location_id) {
       fetchLocationInventory(formData.location_id);
+      fetchLocationEmployees(formData.location_id);
     } else {
       setLocationInventory([]);
+      setLocationEmployees([]);
     }
   }, [isDialogOpen, formData.location_id]);
 
@@ -602,11 +657,12 @@ const Production = () => {
     setFormData({
       order_number: nextOrderNumber,
       bom_id: '',
-      location_id: selectedLocationId, // Pre-select current location filter
+      location_id: selectedLocationId,
       quantity: 1,
       status: 'pending',
       scheduled_date: '',
       notes: '',
+      assigned_employee_id: '',
     });
     setIsEditing(false);
     setIsViewMode(false);
@@ -635,6 +691,7 @@ const Production = () => {
       status: order.status,
       scheduled_date: order.scheduled_date || '',
       notes: order.notes || '',
+      assigned_employee_id: order.assigned_employee_id || '',
     });
     setIsViewMode(true);
     setIsEditing(false);
@@ -654,6 +711,7 @@ const Production = () => {
       status: order.status,
       scheduled_date: order.scheduled_date || '',
       notes: order.notes || '',
+      assigned_employee_id: order.assigned_employee_id || '',
     });
     setIsViewMode(false);
     setIsEditing(true);
@@ -880,6 +938,7 @@ const Production = () => {
             status: formData.status,
             scheduled_date: formData.scheduled_date || null,
             notes: formData.notes || null,
+            assigned_employee_id: formData.assigned_employee_id || null,
           })
           .eq('id', editingId);
 
@@ -898,6 +957,7 @@ const Production = () => {
             status: formData.status,
             scheduled_date: formData.scheduled_date || null,
             notes: formData.notes || null,
+            assigned_employee_id: formData.assigned_employee_id || null,
           });
 
         if (error) throw error;
@@ -1083,7 +1143,7 @@ const Production = () => {
                     <Label>Production Location *</Label>
                     <Select
                       value={formData.location_id}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, location_id: value }))}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, location_id: value, assigned_employee_id: '' }))}
                       disabled={isViewMode}
                     >
                       <SelectTrigger>
@@ -1103,6 +1163,26 @@ const Production = () => {
                         )}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Assigned Employee</Label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'Unassigned' },
+                        ...locationEmployees.map(emp => ({
+                          value: emp.id,
+                          label: `${emp.employee_id} - ${emp.first_name} ${emp.last_name}`,
+                        })),
+                      ]}
+                      value={formData.assigned_employee_id}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_employee_id: value }))}
+                      placeholder={formData.location_id ? "Select an employee" : "Select a location first"}
+                      disabled={isViewMode || !formData.location_id}
+                    />
+                    {formData.location_id && locationEmployees.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No employees assigned to this location</p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
