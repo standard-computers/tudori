@@ -27,6 +27,7 @@ import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw, Download } from 'luc
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
 import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
+import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import { useExcel } from '@/hooks/use-excel';
 
 interface Location {
@@ -81,9 +82,11 @@ const INVENTORY_COLUMNS: ColumnDefinition[] = [
 const InventoryTable = ({
   inventory,
   isColumnVisible,
+  onRowClick,
 }: {
   inventory: InventoryItem[];
   isColumnVisible: (key: string) => boolean;
+  onRowClick: (item: InventoryItem) => void;
 }) => {
   const {
     sortConfig,
@@ -251,7 +254,7 @@ const InventoryTable = ({
                 const isHigh = item.max_quantity !== null && item.quantity > item.max_quantity;
                 
                 return (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} className="cursor-pointer" onClick={() => onRowClick(item)}>
                     {isColumnVisible('product_id') && (
                       <TableCell className="font-mono text-sm">{item.product?.product_id || '-'}</TableCell>
                     )}
@@ -307,6 +310,8 @@ const Inventory = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCountDialogOpen, setIsCountDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { exportToExcel } = useExcel();
   // Column visibility
   const {
@@ -405,8 +410,9 @@ const Inventory = () => {
         max_quantity,
         notes,
         last_counted_at,
-        product:products(id, product_id, name, sku, category, unit),
-        bin:bins(id, bin_id, name, area:areas(id, area_id, name))
+        product:products(id, product_id, name, sku, category, unit, company_id),
+        bin:bins(id, bin_id, name, area:areas(id, area_id, name)),
+        packaging_unit:packaging_units(pu_number)
       `)
       .eq('location_id', selectedLocationId)
       .order('quantity', { ascending: false });
@@ -553,7 +559,14 @@ const Inventory = () => {
                 No inventory at this location
               </div>
             ) : (
-              <InventoryTable inventory={inventory} isColumnVisible={isColumnVisible} />
+              <InventoryTable
+                inventory={inventory}
+                isColumnVisible={isColumnVisible}
+                onRowClick={(item) => {
+                  setSelectedItem(item);
+                  setIsDetailOpen(true);
+                }}
+              />
             )}
           </div>
         )}
@@ -566,6 +579,14 @@ const Inventory = () => {
         locationId={selectedLocationId}
         locationName={selectedLocation?.name || ''}
         inventory={inventory}
+      />
+
+      <InventoryDetailDialog
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        item={selectedItem as any}
+        locationId={selectedLocationId}
+        onUpdated={fetchInventory}
       />
     </div>
   );
