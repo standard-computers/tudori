@@ -20,6 +20,7 @@ import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
 import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import ViewBinDialog from '@/components/cockpit/ViewBinDialog';
+import ViewAreaDialog from '@/components/cockpit/ViewAreaDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
 import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
@@ -213,6 +214,8 @@ const Cockpit = () => {
   const [isAreaMaximized, setIsAreaMaximized] = useState(false);
   const [isBinDialogOpen, setIsBinDialogOpen] = useState(false);
   const [isViewBinDialogOpen, setIsViewBinDialogOpen] = useState(false);
+  const [isViewAreaDialogOpen, setIsViewAreaDialogOpen] = useState(false);
+  const [viewingArea, setViewingArea] = useState<Area | null>(null);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
   const [isBinSequenceDialogOpen, setIsBinSequenceDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
@@ -2327,7 +2330,7 @@ const [areaFormData, setAreaFormData] = useState({
                       {areas.map((area) => (
                         <TableRow key={area.id}>
                           <TableCell className="font-mono">
-                            <button type="button" className="text-primary hover:underline" onClick={() => openAreaDialog(area)}>
+                            <button type="button" className="text-primary hover:underline" onClick={() => { setViewingArea(area); setIsViewAreaDialogOpen(true); }}>
                               {area.area_id}
                             </button>
                           </TableCell>
@@ -2336,6 +2339,9 @@ const [areaFormData, setAreaFormData] = useState({
                           <TableCell className="text-right">{bins.filter(b => b.area_id === area.id).length}</TableCell>
                           <TableCell>
                             <div className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setViewingArea(area); setIsViewAreaDialogOpen(true); }}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openAreaDialog(area)}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -2976,7 +2982,31 @@ const [areaFormData, setAreaFormData] = useState({
         }}
       />
 
-      {/* Receive Delivery Dialog */}
+      {/* View Area Dialog */}
+      <ViewAreaDialog
+        open={isViewAreaDialogOpen}
+        onOpenChange={(open) => {
+          setIsViewAreaDialogOpen(open);
+          if (!open) setViewingArea(null);
+        }}
+        area={viewingArea}
+        onEdit={() => {
+          setIsViewAreaDialogOpen(false);
+          if (viewingArea) {
+            openAreaDialog(viewingArea);
+          }
+        }}
+        onViewBin={(bin) => {
+          setIsViewAreaDialogOpen(false);
+          const fullBin = bins.find(b => b.id === bin.id);
+          if (fullBin) {
+            setViewingBin(fullBin);
+            setIsViewBinDialogOpen(true);
+          }
+        }}
+      />
+
+
       {selectedDelivery && selectedLocationId && (
         <ReceiveDeliveryDialog
           open={isReceiveDialogOpen}
