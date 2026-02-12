@@ -4056,6 +4056,7 @@ export type Database = {
           is_default: boolean | null
           name: string
           rate: number
+          rate_id: string
           rate_type: string
           updated_at: string
         }
@@ -4068,6 +4069,7 @@ export type Database = {
           is_default?: boolean | null
           name: string
           rate?: number
+          rate_id: string
           rate_type?: string
           updated_at?: string
         }
@@ -4080,6 +4082,7 @@ export type Database = {
           is_default?: boolean | null
           name?: string
           rate?: number
+          rate_id?: string
           rate_type?: string
           updated_at?: string
         }
@@ -4629,6 +4632,7 @@ export type Database = {
         Returns: string
       }
       get_next_pu_number: { Args: { p_company_id: string }; Returns: string }
+      get_next_rate_id: { Args: { p_company_id: string }; Returns: string }
       get_next_requisition_id: {
         Args: { p_company_id: string }
         Returns: string
