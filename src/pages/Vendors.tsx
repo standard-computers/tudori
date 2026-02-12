@@ -411,6 +411,7 @@ const Vendors = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextVendorId, setNextVendorId] = useState("0001");
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ open: boolean; total: number; current: number; imported: number; failed: number }>({ open: false, total: 0, current: 0, imported: 0, failed: 0 });
 
   // Column visibility
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
@@ -473,11 +474,14 @@ const Vendors = () => {
 
       let imported = 0;
       let failed = 0;
+      setImportProgress({ open: true, total: rows.length, current: 0, imported: 0, failed: 0 });
 
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
         const name = row["Name"]?.toString()?.trim();
         if (!name) {
           failed++;
+          setImportProgress(p => ({ ...p, current: i + 1, failed }));
           continue;
         }
 
@@ -509,6 +513,7 @@ const Vendors = () => {
         } else {
           imported++;
         }
+        setImportProgress(p => ({ ...p, current: i + 1, imported, failed }));
       }
 
       if (imported > 0) {
@@ -520,6 +525,9 @@ const Vendors = () => {
       }
     } catch (err) {
       toast.error("Failed to read file");
+    } finally {
+      // Auto-close after a short delay so the user sees 100%
+      setTimeout(() => setImportProgress(p => ({ ...p, open: false })), 1500);
     }
   };
 
@@ -1461,6 +1469,36 @@ const Vendors = () => {
         isBlocked={deleteBlocked}
         blockedReason={deleteBlockedReason}
       />
+
+      {/* Import Progress Dialog */}
+      <Dialog open={importProgress.open} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Importing Vendors</DialogTitle>
+            <DialogDescription>
+              Processing row {importProgress.current} of {importProgress.total}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-primary h-full rounded-full transition-all duration-300"
+                style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{Math.round(importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0)}% complete</span>
+              <div className="flex gap-4">
+                <span className="text-success">{importProgress.imported} imported</span>
+                {importProgress.failed > 0 && <span className="text-destructive">{importProgress.failed} failed</span>}
+              </div>
+            </div>
+            {importProgress.current === importProgress.total && importProgress.total > 0 && (
+              <p className="text-sm text-center text-muted-foreground">Import complete!</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
