@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Plus, Send, Users, User } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
 import { NewConversationDialog } from "@/components/messages/NewConversationDialog";
 import { format, isToday, isYesterday } from "date-fns";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
@@ -41,6 +42,7 @@ const Messages = () => {
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
+  useKeyboardShortcut('n', () => setShowNewDialog(true));
 
   useEffect(() => {
     if (!loading && !user) {
@@ -261,6 +263,7 @@ const Messages = () => {
           <Button size="sm" onClick={() => setShowNewDialog(true)}>
             <Plus className="h-4 w-4 mr-1" />
             New
+            <Kbd>N</Kbd>
           </Button>
         </div>
       </header>
