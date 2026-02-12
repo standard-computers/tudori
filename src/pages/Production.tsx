@@ -43,7 +43,7 @@ import {
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle, CheckCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { StepByStepProductionDialog } from '@/components/production/StepByStepProductionDialog';
 

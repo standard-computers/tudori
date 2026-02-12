@@ -15,7 +15,7 @@ import { generatePUNumber } from '@/lib/packaging-units';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Package, Plus, GripVertical, Undo2, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface DeliveryItem {
   id: string;

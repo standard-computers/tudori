@@ -27,7 +27,7 @@ import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { AlertTriangle, ShoppingCart, Factory, FileSpreadsheet, Loader2, Check, X, MapPin, Maximize2, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface FlatShortfall {
   key: string; // locationId::productId

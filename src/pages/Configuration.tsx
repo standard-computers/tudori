@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
 import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet, Boxes } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Database } from '@/integrations/supabase/types';
 
 interface DocumentIdConfig {

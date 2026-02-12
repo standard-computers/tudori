@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
 import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const RATE_COLUMNS: ColumnDefinition[] = [

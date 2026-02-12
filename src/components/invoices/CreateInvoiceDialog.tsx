@@ -35,7 +35,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Plus, Loader2, Trash2, Maximize2, Minimize2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 
 interface TaxRate {

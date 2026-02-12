@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Kbd } from '@/components/ui/kbd';
 import { ArrowLeft, Building2, Save, Loader2, ShieldAlert, Upload, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Database } from '@/integrations/supabase/types';
 
 interface Company {

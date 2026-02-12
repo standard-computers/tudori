@@ -28,7 +28,7 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, User, Eye, Link2, Maximize2, Minimize2, UserPlus } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import { TimesheetsTab } from "@/components/employees/TimesheetsTab";
 
 interface Employee {

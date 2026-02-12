@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 import { ArrowLeft, Plus, PackageMinus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 
 interface GoodsIssue {

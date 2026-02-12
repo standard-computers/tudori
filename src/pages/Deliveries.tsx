@@ -63,7 +63,7 @@ import {
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ViewDeliveryItemsTab } from '@/components/deliveries/ViewDeliveryItemsTab';
 import { PackingTab } from '@/components/deliveries/PackingTab';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 
 // Statuses that prevent editing

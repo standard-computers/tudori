@@ -28,7 +28,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin, Maximize2, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface SafetyStock {
   id: string;

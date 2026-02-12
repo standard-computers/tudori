@@ -65,7 +65,7 @@ import {
 import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 

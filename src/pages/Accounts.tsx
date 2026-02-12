@@ -47,7 +47,7 @@ import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil, Eye } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface Account {
   id: string;

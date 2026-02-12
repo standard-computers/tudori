@@ -28,7 +28,7 @@ import {
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck } from 'lucide-react';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface OutboundDelivery {
   id: string;

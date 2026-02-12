@@ -25,7 +25,7 @@ import {
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
 
 interface Location {

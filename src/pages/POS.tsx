@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface Location {
   id: string;

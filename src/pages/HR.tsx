@@ -57,7 +57,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface Employee {
   id: string;

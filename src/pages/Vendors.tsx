@@ -56,7 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 
 const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: "vendor_id", label: "ID", defaultVisible: true },

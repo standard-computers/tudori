@@ -31,7 +31,7 @@ import { TeamEmployeesTab } from '@/components/teams/TeamEmployeesTab';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, Users2, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface Team {
   id: string;

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface SafetyStock {
   id?: string;

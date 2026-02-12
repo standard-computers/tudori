@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Clock, LogIn, LogOut, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';

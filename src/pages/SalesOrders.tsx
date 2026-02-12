@@ -50,7 +50,7 @@ import {
   History,
   Search,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";

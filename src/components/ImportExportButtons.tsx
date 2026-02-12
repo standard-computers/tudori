@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Download, Upload, FileDown, FileUp } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
 
 interface ImportExportButtonsProps {

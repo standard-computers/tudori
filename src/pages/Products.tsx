@@ -63,7 +63,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 import { SafetyStockTab } from "@/components/products/SafetyStockTab";
-import { toast } from "sonner";
+import { toast } from '@/lib/toast';
 import { useExcel } from "@/hooks/use-excel";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";

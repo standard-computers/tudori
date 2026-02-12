@@ -39,7 +39,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { ArrowLeft, Plus, Pencil, Trash2, Truck, Route, Users, ArrowRight, Maximize2, Minimize2 } from 'lucide-react';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { Kbd } from '@/components/ui/kbd';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface Carrier {
   id: string;
