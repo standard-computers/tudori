@@ -115,6 +115,7 @@ interface Bin {
   is_production_enabled?: boolean;
   is_hazardous?: boolean;
   allow_put_away?: boolean;
+  allow_picking?: boolean;
 }
 
 interface Delivery {
@@ -2322,6 +2323,9 @@ const [areaFormData, setAreaFormData] = useState({
                         <TableHead>ID</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Description</TableHead>
+                        <TableHead className="text-center">GR</TableHead>
+                        <TableHead className="text-center">GI</TableHead>
+                        <TableHead className="text-center">Production</TableHead>
                         <TableHead className="text-right">Bins</TableHead>
                         <TableHead className="w-20"></TableHead>
                       </TableRow>
@@ -2336,6 +2340,15 @@ const [areaFormData, setAreaFormData] = useState({
                           </TableCell>
                           <TableCell className="font-medium">{area.name}</TableCell>
                           <TableCell className="text-muted-foreground">{area.description || '—'}</TableCell>
+                          <TableCell className="text-center">
+                            <div className={`w-2 h-2 rounded-full mx-auto ${area.is_goods_receipt_enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className={`w-2 h-2 rounded-full mx-auto ${area.is_goods_issue_enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className={`w-2 h-2 rounded-full mx-auto ${area.is_production_enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                          </TableCell>
                           <TableCell className="text-right">{bins.filter(b => b.area_id === area.id).length}</TableCell>
                           <TableCell>
                             <div className="flex gap-1 justify-end">
@@ -2402,6 +2415,10 @@ const [areaFormData, setAreaFormData] = useState({
                         <TableHead>Name</TableHead>
                         <TableHead>Area</TableHead>
                         <TableHead>Capacity</TableHead>
+                        <TableHead className="text-center">Put Away</TableHead>
+                        <TableHead className="text-center">Picking</TableHead>
+                        <TableHead className="text-center">Production</TableHead>
+                        <TableHead className="text-center">Hazardous</TableHead>
                         <TableHead className="w-20"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2418,6 +2435,18 @@ const [areaFormData, setAreaFormData] = useState({
                             <TableCell className="font-medium">{bin.name}</TableCell>
                             <TableCell>{area?.name || '—'}</TableCell>
                             <TableCell className="text-muted-foreground">{bin.capacity || '—'}</TableCell>
+                            <TableCell className="text-center">
+                              <div className={`w-2 h-2 rounded-full mx-auto ${bin.allow_put_away ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className={`w-2 h-2 rounded-full mx-auto ${bin.allow_picking ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className={`w-2 h-2 rounded-full mx-auto ${bin.is_production_enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className={`w-2 h-2 rounded-full mx-auto ${bin.is_hazardous ? 'bg-amber-500' : 'bg-muted-foreground/30'}`} />
+                            </TableCell>
                             <TableCell>
                               <div className="flex gap-1 justify-end">
                                 <Button 
