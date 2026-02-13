@@ -470,7 +470,7 @@ const Inventory = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b">
+      <div>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>

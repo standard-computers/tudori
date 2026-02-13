@@ -397,7 +397,7 @@ const AccountDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b">
+      <div>
         <div className="px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/accounts')}>

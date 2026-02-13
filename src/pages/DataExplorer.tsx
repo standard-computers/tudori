@@ -408,7 +408,7 @@ export default function DataExplorer() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b bg-background h-16 flex items-center px-4 shrink-0">
+      <div className="bg-background h-16 flex items-center px-4 shrink-0">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
