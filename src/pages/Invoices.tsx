@@ -313,7 +313,7 @@ const Invoices = () => {
       </div>
 
       <div>
-        <div className="border rounded-lg">
+        <div className="border rounded-t-lg">
           <Table>
             <TableHeader>
               <TableRow>
