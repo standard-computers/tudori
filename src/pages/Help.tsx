@@ -20,6 +20,7 @@ import {
   ChevronDown,
   GripVertical,
 } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +41,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
-import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import {
   DndContext,
   DragOverlay,
@@ -104,6 +105,11 @@ import {
  
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
+
+  // Ctrl+S to save when editing
+  useSaveShortcut(() => {
+    if (selectedDocument) handleSaveDocument();
+  }, isEditing);
 
    useEffect(() => {
      if (user) {
@@ -591,10 +597,11 @@ import {
                            <X className="h-4 w-4 mr-1" />
                            Cancel
                          </Button>
-                         <Button size="sm" onClick={handleSaveDocument}>
-                           <Save className="h-4 w-4 mr-1" />
-                           Save
-                         </Button>
+                          <Button size="sm" onClick={handleSaveDocument}>
+                            <Save className="h-4 w-4 mr-1" />
+                            Save
+                            <Kbd>⌘S</Kbd>
+                          </Button>
                        </>
                      ) : (
                        <>
