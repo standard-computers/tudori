@@ -207,7 +207,6 @@ const Users = () => {
     setLoading(true);
     setNoCompany(false);
     
-    // Get current user's profile and company
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
@@ -222,7 +221,6 @@ const Users = () => {
 
     setCompanyId(profileData.company_id);
 
-    // Get current user's role
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
@@ -236,7 +234,6 @@ const Users = () => {
     
     setCurrentUserRole(roleData?.role || null);
 
-    // Get all team members with email
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, user_id, first_name, last_name, email')
@@ -247,7 +244,6 @@ const Users = () => {
       .select('user_id, role')
       .eq('company_id', profileData.company_id);
 
-    // Get pending invitations
     const { data: invitationsData } = await supabase
       .from('invitations')
       .select('id, email, role, created_at, expires_at, temp_password')
@@ -272,7 +268,6 @@ const Users = () => {
         role: rolesMap.get(p.user_id) || 'member',
       }));
 
-      // Sort: IT first, then owner, admin, member, viewer
       const roleOrder: Record<string, number> = { it: 0, owner: 1, admin: 2, member: 3, viewer: 4 };
       members.sort((a, b) => (roleOrder[a.role] ?? 5) - (roleOrder[b.role] ?? 5));
 
@@ -289,7 +284,6 @@ const Users = () => {
     setIsDialogOpen(true);
   };
 
-  // Keyboard shortcut for adding new user (only if can manage)
   useKeyboardShortcut('n', openInviteDialog, canManageUsers);
   useTransactionAction('new', openInviteDialog, canManageUsers);
 
@@ -315,7 +309,6 @@ const Users = () => {
     setInviteLoading(true);
 
     try {
-      // Check if email already has a pending invitation
       const { data: existingInvite } = await supabase
         .from('invitations')
         .select('id')
@@ -330,7 +323,6 @@ const Users = () => {
         return;
       }
 
-      // Call edge function to create user with temp password
       const { data, error: fnError } = await supabase.functions.invoke('create-invited-user', {
         body: {
           email: email.toLowerCase(),
@@ -380,12 +372,10 @@ const Users = () => {
   const handleUpdateRole = async (member: TeamMember, newRole: 'admin' | 'member' | 'viewer' | 'it') => {
     if (!companyId) return;
     
-    // Prevent changing owner role
     if (member.role === 'owner') {
       toast.error('Cannot change owner role');
       return;
     }
-    // IT users can edit other IT users, but not themselves
     if (member.user_id === user?.id) {
       toast.error('Cannot change your own role');
       return;
@@ -420,7 +410,6 @@ const Users = () => {
       return;
     }
 
-    // Remove role
     const { error: roleError } = await supabase
       .from('user_roles')
       .delete()
@@ -432,7 +421,6 @@ const Users = () => {
       return;
     }
 
-    // Update profile to remove company association
     await supabase
       .from('profiles')
       .update({ company_id: null })
@@ -572,167 +560,172 @@ const Users = () => {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Role cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          {(['it', 'owner', 'admin', 'member', 'viewer'] as const).map((r) => {
-            const count = teamMembers.filter((m) => m.role === r).length;
-            return (
-              <Card key={r} className="glass-card">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground capitalize">{r}s</p>
-                      <p className="text-2xl font-display font-bold">{count}</p>
-                    </div>
-                    <Badge variant="outline" className={roleColors[r]}>
-                      {r}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+      {/* Main content - Tabbed layout */}
+      <main className="px-4">
+        <Tabs defaultValue="members" className="w-full">
+          <TabsList>
+            <TabsTrigger value="members">Team Members</TabsTrigger>
+            <TabsTrigger value="invitations">
+              Invitations
+              {invitations.length > 0 && (
+                <Badge variant="secondary" className="ml-2 h-5 min-w-5 px-1.5 text-xs">
+                  {invitations.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Pending Invitations */}
-        {invitations.length > 0 && (
-          <Card className="glass-card mb-8">
-            <CardHeader>
-              <CardTitle className="font-display flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Pending Invitations
-              </CardTitle>
-              <CardDescription>Users who have been created but haven't logged in yet. Share the temporary password with them.</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <TabsContent value="members">
+            {/* Role cards */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+              {(['it', 'owner', 'admin', 'member', 'viewer'] as const).map((r) => {
+                const count = teamMembers.filter((m) => m.role === r).length;
+                return (
+                  <Card key={r} className="glass-card">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground capitalize">{r}s</p>
+                          <p className="text-2xl font-display font-bold">{count}</p>
+                        </div>
+                        <Badge variant="outline" className={roleColors[r]}>
+                          {r}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>User</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Temp Password</TableHead>
-                    <TableHead>Invited</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invitations.map((invitation) => (
-                    <InvitationRow
-                      key={invitation.id}
-                      invitation={invitation}
-                      canManageUsers={canManageUsers}
-                      onCancel={handleCancelInvitation}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Team members table */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="font-display">Team Members</CardTitle>
-            <CardDescription>Manage your organization's users and their access levels</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamMembers.map((member) => {
-                  const canEditMember = canManageUsers && member.role !== 'owner' && member.user_id !== user?.id;
-                  return (
-                  <TableRow 
-                    key={member.id} 
-                    className={canEditMember ? 'cursor-pointer hover:bg-muted/50' : ''}
-                    onClick={() => {
-                      if (canEditMember) {
-                        setEditingMember(member);
-                      }
-                    }}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {member.first_name[0]}{member.last_name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{member.first_name} {member.last_name}</p>
-                          {member.user_id === user?.id && (
-                            <p className="text-xs text-muted-foreground">You</p>
+                  {teamMembers.map((member) => {
+                    const canEditMember = canManageUsers && member.role !== 'owner' && member.user_id !== user?.id;
+                    return (
+                    <TableRow 
+                      key={member.id} 
+                      className={canEditMember ? 'cursor-pointer hover:bg-muted/50' : ''}
+                      onClick={() => {
+                        if (canEditMember) {
+                          setEditingMember(member);
+                        }
+                      }}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                              {member.first_name[0]}{member.last_name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{member.first_name} {member.last_name}</p>
+                            {member.user_id === user?.id && (
+                              <p className="text-xs text-muted-foreground">You</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">{member.email || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={roleColors[member.role]}>
+                          {member.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingMember(member);
+                            }}
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {canEditMember && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingMember(member);
+                                }}
+                                title="Edit"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveUser(member);
+                                }}
+                                className="text-destructive hover:text-destructive"
+                                title="Remove"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-muted-foreground">{member.email || '-'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={roleColors[member.role]}>
-                        {member.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewingMember(member);
-                          }}
-                          title="View"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {canEditMember && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingMember(member);
-                              }}
-                              title="Edit"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveUser(member);
-                              }}
-                              className="text-destructive hover:text-destructive"
-                              title="Remove"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                      </TableCell>
+                    </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="invitations">
+            {invitations.length === 0 ? (
+              <div className="border rounded-md flex items-center justify-center h-48 text-muted-foreground">
+                No pending invitations
+              </div>
+            ) : (
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Temp Password</TableHead>
+                      <TableHead>Invited</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invitations.map((invitation) => (
+                      <InvitationRow
+                        key={invitation.id}
+                        invitation={invitation}
+                        canManageUsers={canManageUsers}
+                        onCancel={handleCancelInvitation}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Edit User Dialog */}
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
