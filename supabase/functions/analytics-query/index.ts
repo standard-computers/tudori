@@ -259,8 +259,8 @@ Deno.serve(async (req) => {
     const params: unknown[] = [];
     let paramIndex = 1;
 
-    // Always filter by company_id on base table
-    whereParts.push(`${sanitizeTableName(baseEntity.table)}."company_id" = $${paramIndex}`);
+    // Always filter by company_id on base table (cast to uuid since params are passed as text)
+    whereParts.push(`${sanitizeTableName(baseEntity.table)}."company_id" = $${paramIndex}::uuid`);
     params.push(companyId);
     paramIndex++;
 
@@ -272,15 +272,17 @@ Deno.serve(async (req) => {
 
       const qualifiedCol = `${sanitizeTableName(entity.table)}.${sanitizeIdentifier(field.fieldKey)}`;
       const { operator, value } = field.filter;
+      // Cast to uuid if the field looks like a UUID column
+      const castSuffix = field.fieldKey.endsWith("_id") || field.fieldKey === "id" ? "::uuid" : "";
 
       switch (operator) {
         case "eq":
-          whereParts.push(`${qualifiedCol} = $${paramIndex}`);
+          whereParts.push(`${qualifiedCol} = $${paramIndex}${castSuffix}`);
           params.push(value);
           paramIndex++;
           break;
         case "neq":
-          whereParts.push(`${qualifiedCol} != $${paramIndex}`);
+          whereParts.push(`${qualifiedCol} != $${paramIndex}${castSuffix}`);
           params.push(value);
           paramIndex++;
           break;
