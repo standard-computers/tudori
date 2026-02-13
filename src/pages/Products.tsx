@@ -90,6 +90,7 @@ interface Product {
   id: string;
   product_id: string;
   vendor_id: string | null;
+  vendor_part_number: string | null;
   sku: string | null;
   name: string;
   description: string | null;
@@ -218,6 +219,7 @@ const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: "category", label: "Category", defaultVisible: true },
   { key: "vendor_id", label: "Vendor ID", defaultVisible: true },
   { key: "vendor", label: "Vendor", defaultVisible: true },
+  { key: "vendor_part_number", label: "Vendor Part #", defaultVisible: false },
   { key: "price", label: "Price", defaultVisible: true },
   { key: "unit", label: "Unit", defaultVisible: true },
   { key: "width", label: "Width", defaultVisible: true },
@@ -356,6 +358,17 @@ const ProductTable = ({
                   onSort={handleSort}
                   filterValue={filters["vendors.name"]}
                   onFilter={(value) => setFilter("vendors.name", value)}
+                />
+              )}
+              {isColumnVisible("vendor_part_number") && (
+                <SortableTableHead
+                  label="Vendor Part #"
+                  sortKey="vendor_part_number"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["vendor_part_number"]}
+                  onFilter={(value) => setFilter("vendor_part_number", value)}
                 />
               )}
               {isColumnVisible("price") && (
@@ -497,6 +510,7 @@ const ProductTable = ({
                       <TableCell className="font-mono text-sm">{product.vendors?.vendor_id || "-"}</TableCell>
                     )}
                     {isColumnVisible("vendor") && <TableCell>{product.vendors?.name || "-"}</TableCell>}
+                    {isColumnVisible("vendor_part_number") && <TableCell>{product.vendor_part_number || "-"}</TableCell>}
                     {isColumnVisible("price") && (
                       <TableCell className="text-right">
                         {product.price ? `$${product.price.toFixed(2)}` : "-"}
@@ -619,6 +633,7 @@ const Products = () => {
   const [formData, setFormData] = useState({
     product_id: "",
     vendor_id: "",
+    vendor_part_number: "",
     sku: "",
     name: "",
     description: "",
@@ -1016,9 +1031,10 @@ const Products = () => {
   const resetForm = () => {
     setFormData({
       product_id: nextProductId,
-      vendor_id: "",
-      sku: "",
-      name: "",
+    vendor_id: "",
+    vendor_part_number: "",
+    sku: "",
+    name: "",
       description: "",
       category: "",
       price: "",
@@ -1070,6 +1086,7 @@ const Products = () => {
     setFormData({
       product_id: product.product_id,
       vendor_id: product.vendor_id || "",
+      vendor_part_number: (product as any).vendor_part_number || "",
       sku: product.sku || "",
       name: product.name,
       description: product.description || "",
@@ -1384,6 +1401,7 @@ const Products = () => {
         .from("products")
         .update({
           vendor_id: formData.vendor_id || null,
+          vendor_part_number: formData.vendor_part_number || null,
           sku: formData.sku || null,
           name: formData.name,
           description: formData.description || null,
@@ -1424,6 +1442,7 @@ const Products = () => {
           company_id: companyId!,
           product_id: formData.product_id,
           vendor_id: formData.vendor_id || null,
+          vendor_part_number: formData.vendor_part_number || null,
           sku: formData.sku || null,
           name: formData.name,
           description: formData.description || null,
@@ -1664,6 +1683,7 @@ const Products = () => {
                           setFormData((prev) => ({
                             ...prev,
                             vendor_id: product.vendor_id || "",
+                            vendor_part_number: (product as any).vendor_part_number || "",
                             sku: "", // Don't copy SKU as it should be unique
                             name: product.name,
                             description: product.description || "",
@@ -1832,15 +1852,26 @@ const Products = () => {
                               required
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="vendor_id">Vendor (Supplier)</Label>
-                            <SearchableSelect
-                              options={plainVendorOptions}
-                              value={formData.vendor_id}
-                              onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
-                              placeholder="Select a vendor..."
-                              allowClear
-                            />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="vendor_id">Vendor (Supplier)</Label>
+                              <SearchableSelect
+                                options={plainVendorOptions}
+                                value={formData.vendor_id}
+                                onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                                placeholder="Select a vendor..."
+                                allowClear
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="vendor_part_number">Vendor Part Number</Label>
+                              <Input
+                                id="vendor_part_number"
+                                value={formData.vendor_part_number}
+                                onChange={(e) => setFormData({ ...formData, vendor_part_number: e.target.value })}
+                                placeholder="Vendor's part/catalog #"
+                              />
+                            </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">

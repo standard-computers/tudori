@@ -3256,6 +3256,7 @@ export type Database = {
           unit: string | null
           updated_at: string
           vendor_id: string | null
+          vendor_part_number: string | null
           weight: number | null
           weight_uom: string | null
           width: number | null
@@ -3289,6 +3290,7 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null
+          vendor_part_number?: string | null
           weight?: number | null
           weight_uom?: string | null
           width?: number | null
@@ -3322,6 +3324,7 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           vendor_id?: string | null
+          vendor_part_number?: string | null
           weight?: number | null
           weight_uom?: string | null
           width?: number | null
