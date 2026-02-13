@@ -576,7 +576,7 @@ const Users = () => {
           </TabsList>
 
           <TabsContent value="members">
-            <div className="border rounded-md">
+            <div className="border rounded-t-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -674,11 +674,11 @@ const Users = () => {
 
           <TabsContent value="invitations">
             {invitations.length === 0 ? (
-              <div className="border rounded-md flex items-center justify-center h-48 text-muted-foreground">
+              <div className="border rounded-t-md flex items-center justify-center h-48 text-muted-foreground">
                 No pending invitations
               </div>
             ) : (
-              <div className="border rounded-md">
+              <div className="border rounded-t-md">
                 <Table>
                   <TableHeader>
                     <TableRow>
