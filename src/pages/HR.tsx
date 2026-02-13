@@ -478,7 +478,7 @@ const HR = () => {
           </div>
 
           {directoryTab === 'employees' ? (
-            <div className="border rounded-t-md overflow-hidden">
+            <div className="overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -553,7 +553,7 @@ const HR = () => {
               </Table>
             </div>
           ) : (
-            <div className="border rounded-t-md overflow-hidden">
+            <div className="overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
