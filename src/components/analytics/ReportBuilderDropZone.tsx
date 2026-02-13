@@ -5,9 +5,16 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ReportField } from "./types";
+import { ReportField, AggregateFunction } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { X, GripVertical, Filter, Hash, Calendar, ToggleLeft, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +22,7 @@ interface ReportBuilderDropZoneProps {
   fields: ReportField[];
   onRemoveField: (id: string) => void;
   onFieldClick: (field: ReportField) => void;
+  onAggregateChange: (fieldId: string, aggregate: AggregateFunction) => void;
 }
 
 const getFieldIcon = (type: ReportField["fieldType"]) => {
@@ -30,14 +38,32 @@ const getFieldIcon = (type: ReportField["fieldType"]) => {
   }
 };
 
+const aggregateOptions: { value: AggregateFunction; label: string }[] = [
+  { value: "none", label: "Raw" },
+  { value: "count", label: "COUNT" },
+  { value: "count_distinct", label: "COUNT DISTINCT" },
+  { value: "sum", label: "SUM" },
+  { value: "avg", label: "AVG" },
+  { value: "min", label: "MIN" },
+  { value: "max", label: "MAX" },
+];
+
+const getAggregateOptionsForType = (type: ReportField["fieldType"]) => {
+  if (type === "number") return aggregateOptions;
+  if (type === "date") return aggregateOptions.filter(o => ["none", "count", "count_distinct", "min", "max"].includes(o.value));
+  return aggregateOptions.filter(o => ["none", "count", "count_distinct"].includes(o.value));
+};
+
 const SortableField = ({
   field,
   onRemove,
   onClick,
+  onAggregateChange,
 }: {
   field: ReportField;
   onRemove: () => void;
   onClick: () => void;
+  onAggregateChange: (aggregate: AggregateFunction) => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: field.id,
@@ -49,6 +75,7 @@ const SortableField = ({
   };
 
   const Icon = getFieldIcon(field.fieldType);
+  const aggOptions = getAggregateOptionsForType(field.fieldType);
 
   return (
     <div
@@ -69,11 +96,28 @@ const SortableField = ({
       <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
       <button
         onClick={onClick}
-        className="flex-1 text-left text-sm hover:text-primary transition-colors"
+        className="flex-1 text-left text-sm hover:text-primary transition-colors min-w-0"
       >
-        <span className="font-medium">{field.fieldLabel}</span>
-        <span className="text-muted-foreground ml-1">({field.entityName})</span>
+        <span className="font-medium truncate">{field.fieldLabel}</span>
+        <span className="text-muted-foreground ml-1 text-xs">({field.entityName})</span>
       </button>
+      {aggOptions.length > 1 && (
+        <Select
+          value={field.aggregate || "none"}
+          onValueChange={(v) => onAggregateChange(v as AggregateFunction)}
+        >
+          <SelectTrigger className="h-7 w-[100px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {aggOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
       {field.filter && (
         <Badge variant="secondary" className="text-xs">
           <Filter className="h-3 w-3 mr-1" />
@@ -99,6 +143,7 @@ export const ReportBuilderDropZone = ({
   fields,
   onRemoveField,
   onFieldClick,
+  onAggregateChange,
 }: ReportBuilderDropZoneProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id: "report-drop-zone",
@@ -115,7 +160,7 @@ export const ReportBuilderDropZone = ({
     >
       {fields.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center">
-          Drag fields from the sidebar here to build your report
+          Drag fields from any data object to build your report. Related tables are joined automatically.
         </p>
       ) : (
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
@@ -126,6 +171,7 @@ export const ReportBuilderDropZone = ({
                 field={field}
                 onRemove={() => onRemoveField(field.id)}
                 onClick={() => onFieldClick(field)}
+                onAggregateChange={(agg) => onAggregateChange(field.id, agg)}
               />
             ))}
           </div>
