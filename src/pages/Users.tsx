@@ -811,51 +811,59 @@ const Users = () => {
               </DialogDescription>
             </DialogHeader>
             <DialogBody>
-              <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="general">General</TabsTrigger>
-                  <TabsTrigger value="access">Transaction Access</TabsTrigger>
-                </TabsList>
-                <TabsContent value="general" className="mt-4 space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {viewingMember?.first_name[0]}{viewingMember?.last_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{viewingMember?.first_name} {viewingMember?.last_name}</p>
-                      <Badge variant="outline" className={viewingMember ? roleColors[viewingMember.role] : ''}>
-                        {viewingMember?.role}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Role Description</Label>
-                    <p className="text-sm">
-                      {viewingMember && roleDescriptions[viewingMember.role]}
-                    </p>
-                  </div>
-                  {(() => {
-                    const matchingInvitation = viewingMember && canManageUsers
-                      ? invitations.find((inv) => inv.email === viewingMember.email)
-                      : null;
-                    if (!matchingInvitation?.temp_password) return null;
-                    return (
-                      <ViewUserPasswordSection invitation={matchingInvitation} />
-                    );
-                  })()}
-                </TabsContent>
-                <TabsContent value="access" className="mt-4">
-                  {viewingMember && companyId && (
-                    <TransactionAccessTab 
-                      userId={viewingMember.user_id} 
-                      companyId={companyId}
-                      readOnly={true}
-                    />
-                  )}
-                </TabsContent>
-              </Tabs>
+              {(() => {
+                const matchingInvitation = viewingMember && canManageUsers
+                  ? invitations.find((inv) => inv.email === viewingMember.email)
+                  : null;
+                const hasInvitation = !!matchingInvitation?.temp_password;
+                const tabCount = hasInvitation ? 3 : 2;
+                return (
+                  <Tabs defaultValue="general" className="w-full">
+                    <TabsList className={`grid w-full grid-cols-${tabCount}`}>
+                      <TabsTrigger value="general">General</TabsTrigger>
+                      <TabsTrigger value="access">Transaction Access</TabsTrigger>
+                      {hasInvitation && (
+                        <TabsTrigger value="invitation">Invitation</TabsTrigger>
+                      )}
+                    </TabsList>
+                    <TabsContent value="general" className="mt-4 space-y-4">
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {viewingMember?.first_name[0]}{viewingMember?.last_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{viewingMember?.first_name} {viewingMember?.last_name}</p>
+                          <Badge variant="outline" className={viewingMember ? roleColors[viewingMember.role] : ''}>
+                            {viewingMember?.role}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">Role Description</Label>
+                        <p className="text-sm">
+                          {viewingMember && roleDescriptions[viewingMember.role]}
+                        </p>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="access" className="mt-4">
+                      {viewingMember && companyId && (
+                        <TransactionAccessTab 
+                          userId={viewingMember.user_id} 
+                          companyId={companyId}
+                          readOnly={true}
+                        />
+                      )}
+                    </TabsContent>
+                    {hasInvitation && (
+                      <TabsContent value="invitation" className="mt-4">
+                        <ViewUserPasswordSection invitation={matchingInvitation!} />
+                      </TabsContent>
+                    )}
+                  </Tabs>
+                );
+              })()}
             </DialogBody>
             <DialogFooter>
             </DialogFooter>
