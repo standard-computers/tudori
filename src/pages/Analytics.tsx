@@ -34,16 +34,20 @@ import {
   FileText,
   Save,
   X,
+  Calculator,
+  Link2,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { cn } from "@/lib/utils";
-import { entities } from "@/components/analytics/entities";
+import { entities, canReachEntity } from "@/components/analytics/entities";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
-import { ReportTab, ReportField, SavedReport, FieldFilter, EntityField } from "@/components/analytics/types";
+import { ReportTab, ReportField, SavedReport, FieldFilter, EntityField, AggregateFunction, CalculatedColumn } from "@/components/analytics/types";
 import { DraggableField } from "@/components/analytics/DraggableField";
 import { DraggableEntity } from "@/components/analytics/DraggableEntity";
 import { ReportBuilderDropZone } from "@/components/analytics/ReportBuilderDropZone";
 import { FieldFilterDialog } from "@/components/analytics/FieldFilterDialog";
+import { CalculatedColumnsDialog } from "@/components/analytics/CalculatedColumnsDialog";
+import { Badge } from "@/components/ui/badge";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -65,6 +69,9 @@ const Analytics = () => {
   // Filter dialog state
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<ReportField | null>(null);
+
+  // Calculated columns dialog
+  const [calcDialogOpen, setCalcDialogOpen] = useState(false);
 
   // Query state
   const [rowLimit, setRowLimit] = useState<string>("100");
@@ -101,14 +108,14 @@ const Analytics = () => {
   };
 
   const loadSavedReports = () => {
-    const stored = localStorage.getItem(`analytics_reports_v2_${user!.id}`);
+    const stored = localStorage.getItem(`analytics_reports_v3_${user!.id}`);
     if (stored) {
       setSavedReports(JSON.parse(stored));
     }
   };
 
   const saveReportsToStorage = (reports: SavedReport[]) => {
-    localStorage.setItem(`analytics_reports_v2_${user!.id}`, JSON.stringify(reports));
+    localStorage.setItem(`analytics_reports_v3_${user!.id}`, JSON.stringify(reports));
     setSavedReports(reports);
   };
 
@@ -131,8 +138,9 @@ const Analytics = () => {
       id: crypto.randomUUID(),
       name: "New Report",
       isNew: true,
-      entity: "",
+      entities: [],
       fields: [],
+      calculatedColumns: [],
       results: [],
     };
     setTabs([...tabs, newTab]);
@@ -148,7 +156,6 @@ const Analytics = () => {
   };
 
   const handleSelectReport = (report: SavedReport) => {
-    // Check if already open
     const existingTab = tabs.find((t) => !t.isNew && t.id === report.id);
     if (existingTab) {
       setActiveTabId(existingTab.id);
@@ -159,8 +166,9 @@ const Analytics = () => {
       id: report.id,
       name: report.name,
       isNew: false,
-      entity: report.entity,
+      entities: report.entities,
       fields: report.fields,
+      calculatedColumns: report.calculatedColumns || [],
       results: [],
     };
     setTabs([...tabs, newTab]);
@@ -199,9 +207,9 @@ const Analytics = () => {
       if (activeData && "field" in activeData && !activeTab.fields.some((f) => f.id === active.id)) {
         const { entityName, field } = activeData as { entityName: string; field: EntityField };
 
-        // Check if entity matches or is first field
-        if (activeTab.fields.length > 0 && activeTab.entity !== entityName) {
-          toast.error("All fields must be from the same data object");
+        // Check if entity can be reached from existing entities
+        if (activeTab.entities.length > 0 && !canReachEntity(activeTab.entities, entityName)) {
+          toast.error(`Cannot join "${entityName}" with the current report entities. No relationship found.`);
           return;
         }
 
@@ -211,10 +219,15 @@ const Analytics = () => {
           fieldKey: field.key,
           fieldLabel: field.label,
           fieldType: field.type,
+          aggregate: "none",
         };
 
+        const newEntities = activeTab.entities.includes(entityName)
+          ? activeTab.entities
+          : [...activeTab.entities, entityName];
+
         updateActiveTab({
-          entity: entityName,
+          entities: newEntities,
           fields: [...activeTab.fields, newField],
         });
         return;
@@ -224,25 +237,29 @@ const Analytics = () => {
       if (activeData && "isEntity" in activeData) {
         const { entity } = activeData as { isEntity: boolean; entity: typeof entities[0] };
 
-        if (activeTab.fields.length > 0 && activeTab.entity !== entity.name) {
-          toast.error("All fields must be from the same data object");
+        if (activeTab.entities.length > 0 && !canReachEntity(activeTab.entities, entity.name)) {
+          toast.error(`Cannot join "${entity.name}" with the current report entities. No relationship found.`);
           return;
         }
 
         const newFields: ReportField[] = entity.fields.map((field) => ({
-          id: `${entity.name}-${field.key}-${Date.now()}`,
+          id: `${entity.name}-${field.key}-${Date.now()}-${Math.random()}`,
           entityName: entity.name,
           fieldKey: field.key,
           fieldLabel: field.label,
           fieldType: field.type,
+          aggregate: "none" as AggregateFunction,
         }));
 
-        // Filter out fields that already exist
-        const existingKeys = new Set(activeTab.fields.map((f) => f.fieldKey));
-        const fieldsToAdd = newFields.filter((f) => !existingKeys.has(f.fieldKey));
+        const existingKeys = new Set(activeTab.fields.map((f) => `${f.entityName}-${f.fieldKey}`));
+        const fieldsToAdd = newFields.filter((f) => !existingKeys.has(`${f.entityName}-${f.fieldKey}`));
+
+        const newEntities = activeTab.entities.includes(entity.name)
+          ? activeTab.entities
+          : [...activeTab.entities, entity.name];
 
         updateActiveTab({
-          entity: entity.name,
+          entities: newEntities,
           fields: [...activeTab.fields, ...fieldsToAdd],
         });
         return;
@@ -263,9 +280,11 @@ const Analytics = () => {
   const handleRemoveField = (fieldId: string) => {
     if (!activeTab) return;
     const newFields = activeTab.fields.filter((f) => f.id !== fieldId);
+    // Recalculate entities from remaining fields
+    const newEntities = [...new Set(newFields.map((f) => f.entityName))];
     updateActiveTab({
       fields: newFields,
-      entity: newFields.length === 0 ? "" : activeTab.entity,
+      entities: newEntities,
     });
   };
 
@@ -283,6 +302,19 @@ const Analytics = () => {
     });
   };
 
+  const handleAggregateChange = (fieldId: string, aggregate: AggregateFunction) => {
+    if (!activeTab) return;
+    updateActiveTab({
+      fields: activeTab.fields.map((f) =>
+        f.id === fieldId ? { ...f, aggregate } : f
+      ),
+    });
+  };
+
+  const handleSaveCalculatedColumns = (columns: CalculatedColumn[]) => {
+    updateActiveTab({ calculatedColumns: columns });
+  };
+
   const handleSaveReport = () => {
     if (!activeTab) return;
     if (!activeTab.name.trim() || activeTab.name === "New Report") {
@@ -297,8 +329,9 @@ const Analytics = () => {
     const report: SavedReport = {
       id: activeTab.isNew ? crypto.randomUUID() : activeTab.id,
       name: activeTab.name,
-      entity: activeTab.entity,
+      entities: activeTab.entities,
       fields: activeTab.fields,
+      calculatedColumns: activeTab.calculatedColumns,
       createdAt: new Date().toISOString(),
     };
 
@@ -311,7 +344,6 @@ const Analytics = () => {
     saveReportsToStorage(newReports);
     toast.success("Report saved");
 
-    // Update tab to reflect saved state
     setTabs((prev) =>
       prev.map((t) =>
         t.id === activeTabId ? { ...t, id: report.id, isNew: false } : t
@@ -320,73 +352,64 @@ const Analytics = () => {
     setActiveTabId(report.id);
   };
 
-  const currentEntity = entities.find((e) => e.name === activeTab?.entity);
-
   const handleRunQuery = async () => {
-    if (!activeTab || !currentEntity || activeTab.fields.length === 0 || !companyId) {
+    if (!activeTab || activeTab.fields.length === 0 || !companyId) {
       toast.error("Please add fields to query");
       return;
     }
 
     setIsLoading(true);
     try {
-      // Build query with filters - use explicit typing to avoid TS recursion issues
-      const selectFields = activeTab.fields.map((f) => f.fieldKey).join(",");
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let queryBuilder = (supabase as any)
-        .from(currentEntity.table)
-        .select(selectFields)
-        .eq("company_id", companyId)
-        .limit(parseInt(rowLimit));
+      // Build entity definitions for the edge function
+      const usedEntityNames = [...new Set(activeTab.fields.map((f) => f.entityName))];
+      const entityDefs = usedEntityNames.map((name) => {
+        const entity = entities.find((e) => e.name === name)!;
+        return {
+          name: entity.name,
+          table: entity.table,
+          primaryKey: entity.primaryKey,
+          relationships: entity.relationships,
+        };
+      });
 
-      // Apply filters
-      for (const field of activeTab.fields) {
-        if (field.filter) {
-          const { operator, value } = field.filter;
-          const key = field.fieldKey;
-          
-          switch (operator) {
-            case "eq":
-              queryBuilder = queryBuilder.eq(key, value);
-              break;
-            case "neq":
-              queryBuilder = queryBuilder.neq(key, value);
-              break;
-            case "gt":
-              queryBuilder = queryBuilder.gt(key, value);
-              break;
-            case "gte":
-              queryBuilder = queryBuilder.gte(key, value);
-              break;
-            case "lt":
-              queryBuilder = queryBuilder.lt(key, value);
-              break;
-            case "lte":
-              queryBuilder = queryBuilder.lte(key, value);
-              break;
-            case "like":
-              queryBuilder = queryBuilder.like(key, `%${value}%`);
-              break;
-            case "ilike":
-              queryBuilder = queryBuilder.ilike(key, `%${value}%`);
-              break;
-            case "is_null":
-              queryBuilder = queryBuilder.is(key, null);
-              break;
-            case "not_null":
-              queryBuilder = queryBuilder.not(key, "is", null);
-              break;
-          }
-        }
+      const payload = {
+        fields: activeTab.fields.map((f) => ({
+          entityName: f.entityName,
+          fieldKey: f.fieldKey,
+          fieldLabel: f.fieldLabel,
+          fieldType: f.fieldType,
+          aggregate: f.aggregate || "none",
+          filter: f.filter ? { operator: f.filter.operator, value: f.filter.value } : undefined,
+        })),
+        calculatedColumns: activeTab.calculatedColumns.map((c) => ({
+          name: c.name,
+          expression: c.expression,
+        })),
+        entities: entityDefs,
+        limit: parseInt(rowLimit),
+        companyId,
+      };
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const response = await supabase.functions.invoke("analytics-query", {
+        body: payload,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Query failed");
       }
 
-      const { data, error } = await queryBuilder;
+      const result = response.data;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      if (error) throw error;
-
-      updateActiveTab({ results: (data as Record<string, unknown>[]) || [] });
-      toast.success(`Retrieved ${data?.length || 0} rows`);
+      const rows = result.data || [];
+      updateActiveTab({ results: rows as Record<string, unknown>[] });
+      toast.success(`Retrieved ${rows.length} rows`);
     } catch (error) {
       console.error("Query error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to run query");
@@ -403,6 +426,34 @@ const Analytics = () => {
       return new Date(value).toLocaleDateString();
     }
     return String(value);
+  };
+
+  // Get result column keys from the first result row
+  const getResultColumns = () => {
+    if (!activeTab || activeTab.results.length === 0) return [];
+    return Object.keys(activeTab.results[0]);
+  };
+
+  const getColumnLabel = (key: string): string => {
+    // Keys come back as "table__field" from the edge function
+    const parts = key.split("__");
+    if (parts.length === 2) {
+      const [table, fieldKey] = parts;
+      const entity = entities.find((e) => e.table === table);
+      if (entity) {
+        const field = entity.fields.find((f) => f.key === fieldKey);
+        if (field) {
+          const matchingReportField = activeTab?.fields.find(
+            (f) => f.entityName === entity.name && f.fieldKey === fieldKey
+          );
+          const aggLabel = matchingReportField?.aggregate && matchingReportField.aggregate !== "none"
+            ? ` (${matchingReportField.aggregate.toUpperCase()})`
+            : "";
+          return `${field.label}${aggLabel}`;
+        }
+      }
+    }
+    return key;
   };
 
   if (loading) {
@@ -430,6 +481,15 @@ const Analytics = () => {
         return null;
       })()
     : null;
+
+  // Determine which entities can be added based on relationships
+  const reachableEntities = activeTab
+    ? entities.filter((e) => canReachEntity(activeTab.entities, e.name))
+    : entities;
+
+  const unreachableEntities = activeTab
+    ? entities.filter((e) => !canReachEntity(activeTab.entities, e.name))
+    : [];
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -530,7 +590,8 @@ const Analytics = () => {
                 </h3>
               </div>
               <div className="px-2 pb-4">
-                {entities.map((entity) => (
+                {/* Reachable entities */}
+                {reachableEntities.map((entity) => (
                   <Collapsible
                     key={entity.name}
                     open={expandedEntities.has(entity.name)}
@@ -543,9 +604,30 @@ const Analytics = () => {
                         <ChevronRight className="h-4 w-4 shrink-0" />
                       )}
                       <DraggableEntity entity={entity} />
+                      {activeTab?.entities.includes(entity.name) && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-auto">
+                          In use
+                        </Badge>
+                      )}
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <div className="ml-6 pl-2 border-l">
+                        {entity.relationships.length > 0 && (
+                          <div className="py-1 mb-1">
+                            <div className="flex flex-wrap gap-1">
+                              {entity.relationships.map((rel) => (
+                                <Badge
+                                  key={rel.targetEntity}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  <Link2 className="h-2.5 w-2.5 mr-0.5" />
+                                  {rel.label}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {entity.fields.map((field) => {
                           const isSelected = activeTab?.fields.some(
                             (f) => f.entityName === entity.name && f.fieldKey === field.key
@@ -563,6 +645,45 @@ const Analytics = () => {
                     </CollapsibleContent>
                   </Collapsible>
                 ))}
+
+                {/* Unreachable entities (dimmed) */}
+                {unreachableEntities.length > 0 && activeTab && activeTab.entities.length > 0 && (
+                  <>
+                    <div className="px-2 py-2 mt-2 border-t">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        No direct relationship
+                      </span>
+                    </div>
+                    {unreachableEntities.map((entity) => (
+                      <Collapsible
+                        key={entity.name}
+                        open={expandedEntities.has(entity.name)}
+                        onOpenChange={() => toggleEntity(entity.name)}
+                      >
+                        <CollapsibleTrigger className="flex items-center gap-1 w-full px-2 py-1.5 rounded-md text-left opacity-40">
+                          {expandedEntities.has(entity.name) ? (
+                            <ChevronDown className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 shrink-0" />
+                          )}
+                          <DraggableEntity entity={entity} />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="ml-6 pl-2 border-l opacity-40">
+                            {entity.fields.map((field) => (
+                              <div
+                                key={field.key}
+                                className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
+                              >
+                                <span className="truncate">{field.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+                  </>
+                )}
               </div>
             </ScrollArea>
           </div>
@@ -573,23 +694,36 @@ const Analytics = () => {
               <div className="flex-1 p-4 overflow-auto">
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Input
                         value={activeTab.name}
                         onChange={(e) => updateActiveTab({ name: e.target.value })}
                         className="text-base font-semibold h-8 w-auto max-w-xs"
                         placeholder="Report name..."
                       />
-                    </CardTitle>
+                      {activeTab.entities.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          {activeTab.entities.map((entityName, idx) => (
+                            <span key={entityName} className="flex items-center">
+                              {idx > 0 && <Link2 className="h-3 w-3 mx-1 text-muted-foreground" />}
+                              <Badge variant="outline" className="text-xs">
+                                {entityName}
+                              </Badge>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ReportBuilderDropZone
                       fields={activeTab.fields}
                       onRemoveField={handleRemoveField}
                       onFieldClick={handleFieldClick}
+                      onAggregateChange={handleAggregateChange}
                     />
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap">
                       <div className="flex items-center gap-2">
                         <Label className="text-sm">Limit:</Label>
                         <Select value={rowLimit} onValueChange={setRowLimit}>
@@ -604,13 +738,27 @@ const Analytics = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCalcDialogOpen(true)}
+                        disabled={activeTab.entities.length === 0}
+                      >
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Calculated Columns
+                        {activeTab.calculatedColumns.length > 0 && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            {activeTab.calculatedColumns.length}
+                          </Badge>
+                        )}
+                      </Button>
                       <div className="flex-1" />
                       <Button
                         onClick={handleRunQuery}
                         disabled={activeTab.fields.length === 0 || isLoading}
                       >
                         <Play className="h-4 w-4 mr-2" />
-                        Run Query
+                        {isLoading ? "Running..." : "Run Query"}
                       </Button>
                       <Button onClick={handleSaveReport} variant="outline">
                         <Save className="h-4 w-4 mr-2" />
@@ -630,26 +778,28 @@ const Analytics = () => {
                     </CardHeader>
                     <CardContent className="p-0">
                       <div className="overflow-auto max-h-[400px]">
-                        <Table>
-                          <TableHeader className="sticky top-0 bg-background">
-                            <TableRow>
-                              {activeTab.fields.map((field) => (
-                                <TableHead key={field.id}>{field.fieldLabel}</TableHead>
+                        <table className="w-full caption-bottom text-sm">
+                          <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                            <tr className="border-b">
+                              {getResultColumns().map((col) => (
+                                <th key={col} className="h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap">
+                                  {getColumnLabel(col)}
+                                </th>
                               ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
+                            </tr>
+                          </thead>
+                          <tbody>
                             {activeTab.results.map((row, idx) => (
-                              <TableRow key={idx}>
-                                {activeTab.fields.map((field) => (
-                                  <TableCell key={field.id}>
-                                    {formatValue(row[field.fieldKey])}
-                                  </TableCell>
+                              <tr key={idx} className="border-b">
+                                {getResultColumns().map((col) => (
+                                  <td key={col} className="p-4 align-middle whitespace-nowrap">
+                                    {formatValue(row[col])}
+                                  </td>
                                 ))}
-                              </TableRow>
+                              </tr>
                             ))}
-                          </TableBody>
-                        </Table>
+                          </tbody>
+                        </table>
                       </div>
                     </CardContent>
                   </Card>
@@ -698,6 +848,15 @@ const Analytics = () => {
         onOpenChange={setFilterDialogOpen}
         field={selectedField}
         onSave={handleSaveFilter}
+      />
+
+      {/* Calculated Columns Dialog */}
+      <CalculatedColumnsDialog
+        open={calcDialogOpen}
+        onOpenChange={setCalcDialogOpen}
+        columns={activeTab?.calculatedColumns || []}
+        onSave={handleSaveCalculatedColumns}
+        activeEntities={activeTab?.entities || []}
       />
     </DndContext>
   );

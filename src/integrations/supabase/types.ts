@@ -4609,6 +4609,10 @@ export type Database = {
         }
         Returns: Json
       }
+      execute_analytics_query: {
+        Args: { query_params?: Json; query_text: string }
+        Returns: Json
+      }
       generate_assignment_id: {
         Args: { p_company_id: string }
         Returns: string
