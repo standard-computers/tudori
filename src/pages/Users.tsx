@@ -576,28 +576,6 @@ const Users = () => {
           </TabsList>
 
           <TabsContent value="members">
-            {/* Role cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-              {(['it', 'owner', 'admin', 'member', 'viewer'] as const).map((r) => {
-                const count = teamMembers.filter((m) => m.role === r).length;
-                return (
-                  <Card key={r} className="glass-card">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground capitalize">{r}s</p>
-                          <p className="text-2xl font-display font-bold">{count}</p>
-                        </div>
-                        <Badge variant="outline" className={roleColors[r]}>
-                          {r}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
             <div className="border rounded-md">
               <Table>
                 <TableHeader>
