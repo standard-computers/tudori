@@ -7,6 +7,7 @@ import { ColumnToggle } from "@/components/ColumnToggle";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { useExcel } from "@/hooks/use-excel";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -427,7 +428,14 @@ const Locations = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
-  const { exportToExcel } = useExcel();
+  const { exportToExcel, readExcel } = useExcel();
+
+  // Import progress state
+  const [importProgressOpen, setImportProgressOpen] = useState(false);
+  const [importTotalRows, setImportTotalRows] = useState(0);
+  const [importProcessedRows, setImportProcessedRows] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
 
   // Column visibility
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } =
@@ -1005,6 +1013,141 @@ const Locations = () => {
     toast.success(`Exported ${exportData.length} locations`);
   }, [locations, exportToExcel]);
 
+  const handleDownloadTemplate = useCallback(async () => {
+    const templateData = [
+      {
+        "Name": "Example Warehouse",
+        "Type": "Warehouse",
+        "Address": "123 Main St",
+        "Address Line 2": "Suite 100",
+        "City": "New York",
+        "State": "NY",
+        "Postal Code": "10001",
+        "Country": "United States",
+        "Status": "Active",
+        "Payment Terms": "30",
+        "Internal Vendor": "Yes",
+        "POS Enabled": "No",
+        "Production Enabled": "No",
+      },
+    ];
+
+    await exportToExcel(
+      templateData,
+      "locations_import_template.xlsx",
+      "Locations",
+      [
+        { header: "Name", key: "Name", width: 25 },
+        { header: "Type", key: "Type", width: 20 },
+        { header: "Address", key: "Address", width: 30 },
+        { header: "Address Line 2", key: "Address Line 2", width: 20 },
+        { header: "City", key: "City", width: 15 },
+        { header: "State", key: "State", width: 10 },
+        { header: "Postal Code", key: "Postal Code", width: 12 },
+        { header: "Country", key: "Country", width: 15 },
+        { header: "Status", key: "Status", width: 10 },
+        { header: "Payment Terms", key: "Payment Terms", width: 15 },
+        { header: "Internal Vendor", key: "Internal Vendor", width: 15 },
+        { header: "POS Enabled", key: "POS Enabled", width: 12 },
+        { header: "Production Enabled", key: "Production Enabled", width: 15 },
+      ],
+    );
+    toast.success("Template downloaded");
+  }, [exportToExcel]);
+
+  const handleImport = useCallback(async (file: File) => {
+    if (!companyId) return;
+
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error("No data found in file");
+        return;
+      }
+
+      const requiredCols = ["Name", "Address", "City", "State", "Postal Code", "Country"];
+      const headers = Object.keys(rows[0]);
+      const missing = requiredCols.filter((c) => !headers.includes(c));
+      if (missing.length > 0) {
+        toast.error(`Missing required columns: ${missing.join(", ")}`);
+        return;
+      }
+
+      setImportTotalRows(rows.length);
+      setImportProcessedRows(0);
+      setImportResults([]);
+      setImportComplete(false);
+      setImportProgressOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+
+        try {
+          const name = row["Name"]?.toString().trim();
+          if (!name) {
+            results.push({ row: rowNum, status: "error", message: "Name is required" });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          const { data: nextId, error: idError } = await supabase.rpc("get_next_location_id", {
+            p_company_id: companyId,
+          });
+          if (idError) throw idError;
+
+          const yesValues = ["yes", "y", "true", "1"];
+          const paymentTerms = row["Payment Terms"] ? parseInt(row["Payment Terms"].toString(), 10) : null;
+
+          const { error: insertError } = await supabase.from("locations").insert({
+            company_id: companyId,
+            location_id: nextId,
+            name,
+            type: row["Type"]?.toString().trim() || "Office",
+            address_line1: row["Address"]?.toString().trim() || "",
+            address_line2: row["Address Line 2"]?.toString().trim() || null,
+            city: row["City"]?.toString().trim() || "",
+            state: row["State"]?.toString().trim() || "",
+            postal_code: row["Postal Code"]?.toString().trim() || "",
+            country: row["Country"]?.toString().trim() || "United States",
+            status: row["Status"]?.toString().trim() || "Active",
+            payment_terms: isNaN(paymentTerms as number) ? null : paymentTerms,
+            is_internal_vendor: yesValues.includes(
+              (row["Internal Vendor"] || "yes").toString().toLowerCase().trim()
+            ),
+            is_pos_enabled: yesValues.includes(
+              (row["POS Enabled"] || "no").toString().toLowerCase().trim()
+            ),
+            is_production_enabled: yesValues.includes(
+              (row["Production Enabled"] || "no").toString().toLowerCase().trim()
+            ),
+          });
+
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: "success", message: `Created "${name}" (${nextId})` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: "error", message: err.message || "Unknown error" });
+        }
+
+        setImportResults([...results]);
+        setImportProcessedRows(i + 1);
+      }
+
+      setImportComplete(true);
+      const successCount = results.filter((r) => r.status === "success").length;
+      if (successCount > 0) {
+        toast.success(`Imported ${successCount} of ${rows.length} locations`);
+        fetchLocations();
+        fetchNextLocationId();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to read file");
+    }
+  }, [companyId, readExcel]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1044,6 +1187,8 @@ const Locations = () => {
                 exportEnabled={isExportEnabled("location")}
                 entityName="Locations"
                 onExport={handleExport}
+                onImport={handleImport}
+                onDownloadTemplate={handleDownloadTemplate}
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -1496,6 +1641,15 @@ const Locations = () => {
         fields={LOCATION_QUERY_FIELDS}
         title="Load Locations"
         loading={queryLoading}
+      />
+      <ImportProgressDialog
+        open={importProgressOpen}
+        onOpenChange={setImportProgressOpen}
+        title="Importing Locations"
+        totalRows={importTotalRows}
+        processedRows={importProcessedRows}
+        results={importResults}
+        isComplete={importComplete}
       />
     </div>
   );
