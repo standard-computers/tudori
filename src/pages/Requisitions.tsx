@@ -1154,7 +1154,7 @@ const Requisitions = () => {
         loading={queryLoading}
       />
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">

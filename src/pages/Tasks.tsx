@@ -535,7 +535,7 @@ const Tasks = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
+      <header className="bg-card">
         <div className="px-4">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-4">

@@ -973,7 +973,7 @@ const Transportation = () => {
   return (
     <div className="min-h-screen bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="h-16 px-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
