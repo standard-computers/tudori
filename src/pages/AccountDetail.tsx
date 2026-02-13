@@ -464,7 +464,7 @@ const AccountDetail = () => {
           />
         </div>
 
-        <div className="border rounded-t-lg">
+        <div>
           <Table>
             <TableHeader>
               <TableRow>

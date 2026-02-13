@@ -576,7 +576,7 @@ const Users = () => {
           </TabsList>
 
           <TabsContent value="members">
-            <div className="border rounded-t-md">
+            <div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -678,7 +678,7 @@ const Users = () => {
                 No pending invitations
               </div>
             ) : (
-              <div className="border rounded-t-md">
+              <div>
                 <Table>
                   <TableHeader>
                     <TableRow>
