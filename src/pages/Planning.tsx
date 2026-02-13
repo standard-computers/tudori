@@ -952,7 +952,7 @@ const Planning = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <header className="border-b bg-background sticky top-0 z-20">
+      <header className="bg-background sticky top-0 z-20">
         <div className="h-16 flex items-center px-4">
           <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2">
             <ArrowLeft className="w-4 h-4" />

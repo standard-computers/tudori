@@ -188,7 +188,7 @@ const POS = () => {
   if (locations.length === 0 && companyId) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
+        <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
           <div className="px-4">
             <div className="flex items-center gap-4 h-14">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -216,7 +216,7 @@ const POS = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
+      <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
         <div className="px-4">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-4">
