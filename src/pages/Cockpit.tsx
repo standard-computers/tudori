@@ -1698,7 +1698,7 @@ const [areaFormData, setAreaFormData] = useState({
       <div className="flex flex-1 h-[calc(100vh-4rem)]">
         {/* Vertical Sidebar */}
         <aside className={cn(
-          "border-r border-border bg-card/30 flex-shrink-0 flex flex-col transition-all duration-200",
+          "bg-card/30 flex-shrink-0 flex flex-col transition-all duration-200",
           sidebarCollapsed ? "w-14" : "w-56"
         )}>
           <TooltipProvider delayDuration={0}>
