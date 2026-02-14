@@ -282,11 +282,16 @@ const [areaFormData, setAreaFormData] = useState({
 
   // Receiving tasks state
   const [isCreatingReceiveTasks, setIsCreatingReceiveTasks] = useState(false);
+  const [isReceiveTaskPreviewOpen, setIsReceiveTaskPreviewOpen] = useState(false);
+  const [receiveTaskPreviewList, setReceiveTaskPreviewList] = useState<{ title: string; description: string }[]>([]);
+  const [receiveTaskDelivery, setReceiveTaskDelivery] = useState<Delivery | null>(null);
+  const [receiveTaskPayloads, setReceiveTaskPayloads] = useState<any[]>([]);
+  const [isLoadingReceivePreview, setIsLoadingReceivePreview] = useState(false);
 
-  // Create receiving tasks for a delivery (one per package, or one for all items if unpacked)
-  const handleCreateReceiveTasks = async (delivery: Delivery) => {
+  // Preview receiving tasks before creating
+  const handlePreviewReceiveTasks = async (delivery: Delivery) => {
     if (!companyId || !selectedLocationId || !user) return;
-    setIsCreatingReceiveTasks(true);
+    setIsLoadingReceivePreview(true);
     try {
       // Check if tasks already exist for this delivery
       const { count: existingCount } = await supabase
@@ -299,7 +304,7 @@ const [areaFormData, setAreaFormData] = useState({
       
       if (existingCount && existingCount > 0) {
         toast.error(`${existingCount} receiving task(s) already exist for this delivery`);
-        setIsCreatingReceiveTasks(false);
+        setIsLoadingReceivePreview(false);
         return;
       }
 
@@ -311,15 +316,15 @@ const [areaFormData, setAreaFormData] = useState({
 
       if (!deliveryItems || deliveryItems.length === 0) {
         toast.error('No items found on this delivery');
-        setIsCreatingReceiveTasks(false);
+        setIsLoadingReceivePreview(false);
         return;
       }
 
       const tasksToCreate: any[] = [];
+      const previewList: { title: string; description: string }[] = [];
       const hasPackages = deliveryItems.some((item: any) => item.pu_id);
 
       if (hasPackages) {
-        // Group items by PU
         const puGroups = new Map<string, { puNumber: string; items: any[] }>();
         const unpackedItems: any[] = [];
 
@@ -339,14 +344,16 @@ const [areaFormData, setAreaFormData] = useState({
           }
         }
 
-        // One task per package
         for (const [puId, group] of puGroups) {
           const itemSummary = group.items.map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
+          const title = `Receive ${group.puNumber} from ${delivery.delivery_id}`;
+          const description = `Package ${group.puNumber}: ${itemSummary}`;
+          previewList.push({ title, description });
           tasksToCreate.push({
             company_id: companyId,
             location_id: selectedLocationId,
-            title: `Receive ${group.puNumber} from ${delivery.delivery_id}`,
-            description: `Package ${group.puNumber}: ${itemSummary}`,
+            title,
+            description,
             status: 'todo',
             priority: 'medium',
             source_type: 'delivery_receive',
@@ -355,13 +362,14 @@ const [areaFormData, setAreaFormData] = useState({
           });
         }
 
-        // One task for unpacked items if any
         if (unpackedItems.length > 0) {
           const itemSummary = unpackedItems.map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
+          const title = `Receive unpacked items from ${delivery.delivery_id}`;
+          previewList.push({ title, description: itemSummary });
           tasksToCreate.push({
             company_id: companyId,
             location_id: selectedLocationId,
-            title: `Receive unpacked items from ${delivery.delivery_id}`,
+            title,
             description: itemSummary,
             status: 'todo',
             priority: 'medium',
@@ -371,12 +379,13 @@ const [areaFormData, setAreaFormData] = useState({
           });
         }
       } else {
-        // No packages - one task for the entire delivery
         const itemSummary = (deliveryItems as any[]).map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
+        const title = `Receive delivery ${delivery.delivery_id}`;
+        previewList.push({ title, description: itemSummary });
         tasksToCreate.push({
           company_id: companyId,
           location_id: selectedLocationId,
-          title: `Receive delivery ${delivery.delivery_id}`,
+          title,
           description: itemSummary,
           status: 'todo',
           priority: 'medium',
@@ -386,11 +395,28 @@ const [areaFormData, setAreaFormData] = useState({
         });
       }
 
-      const { error } = await supabase.from('tasks').insert(tasksToCreate);
+      setReceiveTaskPreviewList(previewList);
+      setReceiveTaskPayloads(tasksToCreate);
+      setReceiveTaskDelivery(delivery);
+      setIsReceiveTaskPreviewOpen(true);
+    } catch (err) {
+      console.error('Error loading receiving task preview:', err);
+      toast.error('Failed to load task preview');
+    } finally {
+      setIsLoadingReceivePreview(false);
+    }
+  };
+
+  // Confirm and create receiving tasks
+  const handleConfirmReceiveTasks = async () => {
+    if (receiveTaskPayloads.length === 0) return;
+    setIsCreatingReceiveTasks(true);
+    try {
+      const { error } = await supabase.from('tasks').insert(receiveTaskPayloads);
       if (error) {
         toast.error('Failed to create receiving tasks');
       } else {
-        toast.success(`Created ${tasksToCreate.length} receiving task${tasksToCreate.length !== 1 ? 's' : ''}`);
+        toast.success(`Created ${receiveTaskPayloads.length} receiving task${receiveTaskPayloads.length !== 1 ? 's' : ''}`);
         fetchWorkOrders();
       }
     } catch (err) {
@@ -398,6 +424,7 @@ const [areaFormData, setAreaFormData] = useState({
       toast.error('Failed to create receiving tasks');
     } finally {
       setIsCreatingReceiveTasks(false);
+      setIsReceiveTaskPreviewOpen(false);
     }
   };
 
@@ -1924,10 +1951,10 @@ const [areaFormData, setAreaFormData] = useState({
                                         size="sm" 
                                         variant="ghost"
                                         className="h-8 w-8 p-0"
-                                        onClick={() => handleCreateReceiveTasks(delivery)}
-                                        disabled={isCreatingReceiveTasks || (isInternalTransfer && !delivery.is_fulfilled)}
+                                        onClick={() => handlePreviewReceiveTasks(delivery)}
+                                        disabled={isCreatingReceiveTasks || isLoadingReceivePreview || (isInternalTransfer && !delivery.is_fulfilled)}
                                       >
-                                        {isCreatingReceiveTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListTodo className="w-4 h-4" />}
+                                        {(isCreatingReceiveTasks || isLoadingReceivePreview) ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListTodo className="w-4 h-4" />}
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Create receiving tasks</TooltipContent>
@@ -3345,6 +3372,40 @@ const [areaFormData, setAreaFormData] = useState({
             <Button onClick={handleConfirmCreateWorkTasks} disabled={isCreatingWorkTasks}>
               {isCreatingWorkTasks && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isCreatingWorkTasks ? 'Creating...' : `Create ${workPreviewTasks.length} Task${workPreviewTasks.length !== 1 ? 's' : ''}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receive Task Preview Dialog */}
+      <Dialog open={isReceiveTaskPreviewOpen} onOpenChange={(open) => {
+        if (!open && !isCreatingReceiveTasks) {
+          setIsReceiveTaskPreviewOpen(false);
+          setReceiveTaskPreviewList([]);
+          setReceiveTaskPayloads([]);
+          setReceiveTaskDelivery(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create Receiving Tasks</DialogTitle>
+            <DialogDescription>
+              {receiveTaskDelivery && `Delivery ${receiveTaskDelivery.delivery_id} — ${receiveTaskPreviewList.length} task${receiveTaskPreviewList.length !== 1 ? 's' : ''} will be created`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-y-auto px-6 py-2 space-y-2">
+            {receiveTaskPreviewList.map((task, idx) => (
+              <div key={idx} className="border rounded-md p-3 space-y-1">
+                <div className="text-sm font-medium">{task.title}</div>
+                <div className="text-xs text-muted-foreground">{task.description}</div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReceiveTaskPreviewOpen(false)} disabled={isCreatingReceiveTasks}>Cancel</Button>
+            <Button onClick={handleConfirmReceiveTasks} disabled={isCreatingReceiveTasks}>
+              {isCreatingReceiveTasks && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isCreatingReceiveTasks ? 'Creating...' : `Create ${receiveTaskPreviewList.length} Task${receiveTaskPreviewList.length !== 1 ? 's' : ''}`}
             </Button>
           </DialogFooter>
         </DialogContent>
