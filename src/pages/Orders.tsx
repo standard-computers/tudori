@@ -1947,7 +1947,10 @@ const Orders = () => {
     }
 
     toast.success("Status updated");
-    fetchOrders();
+    // Don't fetchOrders during bulk confirm - let the bulk handler manage it
+    if (bulkConfirmOrderIds.length === 0) {
+      fetchOrders();
+    }
 
     if (viewOrder?.id === id) {
       setViewOrder({ ...viewOrder, status: newStatus });
@@ -1962,21 +1965,25 @@ const Orders = () => {
       if (bulkConfirmOrderIds.length > 0) {
         const nextIndex = bulkConfirmOrderIndex + 1;
         if (nextIndex < bulkConfirmOrderIds.length) {
-          setBulkConfirmOrderIndex(nextIndex);
-          // Small delay to let UI update, then trigger next dialog
-          setPendingConfirmOrderId(null);
+          // Close dialog first, then reopen for next order after a delay
           setIsDeliveryItemsDialogOpen(false);
-          setTimeout(() => {
-            handleUpdateStatus(bulkConfirmOrderIds[nextIndex], "confirmed");
-          }, 300);
+          setPendingConfirmOrderId(null);
+          setBulkConfirmOrderIndex(nextIndex);
+          // Use a longer delay and ensure state settles before reopening
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const nextOrderId = bulkConfirmOrderIds[nextIndex];
+          setPendingConfirmOrderId(nextOrderId);
+          // Re-check if auto-create is needed (it should be since we're in this flow)
+          setIsDeliveryItemsDialogOpen(true);
         } else {
           // All done with bulk
+          const totalCount = bulkConfirmOrderIds.length;
           setBulkConfirmOrderIds([]);
           setBulkConfirmOrderIndex(0);
           setSelectedOrderIds(new Set());
           setPendingConfirmOrderId(null);
           setIsDeliveryItemsDialogOpen(false);
-          toast.success(`Updated ${bulkConfirmOrderIds.length} order(s) to confirmed`);
+          toast.success(`Updated ${totalCount} order(s) to confirmed`);
           fetchOrders();
         }
       } else {
