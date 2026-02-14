@@ -48,6 +48,12 @@ interface Employee {
   is_hourly: boolean;
   bonus_eligible: boolean;
   user_id: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
 }
 
 interface UserProfile {
@@ -270,6 +276,12 @@ const Employees = () => {
     is_hourly: false,
     bonus_eligible: false,
     user_id: "",
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "",
   });
 
   useEffect(() => {
@@ -373,6 +385,12 @@ const Employees = () => {
       is_hourly: false,
       bonus_eligible: false,
       user_id: "",
+      address_line1: "",
+      address_line2: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      country: "",
     });
     setIsEditing(false);
     setEditingId(null);
@@ -400,6 +418,12 @@ const Employees = () => {
       is_hourly: employee.is_hourly || false,
       bonus_eligible: employee.bonus_eligible || false,
       user_id: employee.user_id || "",
+      address_line1: employee.address_line1 || "",
+      address_line2: employee.address_line2 || "",
+      city: employee.city || "",
+      state: employee.state || "",
+      postal_code: employee.postal_code || "",
+      country: employee.country || "",
     });
     setIsEditing(true);
     setEditingId(employee.id);
@@ -448,6 +472,12 @@ const Employees = () => {
         is_hourly: formData.is_hourly,
         bonus_eligible: formData.bonus_eligible,
         user_id: formData.user_id || null,
+        address_line1: formData.address_line1 || null,
+        address_line2: formData.address_line2 || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        postal_code: formData.postal_code || null,
+        country: formData.country || null,
       };
 
       let employeeId = editingId;
@@ -660,14 +690,68 @@ const Employees = () => {
                   <p className="text-xs text-muted-foreground">Assigning a team auto-adds employee to that team</p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="hire_date">Hire Date</Label>
-                <Input
-                  id="hire_date"
-                  type="date"
-                  value={formData.hire_date}
-                  onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="hire_date">Hire Date</Label>
+                  <Input
+                    id="hire_date"
+                    type="date"
+                    value={formData.hire_date}
+                    onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="address_line1">Address Line 1</Label>
+                  <Input
+                    id="address_line1"
+                    value={formData.address_line1}
+                    onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address_line2">Address Line 2</Label>
+                  <Input
+                    id="address_line2"
+                    value={formData.address_line2}
+                    onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postal_code">Postal Code</Label>
+                  <Input
+                    id="postal_code"
+                    value={formData.postal_code}
+                    onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -888,6 +972,21 @@ const Employees = () => {
                     <div>
                       <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="font-medium">{viewingEmployee.phone || "-"}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Address</p>
+                      <p className="font-medium">
+                        {viewingEmployee.address_line1 
+                          ? [
+                              viewingEmployee.address_line1,
+                              viewingEmployee.address_line2,
+                              [viewingEmployee.city, viewingEmployee.state, viewingEmployee.postal_code].filter(Boolean).join(", "),
+                              viewingEmployee.country,
+                            ].filter(Boolean).join("\n")
+                          : "-"}
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">

@@ -1427,8 +1427,12 @@ export type Database = {
       }
       employees: {
         Row: {
+          address_line1: string | null
+          address_line2: string | null
           bonus_eligible: boolean | null
+          city: string | null
           company_id: string
+          country: string | null
           created_at: string
           department: string | null
           email: string | null
@@ -1441,14 +1445,20 @@ export type Database = {
           last_name: string
           notes: string | null
           phone: string | null
+          postal_code: string | null
+          state: string | null
           status: string
           updated_at: string
           user_id: string | null
           wage: number | null
         }
         Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
           bonus_eligible?: boolean | null
+          city?: string | null
           company_id: string
+          country?: string | null
           created_at?: string
           department?: string | null
           email?: string | null
@@ -1461,14 +1471,20 @@ export type Database = {
           last_name: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          state?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
           wage?: number | null
         }
         Update: {
+          address_line1?: string | null
+          address_line2?: string | null
           bonus_eligible?: boolean | null
+          city?: string | null
           company_id?: string
+          country?: string | null
           created_at?: string
           department?: string | null
           email?: string | null
@@ -1481,6 +1497,8 @@ export type Database = {
           last_name?: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          state?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
