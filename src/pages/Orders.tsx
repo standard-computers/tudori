@@ -1948,8 +1948,8 @@ const Orders = () => {
     }
 
     toast.success("Status updated");
-    // Don't fetchOrders during bulk confirm - let the bulk handler manage it
-    if (bulkConfirmOrderIds.length === 0) {
+    // Don't fetchOrders during bulk confirm or auto-confirm - let the handler manage it
+    if (bulkConfirmOrderIds.length === 0 && !isAutoConfirming) {
       fetchOrders();
     }
 
