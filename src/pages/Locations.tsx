@@ -650,7 +650,6 @@ const Locations = () => {
   const handleOpenDialog = () => {
     resetForm();
     setFormData((prev) => ({ ...prev, location_id: nextLocationId }));
-    setIsMaximized(false);
     setIsDialogOpen(true);
   };
 
@@ -676,7 +675,6 @@ const Locations = () => {
       status: location.status,
     });
     setIsViewMode(true);
-    setIsMaximized(false);
     setIsEditing(false);
     setEditingId(location.id);
     setActiveTab("general");
