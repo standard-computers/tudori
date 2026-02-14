@@ -1012,6 +1012,15 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               onFilter={(value) => setFilter('vendor.name', value)}
             />
             <SortableTableHead
+              label="PO"
+              sortKey="purchase_order.po_number"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['purchase_order.po_number']}
+              onFilter={(value) => setFilter('purchase_order.po_number', value)}
+            />
+            <SortableTableHead
               label="Status"
               sortKey="status"
               currentSortKey={sortConfig.key}
@@ -1026,7 +1035,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                 {receipts.length === 0
                   ? 'No goods receipts found. Create one to start receiving inventory.'
                   : 'No receipts match your filters'}
@@ -1048,6 +1057,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
                 <TableCell>{format(new Date(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
                 <TableCell>{receipt.location?.name || '-'}</TableCell>
                 <TableCell>{receipt.vendor?.name || '-'}</TableCell>
+                <TableCell className="font-mono text-muted-foreground">{receipt.purchase_order?.po_number || '-'}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(receipt.status)}>
                     {receipt.status}

@@ -230,7 +230,8 @@ const GoodsIssues = () => {
         *,
         location:locations(name),
         customer:customers(name),
-        sales_order:sales_orders(so_number)
+        sales_order:sales_orders(so_number),
+        outbound_delivery:outbound_deliveries(delivery_number)
       `)
       .eq('company_id', companyId!)
       .order('issue_number', { ascending: false });
@@ -902,6 +903,24 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost }: GoodsIss
               onFilter={(value) => setFilter('customer.name', value)}
             />
             <SortableTableHead
+              label="SO"
+              sortKey="sales_order.so_number"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['sales_order.so_number']}
+              onFilter={(value) => setFilter('sales_order.so_number', value)}
+            />
+            <SortableTableHead
+              label="Outbound Del."
+              sortKey="outbound_delivery.delivery_number"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterValue={filters['outbound_delivery.delivery_number']}
+              onFilter={(value) => setFilter('outbound_delivery.delivery_number', value)}
+            />
+            <SortableTableHead
               label="Status"
               sortKey="status"
               currentSortKey={sortConfig.key}
@@ -916,7 +935,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost }: GoodsIss
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                 {issues.length === 0
                   ? 'No goods issues found. Create one to start issuing inventory.'
                   : 'No issues match your filters'}
@@ -937,6 +956,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost }: GoodsIss
                 <TableCell>{format(new Date(issue.issue_date), 'MMM d, yyyy')}</TableCell>
                 <TableCell>{issue.location?.name || '-'}</TableCell>
                 <TableCell>{issue.customer?.name || '-'}</TableCell>
+                <TableCell className="font-mono text-muted-foreground">{issue.sales_order?.so_number || '-'}</TableCell>
+                <TableCell className="font-mono text-muted-foreground">{issue.outbound_delivery?.delivery_number || '-'}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(issue.status)}>
                     {issue.status}
