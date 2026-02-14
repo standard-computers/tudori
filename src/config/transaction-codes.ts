@@ -38,6 +38,7 @@ export const TRANSACTION_CODES: TransactionCode[] = [
   { code: 'time_clock', name: 'Time Clock', description: 'Clock in/out', path: '/time-clock' },
   { code: 'teams', name: 'Teams', description: 'Team management', path: '/teams' },
   { code: 'calendar', name: 'Calendar', description: 'Events & scheduling', path: '/calendar' },
+  { code: 'me', name: 'Me', description: 'My profile & time off', path: '/me' },
   { code: 'tasks', name: 'Tasks', description: 'To-dos & projects', path: '/tasks' },
   { code: 'messages', name: 'Messages', description: 'Team communication', path: '/messages' },
   { code: 'users', name: 'Users', description: 'Team & access control', path: '/users' },
