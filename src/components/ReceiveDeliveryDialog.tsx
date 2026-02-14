@@ -174,9 +174,16 @@ export const ReceiveDeliveryDialog = ({
     // Check if this delivery is from an internal source and if it's fulfilled
     const { data: delivery } = await supabase
       .from('deliveries')
-      .select('is_fulfilled, purchase_order_id')
+      .select('is_fulfilled, purchase_order_id, outbound_delivery_id')
       .eq('id', deliveryId)
       .single();
+
+    // If this delivery was auto-created from outbound fulfillment, it's already fulfilled
+    if (delivery?.outbound_delivery_id) {
+      setIsInternalTransfer(true);
+      setIsFulfilled(true);
+      return;
+    }
 
     if (delivery?.purchase_order_id) {
       // Check if the PO has a source_location_id (internal transfer)
