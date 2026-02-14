@@ -1627,7 +1627,7 @@ const [areaFormData, setAreaFormData] = useState({
                 </div>
               </div>
               <div className="flex-1 overflow-auto">
-                {salesOrders.length === 0 && internalPOs.length === 0 ? (
+                {outboundOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
                     <p>No orders to fulfill</p>
@@ -1644,143 +1644,77 @@ const [areaFormData, setAreaFormData] = useState({
                           />
                         </TableHead>
                         <TableHead>Type</TableHead>
+                        <TableHead>Delivery #</TableHead>
                         <TableHead>Order #</TableHead>
                         <TableHead>Ship To</TableHead>
-                        <TableHead>Date</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
                         <TableHead className="w-32"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {/* Internal Purchase Orders (this location is the vendor) */}
-                      {internalPOs.map((po) => (
-                        <TableRow key={`po-${po.id}`} className="bg-blue-500/5">
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedFulfillOrderIds.has(`po-${po.id}`)}
-                              onCheckedChange={() => toggleFulfillOrderSelection(`po-${po.id}`)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
-                              Transfer
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-mono">{po.po_number}</TableCell>
-                          <TableCell>{po.location?.name || '—'}</TableCell>
-                          <TableCell>
-                            {po.created_at 
-                              ? new Date(po.created_at).toLocaleDateString() 
-                              : '—'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={statusColors[po.status] || ''}>
-                              {po.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${po.total_amount?.toFixed(2) || '0.00'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="outline"
-                                      size="sm" 
-                                      onClick={() => prepareWorkTasksPreview([{ orderType: 'po', orderId: po.id }])}
-                                    >
-                                      <ClipboardList className="w-4 h-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Create work tasks</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <Button 
-                                size="sm" 
-                                onClick={async () => {
-                                  const woCount = await checkOutstandingWorkOrders('purchase_order', po.id);
-                                  if (woCount > 0) {
-                                    toast.error(`Cannot fulfill: ${woCount} outstanding work order${woCount !== 1 ? 's' : ''} must be completed first.`);
-                                    return;
-                                  }
-                                  setSelectedInternalPO(po);
-                                  fetchInternalPOItems(po.id);
-                                  setIsInternalPOFulfillDialogOpen(true);
-                                }}
-                              >
-                                Fulfill
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {/* Sales Orders */}
-                      {salesOrders.map((order) => (
-                        <TableRow key={`so-${order.id}`}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedFulfillOrderIds.has(`so-${order.id}`)}
-                              onCheckedChange={() => toggleFulfillOrderSelection(`so-${order.id}`)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20">
-                              Sales
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-mono">{order.so_number}</TableCell>
-                          <TableCell>{order.customer?.name || '—'}</TableCell>
-                          <TableCell>
-                            {order.order_date 
-                              ? new Date(order.order_date).toLocaleDateString() 
-                              : '—'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={statusColors[order.status] || ''}>
-                              {order.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${order.total_amount?.toFixed(2) || '0.00'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="outline"
-                                      size="sm" 
-                                      onClick={() => prepareWorkTasksPreview([{ orderType: 'so', orderId: order.id }])}
-                                    >
-                                      <ClipboardList className="w-4 h-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Create work tasks</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <Button 
-                                size="sm" 
-                                onClick={async () => {
-                                  const woCount = await checkOutstandingWorkOrders('sales_order', order.id);
-                                  if (woCount > 0) {
-                                    toast.error(`Cannot fulfill: ${woCount} outstanding work order${woCount !== 1 ? 's' : ''} must be completed first.`);
-                                    return;
-                                  }
-                                  setSelectedSalesOrder(order);
-                                  fetchSalesOrderItems(order.id);
-                                  setIsFulfillDialogOpen(true);
-                                }}
-                              >
-                                Fulfill
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {outboundOrders.map((od) => {
+                        const isTransfer = !!od.purchase_order_id;
+                        return (
+                          <TableRow key={`od-${od.id}`} className={isTransfer ? "bg-blue-500/5" : ""}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedFulfillOrderIds.has(`od-${od.id}`)}
+                                onCheckedChange={() => toggleFulfillOrderSelection(`od-${od.id}`)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={isTransfer ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-violet-500/10 text-violet-600 border-violet-500/20"}>
+                                {isTransfer ? 'Transfer' : 'Sales'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono">{od.delivery_number}</TableCell>
+                            <TableCell className="font-mono">
+                              {od.sales_order?.so_number || od.purchase_order?.po_number || '—'}
+                            </TableCell>
+                            <TableCell>{od.customer?.name || od.to_location?.name || '—'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={statusColors[od.status] || ''}>
+                                {od.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="outline"
+                                        size="sm" 
+                                        onClick={() => prepareWorkTasksPreview([{ orderType: isTransfer ? 'po' : 'so', orderId: od.sales_order_id || od.purchase_order_id || '' }])}
+                                      >
+                                        <ClipboardList className="w-4 h-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Create work tasks</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <Button 
+                                  size="sm" 
+                                  onClick={async () => {
+                                    const sourceType = od.sales_order_id ? 'sales_order' : 'purchase_order';
+                                    const sourceId = od.sales_order_id || od.purchase_order_id || '';
+                                    const woCount = await checkOutstandingWorkOrders(sourceType, sourceId);
+                                    if (woCount > 0) {
+                                      toast.error(`Cannot fulfill: ${woCount} outstanding work order${woCount !== 1 ? 's' : ''} must be completed first.`);
+                                      return;
+                                    }
+                                    setSelectedOutboundOrder(od);
+                                    fetchOutboundOrderItems(od);
+                                    setIsFulfillDialogOpen(true);
+                                  }}
+                                >
+                                  Fulfill
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -2791,43 +2725,35 @@ const [areaFormData, setAreaFormData] = useState({
         />
       )}
 
-      {/* Fulfill Order Dialog */}
+      {/* Fulfill Outbound Order Dialog */}
       <Dialog open={isFulfillDialogOpen} onOpenChange={(open) => {
         setIsFulfillDialogOpen(open);
         if (!open) {
-          setSelectedSalesOrder(null);
-          setSalesOrderItems([]);
+          setSelectedOutboundOrder(null);
+          setOutboundOrderItems([]);
         }
       }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Fulfill Order</DialogTitle>
+            <DialogTitle>{selectedOutboundOrder?.purchase_order_id ? 'Fulfill Internal Transfer' : 'Fulfill Order'}</DialogTitle>
             <DialogDescription>
-              Create an outbound delivery and goods issue for {selectedSalesOrder?.so_number}
+              {selectedOutboundOrder?.purchase_order_id
+                ? `Ship items to ${selectedOutboundOrder?.to_location?.name} for ${selectedOutboundOrder?.delivery_number}`
+                : `Create a goods issue for ${selectedOutboundOrder?.delivery_number}`}
             </DialogDescription>
           </DialogHeader>
-          {selectedSalesOrder && (
+          {selectedOutboundOrder && (
             <div className="space-y-4 px-6 pb-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Customer</p>
-                  <p className="font-medium">{selectedSalesOrder.customer?.name || '—'}</p>
+                  <p className="text-muted-foreground">{selectedOutboundOrder.purchase_order_id ? 'Destination' : 'Customer'}</p>
+                  <p className="font-medium">{selectedOutboundOrder.customer?.name || selectedOutboundOrder.to_location?.name || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Total</p>
-                  <p className="font-medium">${selectedSalesOrder.total_amount?.toFixed(2) || '0.00'}</p>
+                  <p className="text-muted-foreground">Source Order</p>
+                  <p className="font-medium">{selectedOutboundOrder.sales_order?.so_number || selectedOutboundOrder.purchase_order?.po_number || '—'}</p>
                 </div>
               </div>
-              
-              {selectedSalesOrder.customer && (
-                <div className="text-sm">
-                  <p className="text-muted-foreground mb-1">Ship To</p>
-                  <p>{selectedSalesOrder.customer.address_line1 || 'No address'}</p>
-                  {selectedSalesOrder.customer.city && (
-                    <p>{selectedSalesOrder.customer.city}, {selectedSalesOrder.customer.state} {selectedSalesOrder.customer.postal_code}</p>
-                  )}
-                </div>
-              )}
 
               <div>
                 <p className="text-muted-foreground text-sm mb-2">Items to fulfill</p>
@@ -2840,7 +2766,7 @@ const [areaFormData, setAreaFormData] = useState({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {salesOrderItems.map((item) => (
+                      {outboundOrderItems.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell>
                             <div>
@@ -2856,96 +2782,23 @@ const [areaFormData, setAreaFormData] = useState({
                 </div>
               </div>
 
-              <div className="bg-muted/50 p-3 rounded-md text-sm">
-                <p className="font-medium mb-1">This will:</p>
-                <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                  <li>Create an Outbound Delivery to the customer</li>
-                  <li>Create a Goods Issue referencing the delivery</li>
-                  <li>Update the sales order status to "Shipped"</li>
-                </ul>
-                <p className="mt-2 text-xs">Post the Goods Issue to deduct inventory</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-            <Button onClick={handleFulfillOrder} disabled={isFulfilling || salesOrderItems.length === 0}>
-              {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Fulfill Order
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Fulfill Internal PO Dialog */}
-      <Dialog open={isInternalPOFulfillDialogOpen} onOpenChange={(open) => {
-        setIsInternalPOFulfillDialogOpen(open);
-        if (!open) {
-          setSelectedInternalPO(null);
-          setInternalPOItems([]);
-        }
-      }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Fulfill Internal Transfer</DialogTitle>
-            <DialogDescription>
-              Ship items to {selectedInternalPO?.location?.name} for PO {selectedInternalPO?.po_number}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedInternalPO && (
-            <div className="space-y-4 px-6 pb-6">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Destination</p>
-                  <p className="font-medium">{selectedInternalPO.location?.name || '—'}</p>
-                  <p className="text-xs text-muted-foreground">{selectedInternalPO.location?.location_id}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Total Value</p>
-                  <p className="font-medium">${selectedInternalPO.total_amount?.toFixed(2) || '0.00'}</p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-muted-foreground text-sm mb-2">Items to transfer</p>
-                <div className="border rounded-md max-h-48 overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Qty</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {internalPOItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.product?.name || 'Unknown'}</p>
-                              <p className="text-xs text-muted-foreground">{item.product?.product_id}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">{item.quantity}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              <div className="bg-blue-500/10 p-3 rounded-md text-sm border border-blue-500/20">
-                <p className="font-medium mb-1 text-blue-700">This will:</p>
-                <ul className="list-disc list-inside text-blue-600 space-y-1">
+              <div className={cn(
+                "p-3 rounded-md text-sm",
+                selectedOutboundOrder.purchase_order_id ? "bg-blue-500/10 border border-blue-500/20" : "bg-muted/50"
+              )}>
+                <p className={cn("font-medium mb-1", selectedOutboundOrder.purchase_order_id && "text-blue-700")}>This will:</p>
+                <ul className={cn("list-disc list-inside space-y-1", selectedOutboundOrder.purchase_order_id ? "text-blue-600" : "text-muted-foreground")}>
                   <li>Create a Goods Issue to deduct inventory from this location</li>
-                  <li>Mark the delivery as fulfilled so destination can receive</li>
-                  <li>Update the purchase order status to "Shipped"</li>
+                  <li>Mark the delivery as shipped</li>
+                  <li>Update the source order status to "Shipped"</li>
                 </ul>
               </div>
             </div>
           )}
           <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
-            <Button onClick={handleFulfillInternalPO} disabled={isFulfilling || internalPOItems.length === 0}>
+            <Button onClick={handleFulfillOutboundOrder} disabled={isFulfilling || outboundOrderItems.length === 0}>
               {isFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Fulfill Transfer
+              {selectedOutboundOrder?.purchase_order_id ? 'Fulfill Transfer' : 'Fulfill Order'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2974,31 +2827,21 @@ const [areaFormData, setAreaFormData] = useState({
                 </TableHeader>
                 <TableBody>
                   {Array.from(selectedFulfillOrderIds).map((key) => {
-                    if (key.startsWith('po-')) {
-                      const po = internalPOs.find(p => p.id === key.replace('po-', ''));
-                      if (!po) return null;
-                      return (
-                        <TableRow key={key}>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">Transfer</Badge>
-                          </TableCell>
-                          <TableCell className="font-mono">{po.po_number}</TableCell>
-                          <TableCell>{po.location?.name || '—'}</TableCell>
-                        </TableRow>
-                      );
-                    } else {
-                      const so = salesOrders.find(o => o.id === key.replace('so-', ''));
-                      if (!so) return null;
-                      return (
-                        <TableRow key={key}>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-violet-500/10 text-violet-600 border-violet-500/20">Sales</Badge>
-                          </TableCell>
-                          <TableCell className="font-mono">{so.so_number}</TableCell>
-                          <TableCell>{so.customer?.name || '—'}</TableCell>
-                        </TableRow>
-                      );
-                    }
+                    const odId = key.replace('od-', '');
+                    const od = outboundOrders.find(o => o.id === odId);
+                    if (!od) return null;
+                    const isTransfer = !!od.purchase_order_id;
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>
+                          <Badge variant="outline" className={isTransfer ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-violet-500/10 text-violet-600 border-violet-500/20"}>
+                            {isTransfer ? 'Transfer' : 'Sales'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono">{od.delivery_number}</TableCell>
+                        <TableCell>{od.customer?.name || od.to_location?.name || '—'}</TableCell>
+                      </TableRow>
+                    );
                   })}
                 </TableBody>
               </Table>
