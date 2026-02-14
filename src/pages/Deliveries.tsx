@@ -50,7 +50,8 @@ import {
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal, Search, Check } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -258,6 +259,8 @@ const Deliveries = () => {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [inTransitConfirmOpen, setInTransitConfirmOpen] = useState(false);
   const [inTransitDeliveryId, setInTransitDeliveryId] = useState<string | null>(null);
+  const [selectedInboundIds, setSelectedInboundIds] = useState<Set<string>>(new Set());
+  const [isBulkInTransit, setIsBulkInTransit] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Table sorting and filtering
@@ -703,6 +706,35 @@ const Deliveries = () => {
     }
     setInTransitConfirmOpen(false);
     setInTransitDeliveryId(null);
+  };
+
+  const inboundInTransitEligibleCount = useMemo(() => {
+    return Array.from(selectedInboundIds).filter(id => {
+      const d = deliveries.find(del => del.id === id);
+      return d && d.status === 'pending';
+    }).length;
+  }, [selectedInboundIds, deliveries]);
+
+  const handleBulkMarkInTransit = async () => {
+    const eligibleIds = Array.from(selectedInboundIds).filter(id => {
+      const d = deliveries.find(del => del.id === id);
+      return d && d.status === 'pending';
+    });
+    if (eligibleIds.length === 0) return;
+    setIsBulkInTransit(true);
+    const { error } = await supabase
+      .from('deliveries')
+      .update({ status: 'in_transit' })
+      .in('id', eligibleIds);
+    if (error) {
+      toast.error('Failed to update status');
+    } else {
+      toast.success(`${eligibleIds.length} deliver${eligibleIds.length === 1 ? 'y' : 'ies'} marked as In Transit`);
+      setSelectedInboundIds(new Set());
+      fetchDeliveries();
+    }
+    setIsBulkInTransit(false);
+    setInTransitConfirmOpen(false);
   };
 
   const handleEdit = (delivery: Delivery) => {
@@ -1237,9 +1269,37 @@ const Deliveries = () => {
               </div>
             ) : (
               <div className="overflow-hidden">
+                {selectedInboundIds.size > 0 && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
+                    <span className="text-sm text-muted-foreground">{selectedInboundIds.size} selected</span>
+                    {inboundInTransitEligibleCount > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setInTransitConfirmOpen(true)}
+                        disabled={isBulkInTransit}
+                      >
+                        <SendHorizonal className="w-4 h-4 mr-2" />
+                        Mark In Transit ({inboundInTransitEligibleCount})
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={sortedAndFilteredData.length > 0 && sortedAndFilteredData.every(d => selectedInboundIds.has(d.id))}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedInboundIds(new Set(sortedAndFilteredData.map(d => d.id)));
+                            } else {
+                              setSelectedInboundIds(new Set());
+                            }
+                          }}
+                        />
+                      </TableHead>
                       <SortableTableHead
                         label="ID"
                         sortKey="delivery_id"
@@ -1328,6 +1388,16 @@ const Deliveries = () => {
                       const isEditable = !NON_EDITABLE_STATUSES.includes(delivery.status);
                       return (
                         <TableRow key={delivery.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedInboundIds.has(delivery.id)}
+                              onCheckedChange={(checked) => {
+                                const next = new Set(selectedInboundIds);
+                                if (checked) next.add(delivery.id); else next.delete(delivery.id);
+                                setSelectedInboundIds(next);
+                              }}
+                            />
+                          </TableCell>
                           <TableCell className="font-mono text-sm">
                             <button
                               onClick={() => handleView(delivery)}
@@ -1424,17 +1494,22 @@ const Deliveries = () => {
       </main>
 
       {/* In Transit Confirmation Dialog */}
-      <AlertDialog open={inTransitConfirmOpen} onOpenChange={setInTransitConfirmOpen}>
+      <AlertDialog open={inTransitConfirmOpen} onOpenChange={(open) => {
+        setInTransitConfirmOpen(open);
+        if (!open) setInTransitDeliveryId(null);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as In Transit?</AlertDialogTitle>
             <AlertDialogDescription>
-              Once marked as In Transit, this delivery can no longer be edited. Are you sure you want to continue?
+              {inTransitDeliveryId
+                ? 'Once marked as In Transit, this delivery can no longer be edited. Are you sure you want to continue?'
+                : `${inboundInTransitEligibleCount} deliver${inboundInTransitEligibleCount === 1 ? 'y' : 'ies'} will be marked as In Transit and can no longer be edited. Continue?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMarkInTransit}>
+            <AlertDialogAction onClick={inTransitDeliveryId ? handleMarkInTransit : handleBulkMarkInTransit}>
               Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
