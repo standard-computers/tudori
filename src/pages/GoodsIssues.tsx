@@ -48,7 +48,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
-import { ArrowLeft, Plus, PackageMinus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Plus, PackageMinus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 
@@ -97,24 +97,14 @@ interface Customer {
   customer_id: string;
 }
 
-const ISSUE_STATUSES = ['pending', 'posted', 'cancelled'];
-
-// Column definitions for Goods Issues table
-const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
-  { key: 'issue_number', label: 'Issue #', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'location', label: 'Location', defaultVisible: true },
-  { key: 'customer', label: 'Customer', defaultVisible: true },
-  { key: 'sales_order', label: 'SO', defaultVisible: true },
-  { key: 'issue_date', label: 'Date', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
+const ISSUE_STATUSES = ['pending', 'posted', 'cancelled', 'reversed'];
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'pending': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
     case 'posted': return 'bg-green-500/10 text-green-600 border-green-500/20';
     case 'cancelled': return 'bg-red-500/10 text-red-600 border-red-500/20';
+    case 'reversed': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
     default: return 'bg-muted text-muted-foreground';
   }
 };
@@ -128,6 +118,7 @@ const GoodsIssues = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -220,6 +211,16 @@ const GoodsIssues = () => {
     
     if (data?.company_id) {
       setCompanyId(data.company_id);
+
+      // Check if user has admin/owner/IT role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user!.id)
+        .eq('company_id', data.company_id);
+
+      const adminRoles = ['admin', 'owner', 'it'];
+      setIsAdmin(roles?.some(r => adminRoles.includes(r.role)) ?? false);
     }
   };
 
@@ -342,6 +343,123 @@ const GoodsIssues = () => {
       fetchIssues();
     } else {
       toast.error(result.error || 'Failed to post issue');
+    }
+  };
+
+  const handleReversal = async (issue: GoodsIssue) => {
+    if (issue.status !== 'posted') {
+      toast.error('Only posted goods issues can be reversed');
+      return;
+    }
+
+    try {
+      // 1. Fetch the GI items
+      const { data: giItems, error: itemsError } = await supabase
+        .from('goods_issue_items' as any)
+        .select('*')
+        .eq('goods_issue_id', issue.id);
+
+      if (itemsError || !giItems || giItems.length === 0) {
+        toast.error('Failed to fetch issue items for reversal');
+        return;
+      }
+
+      // 2. Generate next GR number
+      const { data: grNumber, error: grNumError } = await supabase.rpc('get_next_goods_receipt_number', {
+        p_company_id: companyId!,
+      });
+
+      if (grNumError || !grNumber) {
+        toast.error('Failed to generate goods receipt number');
+        return;
+      }
+
+      // 3. Create reversing Goods Receipt
+      const { data: newGR, error: grError } = await supabase
+        .from('goods_receipts' as any)
+        .insert({
+          company_id: companyId!,
+          receipt_number: grNumber,
+          location_id: issue.location_id,
+          vendor_id: null,
+          purchase_order_id: null,
+          delivery_id: null,
+          status: 'posted',
+          notes: `Reversal of GI ${issue.issue_number}`,
+        })
+        .select()
+        .single();
+
+      if (grError || !newGR) {
+        toast.error('Failed to create reversing goods receipt');
+        return;
+      }
+
+      // 4. Create GR items
+      const grItems = (giItems as any[]).map((item: any) => ({
+        goods_receipt_id: (newGR as any).id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        bin_id: item.bin_id,
+        batch_id: null,
+      }));
+
+      const { error: grItemsError } = await supabase
+        .from('goods_receipt_items' as any)
+        .insert(grItems);
+
+      if (grItemsError) {
+        toast.error('Failed to create reversing receipt items');
+        return;
+      }
+
+      // 5. Add inventory back for each item
+      for (const item of giItems as any[]) {
+        // Check if inventory record exists
+        const { data: existingInv } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('location_id', issue.location_id)
+          .eq('product_id', item.product_id)
+          .is('bin_id', item.bin_id || null)
+          .is('pu_id', null)
+          .is('batch_id', null)
+          .maybeSingle();
+
+        if (existingInv) {
+          await supabase
+            .from('inventory')
+            .update({ quantity: existingInv.quantity + item.quantity })
+            .eq('id', existingInv.id);
+        } else {
+          await supabase
+            .from('inventory')
+            .insert({
+              location_id: issue.location_id,
+              product_id: item.product_id,
+              bin_id: item.bin_id || null,
+              quantity: item.quantity,
+              pu_id: null,
+              batch_id: null,
+            });
+        }
+      }
+
+      // 6. Set GI status to reversed
+      await supabase
+        .from('goods_issues' as any)
+        .update({ status: 'reversed' })
+        .eq('id', issue.id);
+
+      toast.success(`Issue reversed — GR ${grNumber} created`);
+      fetchIssues();
+
+      // Close view dialog if open
+      if (isViewDialogOpen && viewingIssue?.id === issue.id) {
+        setViewingIssue({ ...issue, status: 'reversed' });
+      }
+    } catch (err) {
+      toast.error('An error occurred during reversal');
     }
   };
 
@@ -678,13 +796,28 @@ const GoodsIssues = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPost={handlePostIssue}
+        onReverse={handleReversal}
+        isAdmin={isAdmin}
       />
 
       {/* View Goods Issue Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`}>
           <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
-            {viewingIssue?.status !== 'posted' && (
+            {isAdmin && viewingIssue?.status === 'posted' && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (viewingIssue) handleReversal(viewingIssue);
+                }}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                title="Attempt Reversal"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span className="sr-only">Attempt Reversal</span>
+              </button>
+            )}
+            {viewingIssue?.status !== 'posted' && viewingIssue?.status !== 'reversed' && (
               <button
                 type="button"
                 onClick={() => {
@@ -829,9 +962,11 @@ interface GoodsIssuesTableProps {
   onEdit: (issue: GoodsIssue) => void;
   onDelete: (id: string) => void;
   onPost: (id: string, locationId: string) => void;
+  onReverse: (issue: GoodsIssue) => void;
+  isAdmin: boolean;
 }
 
-const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost }: GoodsIssuesTableProps) => {
+const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse, isAdmin }: GoodsIssuesTableProps) => {
   const {
     sortConfig,
     filters,
@@ -979,6 +1114,12 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost }: GoodsIss
                           <DropdownMenuItem onClick={() => onPost(issue.id, issue.location_id)}>
                             <Check className="w-4 h-4 mr-2" />
                             Post to Inventory
+                          </DropdownMenuItem>
+                        )}
+                        {isAdmin && issue.status === 'posted' && (
+                          <DropdownMenuItem onClick={() => onReverse(issue)}>
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Attempt Reversal
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
