@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -50,7 +51,7 @@ const ViewAreaDialog = ({ open, onOpenChange, area, onEdit, onViewBin }: ViewAre
   const [activeTab, setActiveTab] = useState('details');
   const [bins, setBins] = useState<Bin[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
 
   useEffect(() => {
     if (open && area) {

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -105,7 +106,7 @@ const Planning = () => {
 
   // Requisition creation state
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [requisitionItems, setRequisitionItems] = useState<RequisitionItem[]>([]);
 

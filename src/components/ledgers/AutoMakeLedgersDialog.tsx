@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +56,7 @@ export const AutoMakeLedgersDialog = ({
 }: AutoMakeLedgersDialogProps) => {
   const [activeTab, setActiveTab] = useState('general');
   const [isCreating, setIsCreating] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
 
   // General settings
   const [ledgerIdTemplate, setLedgerIdTemplate] = useState('@-LDGR');

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { Badge } from '@/components/ui/badge';
@@ -100,7 +101,7 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   const [outboundDeliveries, setOutboundDeliveries] = useState<OutboundDelivery[]>([]);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [viewDelivery, setViewDelivery] = useState<OutboundDelivery | null>(null);
-  const [isViewMaximized, setIsViewMaximized] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
   const [viewItems, setViewItems] = useState<OutboundDeliveryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inTransitConfirmOpen, setInTransitConfirmOpen] = useState(false);

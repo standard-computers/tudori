@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -138,7 +139,7 @@ const Transportation = () => {
   const { exportToExcel, readExcel } = useExcel();
   // Carrier dialog state
   const [isCarrierDialogOpen, setIsCarrierDialogOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null);
   const [carrierForm, setCarrierForm] = useState({
     carrier_id: '',

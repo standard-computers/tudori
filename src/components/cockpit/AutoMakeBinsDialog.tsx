@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,7 +93,7 @@ const AutoMakeBinsDialog = ({
   onCreated,
 }: AutoMakeBinsDialogProps) => {
   const [activeTab, setActiveTab] = useState('general');
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [isCreating, setIsCreating] = useState(false);
 
   // General settings

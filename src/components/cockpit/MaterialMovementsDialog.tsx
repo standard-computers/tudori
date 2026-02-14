@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import {
@@ -59,7 +60,7 @@ const MaterialMovementsDialog = ({
 }: MaterialMovementsDialogProps) => {
   const [movements, setMovements] = useState<MaterialMovement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [search, setSearch] = useState('');
 
   useEffect(() => {

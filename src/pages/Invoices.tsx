@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
 import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
@@ -104,7 +105,7 @@ const Invoices = () => {
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
 

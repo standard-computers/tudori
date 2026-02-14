@@ -4483,6 +4483,7 @@ export type Database = {
           design_system: string | null
           hidden_tiles: string[] | null
           id: string
+          maximize_windows: boolean
           open_apps_in_new_tab: boolean | null
           theme: string | null
           updated_at: string
@@ -4494,6 +4495,7 @@ export type Database = {
           design_system?: string | null
           hidden_tiles?: string[] | null
           id?: string
+          maximize_windows?: boolean
           open_apps_in_new_tab?: boolean | null
           theme?: string | null
           updated_at?: string
@@ -4505,6 +4507,7 @@ export type Database = {
           design_system?: string | null
           hidden_tiles?: string[] | null
           id?: string
+          maximize_windows?: boolean
           open_apps_in_new_tab?: boolean | null
           theme?: string | null
           updated_at?: string

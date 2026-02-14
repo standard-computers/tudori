@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -134,7 +135,7 @@ const GoodsReceipts = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<GoodsReceipt | null>(null);
   const [viewReceiptItems, setViewReceiptItems] = useState<GoodsReceiptItem[]>([]);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
 import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
 import { useNavigate } from 'react-router-dom';
@@ -252,8 +253,8 @@ const Deliveries = () => {
   const [detailLocation, setDetailLocation] = useState<LocationDetail | null>(null);
   const [detailPO, setDetailPO] = useState<PODetail | null>(null);
   const [activeTab, setActiveTab] = useState('details');
-  const [isDialogMaximized, setIsDialogMaximized] = useState(false);
-  const [isViewMaximized, setIsViewMaximized] = useState(false);
+  const [isDialogMaximized, setIsDialogMaximized] = useMaximizedState();
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);

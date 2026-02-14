@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -114,7 +115,7 @@ const HR = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [directoryTab, setDirectoryTab] = useState<'employees' | 'positions'>('employees');
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
-  const [isViewMaximized, setIsViewMaximized] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
   const [teams, setTeams] = useState<Team[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [showPositionDialog, setShowPositionDialog] = useState(false);
