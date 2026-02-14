@@ -2032,62 +2032,45 @@ const Orders = () => {
     fetchOrders();
   };
 
-  // Count POs eligible for auto-confirm (draft/pending/sent with no deliveries)
-  const autoConfirmCandidates = useMemo(() => {
-    return orders.filter(
-      (o) => ["draft", "pending", "sent"].includes(o.status)
-    );
-  }, [orders]);
-
-  const [autoConfirmCount, setAutoConfirmCount] = useState(0);
-
-  // Fetch count of POs without deliveries
-  useEffect(() => {
-    const fetchAutoConfirmCount = async () => {
-      if (autoConfirmCandidates.length === 0) {
-        setAutoConfirmCount(0);
-        return;
-      }
-      const ids = autoConfirmCandidates.map((o) => o.id);
-      // Check which of these have deliveries or outbound deliveries
-      const [{ data: inbound }, { data: outbound }] = await Promise.all([
-        supabase.from("deliveries").select("purchase_order_id").in("purchase_order_id", ids),
-        supabase.from("outbound_deliveries" as any).select("purchase_order_id").in("purchase_order_id", ids),
-      ]);
-      const hasDelivery = new Set([
-        ...(inbound || []).map((d: any) => d.purchase_order_id),
-        ...(outbound || []).map((d: any) => d.purchase_order_id),
-      ]);
-      setAutoConfirmCount(ids.filter((id) => !hasDelivery.has(id)).length);
-    };
-    fetchAutoConfirmCount();
-  }, [autoConfirmCandidates]);
-
-  // Auto-confirm: confirm all eligible POs with full quantities, no dialog
+  // Auto-confirm: confirm selected POs that have no deliveries, with full quantities
   const handleAutoConfirm = async () => {
     if (isAutoConfirming) return;
+    const selectedIds = Array.from(selectedOrderIds);
+    if (selectedIds.length === 0) return;
+
     setIsAutoConfirming(true);
     try {
-      const ids = autoConfirmCandidates.map((o) => o.id);
+      // Filter to only draft/pending/sent from the selection
+      const candidateIds = selectedIds.filter((id) => {
+        const o = orders.find((order) => order.id === id);
+        return o && ["draft", "pending", "sent"].includes(o.status);
+      });
+
+      if (candidateIds.length === 0) {
+        toast.info("No selected orders eligible for auto-confirm");
+        setIsAutoConfirming(false);
+        return;
+      }
+
       // Find which ones have no deliveries
       const [{ data: inbound }, { data: outbound }] = await Promise.all([
-        supabase.from("deliveries").select("purchase_order_id").in("purchase_order_id", ids),
-        supabase.from("outbound_deliveries" as any).select("purchase_order_id").in("purchase_order_id", ids),
+        supabase.from("deliveries").select("purchase_order_id").in("purchase_order_id", candidateIds),
+        supabase.from("outbound_deliveries" as any).select("purchase_order_id").in("purchase_order_id", candidateIds),
       ]);
       const hasDelivery = new Set([
         ...(inbound || []).map((d: any) => d.purchase_order_id),
         ...(outbound || []).map((d: any) => d.purchase_order_id),
       ]);
-      const eligibleIds = ids.filter((id) => !hasDelivery.has(id));
+      const eligibleIds = candidateIds.filter((id) => !hasDelivery.has(id));
 
       if (eligibleIds.length === 0) {
-        toast.info("No orders eligible for auto-confirm");
+        toast.info("All selected orders already have deliveries");
+        setIsAutoConfirming(false);
         return;
       }
 
       let confirmed = 0;
       for (const orderId of eligibleIds) {
-        // Fetch PO items with full quantities
         const { data: poItems } = await supabase
           .from("purchase_order_items")
           .select("product_id, quantity")
@@ -2366,7 +2349,7 @@ const Orders = () => {
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search purchase orders">
                 <Search className="w-4 h-4" />
               </Button>
-              {autoConfirmCount > 0 && (
+              {selectedOrderIds.size > 0 && (
                 <Button
                   variant="outline"
                   onClick={handleAutoConfirm}
@@ -2377,7 +2360,7 @@ const Orders = () => {
                   ) : (
                     <Check className="w-4 h-4 mr-2" />
                   )}
-                  Auto Confirm ({autoConfirmCount})
+                  Auto Confirm ({selectedOrderIds.size})
                 </Button>
               )}
               {selectedOrderIds.size > 0 && (
