@@ -56,6 +56,7 @@ import Transportation from "./pages/Transportation";
 import Help from "./pages/Help";
 import Go from "./pages/Go";
 import HR from "./pages/HR";
+import CalendarPage from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -107,6 +108,7 @@ const App = () => (
                   <Route path="/goods-issues" element={<ProtectedRoute><GoodsIssues /></ProtectedRoute>} />
                   <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                   <Route path="/configuration" element={<ProtectedRoute><Configuration /></ProtectedRoute>} />
+                  <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                   <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
                   <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
                   <Route path="/teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />

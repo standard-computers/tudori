@@ -76,7 +76,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Employees', icon: User, color: 'text-blue-500', description: 'Staff directory', path: '/employees' },
   { name: 'Time Clock', icon: Clock, color: 'text-cyan-500', description: 'Clock in/out', path: '/time-clock' },
   { name: 'Teams', icon: Users2, color: 'text-teal-500', description: 'Team management', path: '/teams' },
-  { name: 'Calendar', icon: Calendar, color: 'text-indigo-500', description: 'Events & scheduling', path: null },
+  { name: 'Calendar', icon: Calendar, color: 'text-indigo-500', description: 'Events & scheduling', path: '/calendar' },
   { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: '/tasks' },
   { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: '/messages' },
   { name: 'Users', icon: UserCog, color: 'text-purple-500', description: 'Team & access control', path: '/users' },
