@@ -808,7 +808,7 @@ const BillOfMaterials = () => {
     setIsEditing(false);
     setEditingId(bom.id);
     await Promise.all([fetchBomItems(bom.id), fetchBomSteps(bom.id)]);
-    setActiveTab('details');
+    setActiveTab('components');
     setIsDialogOpen(true);
   };
 
@@ -825,7 +825,7 @@ const BillOfMaterials = () => {
     setIsEditing(true);
     setEditingId(bom.id);
     await Promise.all([fetchBomItems(bom.id), fetchBomSteps(bom.id)]);
-    setActiveTab('details');
+    setActiveTab('components');
     setIsDialogOpen(true);
   };
 
