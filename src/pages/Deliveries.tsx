@@ -77,6 +77,7 @@ const DELIVERY_COLUMNS: ColumnDefinition[] = [
   { key: 'purchase_order', label: 'PO', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
   { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'package_count', label: 'Packages', defaultVisible: true },
   { key: 'expected_date', label: 'Expected', defaultVisible: true },
   { key: 'delivered_date', label: 'Delivered', defaultVisible: true },
   { key: 'tracking_number', label: 'Tracking #', defaultVisible: true },
@@ -99,6 +100,7 @@ interface Delivery {
   purchase_order?: { po_number: string } | null;
   location?: { name: string } | null;
   vendor?: { name: string } | null;
+  delivery_items?: { pu_id: string | null }[] | null;
 }
 
 interface PurchaseOrder {
@@ -370,7 +372,8 @@ const Deliveries = () => {
         *,
         purchase_order:purchase_orders(po_number),
         location:locations(name),
-        vendor:vendors(name)
+        vendor:vendors(name),
+        delivery_items(pu_id)
       `)
       .eq('company_id', companyId!);
 
@@ -1281,6 +1284,15 @@ const Deliveries = () => {
                         onFilter={(value) => setFilter('carrier', value)}
                       />
                       <SortableTableHead
+                        label="Packages"
+                        sortKey="package_count"
+                        currentSortKey={sortConfig.key}
+                        currentSortDirection={sortConfig.direction}
+                        onSort={handleSort}
+                        filterable={false}
+                        className="text-right"
+                      />
+                      <SortableTableHead
                         label="Expected"
                         sortKey="expected_date"
                         currentSortKey={sortConfig.key}
@@ -1325,6 +1337,17 @@ const Deliveries = () => {
                           <TableCell>{delivery.vendor?.name || '—'}</TableCell>
                           <TableCell>{delivery.location?.name || '—'}</TableCell>
                           <TableCell>{delivery.carrier || '—'}</TableCell>
+                          <TableCell className="text-right">
+                            {(() => {
+                              const puIds = new Set((delivery.delivery_items || []).map(i => i.pu_id).filter(Boolean));
+                              return puIds.size > 0 ? (
+                                <Badge variant="outline" className="font-mono">
+                                  <Package className="w-3 h-3 mr-1" />
+                                  {puIds.size}
+                                </Badge>
+                              ) : '—';
+                            })()}
+                          </TableCell>
                           <TableCell>
                             {delivery.expected_date 
                               ? format(new Date(delivery.expected_date), 'MMM d, yyyy')
