@@ -1227,7 +1227,7 @@ const Locations = () => {
                   <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <DialogHeader>
                       <DialogTitle>
-                        {isViewMode ? "View Location" : isEditing ? "Edit Location" : "Create Location"}
+                        {isViewMode ? `${formData.location_id} ${formData.name}` : isEditing ? "Edit Location" : "Create Location"}
                       </DialogTitle>
                       <DialogDescription>
                         {isViewMode
