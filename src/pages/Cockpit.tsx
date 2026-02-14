@@ -1654,8 +1654,16 @@ const [areaFormData, setAreaFormData] = useState({
                   <p className="text-xs text-muted-foreground">
                     {selectedLocation?.name} • {selectedLocation?.location_id}
                   </p>
-                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="ml-2"
+              >
+                {sidebarCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              </Button>
+            </div>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1738,32 +1746,6 @@ const [areaFormData, setAreaFormData] = useState({
               ))}
             </nav>
           </TooltipProvider>
-          <div className="p-2 border-t border-border">
-            <Tooltip>
-              <TooltipProvider delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    className={cn("w-full", sidebarCollapsed && "px-0")}
-                  >
-                    {sidebarCollapsed ? (
-                      <PanelLeft className="w-4 h-4" />
-                    ) : (
-                      <>
-                        <PanelLeftClose className="w-4 h-4 mr-2" />
-                        Collapse
-                      </>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                {sidebarCollapsed && (
-                  <TooltipContent side="right">Expand sidebar</TooltipContent>
-                )}
-              </TooltipProvider>
-            </Tooltip>
-          </div>
         </aside>
 
         {/* Main Content Area */}
