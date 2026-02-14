@@ -147,36 +147,25 @@ interface InventoryItem {
   packaging_unit?: { pu_number: string } | null;
 }
 
-interface SalesOrder {
+interface OutboundOrder {
   id: string;
-  so_number: string;
+  delivery_number: string;
   status: string;
+  sales_order_id: string | null;
+  purchase_order_id: string | null;
   customer_id: string | null;
-  location_id: string | null;
-  total_amount: number;
-  order_date: string;
-  customer?: { name: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; country: string | null } | null;
-}
-
-interface SalesOrderItem {
-  id: string;
-  product_id: string;
-  quantity: number;
-  product?: { name: string; product_id: string };
-}
-
-interface InternalPurchaseOrder {
-  id: string;
-  po_number: string;
-  status: string;
-  source_location_id: string;
-  location_id: string | null;
-  total_amount: number;
+  from_location_id: string | null;
+  to_location_id: string | null;
+  goods_issue_id: string | null;
   created_at: string;
-  location?: { name: string; location_id: string } | null;
+  notes: string | null;
+  customer?: { name: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; country: string | null } | null;
+  to_location?: { name: string; location_id: string } | null;
+  sales_order?: { so_number: string; total_amount: number } | null;
+  purchase_order?: { po_number: string; total_amount: number } | null;
 }
 
-interface PurchaseOrderItem {
+interface OutboundOrderItem {
   id: string;
   product_id: string;
   quantity: number;
@@ -261,19 +250,12 @@ const [areaFormData, setAreaFormData] = useState({
   const [isMoving, setIsMoving] = useState(false);
   const [isMaterialFlowDialogOpen, setIsMaterialFlowDialogOpen] = useState(false);
 
-  // Sales orders state
-  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
-  const [salesOrdersCount, setSalesOrdersCount] = useState<number>(0);
-  const [selectedSalesOrder, setSelectedSalesOrder] = useState<SalesOrder | null>(null);
-  const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
+   // Outbound orders to fulfill state
+  const [outboundOrders, setOutboundOrders] = useState<OutboundOrder[]>([]);
+  const [selectedOutboundOrder, setSelectedOutboundOrder] = useState<OutboundOrder | null>(null);
+  const [outboundOrderItems, setOutboundOrderItems] = useState<OutboundOrderItem[]>([]);
   const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
-
-  // Internal purchase orders state (POs where this location is the source/vendor)
-  const [internalPOs, setInternalPOs] = useState<InternalPurchaseOrder[]>([]);
-  const [selectedInternalPO, setSelectedInternalPO] = useState<InternalPurchaseOrder | null>(null);
-  const [internalPOItems, setInternalPOItems] = useState<PurchaseOrderItem[]>([]);
-  const [isInternalPOFulfillDialogOpen, setIsInternalPOFulfillDialogOpen] = useState(false);
 
   // Multi-select fulfillment state
   const [selectedFulfillOrderIds, setSelectedFulfillOrderIds] = useState<Set<string>>(new Set());
@@ -340,8 +322,7 @@ const [areaFormData, setAreaFormData] = useState({
     fetchAreas();
     fetchPendingDeliveries();
     fetchInventory();
-    fetchOutstandingSalesOrders();
-    fetchInternalPurchaseOrders();
+    fetchOutboundOrders();
     fetchWorkOrders();
   }, [selectedLocationId]);
 
@@ -358,15 +339,12 @@ const [areaFormData, setAreaFormData] = useState({
     if (selectedLocationId) {
       fetchPendingDeliveries();
       fetchInventory();
-      fetchOutstandingSalesOrders();
-      fetchInternalPurchaseOrders();
+      fetchOutboundOrders();
       fetchWorkOrders();
     } else {
       setPendingDeliveriesCount(0);
       setInventory([]);
-      setSalesOrders([]);
-      setSalesOrdersCount(0);
-      setInternalPOs([]);
+      setOutboundOrders([]);
       setWorkOrders([]);
     }
   }, [selectedLocationId]);
@@ -647,84 +625,65 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
-  const fetchOutstandingSalesOrders = async () => {
-    if (!selectedLocationId) return;
-    const { data, count, error } = await supabase
-      .from('sales_orders' as any)
-      .select(`
-        id,
-        so_number,
-        status,
-        customer_id,
-        location_id,
-        total_amount,
-        order_date,
-        customer:customers(name, address_line1, city, state, postal_code, country)
-      `, { count: 'exact' })
-      .eq('location_id', selectedLocationId)
-      .in('status', ['draft', 'confirmed', 'processing'])
-      .order('order_date', { ascending: true });
-    
-    if (error) {
-      console.error('Failed to fetch sales orders:', error);
-      return;
-    }
-    setSalesOrders((data as any) || []);
-    setSalesOrdersCount(count || 0);
-  };
-
-  const fetchSalesOrderItems = async (orderId: string) => {
-    const { data } = await supabase
-      .from('sales_order_items' as any)
-      .select(`
-        id,
-        product_id,
-        quantity,
-        product:products(name, product_id)
-      `)
-      .eq('sales_order_id', orderId);
-    
-    setSalesOrderItems((data as any) || []);
-  };
-
-  // Fetch internal purchase orders where this location is the source (vendor)
-  const fetchInternalPurchaseOrders = async () => {
+  const fetchOutboundOrders = async () => {
     if (!selectedLocationId) return;
     const { data, error } = await supabase
-      .from('purchase_orders' as any)
+      .from('outbound_deliveries' as any)
       .select(`
         id,
-        po_number,
+        delivery_number,
         status,
-        source_location_id,
-        location_id,
-        total_amount,
+        sales_order_id,
+        purchase_order_id,
+        customer_id,
+        from_location_id,
+        to_location_id,
+        goods_issue_id,
         created_at,
-        location:locations!purchase_orders_location_id_fkey(name, location_id)
+        notes,
+        customer:customers!outbound_deliveries_customer_id_fkey(name, address_line1, city, state, postal_code, country),
+        to_location:locations!outbound_deliveries_to_location_id_fkey(name, location_id),
+        sales_order:sales_orders!outbound_deliveries_sales_order_id_fkey(so_number, total_amount),
+        purchase_order:purchase_orders!outbound_deliveries_purchase_order_id_fkey(po_number, total_amount)
       `)
-      .eq('source_location_id', selectedLocationId)
-      .in('status', ['draft', 'confirmed', 'processing'])
+      .eq('from_location_id', selectedLocationId)
+      .eq('status', 'pending')
+      .is('goods_issue_id', null)
       .order('created_at', { ascending: true });
     
     if (error) {
-      console.error('Failed to fetch internal purchase orders:', error);
+      console.error('Failed to fetch outbound orders:', error);
       return;
     }
-    setInternalPOs((data as any) || []);
+    setOutboundOrders((data as any) || []);
   };
 
-  const fetchInternalPOItems = async (orderId: string) => {
-    const { data } = await supabase
-      .from('purchase_order_items' as any)
-      .select(`
-        id,
-        product_id,
-        quantity,
-        product:products(name, product_id)
-      `)
-      .eq('purchase_order_id', orderId);
-    
-    setInternalPOItems((data as any) || []);
+  const fetchOutboundOrderItems = async (order: OutboundOrder) => {
+    if (order.sales_order_id) {
+      const { data } = await supabase
+        .from('sales_order_items' as any)
+        .select(`
+          id,
+          product_id,
+          quantity,
+          product:products(name, product_id)
+        `)
+        .eq('sales_order_id', order.sales_order_id);
+      setOutboundOrderItems((data as any) || []);
+    } else if (order.purchase_order_id) {
+      const { data } = await supabase
+        .from('purchase_order_items' as any)
+        .select(`
+          id,
+          product_id,
+          quantity,
+          product:products(name, product_id)
+        `)
+        .eq('purchase_order_id', order.purchase_order_id);
+      setOutboundOrderItems((data as any) || []);
+    } else {
+      setOutboundOrderItems([]);
+    }
   };
 
   // Fetch work orders (tasks) for the selected location
@@ -773,11 +732,14 @@ const [areaFormData, setAreaFormData] = useState({
     return count || 0;
   };
 
-  const handleFulfillOrder = async () => {
-    if (!selectedSalesOrder || !selectedLocationId || !companyId) return;
+  const handleFulfillOutboundOrder = async () => {
+    if (!selectedOutboundOrder || !selectedLocationId || !companyId) return;
+    
+    const sourceType = selectedOutboundOrder.sales_order_id ? 'sales_order' : 'purchase_order';
+    const sourceId = selectedOutboundOrder.sales_order_id || selectedOutboundOrder.purchase_order_id || '';
     
     // Block if outstanding work orders exist
-    const outstandingCount = await checkOutstandingWorkOrders('sales_order', selectedSalesOrder.id);
+    const outstandingCount = await checkOutstandingWorkOrders(sourceType, sourceId);
     if (outstandingCount > 0) {
       toast.error(`Cannot fulfill: ${outstandingCount} outstanding work order${outstandingCount !== 1 ? 's' : ''} must be completed first.`);
       return;
@@ -786,167 +748,30 @@ const [areaFormData, setAreaFormData] = useState({
     setIsFulfilling(true);
     
     try {
-      const { data: items } = await supabase
-        .from('sales_order_items' as any)
-        .select('product_id, quantity')
-        .eq('sales_order_id', selectedSalesOrder.id);
+      // Fetch items from the source order
+      let items: any[] = [];
+      if (selectedOutboundOrder.sales_order_id) {
+        const { data } = await supabase
+          .from('sales_order_items' as any)
+          .select('product_id, quantity')
+          .eq('sales_order_id', selectedOutboundOrder.sales_order_id);
+        items = (data as any) || [];
+      } else if (selectedOutboundOrder.purchase_order_id) {
+        const { data } = await supabase
+          .from('purchase_order_items' as any)
+          .select('product_id, quantity')
+          .eq('purchase_order_id', selectedOutboundOrder.purchase_order_id);
+        items = (data as any) || [];
+      }
       
-      if (!items || items.length === 0) {
-        toast.error('No items to fulfill');
-        setIsFulfilling(false);
-        return;
-      }
-
-      for (const item of items as any[]) {
-        const { data: invData } = await supabase
-          .from('inventory')
-          .select('id, quantity')
-          .eq('location_id', selectedLocationId)
-          .eq('product_id', item.product_id);
-        
-        const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
-        if (totalAvailable < item.quantity) {
-          const { data: productData } = await supabase
-            .from('products')
-            .select('name')
-            .eq('id', item.product_id)
-            .single();
-          toast.error(`Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
-          setIsFulfilling(false);
-          return;
-        }
-      }
-
-      const { data: deliveryNumber } = await supabase.rpc('get_next_outbound_delivery_number', {
-        p_company_id: companyId,
-      });
-
-      const customer = selectedSalesOrder.customer;
-      const { data: outboundDelivery, error: odError } = await supabase
-        .from('outbound_deliveries' as any)
-        .insert({
-          company_id: companyId,
-          delivery_number: deliveryNumber,
-          sales_order_id: selectedSalesOrder.id,
-          from_location_id: selectedLocationId,
-          customer_id: selectedSalesOrder.customer_id,
-          ship_to_address_line1: customer?.address_line1 || null,
-          ship_to_city: customer?.city || null,
-          ship_to_state: customer?.state || null,
-          ship_to_postal_code: customer?.postal_code || null,
-          ship_to_country: customer?.country || 'United States',
-          status: 'in_transit',
-          shipped_date: new Date().toISOString().split('T')[0],
-          notes: `Created from SO ${selectedSalesOrder.so_number}`,
-        })
-        .select()
-        .single();
-
-      if (odError) {
-        console.error('Failed to create outbound delivery:', odError);
-        toast.error('Failed to create outbound delivery');
-        setIsFulfilling(false);
-        return;
-      }
-
-      const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', {
-        p_company_id: companyId,
-      });
-
-      const { data: goodsIssue, error: giError } = await supabase
-        .from('goods_issues' as any)
-        .insert({
-          company_id: companyId,
-          issue_number: issueNumber,
-          location_id: selectedLocationId,
-          customer_id: selectedSalesOrder.customer_id,
-          sales_order_id: selectedSalesOrder.id,
-          outbound_delivery_id: (outboundDelivery as any).id,
-          status: 'pending',
-          notes: `Fulfillment for SO ${selectedSalesOrder.so_number}, OD ${deliveryNumber}`,
-        })
-        .select()
-        .single();
-
-      if (giError) {
-        console.error('Failed to create goods issue:', giError);
-        toast.error('Failed to create goods issue');
-        setIsFulfilling(false);
-        return;
-      }
-
-      const giItems = (items as any[]).map(item => ({
-        goods_issue_id: (goodsIssue as any).id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('goods_issue_items' as any)
-        .insert(giItems);
-
-      if (itemsError) {
-        console.error('Failed to create goods issue items:', itemsError);
-      }
-
-      await supabase
-        .from('outbound_deliveries' as any)
-        .update({ goods_issue_id: (goodsIssue as any).id })
-        .eq('id', (outboundDelivery as any).id);
-
-      const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
-      if (!postResult.success) {
-        toast.error(postResult.error || 'Failed to auto-post goods issue');
-        setIsFulfilling(false);
-        return;
-      }
-
-      await supabase
-        .from('sales_orders' as any)
-        .update({ status: 'shipped' })
-        .eq('id', selectedSalesOrder.id);
-
-      toast.success(`Order fulfilled - Outbound Delivery ${deliveryNumber} created, inventory updated.`);
-      
-      setIsFulfillDialogOpen(false);
-      setSelectedSalesOrder(null);
-      setSalesOrderItems([]);
-      fetchOutstandingSalesOrders();
-    } catch (error) {
-      console.error('Fulfillment error:', error);
-      toast.error('Failed to fulfill order');
-    } finally {
-      setIsFulfilling(false);
-    }
-  };
-
-  // Handle fulfillment for internal purchase orders (this location is the source/vendor)
-  const handleFulfillInternalPO = async () => {
-    if (!selectedInternalPO || !selectedLocationId || !companyId) return;
-    
-    // Block if outstanding work orders exist
-    const outstandingCount = await checkOutstandingWorkOrders('purchase_order', selectedInternalPO.id);
-    if (outstandingCount > 0) {
-      toast.error(`Cannot fulfill: ${outstandingCount} outstanding work order${outstandingCount !== 1 ? 's' : ''} must be completed first.`);
-      return;
-    }
-
-    setIsFulfilling(true);
-    
-    try {
-      const { data: items } = await supabase
-        .from('purchase_order_items' as any)
-        .select('product_id, quantity')
-        .eq('purchase_order_id', selectedInternalPO.id);
-      
-      if (!items || items.length === 0) {
+      if (items.length === 0) {
         toast.error('No items to fulfill');
         setIsFulfilling(false);
         return;
       }
 
       // Check inventory availability
-      for (const item of items as any[]) {
+      for (const item of items) {
         const { data: invData } = await supabase
           .from('inventory')
           .select('id, quantity')
@@ -977,8 +802,11 @@ const [areaFormData, setAreaFormData] = useState({
           company_id: companyId,
           issue_number: issueNumber,
           location_id: selectedLocationId,
+          customer_id: selectedOutboundOrder.customer_id || null,
+          sales_order_id: selectedOutboundOrder.sales_order_id || null,
+          outbound_delivery_id: selectedOutboundOrder.id,
           status: 'pending',
-          notes: `Internal transfer fulfillment for PO ${selectedInternalPO.po_number}`,
+          notes: `Fulfillment for OD ${selectedOutboundOrder.delivery_number}`,
         })
         .select()
         .single();
@@ -991,7 +819,7 @@ const [areaFormData, setAreaFormData] = useState({
       }
 
       // Create goods issue items
-      const giItems = (items as any[]).map(item => ({
+      const giItems = items.map(item => ({
         goods_issue_id: (goodsIssue as any).id,
         product_id: item.product_id,
         quantity: item.quantity,
@@ -1005,6 +833,16 @@ const [areaFormData, setAreaFormData] = useState({
         console.error('Failed to create goods issue items:', itemsError);
       }
 
+      // Update outbound delivery status and link goods issue
+      await supabase
+        .from('outbound_deliveries' as any)
+        .update({ 
+          goods_issue_id: (goodsIssue as any).id,
+          status: 'shipped',
+          shipped_date: new Date().toISOString().split('T')[0],
+        })
+        .eq('id', selectedOutboundOrder.id);
+
       // Post the goods issue to update inventory
       const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
       if (!postResult.success) {
@@ -1013,41 +851,41 @@ const [areaFormData, setAreaFormData] = useState({
         return;
       }
 
-      // Mark the associated delivery as fulfilled so destination can receive
-      await supabase
-        .from('deliveries' as any)
-        .update({ 
-          is_fulfilled: true,
-          status: 'shipped'
-        })
-        .eq('purchase_order_id', selectedInternalPO.id);
+      // Update the source order status
+      if (selectedOutboundOrder.sales_order_id) {
+        await supabase
+          .from('sales_orders' as any)
+          .update({ status: 'shipped' })
+          .eq('id', selectedOutboundOrder.sales_order_id);
+      } else if (selectedOutboundOrder.purchase_order_id) {
+        await supabase
+          .from('purchase_orders' as any)
+          .update({ status: 'shipped' })
+          .eq('id', selectedOutboundOrder.purchase_order_id);
+        // Mark the associated inbound delivery as fulfilled
+        await supabase
+          .from('deliveries' as any)
+          .update({ is_fulfilled: true, status: 'shipped' })
+          .eq('purchase_order_id', selectedOutboundOrder.purchase_order_id);
+      }
 
-      // Update PO status to shipped
-      await supabase
-        .from('purchase_orders' as any)
-        .update({ status: 'shipped' })
-        .eq('id', selectedInternalPO.id);
-
-      toast.success(`Internal transfer fulfilled - PO ${selectedInternalPO.po_number} shipped, inventory updated.`);
+      toast.success(`Fulfilled - OD ${selectedOutboundOrder.delivery_number} shipped, inventory updated.`);
       
-      setIsInternalPOFulfillDialogOpen(false);
-      setSelectedInternalPO(null);
-      setInternalPOItems([]);
-      fetchInternalPurchaseOrders();
+      setIsFulfillDialogOpen(false);
+      setSelectedOutboundOrder(null);
+      setOutboundOrderItems([]);
+      fetchOutboundOrders();
       fetchInventory();
     } catch (error) {
-      console.error('Internal PO fulfillment error:', error);
-      toast.error('Failed to fulfill internal transfer');
+      console.error('Fulfillment error:', error);
+      toast.error('Failed to fulfill order');
     } finally {
       setIsFulfilling(false);
     }
   };
 
   // Helper to toggle order selection
-  const allFulfillableOrders = [
-    ...internalPOs.map(po => ({ key: `po-${po.id}`, type: 'po' as const, id: po.id })),
-    ...salesOrders.map(so => ({ key: `so-${so.id}`, type: 'so' as const, id: so.id })),
-  ];
+  const allFulfillableOrders = outboundOrders.map(od => ({ key: `od-${od.id}`, id: od.id }));
 
   const toggleFulfillOrderSelection = (key: string) => {
     setSelectedFulfillOrderIds(prev => {
@@ -1076,155 +914,64 @@ const [areaFormData, setAreaFormData] = useState({
 
     try {
       for (const key of selectedFulfillOrderIds) {
-        const [type, id] = [key.startsWith('po-') ? 'po' : 'so', key.replace(/^(po|so)-/, '')];
+        const odId = key.replace('od-', '');
+        const od = outboundOrders.find(o => o.id === odId);
+        if (!od) { failCount++; continue; }
         
         try {
-          // Skip orders with outstanding work orders
-          const sourceType = type === 'so' ? 'sales_order' : 'purchase_order';
-          const woCount = await checkOutstandingWorkOrders(sourceType, id);
+          const sourceType = od.sales_order_id ? 'sales_order' : 'purchase_order';
+          const sourceId = od.sales_order_id || od.purchase_order_id || '';
+          const woCount = await checkOutstandingWorkOrders(sourceType, sourceId);
           if (woCount > 0) { failCount++; continue; }
-          if (type === 'so') {
-            const order = salesOrders.find(o => o.id === id);
-            if (!order) continue;
 
-            const { data: items } = await supabase
-              .from('sales_order_items' as any)
-              .select('product_id, quantity')
-              .eq('sales_order_id', id);
-            
-            if (!items || items.length === 0) { failCount++; continue; }
-
-            // Check inventory
-            let insufficientStock = false;
-            for (const item of items as any[]) {
-              const { data: invData } = await supabase
-                .from('inventory')
-                .select('id, quantity')
-                .eq('location_id', selectedLocationId)
-                .eq('product_id', item.product_id);
-              
-              const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
-              if (totalAvailable < item.quantity) {
-                insufficientStock = true;
-                break;
-              }
-            }
-            if (insufficientStock) { failCount++; continue; }
-
-            const { data: deliveryNumber } = await supabase.rpc('get_next_outbound_delivery_number', { p_company_id: companyId });
-            const customer = order.customer;
-            const { data: outboundDelivery, error: odError } = await supabase
-              .from('outbound_deliveries' as any)
-              .insert({
-                company_id: companyId,
-                delivery_number: deliveryNumber,
-                sales_order_id: id,
-                from_location_id: selectedLocationId,
-                customer_id: order.customer_id,
-                ship_to_address_line1: customer?.address_line1 || null,
-                ship_to_city: customer?.city || null,
-                ship_to_state: customer?.state || null,
-                ship_to_postal_code: customer?.postal_code || null,
-                ship_to_country: customer?.country || 'United States',
-                status: 'in_transit',
-                shipped_date: new Date().toISOString().split('T')[0],
-                notes: `Created from SO ${order.so_number}`,
-              })
-              .select()
-              .single();
-
-            if (odError) { failCount++; continue; }
-
-            const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
-            const { data: goodsIssue, error: giError } = await supabase
-              .from('goods_issues' as any)
-              .insert({
-                company_id: companyId,
-                issue_number: issueNumber,
-                location_id: selectedLocationId,
-                customer_id: order.customer_id,
-                sales_order_id: id,
-                outbound_delivery_id: (outboundDelivery as any).id,
-                status: 'pending',
-                notes: `Fulfillment for SO ${order.so_number}, OD ${deliveryNumber}`,
-              })
-              .select()
-              .single();
-
-            if (giError) { failCount++; continue; }
-
-            const giItems = (items as any[]).map(item => ({
-              goods_issue_id: (goodsIssue as any).id,
-              product_id: item.product_id,
-              quantity: item.quantity,
-            }));
-
-            await supabase.from('goods_issue_items' as any).insert(giItems);
-            await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id }).eq('id', (outboundDelivery as any).id);
-
-            const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
-            if (!postResult.success) { failCount++; continue; }
-
-            await supabase.from('sales_orders' as any).update({ status: 'shipped' }).eq('id', id);
-            successCount++;
-
-          } else {
-            // Internal PO fulfillment
-            const po = internalPOs.find(p => p.id === id);
-            if (!po) continue;
-
-            const { data: items } = await supabase
-              .from('purchase_order_items' as any)
-              .select('product_id, quantity')
-              .eq('purchase_order_id', id);
-            
-            if (!items || items.length === 0) { failCount++; continue; }
-
-            let insufficientStock = false;
-            for (const item of items as any[]) {
-              const { data: invData } = await supabase
-                .from('inventory')
-                .select('id, quantity')
-                .eq('location_id', selectedLocationId)
-                .eq('product_id', item.product_id);
-              
-              const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
-              if (totalAvailable < item.quantity) {
-                insufficientStock = true;
-                break;
-              }
-            }
-            if (insufficientStock) { failCount++; continue; }
-
-            const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
-            const { data: goodsIssue, error: giError } = await supabase
-              .from('goods_issues' as any)
-              .insert({
-                company_id: companyId,
-                issue_number: issueNumber,
-                location_id: selectedLocationId,
-                status: 'pending',
-                notes: `Internal transfer fulfillment for PO ${po.po_number}`,
-              })
-              .select()
-              .single();
-
-            if (giError) { failCount++; continue; }
-
-            const giItems = (items as any[]).map(item => ({
-              goods_issue_id: (goodsIssue as any).id,
-              product_id: item.product_id,
-              quantity: item.quantity,
-            }));
-
-            await supabase.from('goods_issue_items' as any).insert(giItems);
-            const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
-            if (!postResult.success) { failCount++; continue; }
-
-            await supabase.from('deliveries' as any).update({ is_fulfilled: true, status: 'shipped' }).eq('purchase_order_id', id);
-            await supabase.from('purchase_orders' as any).update({ status: 'shipped' }).eq('id', id);
-            successCount++;
+          let items: any[] = [];
+          if (od.sales_order_id) {
+            const { data } = await supabase.from('sales_order_items' as any).select('product_id, quantity').eq('sales_order_id', od.sales_order_id);
+            items = (data as any) || [];
+          } else if (od.purchase_order_id) {
+            const { data } = await supabase.from('purchase_order_items' as any).select('product_id, quantity').eq('purchase_order_id', od.purchase_order_id);
+            items = (data as any) || [];
           }
+          if (items.length === 0) { failCount++; continue; }
+
+          let insufficientStock = false;
+          for (const item of items) {
+            const { data: invData } = await supabase.from('inventory').select('id, quantity').eq('location_id', selectedLocationId).eq('product_id', item.product_id);
+            const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
+            if (totalAvailable < item.quantity) { insufficientStock = true; break; }
+          }
+          if (insufficientStock) { failCount++; continue; }
+
+          const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
+          const { data: goodsIssue, error: giError } = await supabase
+            .from('goods_issues' as any)
+            .insert({
+              company_id: companyId,
+              issue_number: issueNumber,
+              location_id: selectedLocationId,
+              customer_id: od.customer_id || null,
+              sales_order_id: od.sales_order_id || null,
+              outbound_delivery_id: od.id,
+              status: 'pending',
+              notes: `Fulfillment for OD ${od.delivery_number}`,
+            })
+            .select().single();
+          if (giError) { failCount++; continue; }
+
+          const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity }));
+          await supabase.from('goods_issue_items' as any).insert(giItems);
+          await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'shipped', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
+
+          const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
+          if (!postResult.success) { failCount++; continue; }
+
+          if (od.sales_order_id) {
+            await supabase.from('sales_orders' as any).update({ status: 'shipped' }).eq('id', od.sales_order_id);
+          } else if (od.purchase_order_id) {
+            await supabase.from('purchase_orders' as any).update({ status: 'shipped' }).eq('id', od.purchase_order_id);
+            await supabase.from('deliveries' as any).update({ is_fulfilled: true, status: 'shipped' }).eq('purchase_order_id', od.purchase_order_id);
+          }
+          successCount++;
         } catch (err) {
           console.error(`Failed to fulfill ${key}:`, err);
           failCount++;
@@ -1239,8 +986,7 @@ const [areaFormData, setAreaFormData] = useState({
 
       setSelectedFulfillOrderIds(new Set());
       setIsBulkFulfillDialogOpen(false);
-      fetchOutstandingSalesOrders();
-      fetchInternalPurchaseOrders();
+      fetchOutboundOrders();
       fetchInventory();
     } catch (error) {
       console.error('Bulk fulfillment error:', error);
@@ -1273,29 +1019,24 @@ const [areaFormData, setAreaFormData] = useState({
         continue;
       }
 
-      let orderNumber = '';
-      let shipTo = '';
+      const od = outboundOrders.find(o => o.id === orderId);
+      if (!od) continue;
+
+      let orderNumber = od.delivery_number;
+      let shipTo = od.customer?.name || od.to_location?.name || 'Destination';
       let items: { product_id: string; quantity: number; product?: { name: string; product_id: string } }[] = [];
 
-      if (orderType === 'so') {
-        const order = salesOrders.find(o => o.id === orderId);
-        if (!order) continue;
-        orderNumber = order.so_number;
-        shipTo = order.customer?.name || 'Customer';
+      if (od.sales_order_id) {
         const { data } = await supabase
           .from('sales_order_items' as any)
           .select('product_id, quantity, product:products(name, product_id)')
-          .eq('sales_order_id', orderId);
+          .eq('sales_order_id', od.sales_order_id);
         items = (data as any) || [];
-      } else {
-        const po = internalPOs.find(p => p.id === orderId);
-        if (!po) continue;
-        orderNumber = po.po_number;
-        shipTo = po.location?.name || 'Destination';
+      } else if (od.purchase_order_id) {
         const { data } = await supabase
           .from('purchase_order_items' as any)
           .select('product_id, quantity, product:products(name, product_id)')
-          .eq('purchase_order_id', orderId);
+          .eq('purchase_order_id', od.purchase_order_id);
         items = (data as any) || [];
       }
 
@@ -1376,8 +1117,7 @@ const [areaFormData, setAreaFormData] = useState({
       setWorkPreviewTasks([]);
       setWorkPreviewOrderInfo([]);
       setSelectedFulfillOrderIds(new Set());
-      fetchOutstandingSalesOrders();
-      fetchInternalPurchaseOrders();
+      fetchOutboundOrders();
       fetchWorkOrders();
     } catch (error) {
       console.error('Create work tasks error:', error);
@@ -1627,7 +1367,7 @@ const [areaFormData, setAreaFormData] = useState({
 
   const sidebarItems: { id: SidebarTab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: 'deliveries', label: 'Inbound Shipments', icon: Truck, count: pendingDeliveriesCount },
-    { id: 'orders', label: 'Orders to Fulfill', icon: ShoppingCart, count: salesOrdersCount },
+    { id: 'orders', label: 'Orders to Fulfill', icon: ShoppingCart, count: outboundOrders.length },
     { id: 'work_orders', label: 'Work Orders', icon: ClipboardList, count: workOrders.length },
     { id: 'inventory', label: 'Inventory', icon: Boxes, count: inventory.length },
     { id: 'areas', label: 'Areas', icon: Grid3X3, count: areas.length },
