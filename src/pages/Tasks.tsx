@@ -663,12 +663,12 @@ const Tasks = () => {
               </div>
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Select value={formData.location_id} onValueChange={v => setFormData(prev => ({ ...prev, location_id: v }))}>
+                <Select value={formData.location_id || "__none__"} onValueChange={v => setFormData(prev => ({ ...prev, location_id: v === "__none__" ? "" : v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {locations.map(loc => (
                       <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                     ))}
@@ -678,12 +678,12 @@ const Tasks = () => {
             </div>
             <div className="space-y-2">
               <Label>Assign To</Label>
-              <Select value={formData.assigned_to} onValueChange={v => setFormData(prev => ({ ...prev, assigned_to: v }))}>
+              <Select value={formData.assigned_to || "__none__"} onValueChange={v => setFormData(prev => ({ ...prev, assigned_to: v === "__none__" ? "" : v }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="__none__">Unassigned</SelectItem>
                   {profiles.map(p => (
                     <SelectItem key={p.user_id} value={p.user_id}>
                       {p.first_name} {p.last_name}
