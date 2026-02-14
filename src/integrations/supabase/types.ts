@@ -1768,6 +1768,7 @@ export type Database = {
           receipt_date: string
           receipt_number: string
           status: string
+          task_id: string | null
           updated_at: string
           vendor_id: string | null
         }
@@ -1782,6 +1783,7 @@ export type Database = {
           receipt_date?: string
           receipt_number: string
           status?: string
+          task_id?: string | null
           updated_at?: string
           vendor_id?: string | null
         }
@@ -1796,6 +1798,7 @@ export type Database = {
           receipt_date?: string
           receipt_number?: string
           status?: string
+          task_id?: string | null
           updated_at?: string
           vendor_id?: string | null
         }
@@ -1826,6 +1829,13 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {

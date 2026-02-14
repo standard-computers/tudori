@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useSaveShortcut, useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
-import { postGoodsIssue } from '@/lib/inventory-posting';
+import { postGoodsIssue, postGoodsReceipt } from '@/lib/inventory-posting';
 import { createMultiplePackagingUnits } from '@/lib/packaging-units';
 import { logMaterialMovement } from '@/lib/material-movements';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown, RefreshCw, ListTodo } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from '@/lib/toast';
@@ -279,6 +279,292 @@ const [areaFormData, setAreaFormData] = useState({
   const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
   const [isDeleteWorkOrdersOpen, setIsDeleteWorkOrdersOpen] = useState(false);
   const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
+
+  // Receiving tasks state
+  const [isCreatingReceiveTasks, setIsCreatingReceiveTasks] = useState(false);
+
+  // Create receiving tasks for a delivery (one per package, or one for all items if unpacked)
+  const handleCreateReceiveTasks = async (delivery: Delivery) => {
+    if (!companyId || !selectedLocationId || !user) return;
+    setIsCreatingReceiveTasks(true);
+    try {
+      // Check if tasks already exist for this delivery
+      const { count: existingCount } = await supabase
+        .from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('source_type', 'delivery_receive')
+        .eq('source_id', delivery.id)
+        .in('status', ['todo', 'in_progress']);
+      
+      if (existingCount && existingCount > 0) {
+        toast.error(`${existingCount} receiving task(s) already exist for this delivery`);
+        setIsCreatingReceiveTasks(false);
+        return;
+      }
+
+      // Fetch delivery items with PU info
+      const { data: deliveryItems } = await supabase
+        .from('delivery_items')
+        .select('id, product_id, quantity, pu_id, packaging_unit:packaging_units(pu_number), product:products(name, product_id)')
+        .eq('delivery_id', delivery.id);
+
+      if (!deliveryItems || deliveryItems.length === 0) {
+        toast.error('No items found on this delivery');
+        setIsCreatingReceiveTasks(false);
+        return;
+      }
+
+      const tasksToCreate: any[] = [];
+      const hasPackages = deliveryItems.some((item: any) => item.pu_id);
+
+      if (hasPackages) {
+        // Group items by PU
+        const puGroups = new Map<string, { puNumber: string; items: any[] }>();
+        const unpackedItems: any[] = [];
+
+        for (const item of deliveryItems as any[]) {
+          if (item.pu_id) {
+            const existing = puGroups.get(item.pu_id);
+            if (existing) {
+              existing.items.push(item);
+            } else {
+              puGroups.set(item.pu_id, {
+                puNumber: item.packaging_unit?.pu_number || item.pu_id,
+                items: [item],
+              });
+            }
+          } else {
+            unpackedItems.push(item);
+          }
+        }
+
+        // One task per package
+        for (const [puId, group] of puGroups) {
+          const itemSummary = group.items.map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
+          tasksToCreate.push({
+            company_id: companyId,
+            location_id: selectedLocationId,
+            title: `Receive ${group.puNumber} from ${delivery.delivery_id}`,
+            description: `Package ${group.puNumber}: ${itemSummary}`,
+            status: 'todo',
+            priority: 'medium',
+            source_type: 'delivery_receive',
+            source_id: delivery.id,
+            created_by: user.id,
+          });
+        }
+
+        // One task for unpacked items if any
+        if (unpackedItems.length > 0) {
+          const itemSummary = unpackedItems.map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
+          tasksToCreate.push({
+            company_id: companyId,
+            location_id: selectedLocationId,
+            title: `Receive unpacked items from ${delivery.delivery_id}`,
+            description: itemSummary,
+            status: 'todo',
+            priority: 'medium',
+            source_type: 'delivery_receive',
+            source_id: delivery.id,
+            created_by: user.id,
+          });
+        }
+      } else {
+        // No packages - one task for the entire delivery
+        const itemSummary = (deliveryItems as any[]).map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
+        tasksToCreate.push({
+          company_id: companyId,
+          location_id: selectedLocationId,
+          title: `Receive delivery ${delivery.delivery_id}`,
+          description: itemSummary,
+          status: 'todo',
+          priority: 'medium',
+          source_type: 'delivery_receive',
+          source_id: delivery.id,
+          created_by: user.id,
+        });
+      }
+
+      const { error } = await supabase.from('tasks').insert(tasksToCreate);
+      if (error) {
+        toast.error('Failed to create receiving tasks');
+      } else {
+        toast.success(`Created ${tasksToCreate.length} receiving task${tasksToCreate.length !== 1 ? 's' : ''}`);
+        fetchWorkOrders();
+      }
+    } catch (err) {
+      console.error('Error creating receiving tasks:', err);
+      toast.error('Failed to create receiving tasks');
+    } finally {
+      setIsCreatingReceiveTasks(false);
+    }
+  };
+
+  // Complete a delivery receiving task - auto-receive into next empty GR bin
+  const handleCompleteReceiveTask = async (taskId: string, deliverySourceId: string) => {
+    if (!companyId || !selectedLocationId) return;
+
+    try {
+      // Mark task as done first
+      await supabase.from('tasks').update({ status: 'done' }).eq('id', taskId);
+
+      // Check if all tasks for this delivery are now done
+      const { data: remainingTasks } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('source_type', 'delivery_receive')
+        .eq('source_id', deliverySourceId)
+        .in('status', ['todo', 'in_progress']);
+
+      if (remainingTasks && remainingTasks.length > 0) {
+        toast.success('Task completed. Remaining tasks must be completed to finish receiving.');
+        fetchWorkOrders();
+        return;
+      }
+
+      // All tasks done — auto-receive the entire delivery
+      // Find the first GR-enabled area and its next empty bin
+      const { data: grAreas } = await supabase
+        .from('areas')
+        .select('id, name')
+        .eq('location_id', selectedLocationId)
+        .eq('is_goods_receipt_enabled', true)
+        .order('area_id')
+        .limit(1);
+
+      let targetBinId: string | null = null;
+
+      if (grAreas && grAreas.length > 0) {
+        const grAreaId = grAreas[0].id;
+        const { data: grBins } = await supabase
+          .from('bins')
+          .select('id')
+          .eq('area_id', grAreaId)
+          .eq('allow_put_away', true)
+          .order('put_away_sequence', { ascending: true, nullsFirst: false });
+
+        if (grBins && grBins.length > 0) {
+          const grBinIds = grBins.map(b => b.id);
+          const { data: occupiedBins } = await supabase
+            .from('inventory')
+            .select('bin_id')
+            .in('bin_id', grBinIds)
+            .gt('quantity', 0);
+
+          const occupiedSet = new Set((occupiedBins || []).map(inv => inv.bin_id));
+          const emptyBin = grBins.find(b => !occupiedSet.has(b.id));
+          targetBinId = emptyBin?.id || grBins[0].id;
+        }
+      }
+
+      // Fetch delivery items
+      const { data: deliveryItems } = await supabase
+        .from('delivery_items')
+        .select('id, product_id, quantity, pu_id, product:products(name, product_id, price)')
+        .eq('delivery_id', deliverySourceId);
+
+      if (!deliveryItems || deliveryItems.length === 0) {
+        toast.error('No items found on this delivery');
+        fetchWorkOrders();
+        return;
+      }
+
+      // Get delivery info
+      const { data: delivery } = await supabase
+        .from('deliveries')
+        .select('delivery_id, purchase_order_id, is_fulfilled')
+        .eq('id', deliverySourceId)
+        .single();
+
+      if (!delivery) {
+        toast.error('Delivery not found');
+        fetchWorkOrders();
+        return;
+      }
+
+      // Create goods receipt with task reference
+      const { data: receiptNumber } = await supabase.rpc(
+        'get_next_goods_receipt_number',
+        { p_company_id: companyId }
+      );
+
+      if (!receiptNumber) {
+        toast.error('Failed to generate receipt number');
+        fetchWorkOrders();
+        return;
+      }
+
+      const { data: goodsReceipt, error: grError } = await supabase
+        .from('goods_receipts' as any)
+        .insert({
+          company_id: companyId,
+          receipt_number: receiptNumber,
+          location_id: selectedLocationId,
+          delivery_id: deliverySourceId,
+          purchase_order_id: delivery.purchase_order_id || null,
+          receipt_date: new Date().toISOString().split('T')[0],
+          status: 'pending',
+          task_id: taskId,
+          notes: `Auto-received via tasks from delivery ${delivery.delivery_id}`,
+        })
+        .select()
+        .single();
+
+      if (grError || !goodsReceipt) {
+        toast.error('Failed to create goods receipt');
+        fetchWorkOrders();
+        return;
+      }
+
+      // Create GR items
+      const grItems = (deliveryItems as any[])
+        .filter(item => item.quantity > 0)
+        .map(item => ({
+          goods_receipt_id: (goodsReceipt as any).id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          pu_id: item.pu_id || null,
+          bin_id: targetBinId,
+        }));
+
+      if (grItems.length > 0) {
+        await supabase.from('goods_receipt_items').insert(grItems);
+      }
+
+      // Post the goods receipt to update inventory
+      const postResult = await postGoodsReceipt((goodsReceipt as any).id, selectedLocationId);
+
+      // Update delivery status
+      await supabase
+        .from('deliveries')
+        .update({ status: 'delivered', delivered_date: new Date().toISOString().split('T')[0] })
+        .eq('id', deliverySourceId);
+
+      // Update PO status if applicable
+      if (delivery.purchase_order_id) {
+        await supabase
+          .from('purchase_orders')
+          .update({ status: 'delivered' })
+          .eq('id', delivery.purchase_order_id);
+      }
+
+      if (postResult.success) {
+        toast.success(`Goods Receipt ${receiptNumber} created and posted via tasks`);
+      } else {
+        toast.error(postResult.error || 'Failed to post goods receipt');
+      }
+
+      fetchWorkOrders();
+      fetchPendingDeliveries();
+      fetchInventory();
+    } catch (err) {
+      console.error('Error completing receive task:', err);
+      toast.error('Failed to complete receiving');
+      fetchWorkOrders();
+    }
+  };
 
 
   // Save shortcuts
@@ -1587,7 +1873,7 @@ const [areaFormData, setAreaFormData] = useState({
                         <TableHead>Source</TableHead>
                         <TableHead>Expected Date</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="w-24"></TableHead>
+                        <TableHead className="w-44"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1630,17 +1916,35 @@ const [areaFormData, setAreaFormData] = useState({
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedDelivery(delivery);
-                                  setIsReceiveDialogOpen(true);
-                                }}
-                                disabled={isInternalTransfer && !delivery.is_fulfilled}
-                              >
-                                {isInternalTransfer && !delivery.is_fulfilled ? 'Awaiting' : 'Receive'}
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => handleCreateReceiveTasks(delivery)}
+                                        disabled={isCreatingReceiveTasks || (isInternalTransfer && !delivery.is_fulfilled)}
+                                      >
+                                        {isCreatingReceiveTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListTodo className="w-4 h-4" />}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Create receiving tasks</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedDelivery(delivery);
+                                    setIsReceiveDialogOpen(true);
+                                  }}
+                                  disabled={isInternalTransfer && !delivery.is_fulfilled}
+                                >
+                                  {isInternalTransfer && !delivery.is_fulfilled ? 'Awaiting' : 'Receive'}
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -1825,8 +2129,21 @@ const [areaFormData, setAreaFormData] = useState({
                           onClick={async () => {
                             const ids = Array.from(selectedWorkOrderIds).filter(id => workOrders.find(t => t.id === id)?.status === 'in_progress');
                             if (ids.length === 0) return;
-                            await supabase.from('tasks').update({ status: 'done' }).in('id', ids);
-                            toast.success(`Completed ${ids.length} task${ids.length !== 1 ? 's' : ''}`);
+                            // Check for delivery_receive tasks and handle them specially
+                            const receiveTasks = ids.filter(id => {
+                              const t = workOrders.find(wo => wo.id === id);
+                              return t?.source_type === 'delivery_receive' && t?.source_id;
+                            });
+                            const normalTasks = ids.filter(id => !receiveTasks.includes(id));
+                            
+                            if (normalTasks.length > 0) {
+                              await supabase.from('tasks').update({ status: 'done' }).in('id', normalTasks);
+                            }
+                            for (const taskId of receiveTasks) {
+                              const t = workOrders.find(wo => wo.id === taskId);
+                              if (t?.source_id) await handleCompleteReceiveTask(taskId, t.source_id);
+                            }
+                            if (normalTasks.length > 0) toast.success(`Completed ${normalTasks.length} task${normalTasks.length !== 1 ? 's' : ''}`);
                             setSelectedWorkOrderIds(new Set());
                             fetchWorkOrders();
                           }}
@@ -1916,9 +2233,11 @@ const [areaFormData, setAreaFormData] = useState({
                               <Badge variant="outline" className={
                                 task.source_type === 'sales_order' 
                                   ? 'bg-violet-500/10 text-violet-600 border-violet-500/20' 
+                                  : task.source_type === 'delivery_receive'
+                                  ? 'bg-green-500/10 text-green-600 border-green-500/20'
                                   : 'bg-blue-500/10 text-blue-600 border-blue-500/20'
                               }>
-                                {task.source_type === 'sales_order' ? 'Sales' : task.source_type === 'purchase_order' ? 'Transfer' : task.source_type}
+                                {task.source_type === 'sales_order' ? 'Sales' : task.source_type === 'purchase_order' ? 'Transfer' : task.source_type === 'delivery_receive' ? 'Receive' : task.source_type}
                               </Badge>
                             ) : '—'}
                           </TableCell>
@@ -1996,9 +2315,13 @@ const [areaFormData, setAreaFormData] = useState({
                                 <Button 
                                   size="sm"
                                   onClick={async () => {
-                                    await supabase.from('tasks').update({ status: 'done' }).eq('id', task.id);
-                                    toast.success(`Completed: ${task.title}`);
-                                    fetchWorkOrders();
+                                    if (task.source_type === 'delivery_receive' && task.source_id) {
+                                      await handleCompleteReceiveTask(task.id, task.source_id);
+                                    } else {
+                                      await supabase.from('tasks').update({ status: 'done' }).eq('id', task.id);
+                                      toast.success(`Completed: ${task.title}`);
+                                      fetchWorkOrders();
+                                    }
                                   }}
                                 >
                                   Done
@@ -3040,8 +3363,12 @@ const [areaFormData, setAreaFormData] = useState({
         }}
         onCompleted={async () => {
           if (!viewingWorkOrder) return;
-          await supabase.from('tasks').update({ status: 'done' }).eq('id', viewingWorkOrder.id);
-          toast.success(`Completed: ${viewingWorkOrder.title}`);
+          if (viewingWorkOrder.source_type === 'delivery_receive' && viewingWorkOrder.source_id) {
+            await handleCompleteReceiveTask(viewingWorkOrder.id, viewingWorkOrder.source_id);
+          } else {
+            await supabase.from('tasks').update({ status: 'done' }).eq('id', viewingWorkOrder.id);
+            toast.success(`Completed: ${viewingWorkOrder.title}`);
+          }
           setViewingWorkOrder(null);
           fetchWorkOrders();
         }}
