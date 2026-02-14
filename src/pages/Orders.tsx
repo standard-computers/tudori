@@ -348,6 +348,7 @@ const Orders = () => {
   // Bulk status update state
   const [bulkConfirmOrderIndex, setBulkConfirmOrderIndex] = useState(0);
   const [bulkConfirmOrderIds, setBulkConfirmOrderIds] = useState<string[]>([]);
+  const [isAutoConfirming, setIsAutoConfirming] = useState(false);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -2031,6 +2032,87 @@ const Orders = () => {
     fetchOrders();
   };
 
+  // Count POs eligible for auto-confirm (draft/pending/sent with no deliveries)
+  const autoConfirmCandidates = useMemo(() => {
+    return orders.filter(
+      (o) => ["draft", "pending", "sent"].includes(o.status)
+    );
+  }, [orders]);
+
+  const [autoConfirmCount, setAutoConfirmCount] = useState(0);
+
+  // Fetch count of POs without deliveries
+  useEffect(() => {
+    const fetchAutoConfirmCount = async () => {
+      if (autoConfirmCandidates.length === 0) {
+        setAutoConfirmCount(0);
+        return;
+      }
+      const ids = autoConfirmCandidates.map((o) => o.id);
+      // Check which of these have deliveries or outbound deliveries
+      const [{ data: inbound }, { data: outbound }] = await Promise.all([
+        supabase.from("deliveries").select("purchase_order_id").in("purchase_order_id", ids),
+        supabase.from("outbound_deliveries" as any).select("purchase_order_id").in("purchase_order_id", ids),
+      ]);
+      const hasDelivery = new Set([
+        ...(inbound || []).map((d: any) => d.purchase_order_id),
+        ...(outbound || []).map((d: any) => d.purchase_order_id),
+      ]);
+      setAutoConfirmCount(ids.filter((id) => !hasDelivery.has(id)).length);
+    };
+    fetchAutoConfirmCount();
+  }, [autoConfirmCandidates]);
+
+  // Auto-confirm: confirm all eligible POs with full quantities, no dialog
+  const handleAutoConfirm = async () => {
+    if (isAutoConfirming) return;
+    setIsAutoConfirming(true);
+    try {
+      const ids = autoConfirmCandidates.map((o) => o.id);
+      // Find which ones have no deliveries
+      const [{ data: inbound }, { data: outbound }] = await Promise.all([
+        supabase.from("deliveries").select("purchase_order_id").in("purchase_order_id", ids),
+        supabase.from("outbound_deliveries" as any).select("purchase_order_id").in("purchase_order_id", ids),
+      ]);
+      const hasDelivery = new Set([
+        ...(inbound || []).map((d: any) => d.purchase_order_id),
+        ...(outbound || []).map((d: any) => d.purchase_order_id),
+      ]);
+      const eligibleIds = ids.filter((id) => !hasDelivery.has(id));
+
+      if (eligibleIds.length === 0) {
+        toast.info("No orders eligible for auto-confirm");
+        return;
+      }
+
+      let confirmed = 0;
+      for (const orderId of eligibleIds) {
+        // Fetch PO items with full quantities
+        const { data: poItems } = await supabase
+          .from("purchase_order_items")
+          .select("product_id, quantity")
+          .eq("purchase_order_id", orderId);
+
+        const deliveryItems = (poItems || []).map((item: any) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+        }));
+
+        await executeStatusUpdate(orderId, "confirmed", deliveryItems.length > 0 ? deliveryItems : undefined);
+        confirmed++;
+      }
+
+      toast.success(`Auto-confirmed ${confirmed} order(s)`);
+      setSelectedOrderIds(new Set());
+      fetchOrders();
+    } catch (error: any) {
+      console.error("Error auto-confirming:", error);
+      toast.error("Failed to auto-confirm orders");
+    } finally {
+      setIsAutoConfirming(false);
+    }
+  };
+
   // Handle bulk status update
   const handleBulkStatusUpdate = async (newStatus: string) => {
     const selectedIds = Array.from(selectedOrderIds);
@@ -2284,6 +2366,20 @@ const Orders = () => {
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search purchase orders">
                 <Search className="w-4 h-4" />
               </Button>
+              {autoConfirmCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleAutoConfirm}
+                  disabled={isAutoConfirming}
+                >
+                  {isAutoConfirming ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Auto Confirm ({autoConfirmCount})
+                </Button>
+              )}
               {selectedOrderIds.size > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
