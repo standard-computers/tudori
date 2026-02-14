@@ -371,7 +371,7 @@ const Deliveries = () => {
       .select(`
         *,
         purchase_order:purchase_orders(po_number),
-        location:locations(name),
+        location:locations!deliveries_location_id_fkey(name),
         vendor:vendors(name),
         delivery_items(pu_id)
       `)

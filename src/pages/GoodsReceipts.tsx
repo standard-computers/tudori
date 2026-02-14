@@ -292,7 +292,7 @@ const GoodsReceipts = () => {
         vendor_id, 
         location_id,
         vendor:vendors(name),
-        location:locations(name)
+        location:locations!deliveries_location_id_fkey(name)
       `)
       .eq('company_id', companyId!)
       .in('status', ['pending', 'in_transit', 'delivered'])
