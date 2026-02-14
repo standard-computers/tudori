@@ -1038,7 +1038,7 @@ const Customers = () => {
                 </DialogHeader>
                 
                 <button
-                  className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                  className="absolute right-16 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
                   onClick={() => {
                     if (viewingCustomer) {
                       handleEdit(viewingCustomer);
