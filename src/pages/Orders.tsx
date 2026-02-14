@@ -66,6 +66,7 @@ import { DeliveryItemsDialog } from "@/components/DeliveryItemsDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 
 const ORDER_QUERY_FIELDS: QueryField[] = [
   { key: "po_number", label: "PO #", placeholder: "Search by PO number..." },
@@ -349,6 +350,13 @@ const Orders = () => {
   const [bulkConfirmOrderIndex, setBulkConfirmOrderIndex] = useState(0);
   const [bulkConfirmOrderIds, setBulkConfirmOrderIds] = useState<string[]>([]);
   const [isAutoConfirming, setIsAutoConfirming] = useState(false);
+
+  // Auto-confirm progress dialog state
+  const [autoConfirmProgressOpen, setAutoConfirmProgressOpen] = useState(false);
+  const [autoConfirmTotal, setAutoConfirmTotal] = useState(0);
+  const [autoConfirmProcessed, setAutoConfirmProcessed] = useState(0);
+  const [autoConfirmResults, setAutoConfirmResults] = useState<ImportResult[]>([]);
+  const [autoConfirmComplete, setAutoConfirmComplete] = useState(false);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -2039,6 +2047,11 @@ const Orders = () => {
     if (selectedIds.length === 0) return;
 
     setIsAutoConfirming(true);
+    // Reset progress state
+    setAutoConfirmResults([]);
+    setAutoConfirmProcessed(0);
+    setAutoConfirmComplete(false);
+
     try {
       // Filter to only draft/pending/sent from the selection
       const candidateIds = selectedIds.filter((id) => {
@@ -2069,28 +2082,43 @@ const Orders = () => {
         return;
       }
 
+      // Open progress dialog
+      setAutoConfirmTotal(eligibleIds.length);
+      setAutoConfirmProgressOpen(true);
+
       let confirmed = 0;
       for (const orderId of eligibleIds) {
-        const { data: poItems } = await supabase
-          .from("purchase_order_items")
-          .select("product_id, quantity")
-          .eq("purchase_order_id", orderId);
+        const order = orders.find((o) => o.id === orderId);
+        const poLabel = order?.po_number || orderId.slice(0, 8);
+        try {
+          const { data: poItems } = await supabase
+            .from("purchase_order_items")
+            .select("product_id, quantity")
+            .eq("purchase_order_id", orderId);
 
-        const deliveryItems = (poItems || []).map((item: any) => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        }));
+          const deliveryItems = (poItems || []).map((item: any) => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+          }));
 
-        await executeStatusUpdate(orderId, "confirmed", deliveryItems.length > 0 ? deliveryItems : undefined);
-        confirmed++;
+          await executeStatusUpdate(orderId, "confirmed", deliveryItems.length > 0 ? deliveryItems : undefined);
+          confirmed++;
+          setAutoConfirmResults((prev) => [...prev, { row: confirmed, status: 'success' as const, message: `${poLabel} confirmed` }]);
+        } catch (err: any) {
+          confirmed++;
+          setAutoConfirmResults((prev) => [...prev, { row: confirmed, status: 'error' as const, message: `${poLabel}: ${err?.message || 'Failed'}` }]);
+        }
+        setAutoConfirmProcessed((prev) => prev + 1);
       }
 
-      toast.success(`Auto-confirmed ${confirmed} order(s)`);
+      setAutoConfirmComplete(true);
+      toast.success(`Auto-confirmed ${eligibleIds.length} order(s)`);
       setSelectedOrderIds(new Set());
       fetchOrders();
     } catch (error: any) {
       console.error("Error auto-confirming:", error);
       toast.error("Failed to auto-confirm orders");
+      setAutoConfirmComplete(true);
     } finally {
       setIsAutoConfirming(false);
     }
@@ -3546,6 +3574,15 @@ const Orders = () => {
         fields={ORDER_QUERY_FIELDS}
         title="Load Purchase Orders"
         loading={queryLoading}
+      />
+      <ImportProgressDialog
+        open={autoConfirmProgressOpen}
+        onOpenChange={setAutoConfirmProgressOpen}
+        title="Auto Confirm Purchase Orders"
+        totalRows={autoConfirmTotal}
+        processedRows={autoConfirmProcessed}
+        results={autoConfirmResults}
+        isComplete={autoConfirmComplete}
       />
     </div>
   );
