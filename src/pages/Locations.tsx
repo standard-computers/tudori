@@ -6,6 +6,8 @@ import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useChangeHistorySettings } from "@/hooks/use-change-history-settings";
+import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { useExcel } from "@/hooks/use-excel";
 import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
@@ -429,6 +431,7 @@ const Locations = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const { exportToExcel, readExcel } = useExcel();
 
   // Import progress state
@@ -1270,7 +1273,7 @@ const Locations = () => {
 
                     <div className="flex-1 overflow-y-auto px-6 pb-6">
                       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className={`grid w-full ${isViewMode && isHistoryEnabled('location') ? 'grid-cols-4' : 'grid-cols-3'}`}>
                           <TabsTrigger value="general">General</TabsTrigger>
                           <TabsTrigger value="users">
                             <Users className="w-4 h-4 mr-2" />
@@ -1280,6 +1283,9 @@ const Locations = () => {
                             <Settings2 className="w-4 h-4 mr-2" />
                             Controls
                           </TabsTrigger>
+                          {isViewMode && isHistoryEnabled('location') && (
+                            <TabsTrigger value="history">History</TabsTrigger>
+                          )}
                         </TabsList>
 
                         <TabsContent value="general" className="space-y-4 mt-4">
@@ -1576,6 +1582,30 @@ const Locations = () => {
                             </div>
                           </div>
                         </TabsContent>
+
+                        {isViewMode && isHistoryEnabled('location') && editingId && (
+                          <TabsContent value="history">
+                            <AuditHistoryTab
+                              tableName="locations"
+                              recordId={editingId}
+                              fieldLabels={{
+                                name: "Name",
+                                type: "Type",
+                                address_line1: "Address",
+                                address_line2: "Address Line 2",
+                                city: "City",
+                                state: "State",
+                                postal_code: "Postal Code",
+                                country: "Country",
+                                status: "Status",
+                                payment_terms: "Payment Terms",
+                                is_internal_vendor: "Internal Vendor",
+                                is_pos_enabled: "POS Enabled",
+                                is_production_enabled: "Production",
+                              }}
+                            />
+                          </TabsContent>
+                        )}
                       </Tabs>
                     </div>
 
