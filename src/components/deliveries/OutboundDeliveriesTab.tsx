@@ -26,9 +26,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
+import {
+  Table as ItemsTable,
+  TableBody as ItemsTableBody,
+  TableCell as ItemsTableCell,
+  TableHead as ItemsTableHead,
+  TableHeader as ItemsTableHeader,
+  TableRow as ItemsTableRow,
+} from '@/components/ui/table';
 import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
+
+interface OutboundDeliveryItem {
+  id: string;
+  outbound_delivery_id: string;
+  product_id: string;
+  quantity: number;
+  created_at: string;
+  product?: { name: string; product_id: string } | null;
+}
 
 interface OutboundDelivery {
   id: string;
@@ -73,6 +90,7 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [viewDelivery, setViewDelivery] = useState<OutboundDelivery | null>(null);
   const [isViewMaximized, setIsViewMaximized] = useState(false);
+  const [viewItems, setViewItems] = useState<OutboundDeliveryItem[]>([]);
 
   const {
     sortConfig,
@@ -109,8 +127,20 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     fetchOutboundDeliveries();
   }, [fetchOutboundDeliveries]);
 
+  const fetchOutboundDeliveryItems = useCallback(async (deliveryId: string) => {
+    const { data } = await supabase
+      .from('outbound_delivery_items' as any)
+      .select(`
+        *,
+        product:products(name, product_id)
+      `)
+      .eq('outbound_delivery_id', deliveryId);
+    setViewItems((data || []) as unknown as OutboundDeliveryItem[]);
+  }, []);
+
   const handleView = (delivery: OutboundDelivery) => {
     setViewDelivery(delivery);
+    fetchOutboundDeliveryItems(delivery.id);
     setIsViewOpen(true);
   };
 
@@ -345,6 +375,35 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Notes</Label>
                   <p className="text-sm">{viewDelivery.notes}</p>
+                </div>
+              )}
+              {/* Items */}
+              {viewItems.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Items</Label>
+                  <ItemsTable>
+                    <ItemsTableHeader>
+                      <ItemsTableRow>
+                        <ItemsTableHead className="w-12">#</ItemsTableHead>
+                        <ItemsTableHead>Product</ItemsTableHead>
+                        <ItemsTableHead className="w-24 text-right">Qty</ItemsTableHead>
+                      </ItemsTableRow>
+                    </ItemsTableHeader>
+                    <ItemsTableBody>
+                      {viewItems.map((item, idx) => (
+                        <ItemsTableRow key={item.id}>
+                          <ItemsTableCell className="text-muted-foreground">{idx + 1}</ItemsTableCell>
+                          <ItemsTableCell>
+                            <div>
+                              <div className="font-medium">{item.product?.name || 'Unknown'}</div>
+                              <div className="text-sm text-muted-foreground font-mono">{item.product?.product_id || ''}</div>
+                            </div>
+                          </ItemsTableCell>
+                          <ItemsTableCell className="text-right">{item.quantity}</ItemsTableCell>
+                        </ItemsTableRow>
+                      ))}
+                    </ItemsTableBody>
+                  </ItemsTable>
                 </div>
               )}
             </div>
