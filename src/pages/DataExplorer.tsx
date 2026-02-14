@@ -117,6 +117,7 @@ export default function DataExplorer() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tabs, setTabs] = useState<TableTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [tableSearch, setTableSearch] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -505,8 +506,17 @@ export default function DataExplorer() {
         )}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-2">
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Filter tables..."
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                  className="pl-7 h-8 text-sm"
+                />
+              </div>
               <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Tables</div>
-              {AVAILABLE_TABLES.map((table) => (
+              {AVAILABLE_TABLES.filter(t => t.includes(tableSearch.toLowerCase())).map((table) => (
                 <button
                   key={table}
                   onClick={() => openTable(table)}
