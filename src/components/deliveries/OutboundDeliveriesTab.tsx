@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -34,7 +35,17 @@ import {
   TableHeader as ItemsTableHeader,
   TableRow as ItemsTableRow,
 } from '@/components/ui/table';
-import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck } from 'lucide-react';
+import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck, SendHorizonal } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
 
@@ -91,6 +102,9 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   const [viewDelivery, setViewDelivery] = useState<OutboundDelivery | null>(null);
   const [isViewMaximized, setIsViewMaximized] = useState(false);
   const [viewItems, setViewItems] = useState<OutboundDeliveryItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [inTransitConfirmOpen, setInTransitConfirmOpen] = useState(false);
+  const [isBulkInTransit, setIsBulkInTransit] = useState(false);
 
   const {
     sortConfig,
@@ -144,6 +158,35 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     setIsViewOpen(true);
   };
 
+  const outboundInTransitEligibleCount = useMemo(() => {
+    return Array.from(selectedIds).filter(id => {
+      const d = outboundDeliveries.find(del => del.id === id);
+      return d && d.status === 'pending';
+    }).length;
+  }, [selectedIds, outboundDeliveries]);
+
+  const handleBulkMarkInTransit = async () => {
+    const eligibleIds = Array.from(selectedIds).filter(id => {
+      const d = outboundDeliveries.find(del => del.id === id);
+      return d && d.status === 'pending';
+    });
+    if (eligibleIds.length === 0) return;
+    setIsBulkInTransit(true);
+    const { error } = await supabase
+      .from('outbound_deliveries')
+      .update({ status: 'in_transit' })
+      .in('id', eligibleIds);
+    if (error) {
+      toast.error('Failed to update status');
+    } else {
+      toast.success(`${eligibleIds.length} deliver${eligibleIds.length === 1 ? 'y' : 'ies'} marked as In Transit`);
+      setSelectedIds(new Set());
+      fetchOutboundDeliveries();
+    }
+    setIsBulkInTransit(false);
+    setInTransitConfirmOpen(false);
+  };
+
   if (outboundDeliveries.length === 0) {
     return (
       <div className="text-center py-12">
@@ -159,9 +202,37 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   return (
     <>
       <div className="overflow-hidden">
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
+            <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+            {outboundInTransitEligibleCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setInTransitConfirmOpen(true)}
+                disabled={isBulkInTransit}
+              >
+                <SendHorizonal className="w-4 h-4 mr-2" />
+                Mark In Transit ({outboundInTransitEligibleCount})
+              </Button>
+            )}
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={sortedAndFilteredData.length > 0 && sortedAndFilteredData.every(d => selectedIds.has(d.id))}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedIds(new Set(sortedAndFilteredData.map(d => d.id)));
+                    } else {
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                />
+              </TableHead>
               <SortableTableHead
                 label="ID"
                 sortKey="delivery_number"
@@ -248,6 +319,16 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
           <TableBody>
             {sortedAndFilteredData.map((delivery) => (
               <TableRow key={delivery.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.has(delivery.id)}
+                    onCheckedChange={(checked) => {
+                      const next = new Set(selectedIds);
+                      if (checked) next.add(delivery.id); else next.delete(delivery.id);
+                      setSelectedIds(next);
+                    }}
+                  />
+                </TableCell>
                 <TableCell className="font-mono text-sm">
                   <button
                     onClick={() => handleView(delivery)}
@@ -410,6 +491,24 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk In Transit Confirmation */}
+      <AlertDialog open={inTransitConfirmOpen} onOpenChange={setInTransitConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as In Transit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {outboundInTransitEligibleCount} deliver{outboundInTransitEligibleCount === 1 ? 'y' : 'ies'} will be marked as In Transit. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkMarkInTransit}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
