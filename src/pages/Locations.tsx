@@ -1615,7 +1615,7 @@ const Locations = () => {
                         {isEditing && (
                           <Button
                             type="button"
-                            variant="destructive"
+                            variant="secondary"
                             onClick={handleDeleteFromEdit}
                             className="mr-auto"
                           >
