@@ -1197,6 +1197,7 @@ export type Database = {
           is_fulfilled: boolean
           location_id: string | null
           notes: string | null
+          outbound_delivery_id: string | null
           purchase_order_id: string | null
           status: string
           tracking_number: string | null
@@ -1214,6 +1215,7 @@ export type Database = {
           is_fulfilled?: boolean
           location_id?: string | null
           notes?: string | null
+          outbound_delivery_id?: string | null
           purchase_order_id?: string | null
           status?: string
           tracking_number?: string | null
@@ -1231,6 +1233,7 @@ export type Database = {
           is_fulfilled?: boolean
           location_id?: string | null
           notes?: string | null
+          outbound_delivery_id?: string | null
           purchase_order_id?: string | null
           status?: string
           tracking_number?: string | null
@@ -1250,6 +1253,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_outbound_delivery_id_fkey"
+            columns: ["outbound_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_deliveries"
             referencedColumns: ["id"]
           },
           {
