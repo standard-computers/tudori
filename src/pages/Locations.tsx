@@ -1600,6 +1600,9 @@ const Locations = () => {
                                 is_internal_vendor: "Internal Vendor",
                                 is_pos_enabled: "POS Enabled",
                                 is_production_enabled: "Production",
+                                user_added: "User Added",
+                                user_removed: "User Removed",
+                                user_role_changed: "User Role Changed",
                               }}
                             />
                           </TabsContent>
