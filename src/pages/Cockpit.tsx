@@ -178,6 +178,8 @@ const statusColors: Record<string, string> = {
   confirmed: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
   processing: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   shipped: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+  in_transit: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  partial: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
   delivered: 'bg-green-500/10 text-green-600 border-green-500/20',
   cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
@@ -254,6 +256,7 @@ const [areaFormData, setAreaFormData] = useState({
   const [outboundOrders, setOutboundOrders] = useState<OutboundOrder[]>([]);
   const [selectedOutboundOrder, setSelectedOutboundOrder] = useState<OutboundOrder | null>(null);
   const [outboundOrderItems, setOutboundOrderItems] = useState<OutboundOrderItem[]>([]);
+  const [fulfillQuantities, setFulfillQuantities] = useState<Record<string, number>>({});
   const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
 
@@ -647,8 +650,7 @@ const [areaFormData, setAreaFormData] = useState({
         purchase_order:purchase_orders!outbound_deliveries_purchase_order_id_fkey(po_number, total_amount)
       `)
       .eq('from_location_id', selectedLocationId)
-      .eq('status', 'pending')
-      .is('goods_issue_id', null)
+      .in('status', ['pending', 'partial'])
       .order('created_at', { ascending: true });
     
     if (error) {
@@ -748,27 +750,23 @@ const [areaFormData, setAreaFormData] = useState({
     setIsFulfilling(true);
     
     try {
-      // Fetch items from the source order
-      let items: any[] = [];
-      if (selectedOutboundOrder.sales_order_id) {
-        const { data } = await supabase
-          .from('sales_order_items' as any)
-          .select('product_id, quantity')
-          .eq('sales_order_id', selectedOutboundOrder.sales_order_id);
-        items = (data as any) || [];
-      } else if (selectedOutboundOrder.purchase_order_id) {
-        const { data } = await supabase
-          .from('purchase_order_items' as any)
-          .select('product_id, quantity')
-          .eq('purchase_order_id', selectedOutboundOrder.purchase_order_id);
-        items = (data as any) || [];
-      }
+      // Build items with fulfillment quantities
+      const items = outboundOrderItems.map(item => ({
+        product_id: item.product_id,
+        quantity: fulfillQuantities[item.id] ?? item.quantity,
+        originalQuantity: item.quantity,
+        product: item.product,
+      })).filter(item => item.quantity > 0);
       
       if (items.length === 0) {
         toast.error('No items to fulfill');
         setIsFulfilling(false);
         return;
       }
+
+      // Determine if this is a partial fulfillment
+      const isPartial = items.some(item => item.quantity < item.originalQuantity) ||
+        items.length < outboundOrderItems.length;
 
       // Check inventory availability
       for (const item of items) {
@@ -780,12 +778,7 @@ const [areaFormData, setAreaFormData] = useState({
         
         const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
         if (totalAvailable < item.quantity) {
-          const { data: productData } = await supabase
-            .from('products')
-            .select('name')
-            .eq('id', item.product_id)
-            .single();
-          toast.error(`Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
+          toast.error(`Insufficient inventory for ${item.product?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}`);
           setIsFulfilling(false);
           return;
         }
@@ -806,7 +799,7 @@ const [areaFormData, setAreaFormData] = useState({
           sales_order_id: selectedOutboundOrder.sales_order_id || null,
           outbound_delivery_id: selectedOutboundOrder.id,
           status: 'pending',
-          notes: `Fulfillment for OD ${selectedOutboundOrder.delivery_number}`,
+          notes: `${isPartial ? 'Partial fulfillment' : 'Fulfillment'} for OD ${selectedOutboundOrder.delivery_number}`,
         })
         .select()
         .single();
@@ -833,13 +826,14 @@ const [areaFormData, setAreaFormData] = useState({
         console.error('Failed to create goods issue items:', itemsError);
       }
 
-      // Update outbound delivery status and link goods issue
+      // Update outbound delivery status
+      const odStatus = isPartial ? 'partial' : 'in_transit';
       await supabase
         .from('outbound_deliveries' as any)
         .update({ 
           goods_issue_id: (goodsIssue as any).id,
-          status: 'shipped',
-          shipped_date: new Date().toISOString().split('T')[0],
+          status: odStatus,
+          ...(isPartial ? {} : { shipped_date: new Date().toISOString().split('T')[0] }),
         })
         .eq('id', selectedOutboundOrder.id);
 
@@ -851,29 +845,64 @@ const [areaFormData, setAreaFormData] = useState({
         return;
       }
 
-      // Update the source order status
-      if (selectedOutboundOrder.sales_order_id) {
-        await supabase
-          .from('sales_orders' as any)
-          .update({ status: 'shipped' })
-          .eq('id', selectedOutboundOrder.sales_order_id);
-      } else if (selectedOutboundOrder.purchase_order_id) {
-        await supabase
-          .from('purchase_orders' as any)
-          .update({ status: 'shipped' })
-          .eq('id', selectedOutboundOrder.purchase_order_id);
-        // Mark the associated inbound delivery as fulfilled
-        await supabase
-          .from('deliveries' as any)
-          .update({ is_fulfilled: true, status: 'shipped' })
-          .eq('purchase_order_id', selectedOutboundOrder.purchase_order_id);
+      // Create inbound delivery at destination location (for internal transfers)
+      if (selectedOutboundOrder.to_location_id) {
+        try {
+          const { data: deliveryId } = await supabase.rpc('get_next_delivery_id', { p_company_id: companyId });
+          
+          const { data: inboundDelivery, error: inboundError } = await supabase
+            .from('deliveries')
+            .insert({
+              company_id: companyId,
+              delivery_id: deliveryId,
+              location_id: selectedOutboundOrder.to_location_id,
+              purchase_order_id: selectedOutboundOrder.purchase_order_id || null,
+              vendor_id: null,
+              status: 'in_transit',
+              expected_date: new Date().toISOString().split('T')[0],
+              outbound_delivery_id: selectedOutboundOrder.id,
+              notes: `Auto-created from outbound delivery ${selectedOutboundOrder.delivery_number}`,
+            })
+            .select()
+            .single();
+
+          if (inboundError) {
+            console.error('Failed to create inbound delivery:', inboundError);
+          } else if (inboundDelivery) {
+            // Create delivery items for the inbound delivery
+            const deliveryItems = items.map(item => ({
+              delivery_id: inboundDelivery.id,
+              product_id: item.product_id,
+              quantity: item.quantity,
+            }));
+            await supabase.from('delivery_items').insert(deliveryItems);
+          }
+        } catch (err) {
+          console.error('Failed to create inbound delivery:', err);
+        }
       }
 
-      toast.success(`Fulfilled - OD ${selectedOutboundOrder.delivery_number} shipped, inventory updated.`);
+      // Update the source order status
+      if (!isPartial) {
+        if (selectedOutboundOrder.sales_order_id) {
+          await supabase
+            .from('sales_orders' as any)
+            .update({ status: 'shipped' })
+            .eq('id', selectedOutboundOrder.sales_order_id);
+        } else if (selectedOutboundOrder.purchase_order_id) {
+          await supabase
+            .from('purchase_orders' as any)
+            .update({ status: 'shipped' })
+            .eq('id', selectedOutboundOrder.purchase_order_id);
+        }
+      }
+
+      toast.success(`${isPartial ? 'Partially fulfilled' : 'Fulfilled'} – OD ${selectedOutboundOrder.delivery_number} ${isPartial ? 'partially shipped' : 'in transit'}, inventory updated.`);
       
       setIsFulfillDialogOpen(false);
       setSelectedOutboundOrder(null);
       setOutboundOrderItems([]);
+      setFulfillQuantities({});
       fetchOutboundOrders();
       fetchInventory();
     } catch (error) {
@@ -960,16 +989,40 @@ const [areaFormData, setAreaFormData] = useState({
 
           const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity }));
           await supabase.from('goods_issue_items' as any).insert(giItems);
-          await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'shipped', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
+          await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'in_transit', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
 
           const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
           if (!postResult.success) { failCount++; continue; }
+
+          // Create inbound delivery at destination for internal transfers
+          if (od.to_location_id) {
+            try {
+              const { data: deliveryId } = await supabase.rpc('get_next_delivery_id', { p_company_id: companyId });
+              const { data: inboundDelivery } = await supabase
+                .from('deliveries')
+                .insert({
+                  company_id: companyId,
+                  delivery_id: deliveryId,
+                  location_id: od.to_location_id,
+                  purchase_order_id: od.purchase_order_id || null,
+                  vendor_id: null,
+                  status: 'in_transit',
+                  expected_date: new Date().toISOString().split('T')[0],
+                  outbound_delivery_id: od.id,
+                  notes: `Auto-created from outbound delivery ${od.delivery_number}`,
+                })
+                .select().single();
+              if (inboundDelivery) {
+                const deliveryItems = items.map((item: any) => ({ delivery_id: inboundDelivery.id, product_id: item.product_id, quantity: item.quantity }));
+                await supabase.from('delivery_items').insert(deliveryItems);
+              }
+            } catch (err) { console.error('Failed to create inbound delivery:', err); }
+          }
 
           if (od.sales_order_id) {
             await supabase.from('sales_orders' as any).update({ status: 'shipped' }).eq('id', od.sales_order_id);
           } else if (od.purchase_order_id) {
             await supabase.from('purchase_orders' as any).update({ status: 'shipped' }).eq('id', od.purchase_order_id);
-            await supabase.from('deliveries' as any).update({ is_fulfilled: true, status: 'shipped' }).eq('purchase_order_id', od.purchase_order_id);
           }
           successCount++;
         } catch (err) {
@@ -2731,6 +2784,7 @@ const [areaFormData, setAreaFormData] = useState({
         if (!open) {
           setSelectedOutboundOrder(null);
           setOutboundOrderItems([]);
+          setFulfillQuantities({});
         }
       }}>
         <DialogContent className="max-w-lg">
@@ -2762,7 +2816,8 @@ const [areaFormData, setAreaFormData] = useState({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
-                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right w-24">Ordered</TableHead>
+                        <TableHead className="text-right w-28">Fulfill Qty</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -2774,7 +2829,20 @@ const [areaFormData, setAreaFormData] = useState({
                               <p className="text-xs text-muted-foreground">{item.product?.product_id}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{item.quantity}</TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={item.quantity}
+                              value={fulfillQuantities[item.id] ?? item.quantity}
+                              onChange={(e) => setFulfillQuantities(prev => ({
+                                ...prev,
+                                [item.id]: Math.min(Number(e.target.value) || 0, item.quantity),
+                              }))}
+                              className="w-20 text-right ml-auto h-8"
+                            />
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -2789,8 +2857,20 @@ const [areaFormData, setAreaFormData] = useState({
                 <p className={cn("font-medium mb-1", selectedOutboundOrder.purchase_order_id && "text-blue-700")}>This will:</p>
                 <ul className={cn("list-disc list-inside space-y-1", selectedOutboundOrder.purchase_order_id ? "text-blue-600" : "text-muted-foreground")}>
                   <li>Create a Goods Issue to deduct inventory from this location</li>
-                  <li>Mark the delivery as shipped</li>
-                  <li>Update the source order status to "Shipped"</li>
+                  {selectedOutboundOrder.to_location_id && (
+                    <li>Create an inbound delivery at the destination location</li>
+                  )}
+                  {outboundOrderItems.some(item => (fulfillQuantities[item.id] ?? item.quantity) < item.quantity) ? (
+                    <>
+                      <li>Mark the outbound delivery as "Partial"</li>
+                      <li>Remain available for further fulfillment</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Mark the outbound delivery as "In Transit"</li>
+                      <li>Update the source order status to "Shipped"</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>
