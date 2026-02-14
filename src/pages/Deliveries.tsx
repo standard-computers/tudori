@@ -91,6 +91,7 @@ interface Delivery {
   purchase_order_id: string | null;
   location_id: string | null;
   vendor_id: string | null;
+  source_location_id: string | null;
   status: string;
   expected_date: string | null;
   delivered_date: string | null;
@@ -100,6 +101,7 @@ interface Delivery {
   purchase_order?: { po_number: string } | null;
   location?: { name: string } | null;
   vendor?: { name: string } | null;
+  source_location?: { name: string } | null;
   delivery_items?: { pu_id: string | null }[] | null;
 }
 
@@ -373,6 +375,7 @@ const Deliveries = () => {
         purchase_order:purchase_orders(po_number),
         location:locations!deliveries_location_id_fkey(name),
         vendor:vendors(name),
+        source_location:locations!deliveries_source_location_id_fkey(name),
         delivery_items(pu_id)
       `)
       .eq('company_id', companyId!);
@@ -1334,7 +1337,7 @@ const Deliveries = () => {
                             </button>
                           </TableCell>
                           <TableCell>{delivery.purchase_order?.po_number || '—'}</TableCell>
-                          <TableCell>{delivery.vendor?.name || '—'}</TableCell>
+                          <TableCell>{delivery.vendor?.name || delivery.source_location?.name || '—'}</TableCell>
                           <TableCell>{delivery.location?.name || '—'}</TableCell>
                           <TableCell>{delivery.carrier || '—'}</TableCell>
                           <TableCell className="text-right">
@@ -1520,6 +1523,14 @@ const Deliveries = () => {
                         className="text-sm text-primary hover:underline block"
                       >
                         {viewDelivery.vendor.name}
+                      </button>
+                    ) : viewDelivery.source_location?.name ? (
+                      <button
+                        type="button"
+                        onClick={() => openLocationDetail(viewDelivery.source_location_id)}
+                        className="text-sm text-primary hover:underline block"
+                      >
+                        {viewDelivery.source_location.name}
                       </button>
                     ) : (
                       <p className="text-sm">—</p>
