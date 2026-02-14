@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
@@ -256,8 +257,8 @@ const Employees = () => {
   const [nextEmployeeId, setNextEmployeeId] = useState("0001");
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isViewMaximized, setIsViewMaximized] = useState(false);
-  const [isFormMaximized, setIsFormMaximized] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
+  const [isFormMaximized, setIsFormMaximized] = useMaximizedState();
   const [teams, setTeams] = useState<Team[]>([]);
   const [createUserAccount, setCreateUserAccount] = useState(false);
   const [userRole, setUserRole] = useState<'member' | 'admin' | 'viewer' | 'it'>('member');

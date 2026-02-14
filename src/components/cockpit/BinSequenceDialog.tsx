@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import {
@@ -46,7 +47,7 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
   const [pickingSequences, setPickingSequences] = useState<Record<string, number | null>>({});
   const [putAwaySequences, setPutAwaySequences] = useState<Record<string, number | null>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
 
   useEffect(() => {
     if (open) {

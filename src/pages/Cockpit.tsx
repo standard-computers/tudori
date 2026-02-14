@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -203,7 +204,7 @@ const Cockpit = () => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [bins, setBins] = useState<Bin[]>([]);
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
-  const [isAreaMaximized, setIsAreaMaximized] = useState(false);
+  const [isAreaMaximized, setIsAreaMaximized] = useMaximizedState();
   const [isBinDialogOpen, setIsBinDialogOpen] = useState(false);
   const [isViewBinDialogOpen, setIsViewBinDialogOpen] = useState(false);
   const [isViewAreaDialogOpen, setIsViewAreaDialogOpen] = useState(false);

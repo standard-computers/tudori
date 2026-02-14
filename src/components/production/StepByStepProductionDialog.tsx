@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,7 +86,7 @@ export function StepByStepProductionDialog({
   initialCompletedStepIds = [],
 }: StepByStepProductionDialogProps) {
   const [steps, setSteps] = useState<BomStep[]>([]);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [stepItems, setStepItems] = useState<Record<string, BomStepItem[]>>({});
   const [binInventory, setBinInventory] = useState<Record<string, InventoryRecord[]>>({});
   const [currentStepIndex, setCurrentStepIndex] = useState(0);

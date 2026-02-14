@@ -14,9 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun } from 'lucide-react';
-import { Kbd } from '@/components/ui/kbd';
+ import { Kbd } from '@/components/ui/kbd';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  import { designSystems, applyDesignSystem } from '@/config/design-systems';
+import { setMaximizePreferenceCache } from '@/hooks/use-maximize-preference';
+import { Maximize2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -116,6 +118,7 @@ const UserSettings = () => {
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
   const [openInNewTab, setOpenInNewTab] = useState(false);
+  const [maximizeWindows, setMaximizeWindows] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null, company_id: null });
   const [savingProfile, setSavingProfile] = useState(false);
    const [designSystem, setDesignSystem] = useState('default');
@@ -185,12 +188,14 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system')
+       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     const hiddenTiles = new Set((data?.hidden_tiles as string[]) || []);
     setOpenInNewTab(data?.open_apps_in_new_tab || false);
+    setMaximizeWindows(data?.maximize_windows || false);
+    setMaximizePreferenceCache(data?.maximize_windows || false);
     
     // Apply saved theme
     if (data?.theme) {
@@ -271,6 +276,32 @@ const UserSettings = () => {
   const handleOpenInNewTabChange = async (checked: boolean) => {
     setOpenInNewTab(checked);
     await savePreferences(apps, checked);
+  };
+
+  const handleMaximizeWindowsChange = async (checked: boolean) => {
+    setMaximizeWindows(checked);
+    setMaximizePreferenceCache(checked);
+    
+    if (!user) return;
+    
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('user_preferences')
+        .update({ maximize_windows: checked })
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('user_preferences')
+        .insert({ user_id: user.id, maximize_windows: checked });
+    }
+    
+    toast.success('Preference saved');
   };
 
   const handleThemeChange = async (checked: boolean) => {
@@ -487,6 +518,31 @@ const UserSettings = () => {
                     id="dark-mode"
                     checked={theme === 'dark'}
                     onCheckedChange={handleThemeChange}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Windows</CardTitle>
+                <CardDescription>
+                  Control how dialog windows behave
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Maximize2 className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <Label htmlFor="maximize-windows" className="text-base font-medium">Maximize Windows</Label>
+                      <p className="text-sm text-muted-foreground">Automatically maximize dialogs when they open</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="maximize-windows"
+                    checked={maximizeWindows}
+                    onCheckedChange={handleMaximizeWindowsChange}
                   />
                 </div>
               </CardContent>

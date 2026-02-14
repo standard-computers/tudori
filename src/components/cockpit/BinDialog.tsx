@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,7 +146,7 @@ const BinDialog = forwardRef<BinDialogRef, BinDialogProps>(
     const [selectedProductId, setSelectedProductId] = useState<string>('');
     const [newProductQty, setNewProductQty] = useState<string>('');
     const [activeTab, setActiveTab] = useState('general');
-    const [isMaximized, setIsMaximized] = useState(false);
+    const [isMaximized, setIsMaximized] = useMaximizedState();
 
     useEffect(() => {
       if (open) {

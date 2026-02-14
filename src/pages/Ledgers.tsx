@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -133,9 +134,9 @@ const Ledgers = () => {
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   
   // Maximize states
-  const [isCreateMaximized, setIsCreateMaximized] = useState(false);
-  const [isViewMaximized, setIsViewMaximized] = useState(false);
-  const [isTxDetailMaximized, setIsTxDetailMaximized] = useState(false);
+  const [isCreateMaximized, setIsCreateMaximized] = useMaximizedState();
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
+  const [isTxDetailMaximized, setIsTxDetailMaximized] = useMaximizedState();
   
   // Form state
   const [formData, setFormData] = useState({

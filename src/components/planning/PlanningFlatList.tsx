@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,7 +76,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
 
   // Requisition dialog
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [requisitionItems, setRequisitionItems] = useState<RequisitionItem[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createProgress, setCreateProgress] = useState({ current: 0, total: 0, currentAction: '' });

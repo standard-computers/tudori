@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,7 +119,7 @@ export const CreateInvoiceDialog = ({
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [referenceItems, setReferenceItems] = useState<ReferenceItem[]>([]);
   const [loadingReferenceItems, setLoadingReferenceItems] = useState(false);
 

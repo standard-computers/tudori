@@ -1,0 +1,1 @@
+ALTER TABLE public.user_preferences ADD COLUMN maximize_windows boolean NOT NULL DEFAULT false;

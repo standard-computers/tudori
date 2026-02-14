@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -107,7 +108,7 @@ const Me = () => {
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [teams, setTeams] = useState<TeamInfo[]>([]);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Profile edit state

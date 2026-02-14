@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import { createPackagingUnit } from '@/lib/packaging-units';
@@ -82,7 +83,7 @@ const ViewWorkOrderDialog = ({
   onCompleted,
   onDelete,
 }: ViewWorkOrderDialogProps) => {
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [activeTab, setActiveTab] = useState('details');
   const [workTasks, setWorkTasks] = useState<WorkTask[]>([]);
   const [anticipatedTasks, setAnticipatedTasks] = useState<AnticipatedTask[]>([]);

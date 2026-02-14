@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
@@ -546,7 +547,7 @@ const BillOfMaterials = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextBomId, setNextBomId] = useState('BOM-0001');
   const [activeTab, setActiveTab] = useState('components');

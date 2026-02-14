@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +72,7 @@ interface SafetyStockDialogProps {
 
 export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStockDialogProps) => {
   const [activeTab, setActiveTab] = useState('view');
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [safetyStocks, setSafetyStocks] = useState<SafetyStock[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
