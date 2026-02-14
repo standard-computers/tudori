@@ -234,6 +234,7 @@ const [areaFormData, setAreaFormData] = useState({
   // Deliveries state
   const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
   const [pendingDeliveries, setPendingDeliveries] = useState<Delivery[]>([]);
+  const [deliveriesWithOpenTasks, setDeliveriesWithOpenTasks] = useState<Set<string>>(new Set());
   
   // Receive delivery state
   const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
@@ -418,6 +419,7 @@ const [areaFormData, setAreaFormData] = useState({
       } else {
         toast.success(`Created ${receiveTaskPayloads.length} receiving task${receiveTaskPayloads.length !== 1 ? 's' : ''}`);
         fetchWorkOrders();
+        fetchPendingDeliveries();
       }
     } catch (err) {
       console.error('Error creating receiving tasks:', err);
@@ -735,7 +737,7 @@ const [areaFormData, setAreaFormData] = useState({
   };
 
   const fetchPendingDeliveries = async () => {
-    if (!selectedLocationId) return;
+    if (!selectedLocationId || !companyId) return;
     const { data, count, error } = await supabase
       .from('deliveries')
       .select(`
@@ -762,6 +764,23 @@ const [areaFormData, setAreaFormData] = useState({
     }
     setPendingDeliveriesCount(count || 0);
     setPendingDeliveries((data || []) as unknown as Delivery[]);
+
+    // Fetch delivery IDs that have open receiving tasks
+    if (data && data.length > 0) {
+      const deliveryIds = data.map((d: any) => d.id);
+      const { data: openTasks } = await supabase
+        .from('tasks')
+        .select('source_id')
+        .eq('company_id', companyId)
+        .eq('source_type', 'delivery_receive')
+        .in('source_id', deliveryIds)
+        .in('status', ['todo', 'in_progress']);
+      
+      const idsWithTasks = new Set((openTasks || []).map((t: any) => t.source_id as string));
+      setDeliveriesWithOpenTasks(idsWithTasks);
+    } else {
+      setDeliveriesWithOpenTasks(new Set());
+    }
   };
 
   const fetchInventory = async () => {
@@ -1967,9 +1986,9 @@ const [areaFormData, setAreaFormData] = useState({
                                     setSelectedDelivery(delivery);
                                     setIsReceiveDialogOpen(true);
                                   }}
-                                  disabled={isInternalTransfer && !delivery.is_fulfilled}
+                                  disabled={(isInternalTransfer && !delivery.is_fulfilled) || deliveriesWithOpenTasks.has(delivery.id)}
                                 >
-                                  {isInternalTransfer && !delivery.is_fulfilled ? 'Awaiting' : 'Receive'}
+                                  {isInternalTransfer && !delivery.is_fulfilled ? 'Awaiting' : deliveriesWithOpenTasks.has(delivery.id) ? 'Tasks Open' : 'Receive'}
                                 </Button>
                               </div>
                             </TableCell>
