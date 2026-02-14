@@ -1199,6 +1199,7 @@ export type Database = {
           notes: string | null
           outbound_delivery_id: string | null
           purchase_order_id: string | null
+          source_location_id: string | null
           status: string
           tracking_number: string | null
           updated_at: string
@@ -1217,6 +1218,7 @@ export type Database = {
           notes?: string | null
           outbound_delivery_id?: string | null
           purchase_order_id?: string | null
+          source_location_id?: string | null
           status?: string
           tracking_number?: string | null
           updated_at?: string
@@ -1235,6 +1237,7 @@ export type Database = {
           notes?: string | null
           outbound_delivery_id?: string | null
           purchase_order_id?: string | null
+          source_location_id?: string | null
           status?: string
           tracking_number?: string | null
           updated_at?: string
@@ -1267,6 +1270,13 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
@@ -2824,6 +2834,48 @@ export type Database = {
             columns: ["to_location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outbound_delivery_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          outbound_delivery_id: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outbound_delivery_id: string
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outbound_delivery_id?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_delivery_items_outbound_delivery_id_fkey"
+            columns: ["outbound_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_delivery_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

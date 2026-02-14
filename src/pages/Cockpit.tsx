@@ -845,6 +845,14 @@ const [areaFormData, setAreaFormData] = useState({
         return;
       }
 
+      // Add items to outbound delivery
+      const odItems = items.map(item => ({
+        outbound_delivery_id: selectedOutboundOrder.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+      }));
+      await supabase.from('outbound_delivery_items' as any).insert(odItems);
+
       // Create inbound delivery at destination location (for internal transfers)
       if (selectedOutboundOrder.to_location_id) {
         try {
@@ -858,6 +866,7 @@ const [areaFormData, setAreaFormData] = useState({
               location_id: selectedOutboundOrder.to_location_id,
               purchase_order_id: selectedOutboundOrder.purchase_order_id || null,
               vendor_id: null,
+              source_location_id: selectedLocationId,
               status: 'in_transit',
               expected_date: new Date().toISOString().split('T')[0],
               outbound_delivery_id: selectedOutboundOrder.id,
@@ -869,7 +878,7 @@ const [areaFormData, setAreaFormData] = useState({
           if (inboundError) {
             console.error('Failed to create inbound delivery:', inboundError);
           } else if (inboundDelivery) {
-            // Create delivery items for the inbound delivery
+            // Create delivery items for the inbound delivery matching fulfillment quantities
             const deliveryItems = items.map(item => ({
               delivery_id: inboundDelivery.id,
               product_id: item.product_id,
@@ -994,6 +1003,10 @@ const [areaFormData, setAreaFormData] = useState({
           const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
           if (!postResult.success) { failCount++; continue; }
 
+          // Add items to outbound delivery
+          const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity }));
+          await supabase.from('outbound_delivery_items' as any).insert(odItems);
+
           // Create inbound delivery at destination for internal transfers
           if (od.to_location_id) {
             try {
@@ -1006,6 +1019,7 @@ const [areaFormData, setAreaFormData] = useState({
                   location_id: od.to_location_id,
                   purchase_order_id: od.purchase_order_id || null,
                   vendor_id: null,
+                  source_location_id: selectedLocationId,
                   status: 'in_transit',
                   expected_date: new Date().toISOString().split('T')[0],
                   outbound_delivery_id: od.id,
