@@ -9,12 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { NavLink } from "@/components/NavLink";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import {
-  Plus, ChevronLeft, ChevronRight,
+  Plus, ChevronLeft, ChevronRight, ArrowLeft,
   Globe, Maximize2, Minimize2, Trash2, RefreshCw
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -343,7 +342,9 @@ const CalendarPage = () => {
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
-            <NavLink to="/dashboard" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <h1 className="text-xl font-semibold">Calendar</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -426,7 +427,7 @@ const CalendarPage = () => {
           <DialogHeader>
             <DialogTitle>{editingEvent ? "Edit Event" : "New Event"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 px-6 py-4">
+          <DialogBody className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="event-title">Title</Label>
               <Input
@@ -539,8 +540,8 @@ const CalendarPage = () => {
                 ))}
               </div>
             </div>
-          </div>
-          <DialogFooter className="px-6">
+          </DialogBody>
+          <DialogFooter>
             {editingEvent && (
               <Button
                 variant="destructive"
