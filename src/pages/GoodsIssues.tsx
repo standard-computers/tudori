@@ -231,7 +231,7 @@ const GoodsIssues = () => {
         location:locations(name),
         customer:customers(name),
         sales_order:sales_orders(so_number),
-        outbound_delivery:outbound_deliveries(delivery_number)
+        outbound_delivery:outbound_deliveries!goods_issues_outbound_delivery_id_fkey(delivery_number)
       `)
       .eq('company_id', companyId!)
       .order('issue_number', { ascending: false });
