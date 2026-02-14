@@ -565,7 +565,15 @@ const Ledgers = () => {
               <TableBody>
                 {ledgers.map((ledger) => (
                   <TableRow key={ledger.id}>
-                    <TableCell className="font-mono">{ledger.ledger_id}</TableCell>
+                    <TableCell className="font-mono">
+                      <button
+                        type="button"
+                        className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0 font-mono text-sm"
+                        onClick={() => openViewDialog(ledger)}
+                      >
+                        {ledger.ledger_id}
+                      </button>
+                    </TableCell>
                     <TableCell className="font-medium">{ledger.name}</TableCell>
                     <TableCell>{ledger.location?.name || '—'}</TableCell>
                     <TableCell className="text-right">
