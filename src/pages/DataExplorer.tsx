@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useExcel } from "@/hooks/use-excel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 const AVAILABLE_TABLES = [
   "accounts",
   "areas",
@@ -315,28 +316,48 @@ export default function DataExplorer() {
     }));
   };
 
+  // Delete progress dialog state
+  const [deleteProgressOpen, setDeleteProgressOpen] = useState(false);
+  const [deleteTotal, setDeleteTotal] = useState(0);
+  const [deleteProcessed, setDeleteProcessed] = useState(0);
+  const [deleteResults, setDeleteResults] = useState<ImportResult[]>([]);
+  const [deleteComplete, setDeleteComplete] = useState(false);
+
   const handleDeleteSelected = async (tab: TableTab, filteredData: Record<string, unknown>[]) => {
     const selectedData = Array.from(tab.selectedRows).map(i => filteredData[i]).filter(Boolean);
     if (selectedData.length === 0) return;
 
     setIsDeleting(true);
+    setDeleteResults([]);
+    setDeleteProcessed(0);
+    setDeleteTotal(selectedData.length);
+    setDeleteComplete(false);
+    setDeleteProgressOpen(true);
+
     let successCount = 0;
     let errorCount = 0;
 
-    for (const row of selectedData) {
+    for (let idx = 0; idx < selectedData.length; idx++) {
+      const row = selectedData[idx];
       const id = row.id as string;
       if (!id) {
         errorCount++;
+        setDeleteResults(prev => [...prev, { row: idx + 1, status: 'error' as const, message: 'No id field' }]);
+        setDeleteProcessed(prev => prev + 1);
         continue;
       }
       const { error } = await supabase.from(tab.tableName as "accounts").delete().eq("id", id);
       if (error) {
         errorCount++;
+        setDeleteResults(prev => [...prev, { row: idx + 1, status: 'error' as const, message: error.message }]);
       } else {
         successCount++;
+        setDeleteResults(prev => [...prev, { row: idx + 1, status: 'success' as const, message: `Deleted ${id.slice(0, 8)}…` }]);
       }
+      setDeleteProcessed(prev => prev + 1);
     }
 
+    setDeleteComplete(true);
     setIsDeleting(false);
     
     if (successCount > 0) {
@@ -668,6 +689,15 @@ export default function DataExplorer() {
           </div>
         </div>
       </div>
+      <ImportProgressDialog
+        open={deleteProgressOpen}
+        onOpenChange={setDeleteProgressOpen}
+        title="Deleting Records"
+        totalRows={deleteTotal}
+        processedRows={deleteProcessed}
+        results={deleteResults}
+        isComplete={deleteComplete}
+      />
     </div>
   );
 }
