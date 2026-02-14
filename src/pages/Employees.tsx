@@ -31,6 +31,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { toast } from '@/lib/toast';
 import { TimesheetsTab } from "@/components/employees/TimesheetsTab";
+import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 
 interface Employee {
   id: string;
@@ -937,9 +938,11 @@ const Employees = () => {
           <DialogBody className="pb-6">
             {viewingEmployee && (
               <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
                 <TabsContent value="details" className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -1018,15 +1021,15 @@ const Employees = () => {
                       </div>
                     </div>
                   </div>
-                  {viewingEmployee.notes && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Notes</p>
-                      <p className="text-sm whitespace-pre-wrap">{viewingEmployee.notes}</p>
-                    </div>
-                  )}
                 </TabsContent>
                 <TabsContent value="timesheets" className="mt-4">
                   <TimesheetsTab employeeId={viewingEmployee.id} />
+                </TabsContent>
+                <TabsContent value="notes" className="mt-4">
+                  <p className="text-sm whitespace-pre-wrap">{viewingEmployee.notes || "No notes"}</p>
+                </TabsContent>
+                <TabsContent value="history" className="mt-4">
+                  <AuditHistoryTab tableName="employees" recordId={viewingEmployee.id} />
                 </TabsContent>
               </Tabs>
             )}
