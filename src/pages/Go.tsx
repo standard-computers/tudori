@@ -626,6 +626,7 @@ function TaskCard({
   const hasWorkTasks = task.work_tasks.length > 0;
   const completedSteps = task.work_tasks.filter((wt) => wt.status === 'done').length;
   const totalSteps = task.work_tasks.length;
+  const allWorkTasksDone = !hasWorkTasks || completedSteps === totalSteps;
 
   return (
     <div className="rounded-xl bg-card border border-border overflow-hidden">
@@ -712,14 +713,15 @@ function TaskCard({
                 size="sm"
                 className="flex-1 h-10"
                 onClick={() => onStatusChange(task.id, 'done')}
-                disabled={isUpdating}
+                disabled={isUpdating || !allWorkTasksDone}
+                title={!allWorkTasksDone ? 'Complete all steps before finishing the task' : undefined}
               >
                 {isUpdating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                    Complete
+                    Complete{hasWorkTasks && !allWorkTasksDone ? ` (${completedSteps}/${totalSteps})` : ''}
                   </>
                 )}
               </Button>
