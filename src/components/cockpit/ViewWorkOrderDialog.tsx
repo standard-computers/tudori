@@ -139,14 +139,7 @@ const ViewWorkOrderDialog = ({
     const isReceive = workOrder.source_type === 'delivery_receive';
 
     if (isReceive) {
-      // Parse product info from the task description
-      // The task has product_id/quantity info embedded, or we parse from title
-      // Title format: "Receive PU-XXXX from DEL-XXXX" or "Receive ProductName xQty from DEL-XXXX"
-      const titleMatch = workOrder.title.match(/^Receive (.+?) from /);
-      const descText = workOrder.description || '';
-
-      // Try to find put away bin for the product
-      // Get GR-enabled areas
+      // Find GR-enabled area for Receive destination
       const { data: grAreas } = await supabase
         .from('areas')
         .select('id, area_id, name')
@@ -155,25 +148,127 @@ const ViewWorkOrderDialog = ({
         .order('area_id')
         .limit(1);
 
-      let putAwayBin = 'Next available bin';
-      let putAwayArea: string | undefined;
+      let receiveBinLabel = 'Next available bin';
+      let receiveAreaLabel: string | undefined;
 
       if (grAreas && grAreas.length > 0) {
-        putAwayArea = `${grAreas[0].area_id} — ${grAreas[0].name}`;
+        receiveAreaLabel = `${grAreas[0].area_id} — ${grAreas[0].name}`;
+        // Find first empty bin in GR area
+        const { data: grBins } = await supabase
+          .from('bins')
+          .select('id, bin_id, name, put_away_sequence')
+          .eq('area_id', grAreas[0].id)
+          .eq('allow_put_away', true)
+          .order('put_away_sequence', { ascending: true, nullsFirst: false });
+
+        if (grBins && grBins.length > 0) {
+          // Check which bins are occupied
+          const grBinIds = grBins.map((b: any) => b.id);
+          const { data: occupiedInv } = await supabase
+            .from('inventory')
+            .select('bin_id')
+            .in('bin_id', grBinIds)
+            .gt('quantity', 0);
+          const occupiedSet = new Set((occupiedInv || []).map((inv: any) => inv.bin_id));
+          
+          const emptyGrBin = grBins.find((b: any) => !occupiedSet.has(b.id));
+          if (emptyGrBin) {
+            receiveBinLabel = `${(emptyGrBin as any).bin_id} (${(emptyGrBin as any).name})`;
+          } else {
+            receiveBinLabel = `${(grBins[0] as any).bin_id} (${(grBins[0] as any).name})`;
+          }
+        }
+      }
+
+      // Find storage area (not GR, not GI) for Put Away destination
+      const { data: storageAreas } = await supabase
+        .from('areas')
+        .select('id, area_id, name')
+        .eq('location_id', locationId)
+        .eq('is_goods_receipt_enabled', false)
+        .eq('is_goods_issue_enabled', false)
+        .order('area_id');
+
+      let putAwayBinLabel = 'Next available bin';
+      let putAwayAreaLabel: string | undefined;
+
+      if (storageAreas && storageAreas.length > 0) {
+        const storageAreaIds = storageAreas.map((a: any) => a.id);
+        const { data: storageBins } = await supabase
+          .from('bins')
+          .select('id, bin_id, name, area_id, put_away_sequence, area:areas(area_id, name)')
+          .in('area_id', storageAreaIds)
+          .eq('allow_put_away', true)
+          .order('put_away_sequence', { ascending: true, nullsFirst: false });
+
+        if (storageBins && storageBins.length > 0) {
+          const binIds = storageBins.map((b: any) => b.id);
+          const { data: occupiedBins } = await supabase
+            .from('inventory')
+            .select('bin_id')
+            .in('bin_id', binIds)
+            .gt('quantity', 0);
+          const occupiedSet = new Set((occupiedBins || []).map((inv: any) => inv.bin_id));
+
+          const { data: binProducts } = await supabase
+            .from('bin_products')
+            .select('bin_id, product_id')
+            .in('bin_id', binIds);
+          const binProductMap = new Map<string, string[]>();
+          for (const bp of (binProducts || []) as any[]) {
+            const existing = binProductMap.get(bp.bin_id) || [];
+            existing.push(bp.product_id);
+            binProductMap.set(bp.bin_id, existing);
+          }
+
+          // Priority 1: Empty bin with matching product restriction
+          for (const bin of storageBins as any[]) {
+            if (occupiedSet.has(bin.id)) continue;
+            const restrictions = binProductMap.get(bin.id);
+            if (restrictions && restrictions.length > 0) {
+              // We don't know the exact product yet in preview, so skip product matching
+              // and just show the first storage area info
+            }
+          }
+
+          // Pick first empty unrestricted bin
+          for (const bin of storageBins as any[]) {
+            if (occupiedSet.has(bin.id)) continue;
+            const restrictions = binProductMap.get(bin.id);
+            if (!restrictions || restrictions.length === 0) {
+              putAwayBinLabel = `${bin.bin_id} (${bin.name})`;
+              putAwayAreaLabel = bin.area ? `${bin.area.area_id} — ${bin.area.name}` : undefined;
+              break;
+            }
+          }
+
+          // Fallback: first storage bin
+          if (!putAwayAreaLabel && storageBins.length > 0) {
+            const firstBin = storageBins[0] as any;
+            putAwayBinLabel = `${firstBin.bin_id} (${firstBin.name})`;
+            putAwayAreaLabel = firstBin.area ? `${firstBin.area.area_id} — ${firstBin.area.name}` : undefined;
+          }
+        } else {
+          putAwayAreaLabel = `${storageAreas[0].area_id} — ${storageAreas[0].name}`;
+        }
       }
 
       anticipated.push({
         task_type: 'receive',
         sequence: 1,
         description: `Receive goods and create Goods Receipt`,
+        destination_bin: receiveBinLabel,
+        destination_area: receiveAreaLabel,
       });
 
       anticipated.push({
         task_type: 'put_away',
         sequence: 2,
-        description: `Put away to ${putAwayBin}`,
-        destination_bin: putAwayBin,
-        destination_area: putAwayArea,
+        description: `Put away to ${putAwayBinLabel}`,
+        source_bin: receiveBinLabel,
+        source_area: receiveAreaLabel,
+        destination_bin: putAwayBinLabel,
+        destination_area: putAwayAreaLabel,
       });
     } else if (isPick) {
       // Parse product_id and quantity from description
