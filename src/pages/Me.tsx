@@ -31,6 +31,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { ArrowLeft, Loader2, UserCircle, Plus, Clock, Users2, CalendarOff, Save, Maximize2, Minimize2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { format, parseISO, differenceInMinutes } from "date-fns";
+import ViewTimePunchDialog from "@/components/ViewTimePunchDialog";
 
 interface EmployeeRecord {
   id: string;
@@ -122,6 +123,8 @@ const Me = () => {
     country: "",
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [selectedPunch, setSelectedPunch] = useState<TimePunch | null>(null);
+  const [isPunchDialogOpen, setIsPunchDialogOpen] = useState(false);
 
   // Time off request form
   const [requestForm, setRequestForm] = useState({
@@ -545,7 +548,7 @@ const Me = () => {
                 </TableHeader>
                 <TableBody>
                   {punches.map((punch) => (
-                    <TableRow key={punch.id}>
+                    <TableRow key={punch.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedPunch(punch); setIsPunchDialogOpen(true); }}>
                       <TableCell className="font-medium">
                         {format(parseISO(punch.punch_in), "MMM d, yyyy")}
                       </TableCell>
@@ -736,6 +739,15 @@ const Me = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {employee && companyId && (
+        <ViewTimePunchDialog
+          open={isPunchDialogOpen}
+          onOpenChange={setIsPunchDialogOpen}
+          punch={selectedPunch}
+          employeeId={employee.id}
+          companyId={companyId}
+        />
+      )}
     </div>
   );
 };
