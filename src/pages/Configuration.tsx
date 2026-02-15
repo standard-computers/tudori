@@ -64,6 +64,8 @@ interface ProcessControlSettings {
   track_bin_level_movements: boolean;
   enforce_route_records: boolean;
   reduce_app_load: boolean;
+  contest_time_punch: boolean;
+  contest_time_punch_days: number;
 }
 
 interface ImportExportSettings {
@@ -127,6 +129,8 @@ const Configuration = () => {
     track_bin_level_movements: true,
     enforce_route_records: false,
     reduce_app_load: false,
+    contest_time_punch: true,
+    contest_time_punch_days: 7,
   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -283,6 +287,8 @@ const Configuration = () => {
           track_bin_level_movements: (val.track_bin_level_movements as boolean) ?? true,
           enforce_route_records: (val.enforce_route_records as boolean) ?? false,
           reduce_app_load: (val.reduce_app_load as boolean) ?? false,
+          contest_time_punch: (val.contest_time_punch as boolean) ?? true,
+          contest_time_punch_days: (val.contest_time_punch_days as number) ?? 7,
         });
       }
     } catch (error) {
@@ -509,6 +515,8 @@ const Configuration = () => {
         track_bin_level_movements: processControls.track_bin_level_movements,
         enforce_route_records: processControls.enforce_route_records,
         reduce_app_load: processControls.reduce_app_load,
+        contest_time_punch: processControls.contest_time_punch,
+        contest_time_punch_days: processControls.contest_time_punch_days,
       };
 
       if (existing) {
@@ -1062,6 +1070,49 @@ const Configuration = () => {
                       onCheckedChange={(checked) => 
                         setProcessControls(prev => ({ ...prev, reduce_app_load: checked }))
                       }
+                    />
+                  </div>
+                  )}
+
+                  {/* Contest Time Punch */}
+                  {(!searchQuery || 'contest time punch'.includes(searchQuery.toLowerCase())) && (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1 flex-1">
+                      <Label className="font-medium text-base">Contest Time Punch</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, employees can contest time punches from the Time Clock or Me app. A notification will be sent to the manager of the team they belong to.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        When disabled, employees cannot contest their time punches.
+                      </p>
+                      {processControls.contest_time_punch && (
+                        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
+                          <Label className="text-sm whitespace-nowrap">Days Valid</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={processControls.contest_time_punch_days}
+                            onChange={(e) =>
+                              setProcessControls(prev => ({
+                                ...prev,
+                                contest_time_punch_days: Math.max(1, parseInt(e.target.value) || 1),
+                              }))
+                            }
+                            className="w-20 h-8"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Only punches within this many days can be contested
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <Switch
+                      checked={processControls.contest_time_punch}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, contest_time_punch: checked }))
+                      }
+                      className="ml-4"
                     />
                   </div>
                   )}
