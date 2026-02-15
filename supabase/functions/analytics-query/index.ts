@@ -54,6 +54,30 @@ const COLUMN_PATTERN = /^[a-z_][a-z0-9_]*$/;
 
 const ALLOWED_AGGREGATES = new Set(["count", "sum", "avg", "min", "max", "count_distinct"]);
 
+// Validate calculated column expressions - only allow table.column refs, numbers, and arithmetic operators
+function validateCalculatedExpression(expr: string): void {
+  // Remove all valid tokens: table.column refs, numbers (incl decimals), arithmetic operators, parentheses, whitespace
+  const stripped = expr
+    .replace(/[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*/gi, '')  // table.column
+    .replace(/\d+(\.\d+)?/g, '')                             // numbers
+    .replace(/[+\-*/()]/g, '')                                // operators and parens
+    .replace(/\s+/g, '');                                     // whitespace
+  
+  if (stripped.length > 0) {
+    throw new Error(`Invalid characters in calculated expression: ${stripped.substring(0, 20)}`);
+  }
+  
+  // Block dangerous patterns even within valid character sets
+  const lower = expr.toLowerCase();
+  const dangerous = ['select', 'insert', 'update', 'delete', 'drop', 'alter', 'create', 
+    'truncate', 'grant', 'revoke', 'union', 'exec', '--', '/*', '*/',';;'];
+  for (const keyword of dangerous) {
+    if (lower.includes(keyword)) {
+      throw new Error(`Disallowed keyword in expression: ${keyword}`);
+    }
+  }
+}
+
 function sanitizeIdentifier(id: string): string {
   if (!COLUMN_PATTERN.test(id)) {
     throw new Error(`Invalid identifier: ${id}`);
@@ -170,14 +194,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Add calculated columns
+    // Add calculated columns with strict validation
     for (const calc of (calculatedColumns || [])) {
-      // Basic expression validation - only allow column refs, operators, numbers
+      // Validate the calc name is a safe identifier
+      if (!calc.name || !/^[a-zA-Z_][a-zA-Z0-9_ ]*$/.test(calc.name)) {
+        throw new Error(`Invalid calculated column name: ${calc.name}`);
+      }
+      // Validate the expression only contains allowed tokens
+      validateCalculatedExpression(calc.expression);
+      // Replace table.column refs with sanitized versions
       const safeExpr = calc.expression.replace(
         /([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)/gi,
         (_, table, col) => `${sanitizeTableName(table)}.${sanitizeIdentifier(col)}`
       );
-      selectParts.push(`(${safeExpr}) AS "${calc.name}"`);
+      // Sanitize the alias name to prevent injection via column name
+      const safeName = calc.name.replace(/[^a-zA-Z0-9_ ]/g, '');
+      selectParts.push(`(${safeExpr}) AS "${safeName}"`);
     }
 
     // Build FROM + JOINs
