@@ -36,7 +36,6 @@ interface Invitation {
   role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
   created_at: string;
   expires_at: string;
-  temp_password?: string;
 }
 
 interface UserRole {
@@ -70,15 +69,6 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
   canManageUsers: boolean; 
   onCancel: (id: string) => void;
 }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyPassword = async () => {
-    if (!invitation.temp_password) return;
-    await navigator.clipboard.writeText(invitation.temp_password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <TableRow>
       <TableCell>
@@ -93,26 +83,6 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
         <Badge variant="outline" className={roleColors[invitation.role]}>
           {invitation.role}
         </Badge>
-      </TableCell>
-      <TableCell>
-        {invitation.temp_password ? (
-          <div className="flex items-center gap-2">
-            <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-              {invitation.temp_password}
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={handleCopyPassword}
-              title="Copy password"
-            >
-              {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-            </Button>
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-sm">—</span>
-        )}
       </TableCell>
       <TableCell className="text-muted-foreground">
         {new Date(invitation.created_at).toLocaleDateString()}
@@ -133,36 +103,45 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
   );
 };
 
-const ViewUserPasswordSection = ({ invitation }: { invitation: Invitation }) => {
-  const [visible, setVisible] = useState(false);
+const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword }: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+  email: string; 
+  tempPassword: string; 
+}) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    if (!invitation.temp_password) return;
-    await navigator.clipboard.writeText(invitation.temp_password);
+    await navigator.clipboard.writeText(tempPassword);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
-      <Label className="text-muted-foreground flex items-center gap-2">
-        <Mail className="w-4 h-4" />
-        Outstanding Invitation
-      </Label>
-      <p className="text-xs text-muted-foreground">This user has a pending invitation. Share the temporary password so they can log in.</p>
-      <div className="flex items-center gap-2">
-        <code className="text-xs bg-muted px-2 py-1 rounded font-mono flex-1">
-          {visible ? invitation.temp_password : '••••••••••••'}
-        </code>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setVisible(!visible)} title={visible ? "Hide" : "Show"}>
-          <Eye className="w-3 h-3" />
-        </Button>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleCopy} title="Copy">
-          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-        </Button>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>User Created Successfully</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            A user account has been created for <strong>{email}</strong>. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong>
+          </p>
+          <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/30">
+            <code className="text-sm bg-muted px-3 py-1.5 rounded font-mono flex-1">
+              {tempPassword}
+            </code>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleCopy} title="Copy">
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-destructive">⚠️ Save this password now. It cannot be retrieved later.</p>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -190,6 +169,9 @@ const Users = () => {
   // Invite form
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'member' | 'viewer' | 'it'>('member');
+  const [createdPasswordEmail, setCreatedPasswordEmail] = useState('');
+  const [createdTempPassword, setCreatedTempPassword] = useState('');
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -246,7 +228,7 @@ const Users = () => {
 
     const { data: invitationsData } = await supabase
       .from('invitations')
-      .select('id, email, role, created_at, expires_at, temp_password')
+      .select('id, email, role, created_at, expires_at')
       .eq('company_id', profileData.company_id)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString());
@@ -343,8 +325,11 @@ const Users = () => {
         return;
       }
 
-      toast.success(`User created for ${email}. They can log in with the temporary password.`);
+      toast.success(`User created for ${email}.`);
+      setCreatedPasswordEmail(email.toLowerCase());
+      setCreatedTempPassword(data.temp_password);
       setIsDialogOpen(false);
+      setShowPasswordDialog(true);
       resetForm();
       fetchTeamData();
     } catch (error: any) {
@@ -684,7 +669,6 @@ const Users = () => {
                     <TableRow>
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead>Temp Password</TableHead>
                       <TableHead>Invited</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -811,9 +795,15 @@ const Users = () => {
                     const matchingInvitation = viewingMember && canManageUsers
                       ? invitations.find((inv) => inv.email === viewingMember.email)
                       : null;
-                    if (!matchingInvitation?.temp_password) return null;
+                    if (!matchingInvitation) return null;
                     return (
-                      <ViewUserPasswordSection invitation={matchingInvitation} />
+                      <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                        <Label className="text-muted-foreground flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Outstanding Invitation
+                        </Label>
+                        <p className="text-xs text-muted-foreground">This user has a pending invitation. The temporary password was shown only at creation time.</p>
+                      </div>
                     );
                   })()}
                 </TabsContent>
@@ -832,6 +822,12 @@ const Users = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <CreatedPasswordDialog 
+          open={showPasswordDialog} 
+          onOpenChange={setShowPasswordDialog} 
+          email={createdPasswordEmail} 
+          tempPassword={createdTempPassword} 
+        />
       </main>
     </div>
   );

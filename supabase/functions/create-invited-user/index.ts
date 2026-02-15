@@ -129,7 +129,7 @@ serve(async (req) => {
       console.error('Error assigning role:', roleError);
     }
 
-    // Create invitation record with temp password
+    // Create invitation record (temp password is NOT stored for security)
     const { error: inviteError } = await supabaseAdmin
       .from('invitations')
       .insert({
@@ -137,7 +137,6 @@ serve(async (req) => {
         company_id: company_id,
         role: role || 'member',
         invited_by: callingUser.id,
-        temp_password: tempPassword,
       });
 
     if (inviteError) {
