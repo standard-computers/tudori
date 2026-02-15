@@ -149,7 +149,14 @@ const TeamTable = ({
           <TableBody>
             {sortedAndFilteredData.map((team) => (
               <TableRow key={team.id}>
-                <TableCell className="font-mono text-xs">{team.team_id}</TableCell>
+                <TableCell>
+                  <button
+                    className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
+                    onClick={() => onView(team)}
+                  >
+                    {team.team_id}
+                  </button>
+                </TableCell>
                 <TableCell className="font-medium">{team.name}</TableCell>
                 <TableCell className="text-muted-foreground">{team.description || '-'}</TableCell>
                 <TableCell>
