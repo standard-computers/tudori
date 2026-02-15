@@ -324,6 +324,8 @@ const [areaFormData, setAreaFormData] = useState({
 
       const tasksToCreate: any[] = [];
       const previewList: { title: string; description: string }[] = [];
+
+      // Create one task per PU, or one per product line if no PU
       const hasPackages = deliveryItems.some((item: any) => item.pu_id);
 
       if (hasPackages) {
@@ -346,11 +348,12 @@ const [areaFormData, setAreaFormData] = useState({
           }
         }
 
+        // One task per PU
         for (const [puId, group] of puGroups) {
           const itemSummary = group.items.map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
           const title = `Receive ${group.puNumber} from ${delivery.delivery_id}`;
           const description = `Package ${group.puNumber}: ${itemSummary}`;
-          previewList.push({ title, description });
+          previewList.push({ title, description: `${description}\n→ Receive then Put Away` });
           tasksToCreate.push({
             company_id: companyId,
             location_id: selectedLocationId,
@@ -364,15 +367,17 @@ const [areaFormData, setAreaFormData] = useState({
           });
         }
 
-        if (unpackedItems.length > 0) {
-          const itemSummary = unpackedItems.map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
-          const title = `Receive unpacked items from ${delivery.delivery_id}`;
-          previewList.push({ title, description: itemSummary });
+        // One task per unpacked product line
+        for (const item of unpackedItems) {
+          const productName = (item as any).product?.name || 'Unknown';
+          const title = `Receive ${productName} x${item.quantity} from ${delivery.delivery_id}`;
+          const description = `${productName} x${item.quantity} (unpacked)`;
+          previewList.push({ title, description: `${description}\n→ Receive then Put Away` });
           tasksToCreate.push({
             company_id: companyId,
             location_id: selectedLocationId,
             title,
-            description: itemSummary,
+            description,
             status: 'todo',
             priority: 'medium',
             source_type: 'delivery_receive',
@@ -381,20 +386,24 @@ const [areaFormData, setAreaFormData] = useState({
           });
         }
       } else {
-        const itemSummary = (deliveryItems as any[]).map((i: any) => `${i.product?.name || 'Unknown'} x${i.quantity}`).join(', ');
-        const title = `Receive delivery ${delivery.delivery_id}`;
-        previewList.push({ title, description: itemSummary });
-        tasksToCreate.push({
-          company_id: companyId,
-          location_id: selectedLocationId,
-          title,
-          description: itemSummary,
-          status: 'todo',
-          priority: 'medium',
-          source_type: 'delivery_receive',
-          source_id: delivery.id,
-          created_by: user.id,
-        });
+        // No packages: one task per product line
+        for (const item of deliveryItems as any[]) {
+          const productName = (item as any).product?.name || 'Unknown';
+          const title = `Receive ${productName} x${item.quantity} from ${delivery.delivery_id}`;
+          const description = `${productName} x${item.quantity}`;
+          previewList.push({ title, description: `${description}\n→ Receive then Put Away` });
+          tasksToCreate.push({
+            company_id: companyId,
+            location_id: selectedLocationId,
+            title,
+            description,
+            status: 'todo',
+            priority: 'medium',
+            source_type: 'delivery_receive',
+            source_id: delivery.id,
+            created_by: user.id,
+          });
+        }
       }
 
       setReceiveTaskPreviewList(previewList);
@@ -431,12 +440,28 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
-  // Complete a delivery receiving task - auto-receive into next empty GR bin
+  // Complete a delivery receiving task - per-item GR creation then put-away
   const handleCompleteReceiveTask = async (taskId: string, deliverySourceId: string) => {
     if (!companyId || !selectedLocationId) return;
 
     try {
-      // Mark task as done first
+      // Get the work_tasks for this task
+      const { data: workTasksList } = await supabase
+        .from('work_tasks')
+        .select('id, task_type, status, product_id, quantity, pu_id, destination_bin_id')
+        .eq('work_order_id', taskId)
+        .order('sequence');
+
+      // If this task has work_tasks, check if all are done
+      if (workTasksList && workTasksList.length > 0) {
+        const allDone = workTasksList.every((wt: any) => wt.status === 'done');
+        if (!allDone) {
+          toast.error('Please complete all sub-tasks (Receive then Put Away) before marking done');
+          return;
+        }
+      }
+
+      // Mark task as done
       await supabase.from('tasks').update({ status: 'done' }).eq('id', taskId);
 
       // Check if all tasks for this delivery are now done
@@ -454,136 +479,27 @@ const [areaFormData, setAreaFormData] = useState({
         return;
       }
 
-      // All tasks done — auto-receive the entire delivery
-      // Find the first GR-enabled area and its next empty bin
-      const { data: grAreas } = await supabase
-        .from('areas')
-        .select('id, name')
-        .eq('location_id', selectedLocationId)
-        .eq('is_goods_receipt_enabled', true)
-        .order('area_id')
-        .limit(1);
-
-      let targetBinId: string | null = null;
-
-      if (grAreas && grAreas.length > 0) {
-        const grAreaId = grAreas[0].id;
-        const { data: grBins } = await supabase
-          .from('bins')
-          .select('id')
-          .eq('area_id', grAreaId)
-          .eq('allow_put_away', true)
-          .order('put_away_sequence', { ascending: true, nullsFirst: false });
-
-        if (grBins && grBins.length > 0) {
-          const grBinIds = grBins.map(b => b.id);
-          const { data: occupiedBins } = await supabase
-            .from('inventory')
-            .select('bin_id')
-            .in('bin_id', grBinIds)
-            .gt('quantity', 0);
-
-          const occupiedSet = new Set((occupiedBins || []).map(inv => inv.bin_id));
-          const emptyBin = grBins.find(b => !occupiedSet.has(b.id));
-          targetBinId = emptyBin?.id || grBins[0].id;
-        }
-      }
-
-      // Fetch delivery items
-      const { data: deliveryItems } = await supabase
-        .from('delivery_items')
-        .select('id, product_id, quantity, pu_id, product:products(name, product_id, price)')
-        .eq('delivery_id', deliverySourceId);
-
-      if (!deliveryItems || deliveryItems.length === 0) {
-        toast.error('No items found on this delivery');
-        fetchWorkOrders();
-        return;
-      }
-
-      // Get delivery info
+      // All tasks done — update delivery status
       const { data: delivery } = await supabase
         .from('deliveries')
-        .select('delivery_id, purchase_order_id, is_fulfilled')
+        .select('delivery_id, purchase_order_id')
         .eq('id', deliverySourceId)
         .single();
 
-      if (!delivery) {
-        toast.error('Delivery not found');
-        fetchWorkOrders();
-        return;
-      }
-
-      // Create goods receipt with task reference
-      const { data: receiptNumber } = await supabase.rpc(
-        'get_next_goods_receipt_number',
-        { p_company_id: companyId }
-      );
-
-      if (!receiptNumber) {
-        toast.error('Failed to generate receipt number');
-        fetchWorkOrders();
-        return;
-      }
-
-      const { data: goodsReceipt, error: grError } = await supabase
-        .from('goods_receipts' as any)
-        .insert({
-          company_id: companyId,
-          receipt_number: receiptNumber,
-          location_id: selectedLocationId,
-          delivery_id: deliverySourceId,
-          purchase_order_id: delivery.purchase_order_id || null,
-          receipt_date: new Date().toISOString().split('T')[0],
-          status: 'pending',
-          task_id: taskId,
-          notes: `Auto-received via tasks from delivery ${delivery.delivery_id}`,
-        })
-        .select()
-        .single();
-
-      if (grError || !goodsReceipt) {
-        toast.error('Failed to create goods receipt');
-        fetchWorkOrders();
-        return;
-      }
-
-      // Create GR items
-      const grItems = (deliveryItems as any[])
-        .filter(item => item.quantity > 0)
-        .map(item => ({
-          goods_receipt_id: (goodsReceipt as any).id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          pu_id: item.pu_id || null,
-          bin_id: targetBinId,
-        }));
-
-      if (grItems.length > 0) {
-        await supabase.from('goods_receipt_items').insert(grItems);
-      }
-
-      // Post the goods receipt to update inventory
-      const postResult = await postGoodsReceipt((goodsReceipt as any).id, selectedLocationId);
-
-      // Update delivery status
-      await supabase
-        .from('deliveries')
-        .update({ status: 'delivered', delivered_date: new Date().toISOString().split('T')[0] })
-        .eq('id', deliverySourceId);
-
-      // Update PO status if applicable
-      if (delivery.purchase_order_id) {
+      if (delivery) {
         await supabase
-          .from('purchase_orders')
-          .update({ status: 'delivered' })
-          .eq('id', delivery.purchase_order_id);
-      }
+          .from('deliveries')
+          .update({ status: 'delivered', delivered_date: new Date().toISOString().split('T')[0] })
+          .eq('id', deliverySourceId);
 
-      if (postResult.success) {
-        toast.success(`Goods Receipt ${receiptNumber} created and posted via tasks`);
-      } else {
-        toast.error(postResult.error || 'Failed to post goods receipt');
+        if (delivery.purchase_order_id) {
+          await supabase
+            .from('purchase_orders')
+            .update({ status: 'delivered' })
+            .eq('id', delivery.purchase_order_id);
+        }
+
+        toast.success(`All receiving tasks completed for ${delivery.delivery_id}`);
       }
 
       fetchWorkOrders();
@@ -593,6 +509,156 @@ const [areaFormData, setAreaFormData] = useState({
       console.error('Error completing receive task:', err);
       toast.error('Failed to complete receiving');
       fetchWorkOrders();
+    }
+  };
+
+  // Complete a single receive work task - creates GR for this item
+  const handleCompleteReceiveWorkTask = async (workTaskId: string, workOrderId: string) => {
+    if (!companyId || !selectedLocationId) return;
+
+    try {
+      // Get work task details
+      const { data: workTask } = await supabase
+        .from('work_tasks')
+        .select('id, product_id, quantity, pu_id, work_order_id')
+        .eq('id', workTaskId)
+        .single();
+
+      if (!workTask) {
+        toast.error('Work task not found');
+        return;
+      }
+
+      // Get parent task info for delivery reference
+      const { data: parentTask } = await supabase
+        .from('tasks')
+        .select('source_id')
+        .eq('id', workOrderId)
+        .single();
+
+      const deliverySourceId = parentTask?.source_id;
+
+      // Get delivery info
+      const { data: delivery } = await supabase
+        .from('deliveries')
+        .select('delivery_id, purchase_order_id')
+        .eq('id', deliverySourceId || '')
+        .single();
+
+      // Create goods receipt for this specific item
+      const { data: receiptNumber } = await supabase.rpc(
+        'get_next_goods_receipt_number',
+        { p_company_id: companyId }
+      );
+
+      if (!receiptNumber) {
+        toast.error('Failed to generate receipt number');
+        return;
+      }
+
+      const { data: goodsReceipt, error: grError } = await supabase
+        .from('goods_receipts' as any)
+        .insert({
+          company_id: companyId,
+          receipt_number: receiptNumber,
+          location_id: selectedLocationId,
+          delivery_id: deliverySourceId || null,
+          purchase_order_id: delivery?.purchase_order_id || null,
+          receipt_date: new Date().toISOString().split('T')[0],
+          status: 'pending',
+          task_id: workOrderId,
+          notes: `Received via task: ${(workTask as any).product_id ? 'product' : 'items'} from delivery ${delivery?.delivery_id || ''}`,
+        })
+        .select()
+        .single();
+
+      if (grError || !goodsReceipt) {
+        toast.error('Failed to create goods receipt');
+        return;
+      }
+
+      // Create GR item (no bin - will be placed during put away)
+      await supabase.from('goods_receipt_items').insert({
+        goods_receipt_id: (goodsReceipt as any).id,
+        product_id: (workTask as any).product_id,
+        quantity: (workTask as any).quantity,
+        pu_id: (workTask as any).pu_id || null,
+        bin_id: null,
+      });
+
+      // Post the goods receipt to update inventory (unbinned)
+      const postResult = await postGoodsReceipt((goodsReceipt as any).id, selectedLocationId);
+
+      // Mark receive work task as done
+      await supabase.from('work_tasks').update({ status: 'done' }).eq('id', workTaskId);
+
+      if (postResult.success) {
+        toast.success(`Goods Receipt ${receiptNumber} created`);
+      } else {
+        toast.error(postResult.error || 'Failed to post goods receipt');
+      }
+
+      fetchInventory();
+    } catch (err) {
+      console.error('Error completing receive work task:', err);
+      toast.error('Failed to complete receiving step');
+    }
+  };
+
+  // Complete a put_away work task - moves inventory to target bin
+  const handleCompletePutAwayWorkTask = async (workTaskId: string) => {
+    if (!companyId || !selectedLocationId) return;
+
+    try {
+      // Get work task details
+      const { data: workTask } = await supabase
+        .from('work_tasks')
+        .select('id, product_id, quantity, pu_id, destination_bin_id')
+        .eq('id', workTaskId)
+        .single();
+
+      if (!workTask) {
+        toast.error('Work task not found');
+        return;
+      }
+
+      const destBinId = (workTask as any).destination_bin_id;
+      const productId = (workTask as any).product_id;
+      const puId = (workTask as any).pu_id;
+
+      if (destBinId && productId) {
+        // Find the unbinned inventory for this product/PU at this location
+        let query = supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('location_id', selectedLocationId)
+          .eq('product_id', productId)
+          .is('bin_id', null);
+
+        if (puId) {
+          query = query.eq('pu_id', puId);
+        } else {
+          query = query.is('pu_id', null);
+        }
+
+        const { data: unbinnedInv } = await query.limit(1).maybeSingle();
+
+        if (unbinnedInv) {
+          // Move inventory to the target bin
+          await supabase
+            .from('inventory')
+            .update({ bin_id: destBinId, updated_at: new Date().toISOString() })
+            .eq('id', unbinnedInv.id);
+        }
+      }
+
+      // Mark put_away work task as done
+      await supabase.from('work_tasks').update({ status: 'done' }).eq('id', workTaskId);
+      toast.success('Put away completed');
+      fetchInventory();
+    } catch (err) {
+      console.error('Error completing put away work task:', err);
+      toast.error('Failed to complete put away step');
     }
   };
 
@@ -3457,6 +3523,12 @@ const [areaFormData, setAreaFormData] = useState({
           setWorkOrderIdsToDelete([id]);
           setIsDeleteWorkOrdersOpen(true);
           setViewingWorkOrder(null);
+        }}
+        onReceiveWorkTask={async (workTaskId, workOrderId) => {
+          await handleCompleteReceiveWorkTask(workTaskId, workOrderId);
+        }}
+        onPutAwayWorkTask={async (workTaskId) => {
+          await handleCompletePutAwayWorkTask(workTaskId);
         }}
       />
 

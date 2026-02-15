@@ -71,6 +71,8 @@ interface ViewWorkOrderDialogProps {
   onStarted: () => void;
   onCompleted: () => void;
   onDelete: (id: string) => void;
+  onReceiveWorkTask?: (workTaskId: string, workOrderId: string) => Promise<void>;
+  onPutAwayWorkTask?: (workTaskId: string) => Promise<void>;
 }
 
 const ViewWorkOrderDialog = ({
@@ -82,6 +84,8 @@ const ViewWorkOrderDialog = ({
   onStarted,
   onCompleted,
   onDelete,
+  onReceiveWorkTask,
+  onPutAwayWorkTask,
 }: ViewWorkOrderDialogProps) => {
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [activeTab, setActiveTab] = useState('details');
@@ -132,8 +136,46 @@ const ViewWorkOrderDialog = ({
 
     const isPick = workOrder.title.startsWith('Pick:');
     const isPackShip = workOrder.title.startsWith('Pack & Ship:');
+    const isReceive = workOrder.source_type === 'delivery_receive';
 
-    if (isPick) {
+    if (isReceive) {
+      // Parse product info from the task description
+      // The task has product_id/quantity info embedded, or we parse from title
+      // Title format: "Receive PU-XXXX from DEL-XXXX" or "Receive ProductName xQty from DEL-XXXX"
+      const titleMatch = workOrder.title.match(/^Receive (.+?) from /);
+      const descText = workOrder.description || '';
+
+      // Try to find put away bin for the product
+      // Get GR-enabled areas
+      const { data: grAreas } = await supabase
+        .from('areas')
+        .select('id, area_id, name')
+        .eq('location_id', locationId)
+        .eq('is_goods_receipt_enabled', true)
+        .order('area_id')
+        .limit(1);
+
+      let putAwayBin = 'Next available bin';
+      let putAwayArea: string | undefined;
+
+      if (grAreas && grAreas.length > 0) {
+        putAwayArea = `${grAreas[0].area_id} — ${grAreas[0].name}`;
+      }
+
+      anticipated.push({
+        task_type: 'receive',
+        sequence: 1,
+        description: `Receive goods and create Goods Receipt`,
+      });
+
+      anticipated.push({
+        task_type: 'put_away',
+        sequence: 2,
+        description: `Put away to ${putAwayBin}`,
+        destination_bin: putAwayBin,
+        destination_area: putAwayArea,
+      });
+    } else if (isPick) {
       // Parse product_id and quantity from description
       // Format: "Pick 4 unit(s) of GJO30403 for PO ..."
       const descMatch = workOrder.description?.match(/Pick (\d+) unit\(s\) of (\S+)/);
@@ -246,8 +288,162 @@ const ViewWorkOrderDialog = ({
       const tasksToInsert: any[] = [];
       const isPick = workOrder.title.startsWith('Pick:');
       const isPackShip = workOrder.title.startsWith('Pack & Ship:');
+      const isReceive = workOrder.source_type === 'delivery_receive';
 
-      if (isPick) {
+      if (isReceive) {
+        // Parse delivery items for this specific task
+        // Fetch delivery items to find the matching product/PU
+        const deliverySourceId = workOrder.source_id;
+        if (deliverySourceId) {
+          const { data: deliveryItems } = await supabase
+            .from('delivery_items')
+            .select('id, product_id, quantity, pu_id, packaging_unit:packaging_units(pu_number), product:products(id, name, product_id)')
+            .eq('delivery_id', deliverySourceId);
+
+          // Match items to this task based on title
+          const items = (deliveryItems || []) as any[];
+          
+          // Try to match by PU number in title, or by product name
+          let matchedItems: any[] = [];
+          const titleLower = workOrder.title.toLowerCase();
+          
+          for (const item of items) {
+            const puNumber = item.packaging_unit?.pu_number;
+            if (puNumber && titleLower.includes(puNumber.toLowerCase())) {
+              matchedItems = items.filter((i: any) => i.pu_id === item.pu_id);
+              break;
+            }
+            const productName = item.product?.name;
+            if (productName && titleLower.includes(productName.toLowerCase())) {
+              matchedItems = [item];
+              break;
+            }
+          }
+
+          // Fallback: if only one item, use it
+          if (matchedItems.length === 0 && items.length === 1) {
+            matchedItems = items;
+          }
+
+          // For each matched item, find the best put-away bin
+          for (const item of matchedItems) {
+            const productId = item.product_id;
+            
+            // Find best put-away bin:
+            // 1. Empty bin with product restriction matching this product
+            // 2. Empty bin with no product restrictions
+            const { data: grAreas } = await supabase
+              .from('areas')
+              .select('id')
+              .eq('location_id', locationId)
+              .eq('is_goods_receipt_enabled', true)
+              .order('area_id');
+
+            let destBinId: string | null = null;
+            let destBinCode = 'Next available bin';
+            let destAreaCode = '';
+
+            if (grAreas && grAreas.length > 0) {
+              const grAreaIds = grAreas.map((a: any) => a.id);
+              
+              // Get all put-away bins in GR areas
+              const { data: grBins } = await supabase
+                .from('bins')
+                .select('id, bin_id, name, area_id, put_away_sequence, area:areas(area_id, name)')
+                .in('area_id', grAreaIds)
+                .eq('allow_put_away', true)
+                .order('put_away_sequence', { ascending: true, nullsFirst: false });
+
+              if (grBins && grBins.length > 0) {
+                const binIds = grBins.map((b: any) => b.id);
+                
+                // Check which bins are occupied
+                const { data: occupiedBins } = await supabase
+                  .from('inventory')
+                  .select('bin_id')
+                  .in('bin_id', binIds)
+                  .gt('quantity', 0);
+                const occupiedSet = new Set((occupiedBins || []).map((inv: any) => inv.bin_id));
+                
+                // Get product restrictions for bins
+                const { data: binProducts } = await supabase
+                  .from('bin_products')
+                  .select('bin_id, product_id')
+                  .in('bin_id', binIds);
+                
+                const binProductMap = new Map<string, string[]>();
+                for (const bp of (binProducts || []) as any[]) {
+                  const existing = binProductMap.get(bp.bin_id) || [];
+                  existing.push(bp.product_id);
+                  binProductMap.set(bp.bin_id, existing);
+                }
+
+                // Priority 1: Empty bin with this product in its restrictions
+                for (const bin of grBins as any[]) {
+                  if (occupiedSet.has(bin.id)) continue;
+                  const restrictions = binProductMap.get(bin.id);
+                  if (restrictions && restrictions.includes(productId)) {
+                    destBinId = bin.id;
+                    destBinCode = `${bin.bin_id} (${bin.name})`;
+                    destAreaCode = bin.area ? `${bin.area.area_id} — ${bin.area.name}` : '';
+                    break;
+                  }
+                }
+
+                // Priority 2: Empty bin with no product restrictions
+                if (!destBinId) {
+                  for (const bin of grBins as any[]) {
+                    if (occupiedSet.has(bin.id)) continue;
+                    const restrictions = binProductMap.get(bin.id);
+                    if (!restrictions || restrictions.length === 0) {
+                      destBinId = bin.id;
+                      destBinCode = `${bin.bin_id} (${bin.name})`;
+                      destAreaCode = bin.area ? `${bin.area.area_id} — ${bin.area.name}` : '';
+                      break;
+                    }
+                  }
+                }
+
+                // Fallback: first bin in GR area
+                if (!destBinId && grBins.length > 0) {
+                  const firstBin = grBins[0] as any;
+                  destBinId = firstBin.id;
+                  destBinCode = `${firstBin.bin_id} (${firstBin.name})`;
+                  destAreaCode = firstBin.area ? `${firstBin.area.area_id} — ${firstBin.area.name}` : '';
+                }
+              }
+            }
+
+            const productName = item.product?.name || 'Unknown';
+            const puNumber = item.packaging_unit?.pu_number;
+
+            // Receive task
+            tasksToInsert.push({
+              work_order_id: workOrder.id,
+              task_type: 'receive',
+              sequence: tasksToInsert.length + 1,
+              description: `Receive ${item.quantity} × ${productName}${puNumber ? ` (${puNumber})` : ''} — create Goods Receipt`,
+              product_id: productId,
+              quantity: item.quantity,
+              pu_id: item.pu_id || null,
+              status: 'pending',
+            });
+
+            // Put away task
+            tasksToInsert.push({
+              work_order_id: workOrder.id,
+              task_type: 'put_away',
+              sequence: tasksToInsert.length + 1,
+              description: `Put away ${productName}${puNumber ? ` (${puNumber})` : ''} to ${destBinCode}`,
+              product_id: productId,
+              quantity: item.quantity,
+              destination_bin_id: destBinId,
+              pu_id: item.pu_id || null,
+              status: 'pending',
+            });
+          }
+        }
+      } else if (isPick) {
         const descMatch = workOrder.description?.match(/Pick (\d+) unit\(s\) of (\S+)/);
         const qty = descMatch ? parseInt(descMatch[1], 10) : 0;
         const productCode = descMatch ? descMatch[2] : null;
@@ -392,6 +588,8 @@ const ViewWorkOrderDialog = ({
       case 'drop': return <ArrowDown className="w-4 h-4 text-amber-500" />;
       case 'pack': return <Package className="w-4 h-4 text-violet-500" />;
       case 'ship': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'receive': return <ArrowDown className="w-4 h-4 text-emerald-500" />;
+      case 'put_away': return <Package className="w-4 h-4 text-teal-500" />;
       default: return <Info className="w-4 h-4" />;
     }
   };
@@ -402,6 +600,8 @@ const ViewWorkOrderDialog = ({
       case 'drop': return 'Drop';
       case 'pack': return 'Pack';
       case 'ship': return 'Ship';
+      case 'receive': return 'Receive';
+      case 'put_away': return 'Put Away';
       default: return type;
     }
   };
@@ -499,9 +699,11 @@ const ViewWorkOrderDialog = ({
                         <Badge variant="outline" className={
                           workOrder.source_type === 'sales_order'
                             ? 'bg-violet-500/10 text-violet-600 border-violet-500/20'
+                            : workOrder.source_type === 'delivery_receive'
+                            ? 'bg-green-500/10 text-green-600 border-green-500/20'
                             : 'bg-blue-500/10 text-blue-600 border-blue-500/20'
                         }>
-                          {workOrder.source_type === 'sales_order' ? 'Sales Order' : 'Purchase Order'}
+                          {workOrder.source_type === 'sales_order' ? 'Sales Order' : workOrder.source_type === 'delivery_receive' ? 'Delivery Receive' : 'Purchase Order'}
                         </Badge>
                       ) : <span className="text-sm text-muted-foreground">—</span>}
                     </div>
@@ -599,34 +801,70 @@ const ViewWorkOrderDialog = ({
                         <TableHead>Dest. Area</TableHead>
                         <TableHead>Dest. Bin</TableHead>
                         <TableHead className="w-24">Status</TableHead>
+                        <TableHead className="w-24"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {workTasks.map((task) => (
-                        <TableRow key={task.id}>
-                          <TableCell className="font-mono text-muted-foreground">{task.sequence}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1.5">
-                              {getTaskTypeIcon(task.task_type)}
-                              <span className="text-xs font-medium">{getTaskTypeLabel(task.task_type)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{task.description}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {task.source_bin?.area ? `${task.source_bin.area.area_id} — ${task.source_bin.area.name}` : '—'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {task.source_bin ? `${task.source_bin.bin_id} (${task.source_bin.name})` : '—'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {task.destination_bin?.area ? `${task.destination_bin.area.area_id} — ${task.destination_bin.area.name}` : '—'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {task.destination_bin ? `${task.destination_bin.bin_id} (${task.destination_bin.name})` : '—'}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(task.status)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {workTasks.map((task, idx) => {
+                        const prevTask = idx > 0 ? workTasks[idx - 1] : null;
+                        const canAct = task.status === 'pending' && (!prevTask || prevTask.status === 'done');
+                        
+                        return (
+                          <TableRow key={task.id}>
+                            <TableCell className="font-mono text-muted-foreground">{task.sequence}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                {getTaskTypeIcon(task.task_type)}
+                                <span className="text-xs font-medium">{getTaskTypeLabel(task.task_type)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm">{task.description}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {task.source_bin?.area ? `${task.source_bin.area.area_id} — ${task.source_bin.area.name}` : '—'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {task.source_bin ? `${task.source_bin.bin_id} (${task.source_bin.name})` : '—'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {task.destination_bin?.area ? `${task.destination_bin.area.area_id} — ${task.destination_bin.area.name}` : '—'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {task.destination_bin ? `${task.destination_bin.bin_id} (${task.destination_bin.name})` : '—'}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(task.status)}</TableCell>
+                            <TableCell>
+                              {canAct && task.task_type === 'receive' && onReceiveWorkTask && workOrder && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={async () => {
+                                    await onReceiveWorkTask(task.id, workOrder.id);
+                                    fetchWorkTasks();
+                                  }}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Receive
+                                </Button>
+                              )}
+                              {canAct && task.task_type === 'put_away' && onPutAwayWorkTask && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={async () => {
+                                    await onPutAwayWorkTask(task.id);
+                                    fetchWorkTasks();
+                                  }}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Put Away
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )
