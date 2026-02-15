@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { postGoodsReceipt } from '@/lib/inventory-posting';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -275,6 +276,83 @@ export default function Go() {
   // Update work task status
   const handleWorkTaskStatusChange = async (workTaskId: string, newStatus: string) => {
     setUpdatingTaskId(workTaskId);
+
+    // If completing a 'receive' task, create a Goods Receipt with ledger transaction
+    if (newStatus === 'done') {
+      const { data: wt } = await supabase
+        .from('work_tasks')
+        .select('id, task_type, product_id, quantity, pu_id, destination_bin_id, work_order_id')
+        .eq('id', workTaskId)
+        .single();
+
+      if (wt && (wt as any).task_type === 'receive' && companyId && selectedLocationId) {
+        try {
+          const workTask = wt as any;
+          // Get parent task for delivery reference
+          const { data: parentTask } = await supabase
+            .from('tasks')
+            .select('source_id')
+            .eq('id', workTask.work_order_id)
+            .single();
+
+          const deliverySourceId = parentTask?.source_id;
+
+          // Get delivery info
+          const { data: delivery } = await supabase
+            .from('deliveries')
+            .select('delivery_id, purchase_order_id')
+            .eq('id', deliverySourceId || '')
+            .maybeSingle();
+
+          // Create goods receipt
+          const { data: receiptNumber } = await supabase.rpc(
+            'get_next_goods_receipt_number',
+            { p_company_id: companyId }
+          );
+
+          if (receiptNumber) {
+            const { data: goodsReceipt, error: grError } = await supabase
+              .from('goods_receipts' as any)
+              .insert({
+                company_id: companyId,
+                receipt_number: receiptNumber,
+                location_id: selectedLocationId,
+                delivery_id: deliverySourceId || null,
+                purchase_order_id: delivery?.purchase_order_id || null,
+                receipt_date: new Date().toISOString().split('T')[0],
+                status: 'pending',
+                task_id: workTask.work_order_id,
+                notes: `Received via Go app from delivery ${delivery?.delivery_id || ''}`,
+              })
+              .select()
+              .single();
+
+            if (!grError && goodsReceipt) {
+              // Create GR item with destination bin (GR area bin)
+              await supabase.from('goods_receipt_items').insert({
+                goods_receipt_id: (goodsReceipt as any).id,
+                product_id: workTask.product_id,
+                quantity: workTask.quantity,
+                pu_id: workTask.pu_id || null,
+                bin_id: workTask.destination_bin_id || null,
+              });
+
+              // Post the goods receipt (updates inventory + ledger)
+              const postResult = await postGoodsReceipt((goodsReceipt as any).id, selectedLocationId);
+              if (postResult.success) {
+                toast.success(`Goods Receipt ${receiptNumber} created`);
+              } else {
+                toast.error(postResult.error || 'Failed to post goods receipt');
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error creating GR in Go app:', err);
+          toast.error('Failed to create goods receipt');
+        }
+      }
+    }
+
     const { error } = await supabase
       .from('work_tasks')
       .update({ status: newStatus })

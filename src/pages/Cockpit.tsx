@@ -520,7 +520,7 @@ const [areaFormData, setAreaFormData] = useState({
       // Get work task details
       const { data: workTask } = await supabase
         .from('work_tasks')
-        .select('id, product_id, quantity, pu_id, work_order_id')
+        .select('id, product_id, quantity, pu_id, work_order_id, destination_bin_id')
         .eq('id', workTaskId)
         .single();
 
@@ -577,13 +577,14 @@ const [areaFormData, setAreaFormData] = useState({
         return;
       }
 
-      // Create GR item (no bin - will be placed during put away)
+      // Create GR item with destination bin (GR area bin)
+      const receiveBinId = (workTask as any).destination_bin_id || null;
       await supabase.from('goods_receipt_items').insert({
         goods_receipt_id: (goodsReceipt as any).id,
         product_id: (workTask as any).product_id,
         quantity: (workTask as any).quantity,
         pu_id: (workTask as any).pu_id || null,
-        bin_id: null,
+        bin_id: receiveBinId,
       });
 
       // Post the goods receipt to update inventory (unbinned)
@@ -613,7 +614,7 @@ const [areaFormData, setAreaFormData] = useState({
       // Get work task details
       const { data: workTask } = await supabase
         .from('work_tasks')
-        .select('id, product_id, quantity, pu_id, destination_bin_id')
+        .select('id, product_id, quantity, pu_id, destination_bin_id, source_bin_id')
         .eq('id', workTaskId)
         .single();
 
@@ -626,14 +627,22 @@ const [areaFormData, setAreaFormData] = useState({
       const productId = (workTask as any).product_id;
       const puId = (workTask as any).pu_id;
 
+      // Get the source bin (GR area bin where product was received)
+      const sourceBinId = (workTask as any).source_bin_id || null;
+
       if (destBinId && productId) {
-        // Find the unbinned inventory for this product/PU at this location
+        // Find inventory at source bin (GR area) for this product/PU
         let query = supabase
           .from('inventory')
           .select('id, quantity')
           .eq('location_id', selectedLocationId)
-          .eq('product_id', productId)
-          .is('bin_id', null);
+          .eq('product_id', productId);
+
+        if (sourceBinId) {
+          query = query.eq('bin_id', sourceBinId);
+        } else {
+          query = query.is('bin_id', null);
+        }
 
         if (puId) {
           query = query.eq('pu_id', puId);
