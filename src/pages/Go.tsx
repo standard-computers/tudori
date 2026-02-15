@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTransaction } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { postGoodsReceipt } from '@/lib/inventory-posting';
 import { checkAndCompleteDelivery } from '@/lib/delivery-fulfillment';
@@ -82,6 +83,7 @@ function classifyTask(task: { source_type: string | null; title: string }): Acti
 export default function Go() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  useTransaction('go');
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,7 @@ import {
  const Help = () => {
    const navigate = useNavigate();
    const { user } = useAuth();
+   useTransaction('help');
    const [companyId, setCompanyId] = useState<string | null>(null);
    const [isAdmin, setIsAdmin] = useState(false);
    const [folders, setFolders] = useState<HelpFolder[]>([]);

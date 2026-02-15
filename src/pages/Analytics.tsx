@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,7 @@ import { Badge } from "@/components/ui/badge";
 const Analytics = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  useTransaction('analytics');
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);

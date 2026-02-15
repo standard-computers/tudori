@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStatusBar } from '@/contexts/StatusBarContext';
+import { useTransaction, useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { Button } from '@/components/ui/button';
@@ -106,6 +106,7 @@ interface Team {
 const HR = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  useTransaction('hr');
   const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
