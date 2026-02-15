@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -110,6 +111,7 @@ interface TableTab {
 export default function DataExplorer() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  useTransaction('dexp');
   const status = useStatusMessage();
   const { exportToExcel } = useExcel();
   const [isDeleting, setIsDeleting] = useState(false);
