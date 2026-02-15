@@ -329,33 +329,34 @@ const ViewWorkOrderDialog = ({
           for (const item of matchedItems) {
             const productId = item.product_id;
             
-            // Find best put-away bin:
+            // Find best put-away bin (exclude GR and GI areas):
             // 1. Empty bin with product restriction matching this product
             // 2. Empty bin with no product restrictions
-            const { data: grAreas } = await supabase
+            const { data: storageAreas } = await supabase
               .from('areas')
               .select('id')
               .eq('location_id', locationId)
-              .eq('is_goods_receipt_enabled', true)
+              .eq('is_goods_receipt_enabled', false)
+              .eq('is_goods_issue_enabled', false)
               .order('area_id');
 
             let destBinId: string | null = null;
             let destBinCode = 'Next available bin';
             let destAreaCode = '';
 
-            if (grAreas && grAreas.length > 0) {
-              const grAreaIds = grAreas.map((a: any) => a.id);
+            if (storageAreas && storageAreas.length > 0) {
+              const storageAreaIds = storageAreas.map((a: any) => a.id);
               
-              // Get all put-away bins in GR areas
-              const { data: grBins } = await supabase
+              // Get all put-away bins in storage areas (not GR/GI)
+              const { data: storageBins } = await supabase
                 .from('bins')
                 .select('id, bin_id, name, area_id, put_away_sequence, area:areas(area_id, name)')
-                .in('area_id', grAreaIds)
+                .in('area_id', storageAreaIds)
                 .eq('allow_put_away', true)
                 .order('put_away_sequence', { ascending: true, nullsFirst: false });
 
-              if (grBins && grBins.length > 0) {
-                const binIds = grBins.map((b: any) => b.id);
+              if (storageBins && storageBins.length > 0) {
+                const binIds = storageBins.map((b: any) => b.id);
                 
                 // Check which bins are occupied
                 const { data: occupiedBins } = await supabase
@@ -379,7 +380,7 @@ const ViewWorkOrderDialog = ({
                 }
 
                 // Priority 1: Empty bin with this product in its restrictions
-                for (const bin of grBins as any[]) {
+                for (const bin of storageBins as any[]) {
                   if (occupiedSet.has(bin.id)) continue;
                   const restrictions = binProductMap.get(bin.id);
                   if (restrictions && restrictions.includes(productId)) {
@@ -392,7 +393,7 @@ const ViewWorkOrderDialog = ({
 
                 // Priority 2: Empty bin with no product restrictions
                 if (!destBinId) {
-                  for (const bin of grBins as any[]) {
+                  for (const bin of storageBins as any[]) {
                     if (occupiedSet.has(bin.id)) continue;
                     const restrictions = binProductMap.get(bin.id);
                     if (!restrictions || restrictions.length === 0) {
@@ -404,9 +405,9 @@ const ViewWorkOrderDialog = ({
                   }
                 }
 
-                // Fallback: first bin in GR area
-                if (!destBinId && grBins.length > 0) {
-                  const firstBin = grBins[0] as any;
+                // Fallback: first bin in storage area
+                if (!destBinId && storageBins.length > 0) {
+                  const firstBin = storageBins[0] as any;
                   destBinId = firstBin.id;
                   destBinCode = `${firstBin.bin_id} (${firstBin.name})`;
                   destAreaCode = firstBin.area ? `${firstBin.area.area_id} — ${firstBin.area.name}` : '';
