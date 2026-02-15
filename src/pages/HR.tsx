@@ -89,6 +89,7 @@ interface Position {
   status: string;
   notes: string | null;
   created_at: string;
+  employee_id: string | null;
   team?: { name: string } | null;
   position_locations?: { location_id: string; locations?: { name: string } | null }[];
 }
@@ -137,6 +138,8 @@ const HR = () => {
   const [reviewSaving, setReviewSaving] = useState(false);
   const [employeeReviews, setEmployeeReviews] = useState<any[]>([]);
   const [employeePosition, setEmployeePosition] = useState<Position | null>(null);
+  const [viewingPosition, setViewingPosition] = useState<Position | null>(null);
+  const [viewingPositionEmployee, setViewingPositionEmployee] = useState<Employee | null>(null);
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -204,6 +207,19 @@ const HR = () => {
       .eq('company_id', companyId!)
       .order('created_at', { ascending: false });
     setPositions((data as any) || []);
+  };
+
+  const openPositionView = async (position: Position) => {
+    setViewingPosition(position);
+    setViewingPositionEmployee(null);
+    if (position.employee_id) {
+      const { data } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', position.employee_id)
+        .maybeSingle();
+      setViewingPositionEmployee((data as Employee) || null);
+    }
   };
 
   const fetchLocations = async () => {
@@ -584,7 +600,14 @@ const HR = () => {
                       .join(', ');
                     return (
                     <TableRow key={position.id}>
-                      <TableCell className="font-medium">{position.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <button
+                          className="text-primary underline-offset-4 hover:underline cursor-pointer"
+                          onClick={() => openPositionView(position)}
+                        >
+                          {position.name}
+                        </button>
+                      </TableCell>
                       <TableCell className="text-sm">{position.team?.name || '-'}</TableCell>
                       <TableCell className="text-sm">{locationNames || '-'}</TableCell>
                       <TableCell className="text-sm">{format(parseISO(position.open_date), 'MMM d, yyyy')}</TableCell>
@@ -955,6 +978,84 @@ const HR = () => {
               Create Position
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* View Position Dialog */}
+      <Dialog open={!!viewingPosition} onOpenChange={(open) => { if (!open) setViewingPosition(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              {viewingPosition?.name}
+            </DialogTitle>
+            <DialogDescription>
+              <Badge variant={viewingPosition?.status === 'open' ? 'default' : 'secondary'}>
+                {viewingPosition?.status}
+              </Badge>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-4 px-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Team</p>
+                <p className="font-medium">{viewingPosition?.team?.name || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Open Date</p>
+                <p className="font-medium">{viewingPosition?.open_date ? format(parseISO(viewingPosition.open_date), 'MMM d, yyyy') : '-'}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Wage</p>
+                <p className="font-medium">
+                  {viewingPosition?.wage != null
+                    ? `$${viewingPosition.wage.toFixed(2)}${viewingPosition.is_hourly ? '/hr' : ''}`
+                    : '-'}
+                </p>
+                {viewingPosition?.is_hourly && viewingPosition?.wage != null && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ ${(viewingPosition.wage * 2080).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/yr
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Hourly</p>
+                <p className="font-medium">{viewingPosition?.is_hourly ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Location(s)</p>
+              <p className="font-medium">
+                {viewingPosition?.position_locations
+                  ?.map(pl => pl.locations?.name)
+                  .filter(Boolean)
+                  .join(', ') || '-'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Assigned Employee</p>
+              {viewingPositionEmployee ? (
+                <button
+                  className="font-medium text-primary underline-offset-4 hover:underline cursor-pointer"
+                  onClick={() => {
+                    setViewingPosition(null);
+                    openEmployeeView(viewingPositionEmployee);
+                  }}
+                >
+                  {viewingPositionEmployee.first_name} {viewingPositionEmployee.last_name}
+                </button>
+              ) : (
+                <p className="font-medium text-muted-foreground">Unassigned</p>
+              )}
+            </div>
+            {viewingPosition?.notes && (
+              <div>
+                <p className="text-xs text-muted-foreground">Notes</p>
+                <p className="text-sm">{viewingPosition.notes}</p>
+              </div>
+            )}
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>
