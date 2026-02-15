@@ -240,7 +240,8 @@ const GoodsReceipts = () => {
         location:locations(name),
         vendor:vendors(name),
         delivery:deliveries(delivery_id),
-        purchase_order:purchase_orders(po_number)
+        purchase_order:purchase_orders(po_number),
+        goods_receipt_items(count)
       `)
       .eq('company_id', companyId!)
       .order('receipt_number', { ascending: false });
@@ -1030,13 +1031,21 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['status']}
               onFilter={(value) => setFilter('status', value)}
             />
+            <SortableTableHead
+              label="Items"
+              sortKey="item_count"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterable={false}
+            />
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                 {receipts.length === 0
                   ? 'No goods receipts found. Create one to start receiving inventory.'
                   : 'No receipts match your filters'}
@@ -1064,6 +1073,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
                     {receipt.status}
                   </Badge>
                 </TableCell>
+                <TableCell>{(receipt as any).goods_receipt_items?.[0]?.count ?? 0}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onView(receipt)}>
