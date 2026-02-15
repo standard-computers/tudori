@@ -59,7 +59,7 @@ const POSSettingsDialog = ({
         .from('products')
         .select('id, product_id, name, sku, price, image_url')
         .eq('company_id', companyId)
-        .eq('status', 'Active')
+        .ilike('status', 'active')
         .order('name'),
       supabase
         .from('pos_location_products')
