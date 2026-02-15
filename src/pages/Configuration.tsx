@@ -1055,10 +1055,10 @@ const Configuration = () => {
 
                   {/* Reduce App Load */}
                   {(!searchQuery || 'reduce app load'.includes(searchQuery.toLowerCase())) && (
-                  <div className="flex items-center justify-between gap-8 py-4 border-t border-border">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Reduce App Load</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1">
+                      <Label className="font-medium text-base">Reduce App Load</Label>
+                      <p className="text-sm text-muted-foreground">
                         When enabled, apps will not load all data immediately. Instead, users will see a query dialog to filter records before loading. This is recommended for organizations with large datasets.
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
