@@ -325,13 +325,39 @@ const ViewWorkOrderDialog = ({
             matchedItems = items;
           }
 
-          // For each matched item, find the best put-away bin
+          // For each matched item, find GR bin for receive + storage bin for put-away
           for (const item of matchedItems) {
             const productId = item.product_id;
-            
-            // Find best put-away bin (exclude GR and GI areas):
-            // 1. Empty bin with product restriction matching this product
-            // 2. Empty bin with no product restrictions
+
+            // --- Find receive bin: first bin in a GR-enabled area ---
+            let receiveBinId: string | null = null;
+            let receiveBinCode = 'GR area';
+            let receiveAreaCode = '';
+
+            const { data: grAreas } = await supabase
+              .from('areas')
+              .select('id, area_id, name')
+              .eq('location_id', locationId)
+              .eq('is_goods_receipt_enabled', true)
+              .order('area_id')
+              .limit(1);
+
+            if (grAreas && grAreas.length > 0) {
+              receiveAreaCode = `${grAreas[0].area_id} — ${grAreas[0].name}`;
+              const { data: grBins } = await supabase
+                .from('bins')
+                .select('id, bin_id, name, put_away_sequence')
+                .eq('area_id', grAreas[0].id)
+                .eq('allow_put_away', true)
+                .order('put_away_sequence', { ascending: true, nullsFirst: false })
+                .limit(1);
+              if (grBins && grBins.length > 0) {
+                receiveBinId = grBins[0].id;
+                receiveBinCode = `${grBins[0].bin_id} (${grBins[0].name})`;
+              }
+            }
+
+            // --- Find put-away bin: storage areas (not GR, not GI) ---
             const { data: storageAreas } = await supabase
               .from('areas')
               .select('id')
@@ -347,7 +373,6 @@ const ViewWorkOrderDialog = ({
             if (storageAreas && storageAreas.length > 0) {
               const storageAreaIds = storageAreas.map((a: any) => a.id);
               
-              // Get all put-away bins in storage areas (not GR/GI)
               const { data: storageBins } = await supabase
                 .from('bins')
                 .select('id, bin_id, name, area_id, put_away_sequence, area:areas(area_id, name)')
@@ -358,7 +383,6 @@ const ViewWorkOrderDialog = ({
               if (storageBins && storageBins.length > 0) {
                 const binIds = storageBins.map((b: any) => b.id);
                 
-                // Check which bins are occupied
                 const { data: occupiedBins } = await supabase
                   .from('inventory')
                   .select('bin_id')
@@ -366,7 +390,6 @@ const ViewWorkOrderDialog = ({
                   .gt('quantity', 0);
                 const occupiedSet = new Set((occupiedBins || []).map((inv: any) => inv.bin_id));
                 
-                // Get product restrictions for bins
                 const { data: binProducts } = await supabase
                   .from('bin_products')
                   .select('bin_id, product_id')
@@ -405,7 +428,7 @@ const ViewWorkOrderDialog = ({
                   }
                 }
 
-                // Fallback: first bin in storage area
+                // Fallback: first storage bin
                 if (!destBinId && storageBins.length > 0) {
                   const firstBin = storageBins[0] as any;
                   destBinId = firstBin.id;
@@ -418,19 +441,20 @@ const ViewWorkOrderDialog = ({
             const productName = item.product?.name || 'Unknown';
             const puNumber = item.packaging_unit?.pu_number;
 
-            // Receive task
+            // Receive task — into GR area
             tasksToInsert.push({
               work_order_id: workOrder.id,
               task_type: 'receive',
               sequence: tasksToInsert.length + 1,
-              description: `Receive ${item.quantity} × ${productName}${puNumber ? ` (${puNumber})` : ''} — create Goods Receipt`,
+              description: `Receive ${item.quantity} × ${productName}${puNumber ? ` (${puNumber})` : ''} into ${receiveBinCode} — create Goods Receipt`,
               product_id: productId,
               quantity: item.quantity,
+              destination_bin_id: receiveBinId,
               pu_id: item.pu_id || null,
               status: 'pending',
             });
 
-            // Put away task
+            // Put away task — to storage area (not GR/GI)
             tasksToInsert.push({
               work_order_id: workOrder.id,
               task_type: 'put_away',
@@ -438,6 +462,7 @@ const ViewWorkOrderDialog = ({
               description: `Put away ${productName}${puNumber ? ` (${puNumber})` : ''} to ${destBinCode}`,
               product_id: productId,
               quantity: item.quantity,
+              source_bin_id: receiveBinId,
               destination_bin_id: destBinId,
               pu_id: item.pu_id || null,
               status: 'pending',
