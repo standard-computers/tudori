@@ -281,6 +281,15 @@ const HR = () => {
     if (error) {
       toast.error('Failed to assign position');
     } else {
+      // Update employee wage from position
+      const assignedPosition = positions.find(p => p.id === assignPositionId);
+      if (assignedPosition && assignedPosition.wage != null) {
+        await supabase
+          .from('employees')
+          .update({ wage: assignedPosition.wage, is_hourly: assignedPosition.is_hourly })
+          .eq('id', viewingEmployee.id);
+        setViewingEmployee(prev => prev ? { ...prev, wage: assignedPosition.wage, is_hourly: assignedPosition.is_hourly } : prev);
+      }
       toast.success('Employee assigned to position');
       setAssignPositionId('');
       fetchPositions();
