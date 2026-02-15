@@ -10,6 +10,7 @@ import { toast } from '@/lib/toast';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import ViewTimePunchDialog from '@/components/ViewTimePunchDialog';
 import {
   Table,
   TableBody,
@@ -44,6 +45,8 @@ const TimeClock = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPunching, setIsPunching] = useState(false);
+  const [selectedPunch, setSelectedPunch] = useState<TimePunch | null>(null);
+  const [isPunchDialogOpen, setIsPunchDialogOpen] = useState(false);
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -294,7 +297,7 @@ const TimeClock = () => {
                     </TableHeader>
                     <TableBody>
                       {recentPunches.map((punch) => (
-                        <TableRow key={punch.id}>
+                        <TableRow key={punch.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedPunch(punch); setIsPunchDialogOpen(true); }}>
                           <TableCell className="font-medium">
                             {format(parseISO(punch.punch_in), 'MMM d, yyyy')}
                           </TableCell>
@@ -324,6 +327,15 @@ const TimeClock = () => {
           </div>
         )}
       </main>
+      {employee && companyId && (
+        <ViewTimePunchDialog
+          open={isPunchDialogOpen}
+          onOpenChange={setIsPunchDialogOpen}
+          punch={selectedPunch}
+          employeeId={employee.id}
+          companyId={companyId}
+        />
+      )}
     </div>
   );
 };

@@ -4418,6 +4418,76 @@ export type Database = {
           },
         ]
       }
+      time_punch_contests: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          reason: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          suggested_punch_in: string | null
+          suggested_punch_out: string | null
+          time_punch_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          reason: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggested_punch_in?: string | null
+          suggested_punch_out?: string | null
+          time_punch_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          reason?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggested_punch_in?: string | null
+          suggested_punch_out?: string | null
+          time_punch_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_punch_contests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_punch_contests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_punch_contests_time_punch_id_fkey"
+            columns: ["time_punch_id"]
+            isOneToOne: false
+            referencedRelation: "time_punches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_punches: {
         Row: {
           company_id: string
