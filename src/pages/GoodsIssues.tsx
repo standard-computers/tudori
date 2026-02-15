@@ -233,7 +233,8 @@ const GoodsIssues = () => {
         location:locations(name),
         customer:customers(name),
         sales_order:sales_orders(so_number),
-        outbound_delivery:outbound_deliveries!goods_issues_outbound_delivery_id_fkey(delivery_number)
+        outbound_delivery:outbound_deliveries!goods_issues_outbound_delivery_id_fkey(delivery_number),
+        goods_issue_items(count)
       `)
       .eq('company_id', companyId!)
       .order('issue_number', { ascending: false });
@@ -1065,13 +1066,21 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['status']}
               onFilter={(value) => setFilter('status', value)}
             />
+            <SortableTableHead
+              label="Items"
+              sortKey="item_count"
+              currentSortKey={sortConfig.key}
+              currentSortDirection={sortConfig.direction}
+              onSort={handleSort}
+              filterable={false}
+            />
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                 {issues.length === 0
                   ? 'No goods issues found. Create one to start issuing inventory.'
                   : 'No issues match your filters'}
@@ -1099,6 +1108,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
                     {issue.status}
                   </Badge>
                 </TableCell>
+                <TableCell>{(issue as any).goods_issue_items?.[0]?.count ?? 0}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onView(issue)}>
