@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { postGoodsReceipt } from '@/lib/inventory-posting';
+import { checkAndCompleteDelivery } from '@/lib/delivery-fulfillment';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -341,6 +342,14 @@ export default function Go() {
               const postResult = await postGoodsReceipt((goodsReceipt as any).id, selectedLocationId);
               if (postResult.success) {
                 toast.success(`Goods Receipt ${receiptNumber} created`);
+
+                // Check if delivery is fully received and mark as delivered
+                if (deliverySourceId) {
+                  const completed = await checkAndCompleteDelivery(deliverySourceId);
+                  if (completed) {
+                    toast.success('Delivery marked as delivered (fully received)');
+                  }
+                }
               } else {
                 toast.error(postResult.error || 'Failed to post goods receipt');
               }
