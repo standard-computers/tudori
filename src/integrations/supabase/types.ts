@@ -2948,6 +2948,42 @@ export type Database = {
           },
         ]
       }
+      pos_location_products: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_location_products_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_location_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       position_locations: {
         Row: {
           created_at: string

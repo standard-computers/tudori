@@ -21,8 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard, Settings } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import POSSettingsDialog from '@/components/pos/POSSettingsDialog';
 
 interface Location {
   id: string;
@@ -54,6 +55,9 @@ const POS = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isLocationAdmin, setIsLocationAdmin] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [posProductIds, setPosProductIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     setTransaction('pos');
@@ -77,6 +81,57 @@ const POS = () => {
       fetchProducts();
     }
   }, [companyId]);
+
+  // Check if user is admin for selected location & fetch POS product assignments
+  useEffect(() => {
+    if (selectedLocationId && user) {
+      checkLocationAdmin();
+      fetchPosProducts();
+    }
+  }, [selectedLocationId, user]);
+
+  const checkLocationAdmin = async () => {
+    if (!user || !selectedLocationId) return;
+    // Check location_users for admin role
+    const { data: luData } = await supabase
+      .from('location_users')
+      .select('role')
+      .eq('location_id', selectedLocationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (luData?.role === 'admin') {
+      setIsLocationAdmin(true);
+      return;
+    }
+
+    // Check company-level admin/owner role
+    if (companyId) {
+      const { data: urData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('company_id', companyId)
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin']);
+
+      setIsLocationAdmin(!!(urData && urData.length > 0));
+    } else {
+      setIsLocationAdmin(false);
+    }
+  };
+
+  const fetchPosProducts = async () => {
+    const { data } = await supabase
+      .from('pos_location_products')
+      .select('product_id')
+      .eq('location_id', selectedLocationId);
+
+    if (data && data.length > 0) {
+      setPosProductIds(new Set(data.map((r) => r.product_id)));
+    } else {
+      setPosProductIds(null); // null means show all products
+    }
+  };
 
   const fetchCompanyId = async () => {
     const { data } = await supabase
@@ -125,7 +180,12 @@ const POS = () => {
     setProducts(data || []);
   };
 
-  const filteredProducts = products.filter(product =>
+  // Filter by POS product assignments first, then by search
+  const availableProducts = posProductIds
+    ? products.filter((p) => posProductIds.has(p.id))
+    : products;
+
+  const filteredProducts = availableProducts.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.product_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -225,7 +285,12 @@ const POS = () => {
               </Button>
               <h1 className="text-xl font-semibold">Point of Sale</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isLocationAdmin && (
+                <Button variant="ghost" size="icon" onClick={() => setShowSettings(true)}>
+                  <Settings className="w-5 h-5" />
+                </Button>
+              )}
               <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Select location" />
@@ -380,6 +445,16 @@ const POS = () => {
           </div>
         </div>
       </main>
+      {selectedLocationId && companyId && (
+        <POSSettingsDialog
+          open={showSettings}
+          onOpenChange={setShowSettings}
+          locationId={selectedLocationId}
+          locationName={locations.find(l => l.id === selectedLocationId)?.name || ''}
+          companyId={companyId}
+          onSaved={() => fetchPosProducts()}
+        />
+      )}
     </div>
   );
 };
