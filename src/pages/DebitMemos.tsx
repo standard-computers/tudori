@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -18,14 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import {
   DropdownMenu,
@@ -36,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
+import { MemoItemsEditor, MemoItem } from '@/components/accounts/MemoItemsEditor';
 import { ArrowLeft, Plus, Loader2, MoreHorizontal, Trash2, Eye, X } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
@@ -75,6 +68,13 @@ interface Ledger {
   name: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  product_id: string;
+  base_price?: number;
+}
+
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500',
   applied: 'bg-green-500',
@@ -90,6 +90,7 @@ const DebitMemos = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -98,15 +99,20 @@ const DebitMemos = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMemo, setViewMemo] = useState<DebitMemo | null>(null);
+  const [viewMemoItems, setViewMemoItems] = useState<MemoItem[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
     account_id: '',
     invoice_id: '',
     ledger_id: '',
-    amount: '',
     notes: '',
   });
+  const [items, setItems] = useState<MemoItem[]>([]);
+
+  const totalFromItems = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  }, [items]);
 
   const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter, clearAllFilters } = useTableSort<DebitMemo>(memos, 'memo_number', 'desc');
 
@@ -144,16 +150,12 @@ const DebitMemos = () => {
       fetchAccounts();
       fetchInvoices();
       fetchLedgers();
+      fetchProducts();
     }
   }, [companyId]);
 
   const fetchCompanyId = async () => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('user_id', user!.id)
-      .single();
-
+    const { data: profile } = await supabase.from('profiles').select('company_id').eq('user_id', user!.id).single();
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
     }
@@ -177,7 +179,6 @@ const DebitMemos = () => {
       toast.error('Failed to load debit memos');
       return;
     }
-
     setMemos((data as any) || []);
   };
 
@@ -208,6 +209,15 @@ const DebitMemos = () => {
       .eq('is_active', true)
       .order('name');
     setLedgers((data as any) || []);
+  };
+
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('products' as any)
+      .select('id, name, product_id, base_price')
+      .eq('company_id', companyId)
+      .order('name');
+    setProducts((data as any) || []);
   };
 
   const accountOptions: SearchableSelectOption[] = useMemo(() => {
@@ -254,9 +264,9 @@ const DebitMemos = () => {
       account_id: '',
       invoice_id: '',
       ledger_id: '',
-      amount: '',
       notes: '',
     });
+    setItems([]);
     setIsCreateDialogOpen(true);
   };
 
@@ -269,13 +279,17 @@ const DebitMemos = () => {
       return;
     }
 
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount');
+    if (items.length === 0) {
+      toast.error('Please add at least one item');
       return;
     }
 
-    // Need either invoice or ledger
+    const invalidItems = items.filter((i) => !i.product_id || i.quantity <= 0 || i.unit_price <= 0);
+    if (invalidItems.length > 0) {
+      toast.error('Please fill in all item fields correctly');
+      return;
+    }
+
     const selectedInvoice = invoices.find(inv => inv.id === formData.invoice_id);
     const ledgerId = selectedInvoice?.ledger_id || formData.ledger_id;
 
@@ -299,7 +313,7 @@ const DebitMemos = () => {
           account_id: formData.account_id,
           invoice_id: formData.invoice_id || null,
           ledger_id: ledgerId,
-          amount,
+          amount: totalFromItems,
           notes: formData.notes || null,
           status: 'applied',
         })
@@ -308,13 +322,24 @@ const DebitMemos = () => {
 
       if (memoError) throw memoError;
 
+      // Insert memo items
+      const memoItems = items.map((item) => ({
+        debit_memo_id: (memo as any).id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        notes: item.notes || null,
+      }));
+
+      await supabase.from('debit_memo_items' as any).insert(memoItems);
+
       // Create ledger transaction (positive for debit memo)
       await supabase.from('ledger_transactions' as any).insert({
         ledger_id: ledgerId,
         transaction_type: 'debit_memo',
         reference_id: (memo as any).id,
         reference_number: memoNumber,
-        amount: amount,
+        amount: totalFromItems,
         description: formData.notes || `Debit memo ${memoNumber}`,
         transaction_date: new Date().toISOString().split('T')[0],
       });
@@ -330,8 +355,22 @@ const DebitMemos = () => {
     }
   };
 
-  const handleView = (memo: DebitMemo) => {
+  const handleView = async (memo: DebitMemo) => {
     setViewMemo(memo);
+    // Fetch memo items
+    const { data } = await supabase
+      .from('debit_memo_items' as any)
+      .select('id, product_id, quantity, unit_price, notes')
+      .eq('debit_memo_id', memo.id);
+    setViewMemoItems(
+      ((data as any) || []).map((item: any) => ({
+        id: item.id,
+        product_id: item.product_id,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        notes: item.notes || '',
+      })),
+    );
     setIsViewDialogOpen(true);
   };
 
@@ -341,17 +380,13 @@ const DebitMemos = () => {
     }
 
     try {
-      // Delete associated ledger transaction
       await supabase
         .from('ledger_transactions' as any)
         .delete()
         .eq('reference_id', memo.id)
         .eq('transaction_type', 'debit_memo');
 
-      const { error } = await supabase
-        .from('debit_memos' as any)
-        .delete()
-        .eq('id', memo.id);
+      const { error } = await supabase.from('debit_memos' as any).delete().eq('id', memo.id);
 
       if (error) throw error;
 
@@ -412,67 +447,13 @@ const DebitMemos = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead
-                label="Memo #"
-                sortKey="memo_number"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['memo_number']}
-                onFilter={(value) => setFilter('memo_number', value)}
-              />
-              <SortableTableHead
-                label="Date"
-                sortKey="memo_date"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-              />
-              <SortableTableHead
-                label="Account"
-                sortKey="account.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['account.name']}
-                onFilter={(value) => setFilter('account.name', value)}
-              />
-              <SortableTableHead
-                label="Invoice"
-                sortKey="invoice.invoice_number"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['invoice.invoice_number']}
-                onFilter={(value) => setFilter('invoice.invoice_number', value)}
-              />
-              <SortableTableHead
-                label="Amount"
-                sortKey="amount"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-              />
-              <SortableTableHead
-                label="Ledger"
-                sortKey="ledger.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['ledger.name']}
-                onFilter={(value) => setFilter('ledger.name', value)}
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters['status']}
-                onFilter={(value) => setFilter('status', value)}
-              />
+              <SortableTableHead label="Memo #" sortKey="memo_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters['memo_number']} onFilter={(value) => setFilter('memo_number', value)} />
+              <SortableTableHead label="Date" sortKey="memo_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              <SortableTableHead label="Account" sortKey="account.name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters['account.name']} onFilter={(value) => setFilter('account.name', value)} />
+              <SortableTableHead label="Invoice" sortKey="invoice.invoice_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters['invoice.invoice_number']} onFilter={(value) => setFilter('invoice.invoice_number', value)} />
+              <SortableTableHead label="Amount" sortKey="amount" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+              <SortableTableHead label="Ledger" sortKey="ledger.name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters['ledger.name']} onFilter={(value) => setFilter('ledger.name', value)} />
+              <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters['status']} onFilter={(value) => setFilter('status', value)} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -480,24 +461,20 @@ const DebitMemos = () => {
             {filteredMemos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  {memos.length === 0 
-                    ? 'No debit memos found. Create your first debit memo to get started.'
-                    : 'No memos match your filters'}
+                  {memos.length === 0 ? 'No debit memos found. Create your first debit memo to get started.' : 'No memos match your filters'}
                 </TableCell>
               </TableRow>
             ) : (
               filteredMemos.map((memo) => (
                 <TableRow key={memo.id}>
-                  <TableCell className="font-mono">{memo.memo_number}</TableCell>
+                  <TableCell className="font-mono cursor-pointer hover:underline" onClick={() => handleView(memo)}>{memo.memo_number}</TableCell>
                   <TableCell>{format(new Date(memo.memo_date), 'MMM d, yyyy')}</TableCell>
                   <TableCell>{memo.account?.name || '-'}</TableCell>
                   <TableCell>{memo.invoice?.invoice_number || '-'}</TableCell>
                   <TableCell className="font-medium text-red-600">+${memo.amount.toFixed(2)}</TableCell>
                   <TableCell>{memo.ledger?.name || '-'}</TableCell>
                   <TableCell>
-                    <Badge className={`${statusColors[memo.status]} text-white`}>
-                      {memo.status}
-                    </Badge>
+                    <Badge className={`${statusColors[memo.status]} text-white`}>{memo.status}</Badge>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -511,10 +488,7 @@ const DebitMemos = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(memo)}
-                          className="text-destructive"
-                        >
+                        <DropdownMenuItem onClick={() => handleDelete(memo)} className="text-destructive">
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -530,40 +504,39 @@ const DebitMemos = () => {
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Debit Memo</DialogTitle>
-            <DialogDescription>
-              Create a debit memo to increase the amount owed on an account.
-            </DialogDescription>
+            <DialogDescription>Create a debit memo to increase the amount owed on an account.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 px-6">
-            <div>
-              <Label>Account *</Label>
-              <SearchableSelect
-                options={accountOptions}
-                value={formData.account_id}
-                onValueChange={(value) => setFormData({ ...formData, account_id: value, invoice_id: '' })}
-                placeholder="Select account"
-              />
-            </div>
-
-            <div>
-              <Label>Invoice (Optional)</Label>
-              <SearchableSelect
-                options={invoiceOptions}
-                value={formData.invoice_id}
-                onValueChange={(value) => {
-                  const inv = invoices.find(i => i.id === value);
-                  setFormData({ 
-                    ...formData, 
-                    invoice_id: value,
-                    ledger_id: inv?.ledger_id || formData.ledger_id,
-                  });
-                }}
-                placeholder="Select invoice"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Account *</Label>
+                <SearchableSelect
+                  options={accountOptions}
+                  value={formData.account_id}
+                  onValueChange={(value) => setFormData({ ...formData, account_id: value, invoice_id: '' })}
+                  placeholder="Select account"
+                />
+              </div>
+              <div>
+                <Label>Invoice (Optional)</Label>
+                <SearchableSelect
+                  options={invoiceOptions}
+                  value={formData.invoice_id}
+                  onValueChange={(value) => {
+                    const inv = invoices.find(i => i.id === value);
+                    setFormData({
+                      ...formData,
+                      invoice_id: value,
+                      ledger_id: inv?.ledger_id || formData.ledger_id,
+                    });
+                  }}
+                  placeholder="Select invoice"
+                />
+              </div>
             </div>
 
             {!formData.invoice_id && (
@@ -578,17 +551,7 @@ const DebitMemos = () => {
               </div>
             )}
 
-            <div>
-              <Label>Amount *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
+            <MemoItemsEditor items={items} onItemsChange={setItems} products={products} />
 
             <div>
               <Label>Notes</Label>
@@ -596,15 +559,12 @@ const DebitMemos = () => {
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Reason for debit memo..."
-                rows={3}
+                rows={2}
               />
             </div>
           </div>
 
-          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancel
-            </Button>
+          <DialogFooter className="sticky bottom-0 pt-4">
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Create Debit Memo
@@ -615,7 +575,7 @@ const DebitMemos = () => {
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Debit Memo {viewMemo?.memo_number}</DialogTitle>
             <DialogDescription>Debit memo details</DialogDescription>
@@ -630,32 +590,34 @@ const DebitMemos = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge className={`${statusColors[viewMemo.status]} text-white`}>
-                    {viewMemo.status}
-                  </Badge>
+                  <Badge className={`${statusColors[viewMemo.status]} text-white`}>{viewMemo.status}</Badge>
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm text-muted-foreground">Account</p>
-                <p className="font-medium">{viewMemo.account?.name}</p>
-              </div>
-
-              {viewMemo.invoice && (
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Invoice</p>
-                  <p className="font-medium">{viewMemo.invoice.invoice_number}</p>
+                  <p className="text-sm text-muted-foreground">Account</p>
+                  <p className="font-medium">{viewMemo.account?.name}</p>
                 </div>
-              )}
-
-              <div>
-                <p className="text-sm text-muted-foreground">Amount</p>
-                <p className="font-medium text-red-600 text-xl">+${viewMemo.amount.toFixed(2)}</p>
+                {viewMemo.invoice && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Invoice</p>
+                    <p className="font-medium">{viewMemo.invoice.invoice_number}</p>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <p className="text-sm text-muted-foreground">Ledger</p>
-                <p className="font-medium">{viewMemo.ledger?.name || '-'}</p>
+              <MemoItemsEditor items={viewMemoItems} onItemsChange={() => {}} products={products} readOnly />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Amount</p>
+                  <p className="font-medium text-red-600 text-xl">+${viewMemo.amount.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ledger</p>
+                  <p className="font-medium">{viewMemo.ledger?.name || '-'}</p>
+                </div>
               </div>
 
               {viewMemo.notes && (
@@ -667,8 +629,7 @@ const DebitMemos = () => {
             </div>
           )}
 
-          <DialogFooter>
-          </DialogFooter>
+          <DialogFooter></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

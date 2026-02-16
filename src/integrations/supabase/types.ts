@@ -963,6 +963,51 @@ export type Database = {
           },
         ]
       }
+      credit_memo_items: {
+        Row: {
+          created_at: string
+          credit_memo_id: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          credit_memo_id: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          credit_memo_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_memo_items_credit_memo_id_fkey"
+            columns: ["credit_memo_id"]
+            isOneToOne: false
+            referencedRelation: "credit_memos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_memo_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_memos: {
         Row: {
           account_id: string
@@ -1107,6 +1152,51 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debit_memo_items: {
+        Row: {
+          created_at: string
+          debit_memo_id: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          debit_memo_id: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          debit_memo_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debit_memo_items_debit_memo_id_fkey"
+            columns: ["debit_memo_id"]
+            isOneToOne: false
+            referencedRelation: "debit_memos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_memo_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
