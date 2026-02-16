@@ -37,6 +37,7 @@ import {
   X,
   Calculator,
   Link2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ import { DraggableEntity } from "@/components/analytics/DraggableEntity";
 import { ReportBuilderDropZone } from "@/components/analytics/ReportBuilderDropZone";
 import { FieldFilterDialog } from "@/components/analytics/FieldFilterDialog";
 import { CalculatedColumnsDialog } from "@/components/analytics/CalculatedColumnsDialog";
+import { AutoMakeReportDialog } from "@/components/analytics/AutoMakeReportDialog";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
 
@@ -75,6 +77,9 @@ const Analytics = () => {
 
   // Calculated columns dialog
   const [calcDialogOpen, setCalcDialogOpen] = useState(false);
+
+  // AutoMake dialog
+  const [autoMakeOpen, setAutoMakeOpen] = useState(false);
 
   // Query state
   const [rowLimit, setRowLimit] = useState<string>("100");
@@ -151,6 +156,12 @@ const Analytics = () => {
   };
 
   useKeyboardShortcut('n', handleNewReport);
+  useKeyboardShortcut('a', () => setAutoMakeOpen(true));
+
+  const handleAutoMakeReport = (tab: ReportTab) => {
+    setTabs((prev) => [...prev, tab]);
+    setActiveTabId(tab.id);
+  };
 
   const handleCloseTab = (tabId: string) => {
     const newTabs = tabs.filter((t) => t.id !== tabId);
@@ -507,6 +518,10 @@ const Analytics = () => {
             </Button>
             <h1 className="text-lg font-semibold">Analytics</h1>
             <div className="flex-1" />
+            <Button size="icon" onClick={() => setAutoMakeOpen(true)} className="relative" variant="outline">
+              <Sparkles className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">A</Kbd>
+            </Button>
             <Button size="icon" onClick={handleNewReport} className="relative">
               <Plus className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -819,10 +834,16 @@ const Analytics = () => {
                   <p className="text-sm text-muted-foreground mb-4">
                     Select a saved report or create a new one
                   </p>
-                  <Button onClick={handleNewReport}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Report
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button variant="outline" onClick={() => setAutoMakeOpen(true)}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      AutoMake
+                    </Button>
+                    <Button onClick={handleNewReport}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Report
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -862,6 +883,13 @@ const Analytics = () => {
         columns={activeTab?.calculatedColumns || []}
         onSave={handleSaveCalculatedColumns}
         activeEntities={activeTab?.entities || []}
+      />
+
+      {/* AutoMake Report Dialog */}
+      <AutoMakeReportDialog
+        open={autoMakeOpen}
+        onOpenChange={setAutoMakeOpen}
+        onReportCreated={handleAutoMakeReport}
       />
     </DndContext>
   );
