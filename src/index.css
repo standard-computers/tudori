@@ -160,6 +160,9 @@
 html[data-app-menu="true"] header[class*="sticky"] > div {
   padding-right: 4rem;
 }
+html[data-app-menu="true"] header[class*="sticky"] ~ div {
+  padding-right: 4rem;
+}
 
 @layer utilities {
   .animate-fade-in {
