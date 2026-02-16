@@ -504,10 +504,9 @@ const Accounts = () => {
               exportEnabled={isExportEnabled('account')}
               entityName="Accounts"
             />
-            <Button onClick={handleCreateClick}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Account
-              <Kbd className="ml-2">N</Kbd>
+            <Button onClick={handleCreateClick} size="icon" className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
           </div>
         </div>

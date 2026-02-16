@@ -316,10 +316,9 @@ const Rates = () => {
                 exportEnabled={isExportEnabled("tax_rate")}
                 entityName="Tax Rates"
               />
-              <Button onClick={handleAddClick} variant="default">
-                <Plus className="w-4 h-4 mr-2" />
-                Rate
-                <Kbd>N</Kbd>
+              <Button onClick={handleAddClick} variant="default" size="icon" className="relative">
+                <Plus className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
               </Button>
             </div>
           </div>

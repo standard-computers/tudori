@@ -523,10 +523,9 @@ const Ledgers = () => {
                   <Wand2 className="w-4 h-4 mr-2" />
                   AutoMake
                 </Button>
-                <Button onClick={openCreateDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Ledger
-                  <Kbd className="ml-2">N</Kbd>
+                <Button onClick={openCreateDialog} size="icon" className="relative">
+                  <Plus className="w-4 h-4" />
+                  <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                 </Button>
               </div>
             )}

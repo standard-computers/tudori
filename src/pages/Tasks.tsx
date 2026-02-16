@@ -559,9 +559,8 @@ const Tasks = () => {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Pull Deliveries
               </Button>
-              <Button onClick={() => handleAddTask()}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Task
+              <Button onClick={() => handleAddTask()} size="icon" className="relative">
+                <Plus className="w-4 h-4" />
               </Button>
             </div>
           </div>

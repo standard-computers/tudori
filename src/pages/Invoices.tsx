@@ -304,10 +304,9 @@ const Invoices = () => {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search invoices">
               <Search className="w-4 h-4" />
             </Button>
-            <Button onClick={handleCreateClick}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Invoice
-              <Kbd className="ml-2">N</Kbd>
+            <Button onClick={handleCreateClick} size="icon" className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
           </div>
         </div>

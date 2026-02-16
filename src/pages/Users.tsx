@@ -488,10 +488,9 @@ const Users = () => {
             {canManageUsers && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add User
-                    <Kbd>N</Kbd>
+                  <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} size="icon" className="relative">
+                    <UserPlus className="w-4 h-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>

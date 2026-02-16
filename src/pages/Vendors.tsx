@@ -1019,10 +1019,9 @@ const Vendors = () => {
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={handleOpenDialog}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Vendor
-                    <Kbd>N</Kbd>
+                  <Button onClick={handleOpenDialog} size="icon" className="relative">
+                    <Plus className="w-4 h-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
                 </DialogTrigger>
                 <DialogContent
