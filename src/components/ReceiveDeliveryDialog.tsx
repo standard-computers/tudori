@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { supabase } from '@/integrations/supabase/client';
 import { postGoodsReceipt } from '@/lib/inventory-posting';
 import { createPackagingUnit } from '@/lib/packaging-units';
@@ -81,6 +82,11 @@ export const ReceiveDeliveryDialog = ({
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [batchedProducts, setBatchedProducts] = useState<BatchedProduct[]>([]);
   const [pendingBatchData, setPendingBatchData] = useState<BatchedProduct[] | null>(null);
+
+  const canConfirm = !submitting && items.length > 0 && !(isInternalTransfer && !isFulfilled);
+  useSaveShortcut(useCallback(() => {
+    if (canConfirm) handleConfirmClick();
+  }, [canConfirm]), open);
 
   useEffect(() => {
     if (open && deliveryId) {
