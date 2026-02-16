@@ -199,12 +199,31 @@ export const UserLocationsTab = ({ userId, companyId, readOnly = true }: UserLoc
         <p className="text-sm text-muted-foreground">
           {selectedIds.length} of {allLocations.length} location{allLocations.length !== 1 ? 's' : ''} assigned
         </p>
-        {hasChanges && (
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-            Save
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {allLocations.length > 0 && (
+            <Select onValueChange={(role) => {
+              const allIds = allLocations.map((l) => l.id);
+              setSelectedIds(allIds);
+              const newRoles = { ...roles };
+              allIds.forEach((id) => { newRoles[id] = role; });
+              setRoles(newRoles);
+            }}>
+              <SelectTrigger className="w-auto h-8 text-xs gap-1">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Add All as Member</SelectItem>
+                <SelectItem value="admin">Add All as Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {hasChanges && (
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Save
+            </Button>
+          )}
+        </div>
       </div>
 
       {allLocations.length === 0 ? (
