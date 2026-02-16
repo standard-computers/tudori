@@ -71,7 +71,7 @@ export function AppMenuButton() {
   });
 
   return (
-    <div className="fixed top-2.5 right-4 z-50">
+    <div className="fixed top-2.5 right-4 z-[51]">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" className="h-10 w-10 bg-card border shadow-sm hover:bg-accent">
