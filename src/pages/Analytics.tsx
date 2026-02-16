@@ -57,6 +57,7 @@ import {
   FolderPlus,
   Folder,
   MoreVertical,
+  Search,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { cn } from "@/lib/utils";
@@ -83,6 +84,26 @@ const Analytics = () => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Ctrl+F shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [searchOpen]);
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -585,6 +606,10 @@ const Analytics = () => {
     ? entities.filter((e) => !canReachEntity(activeTab.entities, e.name))
     : [];
 
+  const sq = searchQuery.toLowerCase();
+  const filteredReports = sq ? savedReports.filter(r => r.name.toLowerCase().includes(sq)) : savedReports;
+  const filteredFolders = sq ? folders.filter(f => f.name.toLowerCase().includes(sq)) : folders;
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-background flex flex-col">
@@ -597,6 +622,31 @@ const Analytics = () => {
             <h1 className="text-lg font-semibold">Analytics</h1>
             <div className="flex-1" />
             <div className="flex items-center gap-1">
+            {searchOpen ? (
+              <div className="flex items-center gap-1 border border-border rounded-md bg-background px-2">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Input
+                  ref={searchInputRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search reports..."
+                  className="border-0 h-8 w-52 focus-visible:ring-0 shadow-none px-1"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button variant="ghost" size="icon" className="relative" onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}>
+                <Search className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
+              </Button>
+            )}
             <Button size="icon" onClick={() => setAutoMakeOpen(true)} className="relative" variant="outline">
               <Sparkles className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">A</Kbd>
@@ -976,7 +1026,7 @@ const Analytics = () => {
                     {reportsViewMode === "tiles" ? (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                         {/* Folders (only at root) */}
-                        {!currentFolderId && folders.map((folder) => (
+                        {!currentFolderId && filteredFolders.map((folder) => (
                            <Card key={folder.id} 
                                  className="cursor-pointer hover:border-primary/50 transition-colors group bg-muted/20 relative"
                                  onClick={() => setCurrentFolderId(folder.id)}>
@@ -1005,7 +1055,7 @@ const Analytics = () => {
                         ))}
 
                         {/* Reports */}
-                        {savedReports
+                        {filteredReports
                           .filter(r => (currentFolderId ? r.folderId === currentFolderId : !r.folderId))
                           .map((report) => (
                           <Card
@@ -1074,7 +1124,7 @@ const Analytics = () => {
                     ) : (
                       <div className="space-y-1">
                         {/* Folders List */}
-                        {!currentFolderId && folders.map((folder) => (
+                        {!currentFolderId && filteredFolders.map((folder) => (
                            <div key={folder.id} 
                                  className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent/50 group bg-muted/20"
                                  onClick={() => setCurrentFolderId(folder.id)}>
@@ -1099,7 +1149,7 @@ const Analytics = () => {
                         ))}
 
                         {/* Reports List */}
-                        {savedReports
+                        {filteredReports
                           .filter(r => (currentFolderId ? r.folderId === currentFolderId : !r.folderId))
                           .map((report) => (
                           <div
