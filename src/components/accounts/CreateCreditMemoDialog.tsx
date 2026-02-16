@@ -270,10 +270,7 @@ export const CreateCreditMemoDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+        <DialogFooter className="sticky bottom-0 pt-4">
           <Button onClick={handleCreate} disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Create Credit Memo
