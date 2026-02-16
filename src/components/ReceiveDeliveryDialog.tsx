@@ -28,6 +28,7 @@ import {
 import { Loader2, PackageCheck, AlertCircle, Layers, Package, Archive } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { BatchAssignmentDialog, BatchedProduct } from '@/components/cockpit/BatchAssignmentDialog';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 
 interface DeliveryItem {
   id: string;
@@ -82,6 +83,11 @@ export const ReceiveDeliveryDialog = ({
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [batchedProducts, setBatchedProducts] = useState<BatchedProduct[]>([]);
   const [pendingBatchData, setPendingBatchData] = useState<BatchedProduct[] | null>(null);
+  const [showProgress, setShowProgress] = useState(false);
+  const [progressResults, setProgressResults] = useState<ImportResult[]>([]);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [progressProcessed, setProgressProcessed] = useState(0);
+  const [progressComplete, setProgressComplete] = useState(false);
 
   const canConfirm = !submitting && items.length > 0 && !(isInternalTransfer && !isFulfilled);
   useSaveShortcut(useCallback(() => {
@@ -306,11 +312,31 @@ export const ReceiveDeliveryDialog = ({
     handleReceive(confirmedProducts);
   };
 
+  const addProgress = (row: number, status: 'success' | 'error', message: string) => {
+    setProgressResults(prev => [...prev, { row, status, message }]);
+    setProgressProcessed(prev => prev + 1);
+  };
+
   const handleReceive = async (batchData: BatchedProduct[] | null) => {
     setSubmitting(true);
 
+    // Calculate total steps: profile(1) + settings(1) + delivery update(1) + items(N for PU creation) + GR creation(1) + GR items(1) + posting(1) + PO update(1 if applicable)
+    const activeItems = items.filter(i => i.received_quantity > 0);
+    const estimatedSteps = 3 + activeItems.length + 3 + (purchaseOrderId ? 1 : 0);
+    setProgressTotal(estimatedSteps);
+    setProgressProcessed(0);
+    setProgressResults([]);
+    setProgressComplete(false);
+
+    // Close the receive dialog and show progress
+    onOpenChange(false);
+    setShowProgress(true);
+
+    let step = 0;
+
     try {
-      // Get user's company_id for creating goods receipt
+      // Step: Get profile
+      step++;
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
@@ -318,12 +344,15 @@ export const ReceiveDeliveryDialog = ({
         .single();
 
       if (!profile?.company_id) {
-        toast.error('Could not determine company');
+        addProgress(step, 'error', 'Could not determine company');
+        setProgressComplete(true);
         setSubmitting(false);
         return;
       }
+      addProgress(step, 'success', 'Company profile loaded');
 
-      // Check if GR is required from process controls
+      // Step: Check process controls
+      step++;
       const { data: processControlsSetting } = await supabase
         .from('company_settings')
         .select('setting_value')
@@ -336,11 +365,11 @@ export const ReceiveDeliveryDialog = ({
         !Array.isArray(processControlsSetting.setting_value)
           ? ((processControlsSetting.setting_value as Record<string, unknown>).require_gr_on_delivery as boolean) ?? true
           : true;
+      addProgress(step, 'success', 'Process controls checked');
 
-      // Determine if this is a partial receipt
+      // Step: Update delivery status
+      step++;
       const isPartialReceipt = items.some(item => item.received_quantity < item.expected_quantity);
-
-      // Update delivery status - use 'partially_delivered' if not all quantities received
       const { error: deliveryError } = await supabase
         .from('deliveries')
         .update({ 
@@ -350,23 +379,38 @@ export const ReceiveDeliveryDialog = ({
         .eq('id', deliveryId);
 
       if (deliveryError) {
-        toast.error('Failed to update delivery status');
+        addProgress(step, 'error', 'Failed to update delivery status');
+        setProgressComplete(true);
         setSubmitting(false);
         return;
       }
-
-      // Do NOT update delivery_items quantities - preserve the original delivery record
-      // The goods receipt items will reflect the actual received quantities
+      addProgress(step, 'success', `Delivery marked as ${isPartialReceipt ? 'partially delivered' : 'delivered'}`);
 
       if (requireGR) {
-        // Create goods receipt
+        // Step: Create PUs for each item
+        const puMap: Record<string, string | null> = {};
+        for (const item of activeItems) {
+          step++;
+          let puId = item.pu_id;
+
+          if (!puId && !explodeDelivery) {
+            const pu = await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity);
+            puId = pu?.id || null;
+          }
+          puMap[item.id] = puId;
+          addProgress(step, 'success', `PU ready for ${item.product_name}`);
+        }
+
+        // Step: Create Goods Receipt
+        step++;
         const { data: receiptNumber, error: receiptNumError } = await supabase.rpc(
           'get_next_goods_receipt_number',
           { p_company_id: profile.company_id }
         );
 
         if (receiptNumError || !receiptNumber) {
-          toast.error('Failed to generate receipt number');
+          addProgress(step, 'error', 'Failed to generate receipt number');
+          setProgressComplete(true);
           setSubmitting(false);
           return;
         }
@@ -387,63 +431,41 @@ export const ReceiveDeliveryDialog = ({
           .single();
 
         if (grError || !goodsReceipt) {
-          toast.error('Failed to create goods receipt');
+          addProgress(step, 'error', 'Failed to create Goods Receipt');
+          setProgressComplete(true);
           setSubmitting(false);
           return;
         }
+        addProgress(step, 'success', `Goods Receipt ${receiptNumber} created`);
 
-        // Create goods receipt items from received quantities
-        // If explodeDelivery is true, create individual PUs for each unit
+        // Step: Create GR items
+        step++;
         if (explodeDelivery) {
-          // Create PUs and GR items for each individual unit
-          for (const item of items) {
-            if (item.received_quantity <= 0) continue;
-            
+          for (const item of activeItems) {
             for (let i = 0; i < item.received_quantity; i++) {
-              // Check if delivery item already has a PU assigned
               let puId = item.pu_id;
-              
               if (!puId) {
-                // Create a new PU for this unit
                 const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
                 puId = pu?.id || null;
               }
-              
-              // Create GR item with PU and selected bin
-              await supabase
-                .from('goods_receipt_items')
-                .insert({
-                  goods_receipt_id: goodsReceipt.id,
-                  product_id: item.product_id,
-                  quantity: 1,
-                  pu_id: puId,
-                  bin_id: selectedBinId || null,
-                  notes: `Unit ${i + 1} of ${item.received_quantity}`,
-                });
+              await supabase.from('goods_receipt_items').insert({
+                goods_receipt_id: goodsReceipt.id,
+                product_id: item.product_id,
+                quantity: 1,
+                pu_id: puId,
+                bin_id: selectedBinId || null,
+                notes: `Unit ${i + 1} of ${item.received_quantity}`,
+              });
             }
           }
         } else {
-          // Standard behavior: create GR items without individual PUs
-          // But still create PUs if not already assigned
           const grItems: any[] = [];
-          for (const item of items) {
-            if (item.received_quantity <= 0) continue;
-            
-            let puId = item.pu_id;
-            
-            // If no PU assigned, create one for the full quantity
-            if (!puId) {
-              const pu = await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity);
-              puId = pu?.id || null;
-            }
-
-            // Check if this item has batch data
+          for (const item of activeItems) {
+            const puId = puMap[item.id];
             const batchProduct = batchData?.find(bp => bp.itemId === item.id);
             
             if (batchProduct && batchProduct.batchLines.length > 0) {
-              // Create separate GR items for each batch line
               for (const batchLine of batchProduct.batchLines) {
-                // Create or find the batch record
                 const { data: existingBatch } = await supabase
                   .from('batches')
                   .select('id')
@@ -455,12 +477,8 @@ export const ReceiveDeliveryDialog = ({
                 let batchId: string;
                 if (existingBatch) {
                   batchId = existingBatch.id;
-                  // Update expiration if provided
                   if (batchLine.expirationDate) {
-                    await supabase
-                      .from('batches')
-                      .update({ expiration_date: batchLine.expirationDate })
-                      .eq('id', batchId);
+                    await supabase.from('batches').update({ expiration_date: batchLine.expirationDate }).eq('id', batchId);
                   }
                 } else {
                   const { data: newBatch } = await supabase
@@ -501,74 +519,74 @@ export const ReceiveDeliveryDialog = ({
           }
           
           if (grItems.length > 0) {
-            const { error: itemsError } = await supabase
-              .from('goods_receipt_items')
-              .insert(grItems);
-
+            const { error: itemsError } = await supabase.from('goods_receipt_items').insert(grItems);
             if (itemsError) {
-              console.error('Failed to create goods receipt items:', itemsError);
+              addProgress(step, 'error', 'Failed to create GR items');
+              setProgressComplete(true);
+              setSubmitting(false);
+              return;
             }
           }
         }
+        addProgress(step, 'success', 'GR items created');
 
-        // Auto-post the goods receipt to update inventory
+        // Step: Post GR
+        step++;
         const postResult = await postGoodsReceipt(goodsReceipt.id, locationId);
         if (postResult.success) {
-          toast.success(`Goods Receipt ${receiptNumber} created and posted - inventory updated.`);
+          addProgress(step, 'success', `GR ${receiptNumber} posted — inventory updated`);
         } else {
-          toast.error(postResult.error || 'Failed to auto-post goods receipt');
+          addProgress(step, 'error', postResult.error || 'Failed to post Goods Receipt');
         }
       } else {
-        // Directly post inventory without creating a GR
-        for (const item of items) {
-          if (item.received_quantity <= 0) continue;
-          
+        // Direct inventory update without GR
+        for (const item of activeItems) {
+          step++;
           if (explodeDelivery) {
-            // Create individual inventory records with PUs (only for unpacked items)
             for (let i = 0; i < item.received_quantity; i++) {
               const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
-              await supabase
-                .from('inventory')
-                .insert({
-                  location_id: locationId,
-                  product_id: item.product_id,
-                  quantity: 1,
-                  pu_id: pu?.id || null,
-                  bin_id: selectedBinId || null,
-                });
-            }
-          } else {
-            // Use existing PU if packed, otherwise create one
-            const puId = item.pu_id || (await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity))?.id || null;
-            
-            // Create inventory record with the PU
-            await supabase
-              .from('inventory')
-              .insert({
+              await supabase.from('inventory').insert({
                 location_id: locationId,
                 product_id: item.product_id,
-                quantity: item.received_quantity,
-                pu_id: puId,
+                quantity: 1,
+                pu_id: pu?.id || null,
                 bin_id: selectedBinId || null,
               });
+            }
+          } else {
+            const puId = item.pu_id || (await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity))?.id || null;
+            await supabase.from('inventory').insert({
+              location_id: locationId,
+              product_id: item.product_id,
+              quantity: item.received_quantity,
+              pu_id: puId,
+              bin_id: selectedBinId || null,
+            });
           }
+          addProgress(step, 'success', `Inventory updated for ${item.product_name}`);
         }
 
-        toast.success('Delivery received and inventory updated directly.');
+        // Add the remaining placeholder steps
+        step++;
+        addProgress(step, 'success', 'Direct inventory posting complete');
+        step++;
+        addProgress(step, 'success', 'Finalized');
       }
 
-      // If there's an associated PO, mark it as delivered
+      // Step: Update PO if applicable
       if (purchaseOrderId) {
+        step++;
         const { error: poError } = await supabase
           .from('purchase_orders')
           .update({ status: 'delivered' })
           .eq('id', purchaseOrderId);
 
         if (poError) {
-          console.error('Failed to update PO status:', poError);
+          addProgress(step, 'error', 'Failed to update Purchase Order status');
+        } else {
+          addProgress(step, 'success', 'Purchase Order marked as delivered');
         }
 
-        // Mark associated purchase requisition as completed
         const { data: poData } = await supabase
           .from('purchase_orders')
           .select('requisition_id')
@@ -584,10 +602,10 @@ export const ReceiveDeliveryDialog = ({
       }
 
       onReceived();
-      onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to receive delivery');
+      addProgress(step, 'error', 'Unexpected error during receiving');
     } finally {
+      setProgressComplete(true);
       setSubmitting(false);
     }
   };
@@ -811,6 +829,16 @@ export const ReceiveDeliveryDialog = ({
       onOpenChange={setShowBatchDialog}
       batchedProducts={batchedProducts}
       onConfirm={handleBatchConfirm}
+    />
+
+    <ImportProgressDialog
+      open={showProgress}
+      onOpenChange={setShowProgress}
+      title={`Receiving Delivery ${deliveryDisplayId}`}
+      totalRows={progressTotal}
+      processedRows={progressProcessed}
+      results={progressResults}
+      isComplete={progressComplete}
     />
     </>
   );
