@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutGroup } from "framer-motion";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -286,7 +286,6 @@ const Dashboard = () => {
         {/* Apps grid with drag and drop */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={apps.map((app) => app.name)} strategy={rectSortingStrategy}>
-            <LayoutGroup>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {apps
                   .filter((app) => {
@@ -309,7 +308,6 @@ const Dashboard = () => {
                     />
                   ))}
               </div>
-            </LayoutGroup>
           </SortableContext>
         </DndContext>
       </main>

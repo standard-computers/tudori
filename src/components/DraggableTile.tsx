@@ -37,7 +37,7 @@ export const DraggableTile = ({
   } = useSortable({ id });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     zIndex: isDragging ? 50 : 'auto' as const,
   };
@@ -77,7 +77,6 @@ export const DraggableTile = ({
       }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
-      layout
     >
       <Icon className={`w-8 h-8 ${color} mb-4`} />
       <h3 className="font-display font-semibold text-foreground mb-1">{name}</h3>
