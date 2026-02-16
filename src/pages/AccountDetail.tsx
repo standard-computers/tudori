@@ -404,7 +404,7 @@ const AccountDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <div>
-        <div className="px-4 h-16 flex items-center justify-between">
+        <div className="px-4 pr-16 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/accounts')}>
               <ArrowLeft className="h-5 w-5" />
