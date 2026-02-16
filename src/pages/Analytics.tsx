@@ -67,6 +67,11 @@ const Analytics = () => {
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
 
+  // F2 to close active report tab
+  useKeyboardShortcut('F2', () => {
+    if (activeTabId) handleCloseTab(activeTabId);
+  });
+
   // Tab state
   const [tabs, setTabs] = useState<ReportTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
