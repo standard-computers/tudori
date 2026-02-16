@@ -633,7 +633,7 @@ const Configuration = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Configuration</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2 pr-16">
+            <div className="flex items-center gap-2">
               {searchOpen ? (
                 <div className="flex items-center gap-1 border border-border rounded-md bg-background px-2">
                   <Search className="w-4 h-4 text-muted-foreground shrink-0" />
