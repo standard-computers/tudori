@@ -3607,6 +3607,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          profile_id: string | null
           role: string | null
           updated_at: string
           user_id: string
@@ -3619,6 +3620,7 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          profile_id?: string | null
           role?: string | null
           updated_at?: string
           user_id: string
@@ -3631,6 +3633,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          profile_id?: string | null
           role?: string | null
           updated_at?: string
           user_id?: string
@@ -5081,6 +5084,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
+      get_next_profile_id: { Args: { p_company_id: string }; Returns: string }
       get_next_pu_number: { Args: { p_company_id: string }; Returns: string }
       get_next_rate_id: { Args: { p_company_id: string }; Returns: string }
       get_next_requisition_id: {
