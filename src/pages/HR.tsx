@@ -640,7 +640,7 @@ const HR = () => {
 
       {/* View Employee Dialog */}
       <Dialog open={!!viewingEmployee} onOpenChange={(open) => { if (!open) { setViewingEmployee(null); setIsViewMaximized(false); } }}>
-        <DialogContent className={isViewMaximized ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-2xl max-h-[85vh]'}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isViewMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
           <div className="absolute right-12 top-4 z-10 flex items-center gap-2">
             <button
               className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
