@@ -286,7 +286,12 @@ const ProductionOrderTable = ({
             ) : (
               sortedAndFilteredData.map((order) => (
                 <TableRow key={order.id} className="whitespace-nowrap">
-                  <TableCell className="font-mono text-sm">{order.order_number}</TableCell>
+                  <TableCell
+                    className="font-mono text-sm text-primary cursor-pointer hover:underline"
+                    onClick={() => onView(order)}
+                  >
+                    {order.order_number}
+                  </TableCell>
                   <TableCell>{order.bom?.name || '-'}</TableCell>
                   <TableCell>{order.product?.name || '-'}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
