@@ -743,8 +743,8 @@ const Users = () => {
                   </div>
                 </TabsContent>
                 <TabsContent value="locations" className="mt-4">
-                  {editingMember && (
-                    <UserLocationsTab userId={editingMember.user_id} />
+                  {editingMember && companyId && (
+                    <UserLocationsTab userId={editingMember.user_id} companyId={companyId} readOnly={false} />
                   )}
                 </TabsContent>
                 <TabsContent value="access" className="mt-4">
