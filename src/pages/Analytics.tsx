@@ -49,6 +49,7 @@ import { ReportBuilderDropZone } from "@/components/analytics/ReportBuilderDropZ
 import { FieldFilterDialog } from "@/components/analytics/FieldFilterDialog";
 import { CalculatedColumnsDialog } from "@/components/analytics/CalculatedColumnsDialog";
 import { Badge } from "@/components/ui/badge";
+import { Kbd } from "@/components/ui/kbd";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -148,6 +149,8 @@ const Analytics = () => {
     setTabs([...tabs, newTab]);
     setActiveTabId(newTab.id);
   };
+
+  useKeyboardShortcut('n', handleNewReport);
 
   const handleCloseTab = (tabId: string) => {
     const newTabs = tabs.filter((t) => t.id !== tabId);
@@ -504,9 +507,9 @@ const Analytics = () => {
             </Button>
             <h1 className="text-lg font-semibold">Analytics</h1>
             <div className="flex-1" />
-            <Button size="sm" onClick={handleNewReport}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Report
+            <Button size="icon" onClick={handleNewReport} className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
           </div>
 
