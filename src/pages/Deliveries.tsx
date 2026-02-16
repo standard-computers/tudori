@@ -50,6 +50,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SortableTableHead } from '@/components/SortableTableHead';
+import { ImportProgressDialog } from '@/components/ImportProgressDialog';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal, Search, Check } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -716,26 +717,46 @@ const Deliveries = () => {
     }).length;
   }, [selectedInboundIds, deliveries]);
 
+  const [transitProgressOpen, setTransitProgressOpen] = useState(false);
+  const [transitProgressTotal, setTransitProgressTotal] = useState(0);
+  const [transitProgressProcessed, setTransitProgressProcessed] = useState(0);
+  const [transitProgressResults, setTransitProgressResults] = useState<import('@/components/ImportProgressDialog').ImportResult[]>([]);
+  const [transitProgressComplete, setTransitProgressComplete] = useState(false);
+
   const handleBulkMarkInTransit = async () => {
     const eligibleIds = Array.from(selectedInboundIds).filter(id => {
       const d = deliveries.find(del => del.id === id);
       return d && d.status === 'pending';
     });
     if (eligibleIds.length === 0) return;
-    setIsBulkInTransit(true);
-    const { error } = await supabase
-      .from('deliveries')
-      .update({ status: 'in_transit' })
-      .in('id', eligibleIds);
-    if (error) {
-      toast.error('Failed to update status');
-    } else {
-      toast.success(`${eligibleIds.length} deliver${eligibleIds.length === 1 ? 'y' : 'ies'} marked as In Transit`);
-      setSelectedInboundIds(new Set());
-      fetchDeliveries();
-    }
-    setIsBulkInTransit(false);
     setInTransitConfirmOpen(false);
+    setIsBulkInTransit(true);
+    setTransitProgressOpen(true);
+    setTransitProgressTotal(eligibleIds.length);
+    setTransitProgressProcessed(0);
+    setTransitProgressResults([]);
+    setTransitProgressComplete(false);
+
+    for (let i = 0; i < eligibleIds.length; i++) {
+      const id = eligibleIds[i];
+      const d = deliveries.find(del => del.id === id);
+      const label = d?.delivery_id || id.slice(0, 8);
+      const { error } = await supabase
+        .from('deliveries')
+        .update({ status: 'in_transit' })
+        .eq('id', id);
+      setTransitProgressProcessed(i + 1);
+      setTransitProgressResults(prev => [...prev, {
+        row: i + 1,
+        status: error ? 'error' as const : 'success' as const,
+        message: error ? `${label}: ${error.message}` : `${label} marked as In Transit`,
+      }]);
+    }
+
+    setTransitProgressComplete(true);
+    setSelectedInboundIds(new Set());
+    fetchDeliveries();
+    setIsBulkInTransit(false);
   };
 
   const handleEdit = (delivery: Delivery) => {
@@ -1898,6 +1919,16 @@ const Deliveries = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={transitProgressOpen}
+        onOpenChange={setTransitProgressOpen}
+        title="Marking Deliveries In Transit"
+        totalRows={transitProgressTotal}
+        processedRows={transitProgressProcessed}
+        results={transitProgressResults}
+        isComplete={transitProgressComplete}
+      />
     </div>
   );
 };
