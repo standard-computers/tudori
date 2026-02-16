@@ -1027,13 +1027,48 @@ const Vendors = () => {
                 <DialogContent
                   className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[600px]"}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setIsMaximized(!isMaximized)}
-                    className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-                  >
-                    {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                  </button>
+                  <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
+                    {!isEditing && (
+                      <CopyFromIdDialog<Vendor>
+                        idLabel="Vendor ID"
+                        onFetch={async (id) => {
+                          const { data } = await supabase
+                            .from("vendors")
+                            .select("*")
+                            .eq("company_id", companyId!)
+                            .eq("vendor_id", id)
+                            .maybeSingle();
+                          return data;
+                        }}
+                        onApply={(vendor) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            name: vendor.name,
+                            type: vendor.type,
+                            contact_name: vendor.contact_name || "",
+                            email: vendor.email || "",
+                            phone: vendor.phone || "",
+                            address_line1: vendor.address_line1 || "",
+                            address_line2: vendor.address_line2 || "",
+                            city: vendor.city || "",
+                            state: vendor.state || "",
+                            postal_code: vendor.postal_code || "",
+                            country: vendor.country || "",
+                            website: vendor.website || "",
+                            payment_terms: vendor.payment_terms?.toString() || "",
+                            notes: vendor.notes || "",
+                          }));
+                        }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsMaximized(!isMaximized)}
+                      className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <DialogHeader>
                       <DialogTitle>{isEditing ? "Edit Vendor" : "Create Vendor"}</DialogTitle>
@@ -1042,40 +1077,8 @@ const Vendors = () => {
                       </DialogDescription>
                     </DialogHeader>
 
-                    {!isEditing && (
-                      <div className="absolute right-12 top-4 z-10">
-                        <CopyFromIdDialog<Vendor>
-                          idLabel="Vendor ID"
-                          onFetch={async (id) => {
-                            const { data } = await supabase
-                              .from("vendors")
-                              .select("*")
-                              .eq("company_id", companyId!)
-                              .eq("vendor_id", id)
-                              .maybeSingle();
-                            return data;
-                          }}
-                          onApply={(vendor) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              name: vendor.name,
-                              type: vendor.type,
-                              contact_name: vendor.contact_name || "",
-                              email: vendor.email || "",
-                              phone: vendor.phone || "",
-                              address_line1: vendor.address_line1 || "",
-                              address_line2: vendor.address_line2 || "",
-                              city: vendor.city || "",
-                              state: vendor.state || "",
-                              postal_code: vendor.postal_code || "",
-                              country: vendor.country || "United States",
-                              website: vendor.website || "",
-                              notes: vendor.notes || "",
-                            }));
-                          }}
-                        />
-                      </div>
-                    )}
+
+
 
                     <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
                       <TabsList className="mx-6 w-fit">
