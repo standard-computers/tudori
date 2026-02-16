@@ -33,7 +33,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
-import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus } from 'lucide-react';
+import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
+import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
@@ -46,6 +47,7 @@ interface Account {
   type: string;
   customer_id: string | null;
   vendor_id: string | null;
+  location_id: string | null;
   account_manager_id: string | null;
   description: string | null;
   is_active: boolean;
@@ -110,6 +112,7 @@ const AccountDetail = () => {
   const [memoNotes, setMemoNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [canCreateInvoice, setCanCreateInvoice] = useState(false);
+  const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -416,10 +419,17 @@ const AccountDetail = () => {
             </div>
           </div>
           {canCreateInvoice && (
-            <Button size="icon" className="relative" onClick={() => setIsCreateInvoiceDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-            </Button>
+            <div className="flex items-center gap-2">
+              {account.location_id && (
+                <Button size="icon" variant="outline" className="relative" onClick={() => setIsAutoMakeDialogOpen(true)}>
+                  <Wand2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button size="icon" className="relative" onClick={() => setIsCreateInvoiceDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -771,6 +781,17 @@ const AccountDetail = () => {
         defaultAccountId={account.id}
         onSuccess={fetchAccountAndInvoices}
       />
+
+      {account.location_id && companyId && (
+        <AutoMakeInvoicesDialog
+          open={isAutoMakeDialogOpen}
+          onOpenChange={setIsAutoMakeDialogOpen}
+          accountId={account.id}
+          accountLocationId={account.location_id}
+          companyId={companyId}
+          onSuccess={fetchAccountAndInvoices}
+        />
+      )}
     </div>
   );
 };
