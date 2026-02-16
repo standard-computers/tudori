@@ -38,6 +38,9 @@ import {
   Calculator,
   Link2,
   Sparkles,
+  LayoutGrid,
+  List,
+  Trash2,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { cn } from "@/lib/utils";
@@ -80,6 +83,9 @@ const Analytics = () => {
 
   // AutoMake dialog
   const [autoMakeOpen, setAutoMakeOpen] = useState(false);
+
+  // Saved reports view mode
+  const [reportsViewMode, setReportsViewMode] = useState<"tiles" | "list">("tiles");
 
   // Query state
   const [rowLimit, setRowLimit] = useState<string>("100");
@@ -563,152 +569,114 @@ const Analytics = () => {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-64 border-r bg-muted/30 flex flex-col">
-            {/* Saved Reports Section */}
-            <div className="p-3 border-b">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Saved Reports
-              </h3>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="p-2">
-                {savedReports.length === 0 ? (
-                  <p className="text-sm text-muted-foreground p-2">No saved reports</p>
-                ) : (
-                  savedReports.map((report) => (
-                    <div
-                      key={report.id}
-                      className={cn(
-                        "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer group",
-                        tabs.some((t) => t.id === report.id)
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent/50"
-                      )}
-                      onClick={() => handleSelectReport(report)}
-                    >
-                      <FileText className="h-4 w-4 shrink-0" />
-                      <span className="text-sm truncate flex-1">{report.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteReport(report.id);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Entity Browser */}
-              <div className="p-3 border-t">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+          {/* Entity Browser Sidebar - only visible when a report is open */}
+          {activeTab && (
+            <div className="w-64 border-r bg-muted/30 flex flex-col">
+              <div className="p-3 border-b">
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Data Objects
                 </h3>
               </div>
-              <div className="px-2 pb-4">
-                {/* Reachable entities */}
-                {reachableEntities.map((entity) => (
-                  <Collapsible
-                    key={entity.name}
-                    open={expandedEntities.has(entity.name)}
-                    onOpenChange={() => toggleEntity(entity.name)}
-                  >
-                    <CollapsibleTrigger className="flex items-center gap-1 w-full px-2 py-1.5 rounded-md hover:bg-accent/50 text-left">
-                      {expandedEntities.has(entity.name) ? (
-                        <ChevronDown className="h-4 w-4 shrink-0" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0" />
-                      )}
-                      <DraggableEntity entity={entity} />
-                      {activeTab?.entities.includes(entity.name) && (
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-auto">
-                          In use
-                        </Badge>
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="ml-6 pl-2 border-l">
-                        {entity.relationships.length > 0 && (
-                          <div className="py-1 mb-1">
-                            <div className="flex flex-wrap gap-1">
-                              {entity.relationships.map((rel) => (
-                                <Badge
-                                  key={rel.targetEntity}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0"
+              <ScrollArea className="flex-1">
+                <div className="px-2 py-2 pb-4">
+                  {/* Reachable entities */}
+                  {reachableEntities.map((entity) => (
+                    <Collapsible
+                      key={entity.name}
+                      open={expandedEntities.has(entity.name)}
+                      onOpenChange={() => toggleEntity(entity.name)}
+                    >
+                      <CollapsibleTrigger className="flex items-center gap-1 w-full px-2 py-1.5 rounded-md hover:bg-accent/50 text-left">
+                        {expandedEntities.has(entity.name) ? (
+                          <ChevronDown className="h-4 w-4 shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 shrink-0" />
+                        )}
+                        <DraggableEntity entity={entity} />
+                        {activeTab?.entities.includes(entity.name) && (
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-auto">
+                            In use
+                          </Badge>
+                        )}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="ml-6 pl-2 border-l">
+                          {entity.relationships.length > 0 && (
+                            <div className="py-1 mb-1">
+                              <div className="flex flex-wrap gap-1">
+                                {entity.relationships.map((rel) => (
+                                  <Badge
+                                    key={rel.targetEntity}
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0"
+                                  >
+                                    <Link2 className="h-2.5 w-2.5 mr-0.5" />
+                                    {rel.label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {entity.fields.map((field) => {
+                            const isSelected = activeTab?.fields.some(
+                              (f) => f.entityName === entity.name && f.fieldKey === field.key
+                            );
+                            return (
+                              <DraggableField
+                                key={field.key}
+                                entityName={entity.name}
+                                field={field}
+                                isSelected={isSelected || false}
+                              />
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+
+                  {/* Unreachable entities (dimmed) */}
+                  {unreachableEntities.length > 0 && activeTab && activeTab.entities.length > 0 && (
+                    <>
+                      <div className="px-2 py-2 mt-2 border-t">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          No direct relationship
+                        </span>
+                      </div>
+                      {unreachableEntities.map((entity) => (
+                        <Collapsible
+                          key={entity.name}
+                          open={expandedEntities.has(entity.name)}
+                          onOpenChange={() => toggleEntity(entity.name)}
+                        >
+                          <CollapsibleTrigger className="flex items-center gap-1 w-full px-2 py-1.5 rounded-md text-left opacity-40">
+                            {expandedEntities.has(entity.name) ? (
+                              <ChevronDown className="h-4 w-4 shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 shrink-0" />
+                            )}
+                            <DraggableEntity entity={entity} />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="ml-6 pl-2 border-l opacity-40">
+                              {entity.fields.map((field) => (
+                                <div
+                                  key={field.key}
+                                  className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
                                 >
-                                  <Link2 className="h-2.5 w-2.5 mr-0.5" />
-                                  {rel.label}
-                                </Badge>
+                                  <span className="truncate">{field.label}</span>
+                                </div>
                               ))}
                             </div>
-                          </div>
-                        )}
-                        {entity.fields.map((field) => {
-                          const isSelected = activeTab?.fields.some(
-                            (f) => f.entityName === entity.name && f.fieldKey === field.key
-                          );
-                          return (
-                            <DraggableField
-                              key={field.key}
-                              entityName={entity.name}
-                              field={field}
-                              isSelected={isSelected || false}
-                            />
-                          );
-                        })}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-
-                {/* Unreachable entities (dimmed) */}
-                {unreachableEntities.length > 0 && activeTab && activeTab.entities.length > 0 && (
-                  <>
-                    <div className="px-2 py-2 mt-2 border-t">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        No direct relationship
-                      </span>
-                    </div>
-                    {unreachableEntities.map((entity) => (
-                      <Collapsible
-                        key={entity.name}
-                        open={expandedEntities.has(entity.name)}
-                        onOpenChange={() => toggleEntity(entity.name)}
-                      >
-                        <CollapsibleTrigger className="flex items-center gap-1 w-full px-2 py-1.5 rounded-md text-left opacity-40">
-                          {expandedEntities.has(entity.name) ? (
-                            <ChevronDown className="h-4 w-4 shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0" />
-                          )}
-                          <DraggableEntity entity={entity} />
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="ml-6 pl-2 border-l opacity-40">
-                            {entity.fields.map((field) => (
-                              <div
-                                key={field.key}
-                                className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
-                              >
-                                <span className="truncate">{field.label}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    ))}
-                  </>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -828,25 +796,135 @@ const Analytics = () => {
                 )}
               </div>
             ) : (
-              /* Empty State */
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-lg font-medium mb-2">No Report Open</h2>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Select a saved report or create a new one
-                  </p>
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => setAutoMakeOpen(true)}>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      AutoMake
-                    </Button>
-                    <Button onClick={handleNewReport}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Report
-                    </Button>
+              /* Home / Saved Reports View */
+              <div className="flex-1 overflow-auto p-6">
+                {savedReports.length > 0 ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold">Saved Reports</h2>
+                      <div className="flex items-center gap-1 border rounded-md p-0.5">
+                        <Button
+                          variant={reportsViewMode === "tiles" ? "secondary" : "ghost"}
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setReportsViewMode("tiles")}
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={reportsViewMode === "list" ? "secondary" : "ghost"}
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setReportsViewMode("list")}
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {reportsViewMode === "tiles" ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        {savedReports.map((report) => (
+                          <Card
+                            key={report.id}
+                            className="cursor-pointer hover:border-primary/50 transition-colors group"
+                            onClick={() => handleSelectReport(report)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <FileText className="h-8 w-8 text-primary/60" />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 -mt-1 -mr-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteReport(report.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              </div>
+                              <h3 className="text-sm font-medium truncate">{report.name}</h3>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {report.entities.slice(0, 3).map((e) => (
+                                  <Badge key={e} variant="outline" className="text-[10px] px-1.5 py-0">
+                                    {e}
+                                  </Badge>
+                                ))}
+                                {report.entities.length > 3 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                    +{report.entities.length - 3}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-2">
+                                {report.fields.length} field{report.fields.length !== 1 ? "s" : ""}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {savedReports.map((report) => (
+                          <div
+                            key={report.id}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent/50 group"
+                            onClick={() => handleSelectReport(report)}
+                          >
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium flex-1 truncate">{report.name}</span>
+                            <div className="flex items-center gap-1">
+                              {report.entities.slice(0, 3).map((e) => (
+                                <Badge key={e} variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {e}
+                                </Badge>
+                              ))}
+                              {report.entities.length > 3 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  +{report.entities.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{report.fields.length} fields</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteReport(report.id);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h2 className="text-lg font-medium mb-2">No Reports Yet</h2>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Create a new report or use AutoMake to get started
+                      </p>
+                      <div className="flex gap-2 justify-center">
+                        <Button variant="outline" onClick={() => setAutoMakeOpen(true)}>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          AutoMake
+                        </Button>
+                        <Button onClick={handleNewReport}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          New Report
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
