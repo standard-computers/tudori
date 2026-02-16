@@ -996,7 +996,7 @@ const Transportation = () => {
                 </TabsTrigger>
               </TabsList>
             </div>
-            <div className="flex items-center gap-2 pr-16">
+            <div className="flex items-center gap-2 pr-12">
               {activeTab === 'carriers' && (
                 <>
                   <ImportExportButtons
