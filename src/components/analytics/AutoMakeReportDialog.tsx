@@ -107,7 +107,7 @@ export function AutoMakeReportDialog({
             AutoMake Report
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-3 px-6">
           <p className="text-sm text-muted-foreground">
             Describe the report you want and AI will configure the entities, fields, aggregations, and filters.
           </p>
@@ -128,10 +128,7 @@ export function AutoMakeReportDialog({
             Press Ctrl+Enter to submit
           </p>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
-          </Button>
+        <DialogFooter className="px-6 pb-6">
           <Button onClick={handleSubmit} disabled={loading || !prompt.trim()}>
             {loading ? (
               <>
