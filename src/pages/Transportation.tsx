@@ -1022,9 +1022,8 @@ const Transportation = () => {
                     onDownloadTemplate={handleRouteDownloadTemplate}
                     entityName="Routes"
                   />
-                  <Button onClick={openNewRouteDialog}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Route
+                  <Button onClick={openNewRouteDialog} size="icon" className="relative">
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </>
               )}
@@ -1038,9 +1037,8 @@ const Transportation = () => {
                     onDownloadTemplate={handleAssignmentDownloadTemplate}
                     entityName="Assignments"
                   />
-                  <Button onClick={openNewAssignmentDialog}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Assignment
+                  <Button onClick={openNewAssignmentDialog} size="icon" className="relative">
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </>
               )}
