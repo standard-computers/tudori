@@ -103,6 +103,7 @@ const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'customer', label: 'Customer', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
   { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'outstanding_invoices', label: 'Outstanding Invoices', defaultVisible: true },
   { key: 'is_active', label: 'Active', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
@@ -118,6 +119,7 @@ const Accounts = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [outstandingCounts, setOutstandingCounts] = useState<Record<string, number>>({});
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -144,9 +146,10 @@ const Accounts = () => {
     is_active: true,
   });
 
-  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter } = useTableSort<Account>(
+  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter } = useTableSort<Account & { outstanding_invoices: number }>(
     useMemo(() => accounts.map(account => ({
       ...account,
+      outstanding_invoices: outstandingCounts[account.id] || 0,
       parent_account_display: account.parent_account 
         ? `${account.parent_account.account_id} - ${account.parent_account.name}` 
         : '',
@@ -157,7 +160,7 @@ const Accounts = () => {
         : account.type === 'location' && account.location?.name
         ? account.location.name
         : '',
-    })), [accounts])
+    })), [accounts, outstandingCounts])
   );
   const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
 
@@ -198,6 +201,7 @@ const Accounts = () => {
       fetchVendors();
       fetchLocations();
       fetchCompanyUsers();
+      fetchOutstandingCounts();
     }
   }, [companyId]);
 
@@ -294,6 +298,27 @@ const Accounts = () => {
       .eq('company_id', companyId)
       .order('last_name');
     setCompanyUsers(data || []);
+  };
+
+  const fetchOutstandingCounts = async () => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('account_id')
+      .eq('company_id', companyId)
+      .neq('status', 'paid');
+
+    if (error) {
+      console.error('Error fetching outstanding invoices:', error);
+      return;
+    }
+
+    const counts: Record<string, number> = {};
+    (data || []).forEach((inv: any) => {
+      if (inv.account_id) {
+        counts[inv.account_id] = (counts[inv.account_id] || 0) + 1;
+      }
+    });
+    setOutstandingCounts(counts);
   };
 
   const customerOptions: SearchableSelectOption[] = useMemo(() => {
@@ -579,13 +604,21 @@ const Accounts = () => {
                   onSort={handleSort}
                   filterable={false}
                 />
+                <SortableTableHead
+                  label="Outstanding"
+                  sortKey="outstanding_invoices"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No accounts found. Create your first account to get started.
                   </TableCell>
                 </TableRow>
@@ -619,6 +652,13 @@ const Accounts = () => {
                       <Badge variant={account.is_active ? 'default' : 'secondary'}>
                         {account.is_active ? 'Active' : 'Inactive'}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {(account as any).outstanding_invoices > 0 ? (
+                        <Badge variant="outline">{(account as any).outstanding_invoices}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
