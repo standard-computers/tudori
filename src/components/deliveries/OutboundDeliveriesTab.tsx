@@ -5,8 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -19,6 +21,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -38,7 +41,7 @@ import {
   TableHeader as ItemsTableHeader,
   TableRow as ItemsTableRow,
 } from '@/components/ui/table';
-import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck, SendHorizonal, Trash2 } from 'lucide-react';
+import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck, SendHorizonal, Trash2, Pencil, Undo2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,6 +102,21 @@ interface OutboundDeliveriesTabProps {
   companyId: string;
 }
 
+/** Check if outbound delivery has no dependent docs (GI, inbound deliveries) */
+const canEditOutbound = async (deliveryId: string): Promise<boolean> => {
+  const [giResult, delResult] = await Promise.all([
+    supabase
+      .from('goods_issues')
+      .select('id', { count: 'exact', head: true })
+      .eq('outbound_delivery_id', deliveryId),
+    supabase
+      .from('deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('outbound_delivery_id', deliveryId),
+  ]);
+  return (giResult.count ?? 0) === 0 && (delResult.count ?? 0) === 0;
+};
+
 export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps) {
   const [outboundDeliveries, setOutboundDeliveries] = useState<OutboundDelivery[]>([]);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -110,6 +128,22 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   const [isBulkInTransit, setIsBulkInTransit] = useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Edit state
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editDelivery, setEditDelivery] = useState<OutboundDelivery | null>(null);
+  const [editForm, setEditForm] = useState({
+    carrier: '',
+    tracking_number: '',
+    shipped_date: '',
+    notes: '',
+  });
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Revert to pending state
+  const [revertConfirmOpen, setRevertConfirmOpen] = useState(false);
+  const [revertDeliveryId, setRevertDeliveryId] = useState<string | null>(null);
+  const [isBulkRevertPending, setIsBulkRevertPending] = useState(false);
 
   const {
     sortConfig,
@@ -166,6 +200,70 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     setIsViewOpen(true);
   };
 
+  const handleEdit = async (delivery: OutboundDelivery) => {
+    const editable = await canEditOutbound(delivery.id);
+    if (!editable) {
+      toast.error('Cannot edit — this delivery has goods issues or inbound deliveries against it');
+      return;
+    }
+    setEditDelivery(delivery);
+    setEditForm({
+      carrier: delivery.carrier || '',
+      tracking_number: delivery.tracking_number || '',
+      shipped_date: delivery.shipped_date || '',
+      notes: delivery.notes || '',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editDelivery) return;
+    setEditSaving(true);
+    const { error } = await supabase
+      .from('outbound_deliveries')
+      .update({
+        carrier: editForm.carrier || null,
+        tracking_number: editForm.tracking_number || null,
+        shipped_date: editForm.shipped_date || null,
+        notes: editForm.notes || null,
+      })
+      .eq('id', editDelivery.id);
+    setEditSaving(false);
+    if (error) {
+      toast.error('Failed to update delivery');
+    } else {
+      toast.success('Delivery updated');
+      setIsEditOpen(false);
+      fetchOutboundDeliveries();
+    }
+  };
+
+  const handleRevertToPending = async (deliveryId: string) => {
+    const editable = await canEditOutbound(deliveryId);
+    if (!editable) {
+      toast.error('Cannot revert — this delivery has goods issues or inbound deliveries against it');
+      return;
+    }
+    setRevertDeliveryId(deliveryId);
+    setRevertConfirmOpen(true);
+  };
+
+  const confirmRevertToPending = async () => {
+    if (!revertDeliveryId) return;
+    const { error } = await supabase
+      .from('outbound_deliveries')
+      .update({ status: 'pending' })
+      .eq('id', revertDeliveryId);
+    if (error) {
+      toast.error('Failed to revert to pending');
+    } else {
+      toast.success('Delivery reverted to Pending');
+      fetchOutboundDeliveries();
+    }
+    setRevertConfirmOpen(false);
+    setRevertDeliveryId(null);
+  };
+
   const outboundInTransitEligibleCount = useMemo(() => {
     return Array.from(selectedIds).filter(id => {
       const d = outboundDeliveries.find(del => del.id === id);
@@ -180,6 +278,13 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     }).length;
   }, [selectedIds, outboundDeliveries]);
 
+  const bulkRevertEligibleCount = useMemo(() => {
+    return Array.from(selectedIds).filter(id => {
+      const d = outboundDeliveries.find(del => del.id === id);
+      return d && d.status === 'in_transit';
+    }).length;
+  }, [selectedIds, outboundDeliveries]);
+
   const handleBulkDelete = async () => {
     const eligibleIds = Array.from(selectedIds).filter(id => {
       const d = outboundDeliveries.find(del => del.id === id);
@@ -187,7 +292,6 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     });
     if (eligibleIds.length === 0) return;
     setIsBulkDeleting(true);
-    // Delete items first, then deliveries
     await supabase
       .from('outbound_delivery_items' as any)
       .delete()
@@ -212,6 +316,12 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   const [transitProgressProcessed, setTransitProgressProcessed] = useState(0);
   const [transitProgressResults, setTransitProgressResults] = useState<import('@/components/ImportProgressDialog').ImportResult[]>([]);
   const [transitProgressComplete, setTransitProgressComplete] = useState(false);
+
+  const [revertProgressOpen, setRevertProgressOpen] = useState(false);
+  const [revertProgressTotal, setRevertProgressTotal] = useState(0);
+  const [revertProgressProcessed, setRevertProgressProcessed] = useState(0);
+  const [revertProgressResults, setRevertProgressResults] = useState<import('@/components/ImportProgressDialog').ImportResult[]>([]);
+  const [revertProgressComplete, setRevertProgressComplete] = useState(false);
 
   const handleBulkMarkInTransit = async () => {
     const eligibleIds = Array.from(selectedIds).filter(id => {
@@ -249,6 +359,51 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     setIsBulkInTransit(false);
   };
 
+  const handleBulkRevertPending = async () => {
+    const eligibleIds = Array.from(selectedIds).filter(id => {
+      const d = outboundDeliveries.find(del => del.id === id);
+      return d && d.status === 'in_transit';
+    });
+    if (eligibleIds.length === 0) return;
+    setIsBulkRevertPending(true);
+    setRevertProgressOpen(true);
+    setRevertProgressTotal(eligibleIds.length);
+    setRevertProgressProcessed(0);
+    setRevertProgressResults([]);
+    setRevertProgressComplete(false);
+
+    for (let i = 0; i < eligibleIds.length; i++) {
+      const id = eligibleIds[i];
+      const d = outboundDeliveries.find(del => del.id === id);
+      const label = d?.delivery_number || id.slice(0, 8);
+      const editable = await canEditOutbound(id);
+      if (!editable) {
+        setRevertProgressProcessed(i + 1);
+        setRevertProgressResults(prev => [...prev, {
+          row: i + 1,
+          status: 'error' as const,
+          message: `${label}: has dependent documents`,
+        }]);
+        continue;
+      }
+      const { error } = await supabase
+        .from('outbound_deliveries')
+        .update({ status: 'pending' })
+        .eq('id', id);
+      setRevertProgressProcessed(i + 1);
+      setRevertProgressResults(prev => [...prev, {
+        row: i + 1,
+        status: error ? 'error' as const : 'success' as const,
+        message: error ? `${label}: ${error.message}` : `${label} reverted to Pending`,
+      }]);
+    }
+
+    setRevertProgressComplete(true);
+    setSelectedIds(new Set());
+    fetchOutboundDeliveries();
+    setIsBulkRevertPending(false);
+  };
+
   if (outboundDeliveries.length === 0) {
     return (
       <div className="text-center py-12">
@@ -276,6 +431,17 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
               >
                 <SendHorizonal className="w-4 h-4 mr-2" />
                 Mark In Transit ({outboundInTransitEligibleCount})
+              </Button>
+            )}
+            {bulkRevertEligibleCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkRevertPending}
+                disabled={isBulkRevertPending}
+              >
+                <Undo2 className="w-4 h-4 mr-2" />
+                Revert to Pending ({bulkRevertEligibleCount})
               </Button>
             )}
             {bulkDeleteEligibleCount > 0 && (
@@ -434,6 +600,35 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
+                    {(delivery.status === 'pending' || delivery.status === 'in_transit') && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {delivery.status === 'in_transit' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEdit(delivery)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleRevertToPending(delivery.id)}>
+                                <Undo2 className="w-4 h-4 mr-2" />
+                                Revert to Pending
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {delivery.status === 'pending' && (
+                            <DropdownMenuItem onClick={() => handleEdit(delivery)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -441,6 +636,62 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Outbound Delivery Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Outbound Delivery</DialogTitle>
+            <DialogDescription>
+              {editDelivery?.delivery_number}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-carrier">Carrier</Label>
+              <Input
+                id="edit-carrier"
+                value={editForm.carrier}
+                onChange={(e) => setEditForm(prev => ({ ...prev, carrier: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-tracking">Tracking Number</Label>
+              <Input
+                id="edit-tracking"
+                value={editForm.tracking_number}
+                onChange={(e) => setEditForm(prev => ({ ...prev, tracking_number: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-shipped-date">Shipped Date</Label>
+              <Input
+                id="edit-shipped-date"
+                type="date"
+                value={editForm.shipped_date}
+                onChange={(e) => setEditForm(prev => ({ ...prev, shipped_date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <Textarea
+                id="edit-notes"
+                value={editForm.notes}
+                onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              {editSaving ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* View Outbound Delivery Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
@@ -530,7 +781,6 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                   <p className="text-sm">{viewDelivery.notes}</p>
                 </div>
               )}
-              {/* Items */}
               {viewItems.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Items</Label>
@@ -563,6 +813,24 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Revert to Pending Confirmation */}
+      <AlertDialog open={revertConfirmOpen} onOpenChange={setRevertConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert to Pending?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This delivery will be reverted to Pending status. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRevertToPending}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Bulk In Transit Confirmation */}
       <AlertDialog open={inTransitConfirmOpen} onOpenChange={setInTransitConfirmOpen}>
@@ -611,6 +879,16 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
         processedRows={transitProgressProcessed}
         results={transitProgressResults}
         isComplete={transitProgressComplete}
+      />
+
+      <ImportProgressDialog
+        open={revertProgressOpen}
+        onOpenChange={setRevertProgressOpen}
+        title="Reverting Deliveries to Pending"
+        totalRows={revertProgressTotal}
+        processedRows={revertProgressProcessed}
+        results={revertProgressResults}
+        isComplete={revertProgressComplete}
       />
     </>
   );
