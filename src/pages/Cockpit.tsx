@@ -1445,15 +1445,21 @@ const [areaFormData, setAreaFormData] = useState({
         }
         
         try {
+          const dn = od.delivery_number;
           const sourceType = od.sales_order_id ? 'sales_order' : 'purchase_order';
           const sourceId = od.sales_order_id || od.purchase_order_id || '';
+
+          // Step 1: Check work orders
+          setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'success', message: `${dn}: Checking work orders...` }]);
           const woCount = await checkOutstandingWorkOrders(sourceType, sourceId);
           if (woCount > 0) {
-            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Has outstanding work orders` }]);
+            setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'error', message: `${dn}: Has ${woCount} outstanding work order(s)` }; return next; });
             setBulkFulfillProcessed(rowIndex);
             continue;
           }
 
+          // Step 2: Loading order items
+          setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Loading order items...` }; return next; });
           let items: any[] = [];
           if (od.sales_order_id) {
             const { data } = await supabase.from('sales_order_items' as any).select('product_id, quantity').eq('sales_order_id', od.sales_order_id);
@@ -1463,11 +1469,13 @@ const [areaFormData, setAreaFormData] = useState({
             items = (data as any) || [];
           }
           if (items.length === 0) {
-            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: No items found` }]);
+            setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'error', message: `${dn}: No items found on source order` }; return next; });
             setBulkFulfillProcessed(rowIndex);
             continue;
           }
 
+          // Step 3: Verifying inventory
+          setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Verifying inventory for ${items.length} product(s)...` }; return next; });
           let insufficientStock = false;
           for (const item of items) {
             const { data: invData } = await supabase.from('inventory').select('id, quantity').eq('location_id', selectedLocationId).eq('product_id', item.product_id);
@@ -1475,11 +1483,13 @@ const [areaFormData, setAreaFormData] = useState({
             if (totalAvailable < item.quantity) { insufficientStock = true; break; }
           }
           if (insufficientStock) {
-            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Insufficient inventory` }]);
+            setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'error', message: `${dn}: Insufficient inventory at location` }; return next; });
             setBulkFulfillProcessed(rowIndex);
             continue;
           }
 
+          // Step 4: Creating goods issue
+          setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Creating goods issue...` }; return next; });
           const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
           const { data: goodsIssue, error: giError } = await supabase
             .from('goods_issues' as any)
@@ -1491,32 +1501,35 @@ const [areaFormData, setAreaFormData] = useState({
               sales_order_id: od.sales_order_id || null,
               outbound_delivery_id: od.id,
               status: 'pending',
-              notes: `Fulfillment for OD ${od.delivery_number}`,
+              notes: `Fulfillment for OD ${dn}`,
             })
             .select().single();
           if (giError) {
-            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Failed to create goods issue` }]);
+            setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'error', message: `${dn}: Failed to create goods issue — ${giError.message}` }; return next; });
             setBulkFulfillProcessed(rowIndex);
             continue;
           }
 
+          // Step 5: Posting goods issue (deducting inventory & ledger)
+          setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Posting ${issueNumber} — deducting inventory & recording ledger...` }; return next; });
           const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity }));
           await supabase.from('goods_issue_items' as any).insert(giItems);
           await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'in_transit', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
 
           const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
           if (!postResult.success) {
-            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Failed to post goods issue` }]);
+            setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'error', message: `${dn}: Goods issue posting failed — ${postResult.error || 'unknown'}` }; return next; });
             setBulkFulfillProcessed(rowIndex);
             continue;
           }
 
-          // Add items to outbound delivery
+          // Step 6: Creating outbound delivery items
           const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity }));
           await supabase.from('outbound_delivery_items' as any).insert(odItems);
 
-          // Create inbound delivery at destination for internal transfers
+          // Step 7: Create inbound delivery at destination for internal transfers
           if (od.to_location_id) {
+            setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Creating inbound delivery at destination...` }; return next; });
             try {
               const { data: deliveryId } = await supabase.rpc('get_next_delivery_id', { p_company_id: companyId });
               const { data: inboundDelivery } = await supabase
@@ -1531,7 +1544,7 @@ const [areaFormData, setAreaFormData] = useState({
                   status: 'in_transit',
                   expected_date: new Date().toISOString().split('T')[0],
                   outbound_delivery_id: od.id,
-                  notes: `Auto-created from outbound delivery ${od.delivery_number}`,
+                  notes: `Auto-created from outbound delivery ${dn}`,
                 })
                 .select().single();
               if (inboundDelivery) {
@@ -1541,13 +1554,15 @@ const [areaFormData, setAreaFormData] = useState({
             } catch (err) { console.error('Failed to create inbound delivery:', err); }
           }
 
+          // Step 8: Updating source order status
+          setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Updating order status to shipped...` }; return next; });
           if (od.sales_order_id) {
             await supabase.from('sales_orders' as any).update({ status: 'shipped' }).eq('id', od.sales_order_id);
           } else if (od.purchase_order_id) {
             await supabase.from('purchase_orders' as any).update({ status: 'shipped' }).eq('id', od.purchase_order_id);
           }
 
-          setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'success', message: `${od.delivery_number}: Fulfilled` }]);
+          setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Fulfilled — GI ${issueNumber} posted, inventory deducted${od.to_location_id ? ', inbound delivery created' : ''}` }; return next; });
           setBulkFulfillProcessed(rowIndex);
         } catch (err) {
           console.error(`Failed to fulfill ${key}:`, err);
