@@ -257,7 +257,7 @@ const Dashboard = () => {
                     <User className="mr-2 h-4 w-4" />
                     User Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <DropdownMenuItem onClick={() => navigate("/configuration")}>
                     <SettingsIcon className="mr-2 h-4 w-4" />
                     Company Settings
                   </DropdownMenuItem>
