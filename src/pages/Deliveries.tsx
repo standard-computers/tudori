@@ -53,7 +53,7 @@ import {
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { ImportProgressDialog } from '@/components/ImportProgressDialog';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal, Search, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Pencil, Trash2, Package, Eye, MoreHorizontal, Maximize2, Minimize2, SendHorizonal, Search, Check, Undo2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
@@ -264,6 +264,9 @@ const Deliveries = () => {
   const [inTransitDeliveryId, setInTransitDeliveryId] = useState<string | null>(null);
   const [selectedInboundIds, setSelectedInboundIds] = useState<Set<string>>(new Set());
   const [isBulkInTransit, setIsBulkInTransit] = useState(false);
+  const [revertPendingConfirmOpen, setRevertPendingConfirmOpen] = useState(false);
+  const [revertPendingDeliveryId, setRevertPendingDeliveryId] = useState<string | null>(null);
+  const [isBulkRevertPending, setIsBulkRevertPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Table sorting and filtering
@@ -762,6 +765,98 @@ const Deliveries = () => {
     fetchDeliveries();
     setIsBulkInTransit(false);
   };
+
+  // Check if a delivery can be reverted to pending (no goods receipts against it)
+  const canRevertToPending = async (deliveryId: string): Promise<boolean> => {
+    const { count } = await supabase
+      .from('goods_receipts')
+      .select('id', { count: 'exact', head: true })
+      .eq('delivery_id', deliveryId);
+    return (count ?? 0) === 0;
+  };
+
+  const handleRevertToPending = async () => {
+    if (!revertPendingDeliveryId) return;
+    const canRevert = await canRevertToPending(revertPendingDeliveryId);
+    if (!canRevert) {
+      toast.error('Cannot revert: goods receipts exist against this delivery');
+      setRevertPendingConfirmOpen(false);
+      setRevertPendingDeliveryId(null);
+      return;
+    }
+    const { error } = await supabase
+      .from('deliveries')
+      .update({ status: 'pending' })
+      .eq('id', revertPendingDeliveryId);
+    if (error) {
+      toast.error('Failed to update status');
+    } else {
+      toast.success('Delivery reverted to Pending');
+      fetchDeliveries();
+    }
+    setRevertPendingConfirmOpen(false);
+    setRevertPendingDeliveryId(null);
+  };
+
+  const [revertProgressOpen, setRevertProgressOpen] = useState(false);
+  const [revertProgressTotal, setRevertProgressTotal] = useState(0);
+  const [revertProgressProcessed, setRevertProgressProcessed] = useState(0);
+  const [revertProgressResults, setRevertProgressResults] = useState<import('@/components/ImportProgressDialog').ImportResult[]>([]);
+  const [revertProgressComplete, setRevertProgressComplete] = useState(false);
+
+  const inboundRevertPendingEligibleCount = useMemo(() => {
+    return Array.from(selectedInboundIds).filter(id => {
+      const d = deliveries.find(del => del.id === id);
+      return d && (d.status === 'in_transit' || d.status === 'shipped');
+    }).length;
+  }, [selectedInboundIds, deliveries]);
+
+  const handleBulkRevertToPending = async () => {
+    const eligibleIds = Array.from(selectedInboundIds).filter(id => {
+      const d = deliveries.find(del => del.id === id);
+      return d && (d.status === 'in_transit' || d.status === 'shipped');
+    });
+    if (eligibleIds.length === 0) return;
+    setRevertPendingConfirmOpen(false);
+    setIsBulkRevertPending(true);
+    setRevertProgressOpen(true);
+    setRevertProgressTotal(eligibleIds.length);
+    setRevertProgressProcessed(0);
+    setRevertProgressResults([]);
+    setRevertProgressComplete(false);
+
+    for (let i = 0; i < eligibleIds.length; i++) {
+      const id = eligibleIds[i];
+      const d = deliveries.find(del => del.id === id);
+      const label = d?.delivery_id || id.slice(0, 8);
+      const canRevert = await canRevertToPending(id);
+      if (!canRevert) {
+        setRevertProgressProcessed(i + 1);
+        setRevertProgressResults(prev => [...prev, {
+          row: i + 1,
+          status: 'error' as const,
+          message: `${label}: has goods receipts, cannot revert`,
+        }]);
+        continue;
+      }
+      const { error } = await supabase
+        .from('deliveries')
+        .update({ status: 'pending' })
+        .eq('id', id);
+      setRevertProgressProcessed(i + 1);
+      setRevertProgressResults(prev => [...prev, {
+        row: i + 1,
+        status: error ? 'error' as const : 'success' as const,
+        message: error ? `${label}: ${error.message}` : `${label} reverted to Pending`,
+      }]);
+    }
+
+    setRevertProgressComplete(true);
+    setSelectedInboundIds(new Set());
+    fetchDeliveries();
+    setIsBulkRevertPending(false);
+  };
+
 
   const handleEdit = (delivery: Delivery) => {
     setFormData({
@@ -1308,6 +1403,17 @@ const Deliveries = () => {
                         Mark In Transit ({inboundInTransitEligibleCount})
                       </Button>
                     )}
+                    {inboundRevertPendingEligibleCount > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setRevertPendingConfirmOpen(true)}
+                        disabled={isBulkRevertPending}
+                      >
+                        <Undo2 className="w-4 h-4 mr-2" />
+                        Revert to Pending ({inboundRevertPendingEligibleCount})
+                      </Button>
+                    )}
                   </div>
                 )}
                 <Table>
@@ -1480,6 +1586,17 @@ const Deliveries = () => {
                                     >
                                       <SendHorizonal className="w-4 h-4 mr-2" />
                                       Mark In Transit
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(delivery.status === 'in_transit' || delivery.status === 'shipped') && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setRevertPendingDeliveryId(delivery.id);
+                                        setRevertPendingConfirmOpen(true);
+                                      }}
+                                    >
+                                      <Undo2 className="w-4 h-4 mr-2" />
+                                      Revert to Pending
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuItem
@@ -1930,6 +2047,39 @@ const Deliveries = () => {
         processedRows={transitProgressProcessed}
         results={transitProgressResults}
         isComplete={transitProgressComplete}
+      />
+
+      {/* Revert to Pending Confirmation Dialog */}
+      <AlertDialog open={revertPendingConfirmOpen} onOpenChange={(open) => {
+        setRevertPendingConfirmOpen(open);
+        if (!open) setRevertPendingDeliveryId(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert to Pending?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {revertPendingDeliveryId
+                ? 'This will revert the delivery back to Pending status, only if no goods receipts exist against it. Continue?'
+                : `${inboundRevertPendingEligibleCount} deliver${inboundRevertPendingEligibleCount === 1 ? 'y' : 'ies'} will be checked for goods receipts and reverted to Pending if eligible. Continue?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={revertPendingDeliveryId ? handleRevertToPending : handleBulkRevertToPending}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ImportProgressDialog
+        open={revertProgressOpen}
+        onOpenChange={setRevertProgressOpen}
+        title="Reverting Deliveries to Pending"
+        totalRows={revertProgressTotal}
+        processedRows={revertProgressProcessed}
+        results={revertProgressResults}
+        isComplete={revertProgressComplete}
       />
     </div>
   );
