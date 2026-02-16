@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,6 +42,7 @@ import {
   LayoutGrid,
   List,
   Trash2,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { cn } from "@/lib/utils";
@@ -543,8 +545,38 @@ const Analytics = () => {
 
           {/* Tabs */}
           {tabs.length > 0 && (
-            <div className="px-4 border-t">
-              <Tabs value={activeTabId || undefined} onValueChange={setActiveTabId}>
+            <div className="px-4 border-t flex items-center gap-1">
+              {/* Open Report Popover */}
+              {savedReports.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-64 p-0">
+                    <div className="p-2 border-b">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open Report</p>
+                    </div>
+                    <ScrollArea className="max-h-64">
+                      <div className="p-1">
+                        {savedReports.map((report) => (
+                          <button
+                            key={report.id}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-left rounded-md hover:bg-accent/50 text-sm"
+                            onClick={() => handleSelectReport(report)}
+                          >
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{report.name}</span>
+                            <span className="text-xs text-muted-foreground ml-auto shrink-0">{report.fields.length}f</span>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+              )}
+              <Tabs value={activeTabId || undefined} onValueChange={setActiveTabId} className="flex-1 min-w-0">
                 <TabsList className="h-10 bg-transparent border-0 p-0 gap-0">
                   {tabs.map((tab) => (
                     <TabsTrigger
