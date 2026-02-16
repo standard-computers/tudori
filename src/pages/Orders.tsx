@@ -1826,6 +1826,7 @@ const Orders = () => {
     id: string,
     newStatus: string,
     deliveryItems?: { product_id: string; quantity: number }[],
+    options?: { skipDeliveryCreation?: boolean },
   ) => {
     const order = orders.find((o) => o.id === id);
     if (!order) return;
@@ -1858,7 +1859,7 @@ const Orders = () => {
     }
 
     // Auto-create delivery when status changes to 'confirmed'
-    if (newStatus === "confirmed" && autoCreateDelivery) {
+    if (newStatus === "confirmed" && autoCreateDelivery && !options?.skipDeliveryCreation) {
       const isInternalTransfer = !!order.source_location_id;
 
       if (isInternalTransfer) {
@@ -2042,13 +2043,13 @@ const Orders = () => {
   };
 
   // Auto-confirm: confirm selected POs that have no deliveries, with full quantities
+  // Internal transfer POs are grouped by (source_location_id + ship-to location_id) into shared deliveries
   const handleAutoConfirm = async () => {
     if (isAutoConfirming) return;
     const selectedIds = Array.from(selectedOrderIds);
     if (selectedIds.length === 0) return;
 
     setIsAutoConfirming(true);
-    // Reset progress state
     setAutoConfirmResults([]);
     setAutoConfirmProcessed(0);
     setAutoConfirmComplete(false);
@@ -2083,12 +2084,38 @@ const Orders = () => {
         return;
       }
 
-      // Open progress dialog
+      // Separate internal transfers from external vendor orders
+      const internalTransferIds: string[] = [];
+      const externalVendorIds: string[] = [];
+      for (const orderId of eligibleIds) {
+        const order = orders.find((o) => o.id === orderId);
+        if (order?.source_location_id) {
+          internalTransferIds.push(orderId);
+        } else {
+          externalVendorIds.push(orderId);
+        }
+      }
+
+      // Group internal transfers by (source_location_id + location_id)
+      const internalGroups = new Map<string, string[]>();
+      for (const orderId of internalTransferIds) {
+        const order = orders.find((o) => o.id === orderId);
+        if (!order) continue;
+        const key = `${order.source_location_id}__${order.location_id}`;
+        if (!internalGroups.has(key)) {
+          internalGroups.set(key, []);
+        }
+        internalGroups.get(key)!.push(orderId);
+      }
+
+      // Total progress = external POs processed individually + internal POs processed individually
       setAutoConfirmTotal(eligibleIds.length);
       setAutoConfirmProgressOpen(true);
 
       let confirmed = 0;
-      for (const orderId of eligibleIds) {
+
+      // Process external vendor POs individually (existing behavior)
+      for (const orderId of externalVendorIds) {
         const order = orders.find((o) => o.id === orderId);
         const poLabel = order?.po_number || orderId.slice(0, 8);
         try {
@@ -2110,6 +2137,78 @@ const Orders = () => {
           setAutoConfirmResults((prev) => [...prev, { row: confirmed, status: 'error' as const, message: `${poLabel}: ${err?.message || 'Failed'}` }]);
         }
         setAutoConfirmProcessed((prev) => prev + 1);
+      }
+
+      // Process internal transfer POs grouped by source+destination
+      for (const [groupKey, groupOrderIds] of internalGroups) {
+        const [sourceLocationId, shipToLocationId] = groupKey.split("__");
+
+        // Fetch all items for all POs in this group
+        const allGroupItems: { product_id: string; quantity: number }[] = [];
+        const poNumbers: string[] = [];
+
+        for (const orderId of groupOrderIds) {
+          const order = orders.find((o) => o.id === orderId);
+          if (order) poNumbers.push(order.po_number);
+
+          const { data: poItems } = await supabase
+            .from("purchase_order_items")
+            .select("product_id, quantity")
+            .eq("purchase_order_id", orderId);
+
+          for (const item of (poItems || []) as any[]) {
+            allGroupItems.push({ product_id: item.product_id, quantity: item.quantity });
+          }
+        }
+
+        // Create one shared outbound delivery for this group
+        let sharedDeliveryCreated = false;
+        try {
+          const { data: deliveryNumber } = await supabase.rpc("get_next_outbound_delivery_number", {
+            p_company_id: companyId,
+          });
+
+          const poListLabel = poNumbers.join(", ");
+          // Link the outbound delivery to the first PO in the group (for reference)
+          const { error: outboundError } = await supabase
+            .from("outbound_deliveries" as any)
+            .insert({
+              company_id: companyId,
+              delivery_number: deliveryNumber,
+              purchase_order_id: groupOrderIds[0],
+              from_location_id: sourceLocationId,
+              to_location_id: shipToLocationId,
+              status: "pending",
+              notes: `Auto-created from POs: ${poListLabel} (Internal Transfer - ${groupOrderIds.length} orders)`,
+            })
+            .select("id")
+            .single();
+
+          if (!outboundError) {
+            sharedDeliveryCreated = true;
+            toast.success(`Outbound Delivery ${deliveryNumber} created for ${groupOrderIds.length} POs (${allGroupItems.length} items)`);
+          } else {
+            console.error("Failed to create shared outbound delivery:", outboundError);
+          }
+        } catch (err) {
+          console.error("Error creating shared outbound delivery:", err);
+        }
+
+        // Confirm each PO in the group, skipping individual delivery creation
+        for (const orderId of groupOrderIds) {
+          const order = orders.find((o) => o.id === orderId);
+          const poLabel = order?.po_number || orderId.slice(0, 8);
+          try {
+            await executeStatusUpdate(orderId, "confirmed", undefined, { skipDeliveryCreation: true });
+            confirmed++;
+            const suffix = sharedDeliveryCreated ? " (grouped delivery)" : "";
+            setAutoConfirmResults((prev) => [...prev, { row: confirmed, status: 'success' as const, message: `${poLabel} confirmed${suffix}` }]);
+          } catch (err: any) {
+            confirmed++;
+            setAutoConfirmResults((prev) => [...prev, { row: confirmed, status: 'error' as const, message: `${poLabel}: ${err?.message || 'Failed'}` }]);
+          }
+          setAutoConfirmProcessed((prev) => prev + 1);
+        }
       }
 
       setAutoConfirmComplete(true);
