@@ -518,6 +518,7 @@ const Analytics = () => {
             </Button>
             <h1 className="text-lg font-semibold">Analytics</h1>
             <div className="flex-1" />
+            <div className="flex items-center gap-1">
             <Button size="icon" onClick={() => setAutoMakeOpen(true)} className="relative" variant="outline">
               <Sparkles className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">A</Kbd>
@@ -526,6 +527,7 @@ const Analytics = () => {
               <Plus className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
+            </div>
           </div>
 
           {/* Tabs */}
