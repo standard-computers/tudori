@@ -543,7 +543,7 @@ const Tasks = () => {
               <span className="text-muted-foreground">/</span>
               <h1 className="text-lg font-semibold">Tasks</h1>
             </div>
-            <div className="flex items-center gap-3 pr-16">
+            <div className="flex items-center gap-3 pr-12">
               <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by location" />
