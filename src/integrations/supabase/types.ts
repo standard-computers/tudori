@@ -5005,6 +5005,21 @@ export type Database = {
         }
         Returns: Json
       }
+      create_outbound_delivery: {
+        Args: {
+          p_carrier?: string
+          p_company_id: string
+          p_customer_id?: string
+          p_from_location_id: string
+          p_notes?: string
+          p_purchase_order_id: string
+          p_sales_order_id?: string
+          p_status?: string
+          p_to_location_id: string
+          p_tracking_number?: string
+        }
+        Returns: Json
+      }
       execute_analytics_query: {
         Args: { query_params?: Json; query_text: string }
         Returns: Json
