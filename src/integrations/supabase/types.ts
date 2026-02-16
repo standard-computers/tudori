@@ -4591,6 +4591,7 @@ export type Database = {
           id: string
           maximize_windows: boolean
           open_apps_in_new_tab: boolean | null
+          show_app_menu: boolean
           theme: string | null
           updated_at: string
           user_id: string
@@ -4603,6 +4604,7 @@ export type Database = {
           id?: string
           maximize_windows?: boolean
           open_apps_in_new_tab?: boolean | null
+          show_app_menu?: boolean
           theme?: string | null
           updated_at?: string
           user_id: string
@@ -4615,6 +4617,7 @@ export type Database = {
           id?: string
           maximize_windows?: boolean
           open_apps_in_new_tab?: boolean | null
+          show_app_menu?: boolean
           theme?: string | null
           updated_at?: string
           user_id?: string
