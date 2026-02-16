@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 interface DraggableTileProps {
   id: string;
@@ -38,9 +39,7 @@ export const DraggableTile = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    animationDelay: `${index * 50}ms`,
-    zIndex: isDragging ? 50 : 'auto',
-    opacity: isDragging ? 0.9 : 1,
+    zIndex: isDragging ? 50 : 'auto' as const,
   };
 
   const handleClick = () => {
@@ -54,17 +53,35 @@ export const DraggableTile = ({
   };
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
       style={style}
-      className={`app-tile animate-slide-up ${isDragging ? 'shadow-2xl scale-105' : ''}`}
+      className={`app-tile ${isDragging ? 'shadow-2xl' : ''}`}
       {...attributes}
       {...listeners}
       onClick={handleClick}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{
+        opacity: isDragging ? 0.85 : 1,
+        y: 0,
+        scale: isDragging ? 1.05 : 1,
+        boxShadow: isDragging
+          ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+      }}
+      transition={{
+        type: 'spring',
+        stiffness: 300,
+        damping: 25,
+        delay: isDragging ? 0 : index * 0.04,
+      }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.98 }}
+      layout
     >
       <Icon className={`w-8 h-8 ${color} mb-4`} />
       <h3 className="font-display font-semibold text-foreground mb-1">{name}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
-    </div>
+    </motion.div>
   );
 };

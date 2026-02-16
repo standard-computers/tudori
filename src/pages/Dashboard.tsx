@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { LayoutGroup } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransaction } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -285,30 +286,30 @@ const Dashboard = () => {
         {/* Apps grid with drag and drop */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={apps.map((app) => app.name)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {apps
-                .filter((app) => {
-                  // Check hidden tiles preference
-                  if (hiddenTiles.has(app.name)) return false;
-                  // Check transaction access
-                  const code = APP_NAME_TO_CODE[app.name];
-                  if (code && !hasAccess(code)) return false;
-                  return true;
-                })
-                .map((app, index) => (
-                  <DraggableTile
-                    key={app.name}
-                    id={app.name}
-                    name={app.name}
-                    icon={app.icon}
-                    color={app.color}
-                    description={app.description}
-                    path={app.path}
-                    index={index}
-                    openInNewTab={openAppsInNewTab}
-                  />
-                ))}
-            </div>
+            <LayoutGroup>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                {apps
+                  .filter((app) => {
+                    if (hiddenTiles.has(app.name)) return false;
+                    const code = APP_NAME_TO_CODE[app.name];
+                    if (code && !hasAccess(code)) return false;
+                    return true;
+                  })
+                  .map((app, index) => (
+                    <DraggableTile
+                      key={app.name}
+                      id={app.name}
+                      name={app.name}
+                      icon={app.icon}
+                      color={app.color}
+                      description={app.description}
+                      path={app.path}
+                      index={index}
+                      openInNewTab={openAppsInNewTab}
+                    />
+                  ))}
+              </div>
+            </LayoutGroup>
           </SortableContext>
         </DndContext>
       </main>
