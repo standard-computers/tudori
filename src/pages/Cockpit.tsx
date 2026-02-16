@@ -1346,6 +1346,7 @@ const [areaFormData, setAreaFormData] = useState({
               status: 'in_transit',
               expected_date: new Date().toISOString().split('T')[0],
               outbound_delivery_id: selectedOutboundOrder.id,
+              is_fulfilled: true,
               notes: `Auto-created from outbound delivery ${selectedOutboundOrder.delivery_number}`,
             })
             .select()
@@ -1544,6 +1545,7 @@ const [areaFormData, setAreaFormData] = useState({
                   status: 'in_transit',
                   expected_date: new Date().toISOString().split('T')[0],
                   outbound_delivery_id: od.id,
+                  is_fulfilled: true,
                   notes: `Auto-created from outbound delivery ${dn}`,
                 })
                 .select().single();
