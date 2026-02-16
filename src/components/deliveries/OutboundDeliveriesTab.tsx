@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
+import { ImportProgressDialog } from '@/components/ImportProgressDialog';
 import {
   Table as ItemsTable,
   TableBody as ItemsTableBody,
@@ -202,26 +203,46 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     setBulkDeleteConfirmOpen(false);
   };
 
+  const [transitProgressOpen, setTransitProgressOpen] = useState(false);
+  const [transitProgressTotal, setTransitProgressTotal] = useState(0);
+  const [transitProgressProcessed, setTransitProgressProcessed] = useState(0);
+  const [transitProgressResults, setTransitProgressResults] = useState<import('@/components/ImportProgressDialog').ImportResult[]>([]);
+  const [transitProgressComplete, setTransitProgressComplete] = useState(false);
+
   const handleBulkMarkInTransit = async () => {
     const eligibleIds = Array.from(selectedIds).filter(id => {
       const d = outboundDeliveries.find(del => del.id === id);
       return d && d.status === 'pending';
     });
     if (eligibleIds.length === 0) return;
-    setIsBulkInTransit(true);
-    const { error } = await supabase
-      .from('outbound_deliveries')
-      .update({ status: 'in_transit' })
-      .in('id', eligibleIds);
-    if (error) {
-      toast.error('Failed to update status');
-    } else {
-      toast.success(`${eligibleIds.length} deliver${eligibleIds.length === 1 ? 'y' : 'ies'} marked as In Transit`);
-      setSelectedIds(new Set());
-      fetchOutboundDeliveries();
-    }
-    setIsBulkInTransit(false);
     setInTransitConfirmOpen(false);
+    setIsBulkInTransit(true);
+    setTransitProgressOpen(true);
+    setTransitProgressTotal(eligibleIds.length);
+    setTransitProgressProcessed(0);
+    setTransitProgressResults([]);
+    setTransitProgressComplete(false);
+
+    for (let i = 0; i < eligibleIds.length; i++) {
+      const id = eligibleIds[i];
+      const d = outboundDeliveries.find(del => del.id === id);
+      const label = d?.delivery_number || id.slice(0, 8);
+      const { error } = await supabase
+        .from('outbound_deliveries')
+        .update({ status: 'in_transit' })
+        .eq('id', id);
+      setTransitProgressProcessed(i + 1);
+      setTransitProgressResults(prev => [...prev, {
+        row: i + 1,
+        status: error ? 'error' as const : 'success' as const,
+        message: error ? `${label}: ${error.message}` : `${label} marked as In Transit`,
+      }]);
+    }
+
+    setTransitProgressComplete(true);
+    setSelectedIds(new Set());
+    fetchOutboundDeliveries();
+    setIsBulkInTransit(false);
   };
 
   if (outboundDeliveries.length === 0) {
@@ -579,6 +600,16 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImportProgressDialog
+        open={transitProgressOpen}
+        onOpenChange={setTransitProgressOpen}
+        title="Marking Deliveries In Transit"
+        totalRows={transitProgressTotal}
+        processedRows={transitProgressProcessed}
+        results={transitProgressResults}
+        isComplete={transitProgressComplete}
+      />
     </>
   );
 }
