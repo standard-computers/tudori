@@ -757,8 +757,6 @@ const Users = () => {
                 </TabsContent>
               </Tabs>
             </DialogBody>
-            <DialogFooter>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -830,8 +828,6 @@ const Users = () => {
                 </TabsContent>
               </Tabs>
             </DialogBody>
-            <DialogFooter>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
         <CreatedPasswordDialog 
