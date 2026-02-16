@@ -36,6 +36,8 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
+import { Kbd } from '@/components/ui/kbd';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 
 interface Account {
   id: string;
@@ -110,6 +112,10 @@ const AccountDetail = () => {
   const [canCreateInvoice, setCanCreateInvoice] = useState(false);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
+
+  useKeyboardShortcut('n', () => {
+    if (canCreateInvoice) setIsCreateInvoiceDialogOpen(true);
+  }, canCreateInvoice);
 
   useEffect(() => {
     setTransaction('acc/view');
@@ -410,9 +416,9 @@ const AccountDetail = () => {
             </div>
           </div>
           {canCreateInvoice && (
-            <Button onClick={() => setIsCreateInvoiceDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Invoice
+            <Button size="icon" className="relative" onClick={() => setIsCreateInvoiceDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
           )}
         </div>
