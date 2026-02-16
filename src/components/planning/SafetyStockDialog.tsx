@@ -226,9 +226,14 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
     setSuggestions([]);
 
     try {
-      // Get all products and locations that don't have safety stock records
+      // Re-fetch current safety stock records from DB to ensure we have the latest
+      const { data: currentSafetyStocks } = await supabase
+        .from('product_safety_stock')
+        .select('product_id, location_id')
+        .order('created_at', { ascending: false });
+
       const existingPairs = new Set(
-        safetyStocks.map(ss => `${ss.product_id}-${ss.location_id}`)
+        (currentSafetyStocks || []).map((ss: any) => `${ss.product_id}-${ss.location_id}`)
       );
 
       // Fetch inventory quantities for all product-location combos
