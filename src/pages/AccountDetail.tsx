@@ -644,28 +644,76 @@ const AccountDetail = () => {
           <DialogHeader>
             <DialogTitle>Accept Payment</DialogTitle>
             <DialogDescription>
-              Mark invoice {selectedInvoice?.invoice_number} as paid.
+              Review the payment details below before confirming.
             </DialogDescription>
           </DialogHeader>
 
           {selectedInvoice && (
-            <div className="space-y-4 px-6">
-              <div className="border rounded-lg p-4">
+            <div className="space-y-3 px-6">
+              <div className="border rounded-lg p-4 space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Invoice Amount</span>
-                  <span className="font-medium">${selectedInvoice.amount.toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground">Invoice</span>
+                  <span className="font-mono font-medium">{selectedInvoice.invoice_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Account</span>
+                  <span className="font-medium">{account?.name}</span>
+                </div>
+                {selectedInvoice.purchase_order?.vendor && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Pay To</span>
+                    <span className="font-medium">{selectedInvoice.purchase_order.vendor.name}</span>
+                  </div>
+                )}
+                {selectedInvoice.sales_order?.customer && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Customer</span>
+                    <span className="font-medium">{selectedInvoice.sales_order.customer.name}</span>
+                  </div>
+                )}
+                {(selectedInvoice.purchase_order?.location || selectedInvoice.sales_order?.location) && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Location</span>
+                    <span className="font-medium">
+                      {selectedInvoice.purchase_order?.location?.name || selectedInvoice.sales_order?.location?.name}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Invoice Date</span>
+                  <span className="font-medium">{format(new Date(selectedInvoice.invoice_date), 'MMM d, yyyy')}</span>
+                </div>
+                {selectedInvoice.due_date && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Due Date</span>
+                    <span className="font-medium">{format(new Date(selectedInvoice.due_date), 'MMM d, yyyy')}</span>
+                  </div>
+                )}
+                {selectedInvoice.ledger?.name && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Ledger</span>
+                    <span className="font-medium">{selectedInvoice.ledger.name}</span>
+                  </div>
+                )}
+                <div className="border-t pt-3 flex justify-between">
+                  <span className="text-sm font-medium">Payment Amount</span>
+                  <span className="text-lg font-semibold">${selectedInvoice.amount.toFixed(2)}</span>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                This will mark the invoice as fully paid.
-              </p>
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Processed By</span>
+                  <span className="font-medium">{user?.email}</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-sm text-muted-foreground">Payment Date</span>
+                  <span className="font-medium">{format(new Date(), 'MMM d, yyyy')}</span>
+                </div>
+              </div>
             </div>
           )}
 
-          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
-              Cancel
-            </Button>
+          <DialogFooter className="sticky bottom-0 pt-4">
             <Button onClick={handleAcceptPayment} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Accept Payment
