@@ -921,6 +921,47 @@ const [areaFormData, setAreaFormData] = useState({
 
   const hasActiveInventoryFilters = Object.keys(inventoryFilters).length > 0;
 
+  // Sort hooks for other cockpit tables
+  const {
+    sortConfig: deliverySortConfig,
+    filters: deliveryFilters,
+    handleSort: handleDeliverySort,
+    setFilter: setDeliveryFilter,
+    sortedAndFilteredData: sortedDeliveries,
+  } = useTableSort(pendingDeliveries, 'delivery_id', 'asc');
+
+  const {
+    sortConfig: ordersSortConfig,
+    filters: ordersFilters,
+    handleSort: handleOrdersSort,
+    setFilter: setOrdersFilter,
+    sortedAndFilteredData: sortedOutboundOrders,
+  } = useTableSort(outboundOrders, 'delivery_number', 'asc');
+
+  const {
+    sortConfig: workOrdersSortConfig,
+    filters: workOrdersFilters,
+    handleSort: handleWorkOrdersSort,
+    setFilter: setWorkOrdersFilter,
+    sortedAndFilteredData: sortedWorkOrders,
+  } = useTableSort(workOrders, 'status', 'asc');
+
+  const {
+    sortConfig: areasSortConfig,
+    filters: areasFilters,
+    handleSort: handleAreasSort,
+    setFilter: setAreasFilter,
+    sortedAndFilteredData: sortedAreas,
+  } = useTableSort(areas, 'area_id', 'asc');
+
+  const {
+    sortConfig: binsSortConfig,
+    filters: binsFilters,
+    handleSort: handleBinsSort,
+    setFilter: setBinsFilter,
+    sortedAndFilteredData: sortedBins,
+  } = useTableSort(bins, 'bin_id', 'asc');
+
   // Get selected inventory items
   const selectedInventoryItems = inventory.filter(item => selectedInventoryIds.has(item.id));
 
@@ -1999,16 +2040,16 @@ const [areaFormData, setAreaFormData] = useState({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Delivery ID</TableHead>
-                        <TableHead>PO #</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead>Expected Date</TableHead>
-                        <TableHead>Status</TableHead>
+                        <SortableTableHead label="Delivery ID" sortKey="delivery_id" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['delivery_id']} onFilter={(v) => setDeliveryFilter('delivery_id', v)} />
+                        <SortableTableHead label="PO #" sortKey="purchase_order.po_number" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['purchase_order.po_number']} onFilter={(v) => setDeliveryFilter('purchase_order.po_number', v)} />
+                        <SortableTableHead label="Source" sortKey="vendor.name" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['vendor.name']} onFilter={(v) => setDeliveryFilter('vendor.name', v)} />
+                        <SortableTableHead label="Expected Date" sortKey="expected_date" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['expected_date']} onFilter={(v) => setDeliveryFilter('expected_date', v)} />
+                        <SortableTableHead label="Status" sortKey="status" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['status']} onFilter={(v) => setDeliveryFilter('status', v)} />
                         <TableHead className="w-44"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingDeliveries.map((delivery) => {
+                      {sortedDeliveries.map((delivery) => {
                         const isInternalTransfer = !!delivery.purchase_order?.source_location_id;
                         const sourceName = isInternalTransfer 
                           ? delivery.purchase_order?.source_location?.name 
@@ -2145,16 +2186,16 @@ const [areaFormData, setAreaFormData] = useState({
                             onCheckedChange={toggleAllFulfillOrders}
                           />
                         </TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Delivery #</TableHead>
-                        <TableHead>Order #</TableHead>
-                        <TableHead>Ship To</TableHead>
-                        <TableHead>Status</TableHead>
+                        <SortableTableHead label="Type" sortKey="purchase_order_id" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterable={false} />
+                        <SortableTableHead label="Delivery #" sortKey="delivery_number" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['delivery_number']} onFilter={(v) => setOrdersFilter('delivery_number', v)} />
+                        <SortableTableHead label="Order #" sortKey="sales_order.so_number" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['sales_order.so_number']} onFilter={(v) => setOrdersFilter('sales_order.so_number', v)} />
+                        <SortableTableHead label="Ship To" sortKey="customer.name" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['customer.name']} onFilter={(v) => setOrdersFilter('customer.name', v)} />
+                        <SortableTableHead label="Status" sortKey="status" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['status']} onFilter={(v) => setOrdersFilter('status', v)} />
                         <TableHead className="w-32"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {outboundOrders.map((od) => {
+                      {sortedOutboundOrders.map((od) => {
                         const isTransfer = !!od.purchase_order_id;
                         return (
                           <TableRow key={`od-${od.id}`} className={isTransfer ? "bg-blue-500/5" : ""}>
@@ -2317,26 +2358,26 @@ const [areaFormData, setAreaFormData] = useState({
                       <TableRow>
                         <TableHead className="w-10">
                           <Checkbox
-                            checked={workOrders.length > 0 && selectedWorkOrderIds.size === workOrders.length}
+                            checked={sortedWorkOrders.length > 0 && selectedWorkOrderIds.size === sortedWorkOrders.length}
                             onCheckedChange={() => {
-                              if (selectedWorkOrderIds.size === workOrders.length) {
+                              if (selectedWorkOrderIds.size === sortedWorkOrders.length) {
                                 setSelectedWorkOrderIds(new Set());
                               } else {
-                                setSelectedWorkOrderIds(new Set(workOrders.map(t => t.id)));
+                                setSelectedWorkOrderIds(new Set(sortedWorkOrders.map(t => t.id)));
                               }
                             }}
                           />
                         </TableHead>
-                        <TableHead>Task</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead>Priority</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Assigned To</TableHead>
+                        <SortableTableHead label="Task" sortKey="title" currentSortKey={workOrdersSortConfig.key} currentSortDirection={workOrdersSortConfig.direction} onSort={handleWorkOrdersSort} filterValue={workOrdersFilters['title']} onFilter={(v) => setWorkOrdersFilter('title', v)} />
+                        <SortableTableHead label="Source" sortKey="source_type" currentSortKey={workOrdersSortConfig.key} currentSortDirection={workOrdersSortConfig.direction} onSort={handleWorkOrdersSort} filterValue={workOrdersFilters['source_type']} onFilter={(v) => setWorkOrdersFilter('source_type', v)} />
+                        <SortableTableHead label="Priority" sortKey="priority" currentSortKey={workOrdersSortConfig.key} currentSortDirection={workOrdersSortConfig.direction} onSort={handleWorkOrdersSort} filterValue={workOrdersFilters['priority']} onFilter={(v) => setWorkOrdersFilter('priority', v)} />
+                        <SortableTableHead label="Status" sortKey="status" currentSortKey={workOrdersSortConfig.key} currentSortDirection={workOrdersSortConfig.direction} onSort={handleWorkOrdersSort} filterValue={workOrdersFilters['status']} onFilter={(v) => setWorkOrdersFilter('status', v)} />
+                        <SortableTableHead label="Assigned To" sortKey="assignee.first_name" currentSortKey={workOrdersSortConfig.key} currentSortDirection={workOrdersSortConfig.direction} onSort={handleWorkOrdersSort} filterValue={workOrdersFilters['assignee.first_name']} onFilter={(v) => setWorkOrdersFilter('assignee.first_name', v)} />
                         <TableHead className="w-28"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {workOrders.map((task) => (
+                      {sortedWorkOrders.map((task) => (
                         <TableRow key={task.id}>
                           <TableCell>
                             <Checkbox
@@ -2497,18 +2538,18 @@ const [areaFormData, setAreaFormData] = useState({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-center">GR</TableHead>
-                        <TableHead className="text-center">GI</TableHead>
-                        <TableHead className="text-center">Production</TableHead>
+                        <SortableTableHead label="ID" sortKey="area_id" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterValue={areasFilters['area_id']} onFilter={(v) => setAreasFilter('area_id', v)} />
+                        <SortableTableHead label="Name" sortKey="name" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterValue={areasFilters['name']} onFilter={(v) => setAreasFilter('name', v)} />
+                        <SortableTableHead label="Description" sortKey="description" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterValue={areasFilters['description']} onFilter={(v) => setAreasFilter('description', v)} />
+                        <SortableTableHead label="GR" sortKey="is_goods_receipt_enabled" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-center" />
+                        <SortableTableHead label="GI" sortKey="is_goods_issue_enabled" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-center" />
+                        <SortableTableHead label="Production" sortKey="is_production_enabled" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-center" />
                         <TableHead className="text-right">Bins</TableHead>
                         <TableHead className="w-20"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {areas.map((area) => (
+                      {sortedAreas.map((area) => (
                         <TableRow key={area.id}>
                           <TableCell className="font-mono">
                             <button type="button" className="text-primary hover:underline" onClick={() => { setViewingArea(area); setIsViewAreaDialogOpen(true); }}>
@@ -2588,19 +2629,19 @@ const [areaFormData, setAreaFormData] = useState({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Area</TableHead>
-                        <TableHead>Capacity</TableHead>
-                        <TableHead className="text-center">Put Away</TableHead>
-                        <TableHead className="text-center">Picking</TableHead>
-                        <TableHead className="text-center">Production</TableHead>
-                        <TableHead className="text-center">Hazardous</TableHead>
+                        <SortableTableHead label="ID" sortKey="bin_id" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterValue={binsFilters['bin_id']} onFilter={(v) => setBinsFilter('bin_id', v)} />
+                        <SortableTableHead label="Name" sortKey="name" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterValue={binsFilters['name']} onFilter={(v) => setBinsFilter('name', v)} />
+                        <SortableTableHead label="Area" sortKey="area_id" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterValue={binsFilters['area_id']} onFilter={(v) => setBinsFilter('area_id', v)} />
+                        <SortableTableHead label="Capacity" sortKey="capacity" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterValue={binsFilters['capacity']} onFilter={(v) => setBinsFilter('capacity', v)} />
+                        <SortableTableHead label="Put Away" sortKey="allow_put_away" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterable={false} className="text-center" />
+                        <SortableTableHead label="Picking" sortKey="allow_picking" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterable={false} className="text-center" />
+                        <SortableTableHead label="Production" sortKey="is_production_enabled" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterable={false} className="text-center" />
+                        <SortableTableHead label="Hazardous" sortKey="is_hazardous" currentSortKey={binsSortConfig.key} currentSortDirection={binsSortConfig.direction} onSort={handleBinsSort} filterable={false} className="text-center" />
                         <TableHead className="w-20"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {bins.map((bin) => {
+                      {sortedBins.map((bin) => {
                         const area = areas.find(a => a.id === bin.area_id);
                         return (
                           <TableRow key={bin.id}>
