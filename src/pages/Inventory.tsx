@@ -537,7 +537,7 @@ const Inventory = () => {
         ) : (
           <div className="space-y-4">
             {/* Summary stats */}
-            <div className="flex items-center justify-between pb-2 border-b">
+            <div className="flex items-center justify-between pb-2 border-b px-4">
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <span>
                   <strong className="text-foreground">{selectedLocation?.name}</strong>
