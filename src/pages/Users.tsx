@@ -564,7 +564,8 @@ const Users = () => {
             <div>
               <Table>
                 <TableHeader>
-                  <TableRow>
+                   <TableRow>
+                    <TableHead>ID</TableHead>
                     <TableHead>User</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
@@ -584,6 +585,7 @@ const Users = () => {
                         }
                       }}
                     >
+                      <TableCell className="font-mono text-xs text-muted-foreground">{member.id}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
