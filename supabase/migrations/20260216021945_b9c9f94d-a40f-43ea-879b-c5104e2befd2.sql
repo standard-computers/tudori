@@ -1,0 +1,1 @@
+ALTER TABLE public.positions ADD COLUMN vacancies integer NOT NULL DEFAULT 1;

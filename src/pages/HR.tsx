@@ -90,6 +90,7 @@ interface Position {
   notes: string | null;
   created_at: string;
   employee_id: string | null;
+  vacancies: number;
   team?: { name: string } | null;
   position_locations?: { location_id: string; locations?: { name: string } | null }[];
 }
@@ -128,6 +129,7 @@ const HR = () => {
     wage: '',
     is_hourly: false,
     show_wage: false,
+    vacancies: '1',
     location_ids: [] as string[],
   });
   const [saving, setSaving] = useState(false);
@@ -245,6 +247,7 @@ const HR = () => {
       wage: positionForm.wage ? parseFloat(positionForm.wage) : null,
       is_hourly: positionForm.is_hourly,
       show_wage: positionForm.show_wage,
+      vacancies: positionForm.vacancies ? parseInt(positionForm.vacancies) : 1,
     }).select('id').single();
     if (error || !newPos) {
       toast.error('Failed to create position');
@@ -261,7 +264,7 @@ const HR = () => {
     setSaving(false);
     toast.success('Position created');
     setShowPositionDialog(false);
-    setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', is_hourly: false, show_wage: false, location_ids: [] });
+    setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', is_hourly: false, show_wage: false, vacancies: '1', location_ids: [] });
     fetchPositions();
   };
 
@@ -853,7 +856,16 @@ const HR = () => {
           </DialogBody>
         </DialogContent>
       </Dialog>
-
+            <div className="space-y-2">
+              <Label htmlFor="position-vacancies">Vacancies</Label>
+              <Input
+                id="position-vacancies"
+                type="number"
+                min="1"
+                value={positionForm.vacancies}
+                onChange={(e) => setPositionForm(f => ({ ...f, vacancies: e.target.value }))}
+              />
+            </div>
       {/* Create Position Dialog */}
       <Dialog open={showPositionDialog} onOpenChange={setShowPositionDialog}>
         <DialogContent className="max-w-md">
@@ -1027,8 +1039,14 @@ const HR = () => {
                 )}
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Hourly</p>
+               <p className="text-xs text-muted-foreground">Hourly</p>
                 <p className="font-medium">{viewingPosition?.is_hourly ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Vacancies</p>
+                <p className="font-medium">{viewingPosition?.vacancies ?? 1}</p>
               </div>
             </div>
             <div>
