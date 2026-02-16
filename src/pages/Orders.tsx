@@ -1863,30 +1863,31 @@ const Orders = () => {
       const isInternalTransfer = !!order.source_location_id;
 
       if (isInternalTransfer) {
-        // Internal transfer: create an outbound delivery from the source location
-        const { data: deliveryNumber } = await supabase.rpc("get_next_outbound_delivery_number", {
+        // Internal transfer: create an outbound delivery atomically
+        const { data: result, error: outboundError } = await supabase.rpc("create_outbound_delivery", {
           p_company_id: companyId,
+          p_purchase_order_id: id,
+          p_from_location_id: order.source_location_id,
+          p_to_location_id: order.location_id,
+          p_status: "pending",
+          p_notes: `Auto-created from PO ${order.po_number} (Internal Transfer)`,
         });
-
-        const { data: outboundData, error: outboundError } = await supabase
-          .from("outbound_deliveries" as any)
-          .insert({
-            company_id: companyId,
-            delivery_number: deliveryNumber,
-            purchase_order_id: id,
-            from_location_id: order.source_location_id,
-            to_location_id: order.location_id,
-            status: "pending",
-            notes: `Auto-created from PO ${order.po_number} (Internal Transfer)`,
-          })
-          .select("id")
-          .single();
 
         if (outboundError) {
           console.error("Failed to create outbound delivery:", outboundError);
           toast.error("Failed to create outbound delivery");
         } else {
-          toast.success(`Outbound Delivery ${deliveryNumber} created with ${deliveryItems?.length || 0} items`);
+          const deliveryResult = result as any;
+          // Insert delivery items
+          if (deliveryItems && deliveryItems.length > 0) {
+            const itemsToInsert = deliveryItems.map((item) => ({
+              outbound_delivery_id: deliveryResult.id,
+              product_id: item.product_id,
+              quantity: item.quantity,
+            }));
+            await supabase.from("outbound_delivery_items" as any).insert(itemsToInsert);
+          }
+          toast.success(`Outbound Delivery ${deliveryResult.delivery_number} created with ${deliveryItems?.length || 0} items`);
         }
       } else {
         // External vendor: create a regular inbound delivery
@@ -2161,43 +2162,34 @@ const Orders = () => {
           }
         }
 
-        // Create one shared outbound delivery for this group
+        // Create one shared outbound delivery for this group (atomic RPC)
         let sharedDeliveryCreated = false;
         try {
-          const { data: deliveryNumber } = await supabase.rpc("get_next_outbound_delivery_number", {
+          const poListLabel = poNumbers.join(", ");
+          const { data: result, error: outboundError } = await supabase.rpc("create_outbound_delivery", {
             p_company_id: companyId,
+            p_purchase_order_id: groupOrderIds[0],
+            p_from_location_id: sourceLocationId,
+            p_to_location_id: shipToLocationId,
+            p_status: "pending",
+            p_notes: `Auto-created from POs: ${poListLabel} (Internal Transfer - ${groupOrderIds.length} orders)`,
           });
 
-          const poListLabel = poNumbers.join(", ");
-          // Link the outbound delivery to the first PO in the group (for reference)
-          const { data: outboundData, error: outboundError } = await supabase
-            .from("outbound_deliveries" as any)
-            .insert({
-              company_id: companyId,
-              delivery_number: deliveryNumber,
-              purchase_order_id: groupOrderIds[0],
-              from_location_id: sourceLocationId,
-              to_location_id: shipToLocationId,
-              status: "pending",
-              notes: `Auto-created from POs: ${poListLabel} (Internal Transfer - ${groupOrderIds.length} orders)`,
-            })
-            .select("id")
-            .single();
-
-          if (!outboundError && outboundData) {
+          if (!outboundError && result) {
+            const deliveryResult = result as any;
             sharedDeliveryCreated = true;
 
             // Insert outbound delivery items
             if (allGroupItems.length > 0) {
               const itemsToInsert = allGroupItems.map((item) => ({
-                outbound_delivery_id: (outboundData as any).id,
+                outbound_delivery_id: deliveryResult.id,
                 product_id: item.product_id,
                 quantity: item.quantity,
               }));
               await supabase.from("outbound_delivery_items" as any).insert(itemsToInsert);
             }
 
-            toast.success(`Outbound Delivery ${deliveryNumber} created for ${groupOrderIds.length} POs (${allGroupItems.length} items)`);
+            toast.success(`Outbound Delivery ${deliveryResult.delivery_number} created for ${groupOrderIds.length} POs (${allGroupItems.length} items)`);
           } else {
             console.error("Failed to create shared outbound delivery:", outboundError);
           }
