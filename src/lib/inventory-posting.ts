@@ -219,38 +219,34 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
       }
     }
 
-    // Resolve ledger: SO ledger > PO ledger (via outbound delivery) > location ledger
+    // Resolve ledger: issuing location's ledger first, then company general ledger
     let ledgerId: string | null = null;
     let refDescription = '';
 
     const so = (issue as any)?.sales_order;
     const po = (issue as any)?.outbound_delivery?.purchase_order;
 
-    if (so?.ledger_id) {
-      ledgerId = so.ledger_id;
-      refDescription = `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`;
-    } else if (po?.ledger_id) {
-      ledgerId = po.ledger_id;
-      refDescription = `Goods Issue ${(issue as any).issue_number} for PO ${po.po_number}`;
-    }
-
-    // Fallback: find ledger assigned to this location
-    if (!ledgerId) {
-      const { data: locationLedger } = await supabase
-        .from('ledgers' as any)
-        .select('id')
-        .eq('location_id', locationId)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      
-      if (locationLedger) {
-        ledgerId = (locationLedger as any).id;
+    // Primary: ledger assigned to the issuing location
+    const { data: locationLedger } = await supabase
+      .from('ledgers' as any)
+      .select('id')
+      .eq('location_id', locationId)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    
+    if (locationLedger) {
+      ledgerId = (locationLedger as any).id;
+      if (so) {
+        refDescription = `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`;
+      } else if (po) {
+        refDescription = `Goods Issue ${(issue as any).issue_number} for PO ${po.po_number}`;
+      } else {
         refDescription = `Goods Issue ${(issue as any).issue_number} at location`;
       }
     }
 
-    // Last fallback: use any general (no location) ledger for the company
+    // Fallback: company general ledger
     if (!ledgerId) {
       const companyId = (issue as any)?.company_id;
       if (companyId) {
