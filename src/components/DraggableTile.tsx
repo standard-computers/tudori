@@ -13,6 +13,7 @@ interface DraggableTileProps {
   path: string | null;
   index: number;
   openInNewTab?: boolean;
+  onCustomClick?: () => void;
 }
 
 export const DraggableTile = ({ 
@@ -24,6 +25,7 @@ export const DraggableTile = ({
   path, 
   index,
   openInNewTab = false,
+  onCustomClick,
 }: DraggableTileProps) => {
   const navigate = useNavigate();
   
@@ -43,6 +45,10 @@ export const DraggableTile = ({
   };
 
   const handleClick = () => {
+    if (onCustomClick) {
+      onCustomClick();
+      return;
+    }
     if (path) {
       if (openInNewTab) {
         window.open(path, '_blank');

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppMenuPreference } from '@/hooks/use-app-menu-preference';
 import { useTransactionAccess } from '@/hooks/use-transaction-access';
@@ -20,6 +21,7 @@ export function AppMenuButton() {
   const { user } = useAuth();
   const showAppMenu = useAppMenuPreference();
   const [open, setOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [apps, setApps] = useState<AppTile[]>(defaultApps);
   const [search, setSearch] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
@@ -90,6 +92,7 @@ export function AppMenuButton() {
   if (!isVisible) return null;
 
   const visibleApps = apps.filter(app => {
+    if (app.name === 'Logout') return false; // handled separately
     if (hiddenTiles.has(app.name)) return false;
     const code = APP_NAME_TO_CODE[app.name];
     if (code && !hasAccess(code)) return false;
@@ -97,45 +100,78 @@ export function AppMenuButton() {
     return true;
   });
 
+  const logoutApp = defaultApps.find(a => a.name === 'Logout')!;
+  const showLogout = !search || 'logout'.includes(search.toLowerCase());
+
+  const handleAppClick = (app: AppTile) => {
+    if (app.name === 'Logout') {
+      setOpen(false);
+      setLogoutConfirmOpen(true);
+      return;
+    }
+    if (app.path) navigate(app.path);
+    setOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
+
+  const renderTile = (app: AppTile) => {
+    const Icon = app.icon;
+    const isActive = app.path === location.pathname;
+    return (
+      <button
+        key={app.name}
+        className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors text-center ${
+          isActive ? 'bg-primary/10 text-primary' : 'hover:bg-accent'
+        }`}
+        onClick={() => handleAppClick(app)}
+      >
+        <Icon className={`w-6 h-6 ${app.color}`} />
+        <span className="text-xs text-foreground leading-tight truncate w-full">{app.name}</span>
+      </button>
+    );
+  };
+
   return (
-    <div className="fixed top-2.5 right-4 z-[51]">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-10 w-10 bg-card border shadow-sm hover:bg-accent">
-            <LayoutGrid className="w-5 h-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 p-2 max-h-[70vh] overflow-y-auto">
-          <Input
-            ref={searchRef}
-            placeholder="Search apps..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="mb-2 h-8 text-sm"
-          />
-          <div className="grid grid-cols-3 gap-1">
-            {visibleApps.map(app => {
-              const Icon = app.icon;
-              const isActive = app.path === location.pathname;
-              return (
-                <button
-                  key={app.name}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors text-center ${
-                    isActive ? 'bg-primary/10 text-primary' : 'hover:bg-accent'
-                  }`}
-                  onClick={() => {
-                    if (app.path) navigate(app.path);
-                    setOpen(false);
-                  }}
-                >
-                  <Icon className={`w-6 h-6 ${app.color}`} />
-                  <span className="text-xs text-foreground leading-tight truncate w-full">{app.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+    <>
+      <div className="fixed top-2.5 right-4 z-[51]">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-10 w-10 bg-card border shadow-sm hover:bg-accent">
+              <LayoutGrid className="w-5 h-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 p-2 max-h-[70vh] overflow-y-auto">
+            <Input
+              ref={searchRef}
+              placeholder="Search apps..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="mb-2 h-8 text-sm"
+            />
+            <div className="grid grid-cols-3 gap-1">
+              {visibleApps.map(renderTile)}
+              {showLogout && renderTile(logoutApp)}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to log out?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout}>Logout</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
