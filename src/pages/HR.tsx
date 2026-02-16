@@ -55,6 +55,7 @@ import {
   Briefcase,
   ClipboardCheck,
   Star,
+  Pencil,
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
@@ -142,6 +143,20 @@ const HR = () => {
   const [employeePosition, setEmployeePosition] = useState<Position | null>(null);
   const [viewingPosition, setViewingPosition] = useState<Position | null>(null);
   const [viewingPositionEmployee, setViewingPositionEmployee] = useState<Employee | null>(null);
+  const [editingPosition, setEditingPosition] = useState<Position | null>(null);
+  const [editPositionForm, setEditPositionForm] = useState({
+    name: '',
+    team_id: '',
+    open_date: '',
+    wage: '',
+    is_hourly: false,
+    show_wage: false,
+    vacancies: '1',
+    status: 'open',
+    location_ids: [] as string[],
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editLocationSearch, setEditLocationSearch] = useState('');
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -265,6 +280,57 @@ const HR = () => {
     toast.success('Position created');
     setShowPositionDialog(false);
     setPositionForm({ name: '', team_id: '', open_date: format(new Date(), 'yyyy-MM-dd'), wage: '', is_hourly: false, show_wage: false, vacancies: '1', location_ids: [] });
+    fetchPositions();
+  };
+
+  const openEditPosition = (position: Position) => {
+    setEditingPosition(position);
+    setEditPositionForm({
+      name: position.name,
+      team_id: position.team_id,
+      open_date: position.open_date,
+      wage: position.wage != null ? String(position.wage) : '',
+      is_hourly: position.is_hourly,
+      show_wage: position.show_wage,
+      vacancies: String(position.vacancies ?? 1),
+      status: position.status,
+      location_ids: position.position_locations?.map(pl => pl.location_id) || [],
+    });
+    setEditLocationSearch('');
+  };
+
+  const handleEditPosition = async () => {
+    if (!editingPosition || !editPositionForm.name || !editPositionForm.team_id) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+    setEditSaving(true);
+    const { error } = await supabase.from('positions').update({
+      name: editPositionForm.name,
+      team_id: editPositionForm.team_id,
+      open_date: editPositionForm.open_date,
+      wage: editPositionForm.wage ? parseFloat(editPositionForm.wage) : null,
+      is_hourly: editPositionForm.is_hourly,
+      show_wage: editPositionForm.show_wage,
+      vacancies: editPositionForm.vacancies ? parseInt(editPositionForm.vacancies) : 1,
+      status: editPositionForm.status,
+    }).eq('id', editingPosition.id);
+    if (error) {
+      toast.error('Failed to update position');
+      setEditSaving(false);
+      return;
+    }
+    // Update location assignments
+    await supabase.from('position_locations').delete().eq('position_id', editingPosition.id);
+    if (editPositionForm.location_ids.length > 0) {
+      await supabase.from('position_locations').insert(
+        editPositionForm.location_ids.map(lid => ({ position_id: editingPosition.id, location_id: lid }))
+      );
+    }
+    setEditSaving(false);
+    toast.success('Position updated');
+    setEditingPosition(null);
+    setViewingPosition(null);
     fetchPositions();
   };
 
@@ -856,16 +922,6 @@ const HR = () => {
           </DialogBody>
         </DialogContent>
       </Dialog>
-            <div className="space-y-2">
-              <Label htmlFor="position-vacancies">Vacancies</Label>
-              <Input
-                id="position-vacancies"
-                type="number"
-                min="1"
-                value={positionForm.vacancies}
-                onChange={(e) => setPositionForm(f => ({ ...f, vacancies: e.target.value }))}
-              />
-            </div>
       {/* Create Position Dialog */}
       <Dialog open={showPositionDialog} onOpenChange={setShowPositionDialog}>
         <DialogContent className="max-w-md">
@@ -975,6 +1031,16 @@ const HR = () => {
                 </div>
               </div>
             )}
+            <div className="space-y-2">
+              <Label htmlFor="position-vacancies">Vacancies</Label>
+              <Input
+                id="position-vacancies"
+                type="number"
+                min="1"
+                value={positionForm.vacancies}
+                onChange={(e) => setPositionForm(f => ({ ...f, vacancies: e.target.value }))}
+              />
+            </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="position-show-wage">Show wage for position</Label>
               <Switch
@@ -995,13 +1061,22 @@ const HR = () => {
       {/* View Position Dialog */}
       <Dialog open={!!viewingPosition} onOpenChange={(open) => { if (!open) setViewingPosition(null); }}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isViewMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-lg max-h-[85vh]'}`}>
-          <button
-            type="button"
-            onClick={() => setIsViewMaximized(!isViewMaximized)}
-            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-          >
-            {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
+          <div className="absolute right-12 top-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { if (viewingPosition) openEditPosition(viewingPosition); }}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsViewMaximized(!isViewMaximized)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          </div>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
@@ -1081,6 +1156,158 @@ const HR = () => {
               </div>
             )}
           </DialogBody>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Position Dialog */}
+      <Dialog open={!!editingPosition} onOpenChange={(open) => { if (!open) setEditingPosition(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Position</DialogTitle>
+            <DialogDescription>Update position details.</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-position-name">Position Name *</Label>
+              <Input
+                id="edit-position-name"
+                value={editPositionForm.name}
+                onChange={(e) => setEditPositionForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-position-team">Team *</Label>
+              <Select
+                value={editPositionForm.team_id}
+                onValueChange={(v) => setEditPositionForm(f => ({ ...f, team_id: v }))}
+              >
+                <SelectTrigger id="edit-position-team">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-position-status">Status</Label>
+              <Select
+                value={editPositionForm.status}
+                onValueChange={(v) => setEditPositionForm(f => ({ ...f, status: v }))}
+              >
+                <SelectTrigger id="edit-position-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="filled">Filled</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-position-date">Open Date</Label>
+              <Input
+                id="edit-position-date"
+                type="date"
+                value={editPositionForm.open_date}
+                onChange={(e) => setEditPositionForm(f => ({ ...f, open_date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-position-wage">Wage</Label>
+              <Input
+                id="edit-position-wage"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={editPositionForm.wage}
+                onChange={(e) => setEditPositionForm(f => ({ ...f, wage: e.target.value }))}
+              />
+              {editPositionForm.is_hourly && editPositionForm.wage && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ ${(parseFloat(editPositionForm.wage) * 2080).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/yr
+                </p>
+              )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="edit-position-is-hourly"
+                  checked={editPositionForm.is_hourly}
+                  onCheckedChange={(checked) => setEditPositionForm(f => ({ ...f, is_hourly: checked }))}
+                />
+                <Label htmlFor="edit-position-is-hourly" className="cursor-pointer">
+                  Hourly
+                </Label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-position-vacancies">Vacancies</Label>
+              <Input
+                id="edit-position-vacancies"
+                type="number"
+                min="1"
+                value={editPositionForm.vacancies}
+                onChange={(e) => setEditPositionForm(f => ({ ...f, vacancies: e.target.value }))}
+              />
+            </div>
+            {locations.length > 0 && (
+              <div className="space-y-2">
+                <Label>Locations (optional)</Label>
+                <div className="border rounded-md overflow-hidden">
+                  <div className="px-2 py-1.5 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Search locations..."
+                        className="h-7 pl-7 text-sm"
+                        value={editLocationSearch}
+                        onChange={(e) => setEditLocationSearch(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto p-2 space-y-1">
+                    {locations
+                      .filter(loc => !editLocationSearch.trim() || loc.name.toLowerCase().includes(editLocationSearch.toLowerCase()))
+                      .map((loc) => (
+                        <label key={loc.id} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
+                          <Checkbox
+                            checked={editPositionForm.location_ids.includes(loc.id)}
+                            onCheckedChange={(checked) => {
+                              setEditPositionForm(f => ({
+                                ...f,
+                                location_ids: checked
+                                  ? [...f.location_ids, loc.id]
+                                  : f.location_ids.filter(id => id !== loc.id),
+                              }));
+                            }}
+                          />
+                          {loc.name}
+                        </label>
+                      ))}
+                    {locations.filter(loc => !editLocationSearch.trim() || loc.name.toLowerCase().includes(editLocationSearch.toLowerCase())).length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No locations found</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="edit-position-show-wage">Show wage for position</Label>
+              <Switch
+                id="edit-position-show-wage"
+                checked={editPositionForm.show_wage}
+                onCheckedChange={(v) => setEditPositionForm(f => ({ ...f, show_wage: v }))}
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={handleEditPosition} disabled={editSaving}>
+              {editSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
