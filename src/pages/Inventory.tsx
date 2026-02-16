@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -86,14 +87,14 @@ const InventoryTable = ({
   isColumnVisible,
   onRowClick,
   selectedIds,
-  onToggleSelect,
+  onSelectionChange,
   onToggleSelectAll,
 }: {
   inventory: InventoryItem[];
   isColumnVisible: (key: string) => boolean;
   onRowClick: (item: InventoryItem) => void;
   selectedIds: Set<string>;
-  onToggleSelect: (id: string) => void;
+  onSelectionChange: (next: Set<string>) => void;
   onToggleSelectAll: (checked: boolean) => void;
 }) => {
   const {
@@ -105,8 +106,11 @@ const InventoryTable = ({
     sortedAndFilteredData,
   } = useTableSort(inventory, 'product.product_id', 'asc');
 
+  const orderedIds = useMemo(() => sortedAndFilteredData.map(i => i.id), [sortedAndFilteredData]);
+  const { handleRowSelect } = useShiftSelect(orderedIds, selectedIds, onSelectionChange);
+
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const visibleColumnCount = INVENTORY_COLUMNS.filter(c => isColumnVisible(c.key)).length + 1; // +1 for checkbox
+  const visibleColumnCount = INVENTORY_COLUMNS.filter(c => isColumnVisible(c.key)).length + 1;
   const allFilteredSelected = sortedAndFilteredData.length > 0 && sortedAndFilteredData.every(i => selectedIds.has(i.id));
 
   return (
@@ -271,10 +275,13 @@ const InventoryTable = ({
                 
                 return (
                   <TableRow key={item.id} className="cursor-pointer" onClick={() => onRowClick(item)}>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell onClick={(e) => {
+                      e.stopPropagation();
+                      handleRowSelect(item.id, !selectedIds.has(item.id), e.shiftKey);
+                    }}>
                       <Checkbox
                         checked={selectedIds.has(item.id)}
-                        onCheckedChange={() => onToggleSelect(item.id)}
+                        onCheckedChange={() => {}}
                         aria-label={`Select ${item.product?.name}`}
                       />
                     </TableCell>
@@ -617,14 +624,7 @@ const Inventory = () => {
                   setIsDetailOpen(true);
                 }}
                 selectedIds={selectedIds}
-                onToggleSelect={(id) => {
-                  setSelectedIds(prev => {
-                    const next = new Set(prev);
-                    if (next.has(id)) next.delete(id);
-                    else next.add(id);
-                    return next;
-                  });
-                }}
+                onSelectionChange={setSelectedIds}
                 onToggleSelectAll={(checked) => {
                   if (checked) {
                     setSelectedIds(new Set(inventory.map(i => i.id)));

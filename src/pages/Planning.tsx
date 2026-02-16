@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -779,15 +780,8 @@ const Planning = () => {
     }
   };
 
-  const handleToggleItem = (productId: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(productId)) {
-      newSelected.delete(productId);
-    } else {
-      newSelected.add(productId);
-    }
-    setSelectedItems(newSelected);
-  };
+  const shortfallOrderedIds = useMemo(() => sortedShortfalls.map(s => s.productId), [sortedShortfalls]);
+  const { handleRowSelect: handleShortfallShiftSelect } = useShiftSelect(shortfallOrderedIds, selectedItems, setSelectedItems);
 
   const handleSelectAll = () => {
     if (selectedItems.size === shortfalls.length) {
@@ -1250,10 +1244,12 @@ const Planning = () => {
                 <TableBody>
                   {sortedShortfalls.map((item) => (
                     <TableRow key={item.productId}>
-                      <TableCell>
+                      <TableCell onClick={(e) => {
+                        handleShortfallShiftSelect(item.productId, !selectedItems.has(item.productId), e.shiftKey);
+                      }}>
                         <Checkbox
                           checked={selectedItems.has(item.productId)}
-                          onCheckedChange={() => handleToggleItem(item.productId)}
+                          onCheckedChange={() => {}}
                         />
                       </TableCell>
                       <TableCell>

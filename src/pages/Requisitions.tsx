@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
 import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
@@ -1841,15 +1842,8 @@ function RequisitionsTable({
     }
   };
 
-  const handleSelectRow = (id: string, checked: boolean) => {
-    const newIds = new Set(selectedIds);
-    if (checked) {
-      newIds.add(id);
-    } else {
-      newIds.delete(id);
-    }
-    onSelectionChange(newIds);
-  };
+  const orderedIds = useMemo(() => sortedAndFilteredData.map(r => r.id), [sortedAndFilteredData]);
+  const { handleRowSelect } = useShiftSelect(orderedIds, selectedIds, onSelectionChange);
 
   const hasFilters = Object.values(filters).some((v) => v);
 
@@ -1969,10 +1963,13 @@ function RequisitionsTable({
           <TableBody>
             {sortedAndFilteredData.map((req) => (
               <TableRow key={req.id} data-state={selectedIds.has(req.id) ? 'selected' : undefined}>
-                <TableCell>
+                <TableCell onClick={(e) => {
+                  handleRowSelect(req.id, !selectedIds.has(req.id), e.shiftKey);
+                  e.stopPropagation();
+                }}>
                   <Checkbox
                     checked={selectedIds.has(req.id)}
-                    onCheckedChange={(checked) => handleSelectRow(req.id, !!checked)}
+                    onCheckedChange={() => {}}
                     aria-label={`Select ${req.requisition_id}`}
                   />
                 </TableCell>

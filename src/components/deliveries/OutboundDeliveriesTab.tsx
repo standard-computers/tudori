@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { useTableSort } from '@/hooks/use-table-sort';
@@ -117,6 +118,9 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     setFilter,
     sortedAndFilteredData,
   } = useTableSort(outboundDeliveries, 'delivery_number', 'desc');
+
+  const outboundOrderedIds = useMemo(() => sortedAndFilteredData.map(d => d.id), [sortedAndFilteredData]);
+  const { handleRowSelect: handleOutboundShiftSelect } = useShiftSelect(outboundOrderedIds, selectedIds, setSelectedIds);
 
   const fetchOutboundDeliveries = useCallback(async () => {
     const { data, error } = await supabase
@@ -389,14 +393,12 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
           <TableBody>
             {sortedAndFilteredData.map((delivery) => (
               <TableRow key={delivery.id}>
-                <TableCell>
+                <TableCell onClick={(e) => {
+                  handleOutboundShiftSelect(delivery.id, !selectedIds.has(delivery.id), e.shiftKey);
+                }}>
                   <Checkbox
                     checked={selectedIds.has(delivery.id)}
-                    onCheckedChange={(checked) => {
-                      const next = new Set(selectedIds);
-                      if (checked) next.add(delivery.id); else next.delete(delivery.id);
-                      setSelectedIds(next);
-                    }}
+                    onCheckedChange={() => {}}
                   />
                 </TableCell>
                 <TableCell className="font-mono text-sm">

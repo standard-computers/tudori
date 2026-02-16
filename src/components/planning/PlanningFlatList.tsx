@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -382,15 +383,8 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
     }
   };
 
-  const handleToggleItem = (key: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(key)) {
-      newSelected.delete(key);
-    } else {
-      newSelected.add(key);
-    }
-    setSelectedItems(newSelected);
-  };
+  const flatOrderedIds = useMemo(() => sortedShortfalls.map(s => s.key), [sortedShortfalls]);
+  const { handleRowSelect: handleFlatShiftSelect } = useShiftSelect(flatOrderedIds, selectedItems, setSelectedItems);
 
   const handleSelectAll = () => {
     if (selectedItems.size === sortedShortfalls.length) {
@@ -653,10 +647,12 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
           <TableBody>
             {sortedShortfalls.map((item) => (
               <TableRow key={item.key}>
-                <TableCell>
+                <TableCell onClick={(e) => {
+                  handleFlatShiftSelect(item.key, !selectedItems.has(item.key), e.shiftKey);
+                }}>
                   <Checkbox
                     checked={selectedItems.has(item.key)}
-                    onCheckedChange={() => handleToggleItem(item.key)}
+                    onCheckedChange={() => {}}
                   />
                 </TableCell>
                 <TableCell>
