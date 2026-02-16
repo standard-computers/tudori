@@ -37,6 +37,7 @@ import {
   HelpCircle,
   Heart,
   Key,
+  LogOut,
   LucideIcon
 } from 'lucide-react';
 
@@ -88,4 +89,5 @@ export const defaultApps: AppTile[] = [
   { name: 'Transportation', icon: Truck, color: 'text-amber-500', description: 'Carriers & logistics', path: '/transportation' },
   { name: 'Developers', icon: Key, color: 'text-amber-500', description: 'API keys & webhooks', path: '/developers' },
   { name: 'Help', icon: HelpCircle, color: 'text-blue-500', description: 'Documentation & guides', path: '/help' },
+  { name: 'Logout', icon: LogOut, color: 'text-destructive', description: 'Sign out of your account', path: null },
 ];

@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   DndContext,
   closestCenter,
@@ -49,6 +50,7 @@ const Dashboard = () => {
   const [apps, setApps] = useState<AppTile[]>([]);
   const [hiddenTiles, setHiddenTiles] = useState<Set<string>>(new Set());
   const [openAppsInNewTab, setOpenAppsInNewTab] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   
   // Track whether profile/company check is still running
   const [profileChecked, setProfileChecked] = useState(false);
@@ -285,10 +287,11 @@ const Dashboard = () => {
 
         {/* Apps grid with drag and drop */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={apps.map((app) => app.name)} strategy={rectSortingStrategy}>
+          <SortableContext items={apps.filter(a => a.name !== 'Logout').map((app) => app.name)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {apps
                   .filter((app) => {
+                    if (app.name === 'Logout') return false;
                     if (hiddenTiles.has(app.name)) return false;
                     const code = APP_NAME_TO_CODE[app.name];
                     if (code && !hasAccess(code)) return false;
@@ -307,9 +310,39 @@ const Dashboard = () => {
                       openInNewTab={openAppsInNewTab}
                     />
                   ))}
+                {(() => {
+                  const logoutApp = defaultApps.find(a => a.name === 'Logout');
+                  if (!logoutApp) return null;
+                  return (
+                    <DraggableTile
+                      key="Logout"
+                      id="Logout"
+                      name={logoutApp.name}
+                      icon={logoutApp.icon}
+                      color={logoutApp.color}
+                      description={logoutApp.description}
+                      path={null}
+                      index={999}
+                      onCustomClick={() => setLogoutConfirmOpen(true)}
+                    />
+                  );
+                })()}
               </div>
           </SortableContext>
         </DndContext>
+
+        <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out</AlertDialogTitle>
+              <AlertDialogDescription>Are you sure you want to log out?</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={signOut}>Logout</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
