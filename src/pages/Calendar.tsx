@@ -386,10 +386,9 @@ const CalendarPage = () => {
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { fetchEvents(); fetchTasks(); }}>
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button size="sm" onClick={() => openNewEvent()}>
-              <Plus className="mr-1 h-4 w-4" />
-              New Event
-              <Kbd className="ml-2">N</Kbd>
+            <Button size="icon" onClick={() => openNewEvent()} className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
           </div>
         </div>

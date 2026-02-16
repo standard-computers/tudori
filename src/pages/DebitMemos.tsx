@@ -382,10 +382,9 @@ const DebitMemos = () => {
             <Plus className="h-6 w-6 text-red-500" />
             <h1 className="text-2xl font-bold">Debit Memos</h1>
           </div>
-          <Button onClick={handleCreateClick}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Debit Memo
-            <Kbd className="ml-2">N</Kbd>
+          <Button onClick={handleCreateClick} size="icon" className="relative">
+            <Plus className="h-4 w-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
           </Button>
         </div>
       </div>

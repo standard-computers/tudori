@@ -623,10 +623,9 @@ const GoodsIssues = () => {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Issue
-                  <Kbd>N</Kbd>
+                <Button onClick={handleOpenDialog} size="icon" className="relative">
+                  <Plus className="w-4 h-4" />
+                  <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                 </Button>
               </DialogTrigger>
               <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[550px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>

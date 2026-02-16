@@ -262,10 +262,9 @@ const Messages = () => {
             </Button>
             <h1 className="text-lg font-semibold">Messages</h1>
           </div>
-          <Button size="sm" onClick={() => setShowNewDialog(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            New
-            <Kbd>N</Kbd>
+          <Button size="icon" onClick={() => setShowNewDialog(true)} className="relative">
+            <Plus className="h-4 w-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
           </Button>
         </div>
       </header>

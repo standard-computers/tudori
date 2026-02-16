@@ -1191,10 +1191,9 @@ const Requisitions = () => {
                   Convert ({selectedConvertibleReqs.length})
                 </Button>
               )}
-              <Button onClick={handleRunClick} variant="default">
-                <Play className="w-4 h-4 mr-2" />
-                Run
-                <Kbd>N</Kbd>
+              <Button onClick={handleRunClick} variant="default" size="icon" className="relative">
+                <Play className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
               </Button>
             </div>
           </div>

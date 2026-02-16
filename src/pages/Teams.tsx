@@ -414,10 +414,9 @@ const Teams = () => {
               <h1 className="text-xl font-semibold">Teams</h1>
             </div>
           </div>
-          <Button onClick={handleOpenDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Team
-            <Kbd className="ml-2">N</Kbd>
+          <Button onClick={handleOpenDialog} size="icon" className="relative">
+            <Plus className="h-4 w-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
           </Button>
         </div>
       </header>

@@ -2416,10 +2416,9 @@ const Orders = () => {
                 onExport={handleExportOrders}
                 entityName="Purchase Orders"
               />
-              <Button onClick={handleCreateClick} variant="default">
-                <Plus className="w-4 h-4 mr-2" />
-                Purchase Order
-                <Kbd>N</Kbd>
+              <Button onClick={handleCreateClick} variant="default" size="icon" className="relative">
+                <Plus className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
               </Button>
             </div>
           </div>
