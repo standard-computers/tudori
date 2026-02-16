@@ -2758,7 +2758,7 @@ const Products = () => {
                       </Tabs>
                     </div>
 
-                    <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
+                    <DialogFooter className="shrink-0 px-6 sticky bottom-0 pt-4">
                       <Button type="submit" disabled={isProductIdInUse || !!isSkuInUse}>
                         {isEditing ? "Update" : "Create"}
                         <Kbd className="ml-2">⌘S</Kbd>
