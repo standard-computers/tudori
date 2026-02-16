@@ -187,6 +187,8 @@ export const entities: EntityConfig[] = [
     ],
     relationships: [
       { targetEntity: "Accounts", foreignKey: "account_id", targetKey: "id", label: "Account" },
+      { targetEntity: "Purchase Orders", foreignKey: "purchase_order_id", targetKey: "id", label: "Purchase Order" },
+      { targetEntity: "Sales Orders", foreignKey: "sales_order_id", targetKey: "id", label: "Sales Order" },
     ],
   },
   {
