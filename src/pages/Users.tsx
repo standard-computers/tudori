@@ -28,6 +28,7 @@ interface TeamMember {
   first_name: string;
   last_name: string;
   email?: string;
+  profile_id?: string;
   role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
 }
 
@@ -219,7 +220,7 @@ const Users = () => {
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, user_id, first_name, last_name, email')
+      .select('id, user_id, first_name, last_name, email, profile_id')
       .eq('company_id', profileData.company_id);
 
     const { data: roles } = await supabase
@@ -585,7 +586,7 @@ const Users = () => {
                         }
                       }}
                     >
-                      <TableCell className="font-mono text-xs text-muted-foreground">{member.id}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{member.profile_id || '—'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
