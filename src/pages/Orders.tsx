@@ -2170,7 +2170,7 @@ const Orders = () => {
 
           const poListLabel = poNumbers.join(", ");
           // Link the outbound delivery to the first PO in the group (for reference)
-          const { error: outboundError } = await supabase
+          const { data: outboundData, error: outboundError } = await supabase
             .from("outbound_deliveries" as any)
             .insert({
               company_id: companyId,
@@ -2184,8 +2184,19 @@ const Orders = () => {
             .select("id")
             .single();
 
-          if (!outboundError) {
+          if (!outboundError && outboundData) {
             sharedDeliveryCreated = true;
+
+            // Insert outbound delivery items
+            if (allGroupItems.length > 0) {
+              const itemsToInsert = allGroupItems.map((item) => ({
+                outbound_delivery_id: (outboundData as any).id,
+                product_id: item.product_id,
+                quantity: item.quantity,
+              }));
+              await supabase.from("outbound_delivery_items" as any).insert(itemsToInsert);
+            }
+
             toast.success(`Outbound Delivery ${deliveryNumber} created for ${groupOrderIds.length} POs (${allGroupItems.length} items)`);
           } else {
             console.error("Failed to create shared outbound delivery:", outboundError);
