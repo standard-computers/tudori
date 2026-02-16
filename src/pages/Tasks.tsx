@@ -537,7 +537,7 @@ const Tasks = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-card">
         <div className="px-4">
-          <div className="flex items-center justify-between h-14">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <NavLink to="/dashboard">Dashboard</NavLink>
               <span className="text-muted-foreground">/</span>
@@ -555,9 +555,8 @@ const Tasks = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={() => setIsPullDialogOpen(true)}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Pull Deliveries
+              <Button variant="outline" size="icon" onClick={() => setIsPullDialogOpen(true)} title="Pull Deliveries">
+                <RefreshCw className="w-4 h-4" />
               </Button>
               <Button onClick={() => handleAddTask()} size="icon" className="relative">
                 <Plus className="w-4 h-4" />
