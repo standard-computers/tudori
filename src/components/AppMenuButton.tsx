@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
 import { LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -20,6 +21,8 @@ export function AppMenuButton() {
   const showAppMenu = useAppMenuPreference();
   const [open, setOpen] = useState(false);
   const [apps, setApps] = useState<AppTile[]>(defaultApps);
+  const [search, setSearch] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
   const [hiddenTiles, setHiddenTiles] = useState<Set<string>>(new Set());
   const [companyId, setCompanyId] = useState<string | undefined>();
   const [loaded, setLoaded] = useState(false);
@@ -75,12 +78,22 @@ export function AppMenuButton() {
     }
   }, [isVisible]);
 
+  // Focus search input & clear search when popover opens/closes
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => searchRef.current?.focus(), 50);
+    } else {
+      setSearch('');
+    }
+  }, [open]);
+
   if (!isVisible) return null;
 
   const visibleApps = apps.filter(app => {
     if (hiddenTiles.has(app.name)) return false;
     const code = APP_NAME_TO_CODE[app.name];
     if (code && !hasAccess(code)) return false;
+    if (search && !app.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -93,6 +106,13 @@ export function AppMenuButton() {
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72 p-2 max-h-[70vh] overflow-y-auto">
+          <Input
+            ref={searchRef}
+            placeholder="Search apps..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="mb-2 h-8 text-sm"
+          />
           <div className="grid grid-cols-3 gap-1">
             {visibleApps.map(app => {
               const Icon = app.icon;
