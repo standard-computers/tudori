@@ -61,6 +61,20 @@ export function AppMenuButton() {
     return () => document.documentElement.removeAttribute('data-app-menu');
   }, [isVisible]);
 
+  // CTRL+. shortcut to toggle the app menu
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+        e.preventDefault();
+        setOpen(prev => !prev);
+      }
+    };
+    if (isVisible) {
+      window.addEventListener('keydown', handler);
+      return () => window.removeEventListener('keydown', handler);
+    }
+  }, [isVisible]);
+
   if (!isVisible) return null;
 
   const visibleApps = apps.filter(app => {
