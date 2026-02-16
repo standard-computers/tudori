@@ -18,6 +18,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   DndContext,
   DragEndEvent,
   DragOverlay,
@@ -43,12 +53,15 @@ import {
   List,
   Trash2,
   FolderOpen,
+  FolderPlus,
+  Folder,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { cn } from "@/lib/utils";
 import { entities, canReachEntity } from "@/components/analytics/entities";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
-import { ReportTab, ReportField, SavedReport, FieldFilter, EntityField, AggregateFunction, CalculatedColumn } from "@/components/analytics/types";
+import { ReportTab, ReportField, SavedReport, FieldFilter, EntityField, AggregateFunction, CalculatedColumn, ReportFolder } from "@/components/analytics/types";
 import { DraggableField } from "@/components/analytics/DraggableField";
 import { DraggableEntity } from "@/components/analytics/DraggableEntity";
 import { ReportBuilderDropZone } from "@/components/analytics/ReportBuilderDropZone";
@@ -65,6 +78,8 @@ const Analytics = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+  const [folders, setFolders] = useState<ReportFolder[]>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -129,15 +144,24 @@ const Analytics = () => {
   };
 
   const loadSavedReports = () => {
-    const stored = localStorage.getItem(`analytics_reports_v3_${user!.id}`);
-    if (stored) {
-      setSavedReports(JSON.parse(stored));
+    const storedReports = localStorage.getItem(`analytics_reports_v3_${user!.id}`);
+    if (storedReports) {
+      setSavedReports(JSON.parse(storedReports));
+    }
+    const storedFolders = localStorage.getItem(`analytics_folders_v3_${user!.id}`);
+    if (storedFolders) {
+      setFolders(JSON.parse(storedFolders));
     }
   };
 
   const saveReportsToStorage = (reports: SavedReport[]) => {
     localStorage.setItem(`analytics_reports_v3_${user!.id}`, JSON.stringify(reports));
     setSavedReports(reports);
+  };
+
+  const saveFoldersToStorage = (newFolders: ReportFolder[]) => {
+    localStorage.setItem(`analytics_folders_v3_${user!.id}`, JSON.stringify(newFolders));
+    setFolders(newFolders);
   };
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -209,6 +233,43 @@ const Analytics = () => {
     saveReportsToStorage(updated);
     handleCloseTab(reportId);
     toast.success("Report deleted");
+  };
+
+  const handleCreateFolder = () => {
+    const name = prompt("Enter folder name:");
+    if (!name) return;
+    const newFolder: ReportFolder = {
+      id: crypto.randomUUID(),
+      name,
+      createdAt: new Date().toISOString(),
+    };
+    saveFoldersToStorage([...folders, newFolder]);
+    toast.success("Folder created");
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    if (!confirm("Delete folder? Reports inside will be moved to root.")) return;
+    
+    // Move reports to root
+    const updatedReports = savedReports.map(r => 
+      r.folderId === folderId ? { ...r, folderId: undefined } : r
+    );
+    saveReportsToStorage(updatedReports);
+    
+    // Delete folder
+    const updatedFolders = folders.filter(f => f.id !== folderId);
+    saveFoldersToStorage(updatedFolders);
+    
+    if (currentFolderId === folderId) setCurrentFolderId(null);
+    toast.success("Folder deleted");
+  };
+
+  const moveReportToFolder = (reportId: string, folderId?: string) => {
+    const updatedReports = savedReports.map(r => 
+      r.id === reportId ? { ...r, folderId } : r
+    );
+    saveReportsToStorage(updatedReports);
+    toast.success(folderId ? "Report moved to folder" : "Report removed from folder");
   };
 
   const updateActiveTab = (updates: Partial<ReportTab>) => {
@@ -548,33 +609,57 @@ const Analytics = () => {
             <div className="px-4 border-t flex items-center gap-1">
               {/* Open Report Popover */}
               {savedReports.length > 0 && (
-                <Popover>
-                  <PopoverTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                       <FolderOpen className="h-4 w-4" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-64 p-0">
-                    <div className="p-2 border-b">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open Report</p>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                      Open Report
                     </div>
-                    <ScrollArea className="max-h-64">
-                      <div className="p-1">
-                        {savedReports.map((report) => (
-                          <button
-                            key={report.id}
-                            className="flex items-center gap-2 w-full px-3 py-2 text-left rounded-md hover:bg-accent/50 text-sm"
-                            onClick={() => handleSelectReport(report)}
-                          >
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="truncate">{report.name}</span>
-                            <span className="text-xs text-muted-foreground ml-auto shrink-0">{report.fields.length}f</span>
-                          </button>
-                        ))}
-                      </div>
+                    <DropdownMenuSeparator />
+                    <ScrollArea className="h-[300px]">
+                      {/* Folders */}
+                      {folders.map((folder) => {
+                        const folderReports = savedReports.filter(r => r.folderId === folder.id);
+                        return (
+                          <DropdownMenuSub key={folder.id}>
+                            <DropdownMenuSubTrigger className="gap-2">
+                              <Folder className="h-4 w-4 text-primary" />
+                              <span>{folder.name}</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="w-56">
+                              {folderReports.length === 0 ? (
+                                <div className="px-2 py-1.5 text-xs text-muted-foreground">Empty folder</div>
+                              ) : (
+                                folderReports.map(report => (
+                                  <DropdownMenuItem key={report.id} onClick={() => handleSelectReport(report)} className="gap-2">
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <span>{report.name}</span>
+                                  </DropdownMenuItem>
+                                ))
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        );
+                      })}
+                      
+                      {/* Root Reports */}
+                      {savedReports.filter(r => !r.folderId).map((report) => (
+                        <DropdownMenuItem key={report.id} onClick={() => handleSelectReport(report)} className="gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span>{report.name}</span>
+                        </DropdownMenuItem>
+                      ))}
+
+                      {savedReports.length === 0 && folders.length === 0 && (
+                         <div className="px-2 py-2 text-sm text-muted-foreground text-center">No saved reports</div>
+                      )}
                     </ScrollArea>
-                  </PopoverContent>
-                </Popover>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               <Tabs value={activeTabId || undefined} onValueChange={setActiveTabId} className="flex-1 min-w-0">
                 <TabsList className="h-10 bg-transparent border-0 p-0 gap-0">
@@ -835,52 +920,132 @@ const Analytics = () => {
             ) : (
               /* Home / Saved Reports View */
               <div className="flex-1 overflow-auto p-6">
-                {savedReports.length > 0 ? (
+                {savedReports.length > 0 || folders.length > 0 ? (
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold">Saved Reports</h2>
-                      <div className="flex items-center gap-1 border rounded-md p-0.5">
-                        <Button
-                          variant={reportsViewMode === "tiles" ? "secondary" : "ghost"}
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setReportsViewMode("tiles")}
-                        >
-                          <LayoutGrid className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant={reportsViewMode === "list" ? "secondary" : "ghost"}
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setReportsViewMode("list")}
-                        >
-                          <List className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center gap-2">
+                        {currentFolderId && (
+                          <Button variant="ghost" size="icon" onClick={() => setCurrentFolderId(null)} className="h-8 w-8">
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                          {currentFolderId ? (
+                            <>
+                              <FolderOpen className="h-5 w-5 text-muted-foreground" />
+                              {folders.find(f => f.id === currentFolderId)?.name}
+                            </>
+                          ) : (
+                            "Saved Reports"
+                          )}
+                        </h2>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {!currentFolderId && (
+                          <Button variant="outline" size="sm" onClick={handleCreateFolder}>
+                            <FolderPlus className="h-4 w-4 mr-2" />
+                            New Folder
+                          </Button>
+                        )}
+                        <div className="flex items-center gap-1 border rounded-md p-0.5">
+                          <Button
+                            variant={reportsViewMode === "tiles" ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setReportsViewMode("tiles")}
+                          >
+                            <LayoutGrid className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={reportsViewMode === "list" ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setReportsViewMode("list")}
+                          >
+                            <List className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
                     {reportsViewMode === "tiles" ? (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                        {savedReports.map((report) => (
+                        {/* Folders (only at root) */}
+                        {!currentFolderId && folders.map((folder) => (
+                           <Card key={folder.id} 
+                                 className="cursor-pointer hover:border-primary/50 transition-colors group bg-muted/20 relative"
+                                 onClick={() => setCurrentFolderId(folder.id)}>
+                             <CardContent className="p-4 flex flex-col items-center text-center py-6">
+                               <Folder className="h-10 w-10 text-primary/80 mb-2 fill-primary/20" />
+                               <h3 className="text-sm font-medium truncate w-full">{folder.name}</h3>
+                               <p className="text-[10px] text-muted-foreground mt-1">
+                                 {savedReports.filter(r => r.folderId === folder.id).length} items
+                               </p>
+                               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => e.stopPropagation()}>
+                                        <MoreVertical className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}>
+                                        <Trash2 className="h-3 w-3 mr-2" /> Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                               </div>
+                             </CardContent>
+                           </Card>
+                        ))}
+
+                        {/* Reports */}
+                        {savedReports
+                          .filter(r => (currentFolderId ? r.folderId === currentFolderId : !r.folderId))
+                          .map((report) => (
                           <Card
                             key={report.id}
-                            className="cursor-pointer hover:border-primary/50 transition-colors group"
+                            className="cursor-pointer hover:border-primary/50 transition-colors group relative"
                             onClick={() => handleSelectReport(report)}
                           >
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-2">
                                 <FileText className="h-8 w-8 text-primary/60" />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 -mt-1 -mr-1"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteReport(report.id);
-                                  }}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100 -mt-1 -mr-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSelectReport(report); }}>
+                                      Open
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSub>
+                                      <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                      <DropdownMenuSubContent>
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveReportToFolder(report.id, undefined); }}>
+                                          <FolderOpen className="h-3 w-3 mr-2" /> Root
+                                        </DropdownMenuItem>
+                                        {folders.filter(f => f.id !== report.folderId).map(f => (
+                                          <DropdownMenuItem key={f.id} onClick={(e) => { e.stopPropagation(); moveReportToFolder(report.id, f.id); }}>
+                                            <Folder className="h-3 w-3 mr-2" /> {f.name}
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }} className="text-destructive focus:text-destructive">
+                                      <Trash2 className="h-3 w-3 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                               <h3 className="text-sm font-medium truncate">{report.name}</h3>
                               <div className="flex flex-wrap gap-1 mt-2">
@@ -904,7 +1069,35 @@ const Analytics = () => {
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        {savedReports.map((report) => (
+                        {/* Folders List */}
+                        {!currentFolderId && folders.map((folder) => (
+                           <div key={folder.id} 
+                                 className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent/50 group bg-muted/20"
+                                 onClick={() => setCurrentFolderId(folder.id)}>
+                               <Folder className="h-4 w-4 text-primary shrink-0" />
+                               <span className="text-sm font-medium flex-1 truncate">{folder.name}</span>
+                               <span className="text-xs text-muted-foreground mr-2">
+                                 {savedReports.filter(r => r.folderId === folder.id).length} items
+                               </span>
+                               <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+                                        <MoreVertical className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}>
+                                        <Trash2 className="h-3 w-3 mr-2" /> Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                               </DropdownMenu>
+                           </div>
+                        ))}
+
+                        {/* Reports List */}
+                        {savedReports
+                          .filter(r => (currentFolderId ? r.folderId === currentFolderId : !r.folderId))
+                          .map((report) => (
                           <div
                             key={report.id}
                             className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent/50 group"
@@ -925,17 +1118,41 @@ const Analytics = () => {
                               )}
                             </div>
                             <span className="text-xs text-muted-foreground">{report.fields.length} fields</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteReport(report.id);
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                            </Button>
+                            
+                            <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSelectReport(report); }}>
+                                      Open
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSub>
+                                      <DropdownMenuSubTrigger>Move to...</DropdownMenuSubTrigger>
+                                      <DropdownMenuSubContent>
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveReportToFolder(report.id, undefined); }}>
+                                          <FolderOpen className="h-3 w-3 mr-2" /> Root
+                                        </DropdownMenuItem>
+                                        {folders.filter(f => f.id !== report.folderId).map(f => (
+                                          <DropdownMenuItem key={f.id} onClick={(e) => { e.stopPropagation(); moveReportToFolder(report.id, f.id); }}>
+                                            <Folder className="h-3 w-3 mr-2" /> {f.name}
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteReport(report.id); }} className="text-destructive focus:text-destructive">
+                                      <Trash2 className="h-3 w-3 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         ))}
                       </div>
