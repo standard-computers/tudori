@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransaction } from "@/contexts/StatusBarContext";
@@ -80,6 +81,8 @@ const Analytics = () => {
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [folders, setFolders] = useState<ReportFolder[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
@@ -236,14 +239,15 @@ const Analytics = () => {
   };
 
   const handleCreateFolder = () => {
-    const name = prompt("Enter folder name:");
-    if (!name) return;
+    if (!newFolderName.trim()) return;
     const newFolder: ReportFolder = {
       id: crypto.randomUUID(),
-      name,
+      name: newFolderName.trim(),
       createdAt: new Date().toISOString(),
     };
     saveFoldersToStorage([...folders, newFolder]);
+    setNewFolderName("");
+    setNewFolderDialogOpen(false);
     toast.success("Folder created");
   };
 
@@ -943,7 +947,7 @@ const Analytics = () => {
                       
                       <div className="flex items-center gap-2">
                         {!currentFolderId && (
-                          <Button variant="outline" size="sm" onClick={handleCreateFolder}>
+                          <Button variant="outline" size="sm" onClick={() => setNewFolderDialogOpen(true)}>
                             <FolderPlus className="h-4 w-4 mr-2" />
                             New Folder
                           </Button>
@@ -1225,6 +1229,32 @@ const Analytics = () => {
         onOpenChange={setAutoMakeOpen}
         onReportCreated={handleAutoMakeReport}
       />
+      {/* New Folder Dialog */}
+      <Dialog open={newFolderDialogOpen} onOpenChange={(open) => { setNewFolderDialogOpen(open); if (!open) setNewFolderName(""); }}>
+        <DialogContent className="max-w-sm" draggable={false}>
+          <DialogHeader>
+            <DialogTitle>New Folder</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="space-y-2">
+              <Label htmlFor="folder-name">Folder Name</Label>
+              <Input
+                id="folder-name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                placeholder="Enter folder name"
+                autoFocus
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DndContext>
   );
 };
