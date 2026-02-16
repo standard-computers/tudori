@@ -61,6 +61,7 @@ interface ReceiveDeliveryDialogProps {
   purchaseOrderId: string | null;
   locationId: string;
   onReceived: () => void;
+  onFullyComplete?: () => void;
 }
 
 export const ReceiveDeliveryDialog = ({
@@ -71,6 +72,7 @@ export const ReceiveDeliveryDialog = ({
   purchaseOrderId,
   locationId,
   onReceived,
+  onFullyComplete,
 }: ReceiveDeliveryDialogProps) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -833,7 +835,12 @@ export const ReceiveDeliveryDialog = ({
 
     <ImportProgressDialog
       open={showProgress}
-      onOpenChange={setShowProgress}
+      onOpenChange={(open) => {
+        setShowProgress(open);
+        if (!open) {
+          onFullyComplete?.();
+        }
+      }}
       title={`Receiving Delivery ${deliveryDisplayId}`}
       totalRows={progressTotal}
       processedRows={progressProcessed}
