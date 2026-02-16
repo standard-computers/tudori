@@ -18,6 +18,7 @@ import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Load
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  import { designSystems, applyDesignSystem } from '@/config/design-systems';
 import { setMaximizePreferenceCache } from '@/hooks/use-maximize-preference';
+import { setAppMenuPreferenceCache } from '@/hooks/use-app-menu-preference';
 import { Maximize2 } from 'lucide-react';
 import {
   DndContext,
@@ -121,6 +122,7 @@ const UserSettings = () => {
   const [maximizeWindows, setMaximizeWindows] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null, company_id: null });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [showAppMenu, setShowAppMenu] = useState(true);
    const [designSystem, setDesignSystem] = useState('default');
 
   // Get transaction access for the user's company
@@ -188,7 +190,7 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows')
+       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows, show_app_menu')
       .eq('user_id', user!.id)
       .maybeSingle();
 
@@ -196,6 +198,8 @@ const UserSettings = () => {
     setOpenInNewTab(data?.open_apps_in_new_tab || false);
     setMaximizeWindows(data?.maximize_windows || false);
     setMaximizePreferenceCache(data?.maximize_windows || false);
+    setShowAppMenu(data?.show_app_menu ?? true);
+    setAppMenuPreferenceCache(data?.show_app_menu ?? true);
     
     // Apply saved theme
     if (data?.theme) {
@@ -301,6 +305,23 @@ const UserSettings = () => {
         .insert({ user_id: user.id, maximize_windows: checked });
     }
     
+    toast.success('Preference saved');
+  };
+
+  const handleShowAppMenuChange = async (checked: boolean) => {
+    setShowAppMenu(checked);
+    setAppMenuPreferenceCache(checked);
+    if (!user) return;
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('user_preferences').update({ show_app_menu: checked }).eq('user_id', user.id);
+    } else {
+      await supabase.from('user_preferences').insert({ user_id: user.id, show_app_menu: checked });
+    }
     toast.success('Preference saved');
   };
 
@@ -543,6 +564,31 @@ const UserSettings = () => {
                     id="maximize-windows"
                     checked={maximizeWindows}
                     onCheckedChange={handleMaximizeWindowsChange}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Navigation</CardTitle>
+                <CardDescription>
+                  Control navigation shortcuts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <LayoutGrid className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <Label htmlFor="show-app-menu" className="text-base font-medium">App Menu</Label>
+                      <p className="text-sm text-muted-foreground">Show app menu button in every page header</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="show-app-menu"
+                    checked={showAppMenu}
+                    onCheckedChange={handleShowAppMenuChange}
                   />
                 </div>
               </CardContent>

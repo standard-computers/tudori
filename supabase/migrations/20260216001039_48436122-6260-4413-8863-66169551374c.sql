@@ -1,0 +1,1 @@
+ALTER TABLE public.user_preferences ADD COLUMN show_app_menu boolean NOT NULL DEFAULT true;

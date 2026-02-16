@@ -12,6 +12,7 @@ import { CommandSearch } from "@/components/CommandSearch";
 import { GlobalSearchHandler } from "@/components/GlobalSearchHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ThemeSync } from "@/components/ThemeSync";
+import { AppMenuButton } from "@/components/AppMenuButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { usePageTitle } from "@/hooks/use-page-title";
 import Index from "./pages/Index";
@@ -73,6 +74,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <ThemeSync />
+            <AppMenuButton />
             <ScrollToTop />
             <PageTitle />
             <SearchProvider>
