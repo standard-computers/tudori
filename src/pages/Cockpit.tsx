@@ -3312,7 +3312,6 @@ const [areaFormData, setAreaFormData] = useState({
           open={isReceiveDialogOpen}
           onOpenChange={(open) => {
             setIsReceiveDialogOpen(open);
-            if (!open) setSelectedDelivery(null);
           }}
           deliveryId={selectedDelivery.id}
           deliveryDisplayId={selectedDelivery.delivery_id}
@@ -3321,6 +3320,8 @@ const [areaFormData, setAreaFormData] = useState({
           onReceived={() => {
             fetchPendingDeliveries();
             fetchInventory();
+          }}
+          onFullyComplete={() => {
             setSelectedDelivery(null);
           }}
         />
