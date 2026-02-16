@@ -36,7 +36,7 @@ import {
   TableHeader as ItemsTableHeader,
   TableRow as ItemsTableRow,
 } from '@/components/ui/table';
-import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck, SendHorizonal } from 'lucide-react';
+import { Eye, MoreHorizontal, Maximize2, Minimize2, Truck, SendHorizonal, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,6 +106,8 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inTransitConfirmOpen, setInTransitConfirmOpen] = useState(false);
   const [isBulkInTransit, setIsBulkInTransit] = useState(false);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const {
     sortConfig,
@@ -166,6 +168,40 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
     }).length;
   }, [selectedIds, outboundDeliveries]);
 
+  const bulkDeleteEligibleCount = useMemo(() => {
+    return Array.from(selectedIds).filter(id => {
+      const d = outboundDeliveries.find(del => del.id === id);
+      return d && (d.status === 'pending');
+    }).length;
+  }, [selectedIds, outboundDeliveries]);
+
+  const handleBulkDelete = async () => {
+    const eligibleIds = Array.from(selectedIds).filter(id => {
+      const d = outboundDeliveries.find(del => del.id === id);
+      return d && d.status === 'pending';
+    });
+    if (eligibleIds.length === 0) return;
+    setIsBulkDeleting(true);
+    // Delete items first, then deliveries
+    await supabase
+      .from('outbound_delivery_items' as any)
+      .delete()
+      .in('outbound_delivery_id', eligibleIds);
+    const { error } = await supabase
+      .from('outbound_deliveries')
+      .delete()
+      .in('id', eligibleIds);
+    if (error) {
+      toast.error('Failed to delete deliveries');
+    } else {
+      toast.success(`${eligibleIds.length} deliver${eligibleIds.length === 1 ? 'y' : 'ies'} deleted`);
+      setSelectedIds(new Set());
+      fetchOutboundDeliveries();
+    }
+    setIsBulkDeleting(false);
+    setBulkDeleteConfirmOpen(false);
+  };
+
   const handleBulkMarkInTransit = async () => {
     const eligibleIds = Array.from(selectedIds).filter(id => {
       const d = outboundDeliveries.find(del => del.id === id);
@@ -215,6 +251,18 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
               >
                 <SendHorizonal className="w-4 h-4 mr-2" />
                 Mark In Transit ({outboundInTransitEligibleCount})
+              </Button>
+            )}
+            {bulkDeleteEligibleCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setBulkDeleteConfirmOpen(true)}
+                disabled={isBulkDeleting}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete ({bulkDeleteEligibleCount})
               </Button>
             )}
           </div>
@@ -506,6 +554,27 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleBulkMarkInTransit}>
               Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deliveries?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkDeleteEligibleCount} deliver{bulkDeleteEligibleCount === 1 ? 'y' : 'ies'} will be permanently deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
