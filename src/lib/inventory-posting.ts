@@ -122,10 +122,10 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
  */
 export async function postGoodsIssue(issueId: string, locationId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get issue with SO info to access ledger
+    // Get issue with SO and outbound delivery (for PO ledger) info
     const { data: issue } = await supabase
       .from('goods_issues' as any)
-      .select('*, sales_order:sales_orders(id, so_number, ledger_id)')
+      .select('*, sales_order:sales_orders(id, so_number, ledger_id), outbound_delivery:outbound_deliveries!goods_issues_outbound_delivery_id_fkey(id, purchase_order:purchase_orders(id, po_number, ledger_id))')
       .eq('id', issueId)
       .single();
 
@@ -219,9 +219,58 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
       }
     }
 
-    // Create negative ledger transaction if SO has a ledger
+    // Resolve ledger: SO ledger > PO ledger (via outbound delivery) > location ledger
+    let ledgerId: string | null = null;
+    let refDescription = '';
+
     const so = (issue as any)?.sales_order;
+    const po = (issue as any)?.outbound_delivery?.purchase_order;
+
     if (so?.ledger_id) {
+      ledgerId = so.ledger_id;
+      refDescription = `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`;
+    } else if (po?.ledger_id) {
+      ledgerId = po.ledger_id;
+      refDescription = `Goods Issue ${(issue as any).issue_number} for PO ${po.po_number}`;
+    }
+
+    // Fallback: find ledger assigned to this location
+    if (!ledgerId) {
+      const { data: locationLedger } = await supabase
+        .from('ledgers' as any)
+        .select('id')
+        .eq('location_id', locationId)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (locationLedger) {
+        ledgerId = (locationLedger as any).id;
+        refDescription = `Goods Issue ${(issue as any).issue_number} at location`;
+      }
+    }
+
+    // Last fallback: use any general (no location) ledger for the company
+    if (!ledgerId) {
+      const companyId = (issue as any)?.company_id;
+      if (companyId) {
+        const { data: generalLedger } = await supabase
+          .from('ledgers' as any)
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('is_active', true)
+          .is('location_id', null)
+          .limit(1)
+          .maybeSingle();
+        
+        if (generalLedger) {
+          ledgerId = (generalLedger as any).id;
+          refDescription = `Goods Issue ${(issue as any).issue_number}`;
+        }
+      }
+    }
+
+    if (ledgerId) {
       // Calculate total value of issued goods
       const totalValue = (items as any[]).reduce((sum, item) => {
         const price = item.product?.price || 0;
@@ -230,12 +279,12 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
 
       if (totalValue > 0) {
         await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: so.ledger_id,
+          ledger_id: ledgerId,
           transaction_type: 'goods_issue',
           reference_id: issueId,
           reference_number: (issue as any).issue_number,
           amount: -totalValue, // Negative for goods issued
-          description: `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`,
+          description: refDescription,
           transaction_date: new Date().toISOString().split('T')[0],
         });
       }
