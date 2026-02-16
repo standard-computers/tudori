@@ -36,6 +36,7 @@ import {
   Database,
   HelpCircle,
   Heart,
+  Key,
   LucideIcon
 } from 'lucide-react';
 
@@ -86,5 +87,6 @@ export const defaultApps: AppTile[] = [
   { name: 'Settings', icon: Settings, color: 'text-slate-500', description: 'Company settings', path: '/settings' },
   { name: 'Data Explorer', icon: Database, color: 'text-cyan-500', description: 'Browse database tables', path: '/data-explorer' },
   { name: 'Transportation', icon: Truck, color: 'text-amber-500', description: 'Carriers & logistics', path: '/transportation' },
+  { name: 'Developers', icon: Key, color: 'text-amber-500', description: 'API keys & webhooks', path: '/developers' },
   { name: 'Help', icon: HelpCircle, color: 'text-blue-500', description: 'Documentation & guides', path: '/help' },
 ];
