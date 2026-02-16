@@ -1369,8 +1369,9 @@ const Vendors = () => {
           </DialogHeader>
           {viewingVendor && (
             <Tabs defaultValue="details" className="w-full px-6 py-4">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-1">
                   <History className="w-3.5 h-3.5" /> History
                 </TabsTrigger>
@@ -1448,12 +1449,12 @@ const Vendors = () => {
                       )}
                     </p>
                   </div>
-                  {viewingVendor.notes && (
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Notes</Label>
-                      <p className="whitespace-pre-wrap">{viewingVendor.notes}</p>
-                    </div>
-                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="notes">
+                <div className="space-y-4">
+                  <p className="whitespace-pre-wrap">{viewingVendor.notes || "No notes."}</p>
                 </div>
               </TabsContent>
 
