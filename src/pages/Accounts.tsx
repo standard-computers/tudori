@@ -47,7 +47,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil, Eye } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil, Eye, Wand2 } from 'lucide-react';
+import { AutoMakeAccountsDialog } from '@/components/accounts/AutoMakeAccountsDialog';
 import { toast } from '@/lib/toast';
 
 interface Account {
@@ -126,6 +127,7 @@ const Accounts = () => {
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAutoMakeOpen, setIsAutoMakeOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
@@ -504,6 +506,9 @@ const Accounts = () => {
               exportEnabled={isExportEnabled('account')}
               entityName="Accounts"
             />
+            <Button onClick={() => setIsAutoMakeOpen(true)} variant="outline" size="icon" className="relative" title="AutoMake Accounts">
+              <Wand2 className="h-4 w-4" />
+            </Button>
             <Button onClick={handleCreateClick} size="icon" className="relative">
               <Plus className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -511,6 +516,14 @@ const Accounts = () => {
           </div>
         </div>
       </div>
+
+      <AutoMakeAccountsDialog
+        open={isAutoMakeOpen}
+        onOpenChange={setIsAutoMakeOpen}
+        locations={locations}
+        companyId={companyId}
+        onCreated={fetchAccounts}
+      />
 
       <div className="w-full">
           <Table>
