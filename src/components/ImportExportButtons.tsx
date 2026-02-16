@@ -123,10 +123,9 @@ export const ImportExportButtons = ({
       {importEnabled && (
         <DropdownMenu open={importDropdownOpen} onOpenChange={setImportDropdownOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <Upload className="w-4 h-4 mr-2" />
-              Import
-              <Kbd>⌘I</Kbd>
+            <Button variant="outline" size="icon" className="relative">
+              <Upload className="w-4 h-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘I</Kbd>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -144,10 +143,9 @@ export const ImportExportButtons = ({
         </DropdownMenu>
       )}
       {exportEnabled && (
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="w-4 h-4 mr-2" />
-          Export
-          <Kbd>⌘E</Kbd>
+        <Button variant="outline" size="icon" onClick={handleExport} className="relative">
+          <Download className="w-4 h-4" />
+          <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘E</Kbd>
         </Button>
       )}
     </>
