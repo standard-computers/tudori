@@ -1350,6 +1350,65 @@ export type Database = {
           },
         ]
       }
+      developer_keys: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          key_type: string
+          key_value: string | null
+          name: string
+          notes: string | null
+          redirect_uri: string | null
+          secret_value: string | null
+          updated_at: string
+          webhook_events: string[] | null
+          webhook_url: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_type: string
+          key_value?: string | null
+          name: string
+          notes?: string | null
+          redirect_uri?: string | null
+          secret_value?: string | null
+          updated_at?: string
+          webhook_events?: string[] | null
+          webhook_url?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_type?: string
+          key_value?: string | null
+          name?: string
+          notes?: string | null
+          redirect_uri?: string | null
+          secret_value?: string | null
+          updated_at?: string
+          webhook_events?: string[] | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developer_keys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_id_config: {
         Row: {
           company_id: string

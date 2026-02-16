@@ -60,6 +60,7 @@ import HR from "./pages/HR";
 import CalendarPage from "./pages/Calendar";
 import Me from "./pages/Me";
 import NotFound from "./pages/NotFound";
+import Developers from "./pages/Developers";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,7 @@ const App = () => (
                   <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
                   <Route path="/go" element={<ProtectedRoute><Go /></ProtectedRoute>} />
                   <Route path="/hr" element={<ProtectedRoute><HR /></ProtectedRoute>} />
+                  <Route path="/developers" element={<ProtectedRoute><Developers /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
