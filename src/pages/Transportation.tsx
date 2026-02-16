@@ -123,6 +123,13 @@ const Transportation = () => {
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
 
+  // N to create new based on active tab
+  useKeyboardShortcut('n', () => {
+    if (activeTab === 'carriers') openNewCarrierDialog();
+    else if (activeTab === 'routes') openNewRouteDialog();
+    else if (activeTab === 'assignments') openNewAssignmentDialog();
+  });
+
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('carriers');
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -1009,6 +1016,7 @@ const Transportation = () => {
                   />
                   <Button onClick={openNewCarrierDialog} size="icon" className="relative">
                     <Plus className="h-4 w-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
                 </>
               )}
@@ -1024,6 +1032,7 @@ const Transportation = () => {
                   />
                   <Button onClick={openNewRouteDialog} size="icon" className="relative">
                     <Plus className="h-4 w-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
                 </>
               )}
@@ -1039,6 +1048,7 @@ const Transportation = () => {
                   />
                   <Button onClick={openNewAssignmentDialog} size="icon" className="relative">
                     <Plus className="h-4 w-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
                 </>
               )}
