@@ -6,8 +6,6 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -104,19 +102,16 @@ const AccountDetail = () => {
   // Dialog states
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [isCreditMemoDialogOpen, setIsCreditMemoDialogOpen] = useState(false);
-  const [isDebitMemoDialogOpen, setIsDebitMemoDialogOpen] = useState(false);
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form states
-  const [memoAmount, setMemoAmount] = useState('');
-  const [memoNotes, setMemoNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [canCreateInvoice, setCanCreateInvoice] = useState(false);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
   const [isCreateCreditMemoDialogOpen, setIsCreateCreditMemoDialogOpen] = useState(false);
   const [isCreateDebitMemoDialogOpen, setIsCreateDebitMemoDialogOpen] = useState(false);
+  const [memoInvoiceId, setMemoInvoiceId] = useState<string | undefined>(undefined);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -260,133 +255,19 @@ const AccountDetail = () => {
     }
   };
 
-  const handleCreditMemo = async () => {
-    if (!selectedInvoice || !memoAmount) {
-      toast.error('Please enter an amount');
-      return;
-    }
-
-    const amount = parseFloat(memoAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Create a ledger transaction for the credit memo (negative for AR, positive for AP)
-      // Credit memo reduces what's owed
-      if (selectedInvoice.ledger_id) {
-        const transactionAmount = selectedInvoice.sales_order_id ? -amount : amount;
-        
-        await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: selectedInvoice.ledger_id,
-          transaction_type: 'credit_memo',
-          reference_id: selectedInvoice.id,
-          reference_number: selectedInvoice.invoice_number,
-          amount: transactionAmount,
-          description: memoNotes || `Credit memo for invoice ${selectedInvoice.invoice_number}`,
-          transaction_date: new Date().toISOString().split('T')[0],
-        });
-      }
-
-      // Update invoice amount
-      const newAmount = Math.max(0, selectedInvoice.amount - amount);
-      await supabase
-        .from('invoices' as any)
-        .update({ 
-          amount: newAmount,
-          status: newAmount === 0 ? 'paid' : selectedInvoice.status
-        })
-        .eq('id', selectedInvoice.id);
-
-      toast.success('Credit memo applied successfully');
-      setIsCreditMemoDialogOpen(false);
-      setSelectedInvoice(null);
-      setMemoAmount('');
-      setMemoNotes('');
-      fetchAccountAndInvoices();
-    } catch (error: any) {
-      console.error('Error applying credit memo:', error);
-      toast.error(error.message || 'Failed to apply credit memo');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDebitMemo = async () => {
-    if (!selectedInvoice || !memoAmount) {
-      toast.error('Please enter an amount');
-      return;
-    }
-
-    const amount = parseFloat(memoAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Create a ledger transaction for the debit memo (positive for AR, negative for AP)
-      // Debit memo increases what's owed
-      if (selectedInvoice.ledger_id) {
-        const transactionAmount = selectedInvoice.sales_order_id ? amount : -amount;
-        
-        await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: selectedInvoice.ledger_id,
-          transaction_type: 'debit_memo',
-          reference_id: selectedInvoice.id,
-          reference_number: selectedInvoice.invoice_number,
-          amount: transactionAmount,
-          description: memoNotes || `Debit memo for invoice ${selectedInvoice.invoice_number}`,
-          transaction_date: new Date().toISOString().split('T')[0],
-        });
-      }
-
-      // Update invoice amount
-      const newAmount = selectedInvoice.amount + amount;
-      await supabase
-        .from('invoices' as any)
-        .update({ 
-          amount: newAmount,
-          status: selectedInvoice.status === 'paid' ? 'pending' : selectedInvoice.status
-        })
-        .eq('id', selectedInvoice.id);
-
-      toast.success('Debit memo applied successfully');
-      setIsDebitMemoDialogOpen(false);
-      setSelectedInvoice(null);
-      setMemoAmount('');
-      setMemoNotes('');
-      fetchAccountAndInvoices();
-    } catch (error: any) {
-      console.error('Error applying debit memo:', error);
-      toast.error(error.message || 'Failed to apply debit memo');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const openPaymentDialog = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setIsPaymentDialogOpen(true);
   };
 
   const openCreditMemoDialog = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setMemoAmount('');
-    setMemoNotes('');
-    setIsCreditMemoDialogOpen(true);
+    setMemoInvoiceId(invoice.id);
+    setIsCreateCreditMemoDialogOpen(true);
   };
 
   const openDebitMemoDialog = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setMemoAmount('');
-    setMemoNotes('');
-    setIsDebitMemoDialogOpen(true);
+    setMemoInvoiceId(invoice.id);
+    setIsCreateDebitMemoDialogOpen(true);
   };
 
   if (authLoading || loading) {
@@ -722,115 +603,6 @@ const AccountDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Credit Memo Dialog */}
-      <Dialog open={isCreditMemoDialogOpen} onOpenChange={setIsCreditMemoDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Credit Memo</DialogTitle>
-            <DialogDescription>
-              Apply a credit to invoice {selectedInvoice?.invoice_number}. This will reduce the amount owed.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 px-6">
-            {selectedInvoice && (
-              <div className="border rounded-lg p-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Invoice Amount</span>
-                  <span className="font-medium">${selectedInvoice.amount.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <Label>Credit Amount *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={memoAmount}
-                onChange={(e) => setMemoAmount(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={memoNotes}
-                onChange={(e) => setMemoNotes(e.target.value)}
-                placeholder="Reason for credit memo..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsCreditMemoDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreditMemo} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Apply Credit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Debit Memo Dialog */}
-      <Dialog open={isDebitMemoDialogOpen} onOpenChange={setIsDebitMemoDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Debit Memo</DialogTitle>
-            <DialogDescription>
-              Apply a debit to invoice {selectedInvoice?.invoice_number}. This will increase the amount owed.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 px-6">
-            {selectedInvoice && (
-              <div className="border rounded-lg p-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Invoice Amount</span>
-                  <span className="font-medium">${selectedInvoice.amount.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <Label>Debit Amount *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={memoAmount}
-                onChange={(e) => setMemoAmount(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={memoNotes}
-                onChange={(e) => setMemoNotes(e.target.value)}
-                placeholder="Reason for debit memo..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsDebitMemoDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleDebitMemo} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Apply Debit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Create Invoice Dialog */}
       <CreateInvoiceDialog
@@ -853,18 +625,26 @@ const AccountDetail = () => {
 
       {companyId && (
         <>
-          <CreateCreditMemoDialog
+           <CreateCreditMemoDialog
             open={isCreateCreditMemoDialogOpen}
-            onOpenChange={setIsCreateCreditMemoDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateCreditMemoDialogOpen(open);
+              if (!open) setMemoInvoiceId(undefined);
+            }}
             companyId={companyId}
             defaultAccountId={account.id}
+            defaultInvoiceId={memoInvoiceId}
             onSuccess={fetchAccountAndInvoices}
           />
           <CreateDebitMemoDialog
             open={isCreateDebitMemoDialogOpen}
-            onOpenChange={setIsCreateDebitMemoDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateDebitMemoDialogOpen(open);
+              if (!open) setMemoInvoiceId(undefined);
+            }}
             companyId={companyId}
             defaultAccountId={account.id}
+            defaultInvoiceId={memoInvoiceId}
             onSuccess={fetchAccountAndInvoices}
           />
         </>

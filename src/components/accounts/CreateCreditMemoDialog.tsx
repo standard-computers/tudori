@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -13,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
+import { MemoItemsEditor, MemoItem } from '@/components/accounts/MemoItemsEditor';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 
@@ -21,6 +21,7 @@ interface CreateCreditMemoDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string;
   defaultAccountId?: string;
+  defaultInvoiceId?: string;
   onSuccess?: () => void;
 }
 
@@ -43,39 +44,63 @@ interface Ledger {
   name: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  product_id: string;
+  base_price?: number;
+}
+
 export const CreateCreditMemoDialog = ({
   open,
   onOpenChange,
   companyId,
   defaultAccountId,
+  defaultInvoiceId,
   onSuccess,
 }: CreateCreditMemoDialogProps) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [items, setItems] = useState<MemoItem[]>([]);
   const [formData, setFormData] = useState({
     account_id: '',
     invoice_id: '',
     ledger_id: '',
-    amount: '',
     notes: '',
   });
+
+  const totalFromItems = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  }, [items]);
 
   useEffect(() => {
     if (open && companyId) {
       setFormData({
         account_id: defaultAccountId || '',
-        invoice_id: '',
+        invoice_id: defaultInvoiceId || '',
         ledger_id: '',
-        amount: '',
         notes: '',
       });
+      setItems([]);
       fetchAccounts();
       fetchInvoices();
       fetchLedgers();
+      fetchProducts();
     }
-  }, [open, companyId, defaultAccountId]);
+  }, [open, companyId, defaultAccountId, defaultInvoiceId]);
+
+  // Auto-fill ledger when defaultInvoiceId is set and invoices are loaded
+  useEffect(() => {
+    if (defaultInvoiceId && invoices.length > 0) {
+      const inv = invoices.find((i) => i.id === defaultInvoiceId);
+      if (inv?.ledger_id) {
+        setFormData((prev) => ({ ...prev, ledger_id: inv.ledger_id || prev.ledger_id }));
+      }
+    }
+  }, [defaultInvoiceId, invoices]);
 
   const fetchAccounts = async () => {
     const { data } = await supabase
@@ -104,6 +129,15 @@ export const CreateCreditMemoDialog = ({
       .eq('is_active', true)
       .order('name');
     setLedgers((data as any) || []);
+  };
+
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('products' as any)
+      .select('id, name, product_id, base_price')
+      .eq('company_id', companyId)
+      .order('name');
+    setProducts((data as any) || []);
   };
 
   const accountOptions: SearchableSelectOption[] = useMemo(() => {
@@ -140,9 +174,14 @@ export const CreateCreditMemoDialog = ({
       return;
     }
 
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount');
+    if (items.length === 0) {
+      toast.error('Please add at least one item');
+      return;
+    }
+
+    const invalidItems = items.filter((i) => !i.product_id || i.quantity <= 0 || i.unit_price <= 0);
+    if (invalidItems.length > 0) {
+      toast.error('Please fill in all item fields correctly');
       return;
     }
 
@@ -169,7 +208,7 @@ export const CreateCreditMemoDialog = ({
           account_id: formData.account_id,
           invoice_id: formData.invoice_id || null,
           ledger_id: ledgerId,
-          amount,
+          amount: totalFromItems,
           notes: formData.notes || null,
           status: 'applied',
         })
@@ -178,12 +217,24 @@ export const CreateCreditMemoDialog = ({
 
       if (memoError) throw memoError;
 
+      // Insert memo items
+      const memoItems = items.map((item) => ({
+        credit_memo_id: (memo as any).id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        notes: item.notes || null,
+      }));
+
+      await supabase.from('credit_memo_items' as any).insert(memoItems);
+
+      // Create ledger transaction
       await supabase.from('ledger_transactions' as any).insert({
         ledger_id: ledgerId,
         transaction_type: 'credit_memo',
         reference_id: (memo as any).id,
         reference_number: memoNumber,
-        amount: -amount,
+        amount: -totalFromItems,
         description: formData.notes || `Credit memo ${memoNumber}`,
         transaction_date: new Date().toISOString().split('T')[0],
       });
@@ -201,38 +252,39 @@ export const CreateCreditMemoDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create Credit Memo</DialogTitle>
           <DialogDescription>Create a credit memo to reduce the amount owed on an account.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-6">
-          <div>
-            <Label>Account *</Label>
-            <SearchableSelect
-              options={accountOptions}
-              value={formData.account_id}
-              onValueChange={(value) => setFormData({ ...formData, account_id: value, invoice_id: '' })}
-              placeholder="Select account"
-            />
-          </div>
-
-          <div>
-            <Label>Invoice (Optional)</Label>
-            <SearchableSelect
-              options={invoiceOptions}
-              value={formData.invoice_id}
-              onValueChange={(value) => {
-                const inv = invoices.find((i) => i.id === value);
-                setFormData({
-                  ...formData,
-                  invoice_id: value,
-                  ledger_id: inv?.ledger_id || formData.ledger_id,
-                });
-              }}
-              placeholder="Select invoice"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Account *</Label>
+              <SearchableSelect
+                options={accountOptions}
+                value={formData.account_id}
+                onValueChange={(value) => setFormData({ ...formData, account_id: value, invoice_id: '' })}
+                placeholder="Select account"
+              />
+            </div>
+            <div>
+              <Label>Invoice (Optional)</Label>
+              <SearchableSelect
+                options={invoiceOptions}
+                value={formData.invoice_id}
+                onValueChange={(value) => {
+                  const inv = invoices.find((i) => i.id === value);
+                  setFormData({
+                    ...formData,
+                    invoice_id: value,
+                    ledger_id: inv?.ledger_id || formData.ledger_id,
+                  });
+                }}
+                placeholder="Select invoice"
+              />
+            </div>
           </div>
 
           {!formData.invoice_id && (
@@ -247,17 +299,11 @@ export const CreateCreditMemoDialog = ({
             </div>
           )}
 
-          <div>
-            <Label>Amount *</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              placeholder="0.00"
-            />
-          </div>
+          <MemoItemsEditor
+            items={items}
+            onItemsChange={setItems}
+            products={products}
+          />
 
           <div>
             <Label>Notes</Label>
@@ -265,7 +311,7 @@ export const CreateCreditMemoDialog = ({
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Reason for credit memo..."
-              rows={3}
+              rows={2}
             />
           </div>
         </div>
