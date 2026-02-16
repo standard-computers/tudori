@@ -1024,7 +1024,7 @@ const Production = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-14 items-center gap-4 px-4">
+        <div className="flex h-16 items-center gap-4 px-4 pr-16">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -1052,9 +1052,9 @@ const Production = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleOpenDialog} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              New Order
+            <Button onClick={handleOpenDialog} size="icon" className="relative">
+              <Plus className="w-4 h-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
             </Button>
           </div>
         </div>
