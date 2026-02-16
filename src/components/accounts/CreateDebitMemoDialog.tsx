@@ -21,6 +21,7 @@ interface CreateDebitMemoDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string;
   defaultAccountId?: string;
+  defaultInvoiceId?: string;
   onSuccess?: () => void;
 }
 
@@ -55,6 +56,7 @@ export const CreateDebitMemoDialog = ({
   onOpenChange,
   companyId,
   defaultAccountId,
+  defaultInvoiceId,
   onSuccess,
 }: CreateDebitMemoDialogProps) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -78,7 +80,7 @@ export const CreateDebitMemoDialog = ({
     if (open && companyId) {
       setFormData({
         account_id: defaultAccountId || '',
-        invoice_id: '',
+        invoice_id: defaultInvoiceId || '',
         ledger_id: '',
         notes: '',
       });
@@ -88,7 +90,17 @@ export const CreateDebitMemoDialog = ({
       fetchLedgers();
       fetchProducts();
     }
-  }, [open, companyId, defaultAccountId]);
+  }, [open, companyId, defaultAccountId, defaultInvoiceId]);
+
+  // Auto-fill ledger when defaultInvoiceId is set and invoices are loaded
+  useEffect(() => {
+    if (defaultInvoiceId && invoices.length > 0) {
+      const inv = invoices.find((i) => i.id === defaultInvoiceId);
+      if (inv?.ledger_id) {
+        setFormData((prev) => ({ ...prev, ledger_id: inv.ledger_id || prev.ledger_id }));
+      }
+    }
+  }, [defaultInvoiceId, invoices]);
 
   const fetchAccounts = async () => {
     const { data } = await supabase
