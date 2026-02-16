@@ -281,7 +281,7 @@ const Invoices = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <AppLoadQueryDialog
         open={showQueryDialog}
         onClose={() => setShowQueryDialog(false)}
@@ -312,7 +312,7 @@ const Invoices = () => {
         </div>
       </div>
 
-      <div>
+      <div className="flex-1 overflow-auto min-h-0">
         <div>
           <Table>
             <TableHeader>
