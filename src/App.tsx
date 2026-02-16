@@ -20,7 +20,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import CompleteProfile from "./pages/CompleteProfile";
-import Settings from "./pages/Settings";
+import { Navigate } from "react-router-dom";
 import Locations from "./pages/Locations";
 import Vendors from "./pages/Vendors";
 import Products from "./pages/Products";
@@ -91,7 +91,7 @@ const App = () => (
                   <Route path="/user-settings" element={<UserSettings />} />
                   {/* Protected routes - require transaction access */}
                   <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/settings" element={<Navigate to="/configuration" replace />} />
                   <Route path="/locations" element={<ProtectedRoute><Locations /></ProtectedRoute>} />
                   <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
                   <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
