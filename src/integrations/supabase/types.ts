@@ -4648,6 +4648,7 @@ export type Database = {
         Row: {
           created_at: string
           dashboard_tile_order: string[] | null
+          default_location_id: string | null
           design_system: string | null
           hidden_tiles: string[] | null
           id: string
@@ -4661,6 +4662,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dashboard_tile_order?: string[] | null
+          default_location_id?: string | null
           design_system?: string | null
           hidden_tiles?: string[] | null
           id?: string
@@ -4674,6 +4676,7 @@ export type Database = {
         Update: {
           created_at?: string
           dashboard_tile_order?: string[] | null
+          default_location_id?: string | null
           design_system?: string | null
           hidden_tiles?: string[] | null
           id?: string
@@ -4684,7 +4687,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_default_location_id_fkey"
+            columns: ["default_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

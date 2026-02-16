@@ -765,10 +765,17 @@ const [areaFormData, setAreaFormData] = useState({
   };
 
   const fetchAccessibleLocations = async () => {
-    const { data: accessibleLocationData } = await supabase
-      .from('location_users')
-      .select('location_id, role')
-      .eq('user_id', user!.id);
+    const [{ data: accessibleLocationData }, { data: prefs }] = await Promise.all([
+      supabase
+        .from('location_users')
+        .select('location_id, role')
+        .eq('user_id', user!.id),
+      supabase
+        .from('user_preferences')
+        .select('default_location_id')
+        .eq('user_id', user!.id)
+        .maybeSingle(),
+    ]);
 
     if (!accessibleLocationData || accessibleLocationData.length === 0) {
       setLocations([]);
@@ -792,6 +799,11 @@ const [areaFormData, setAreaFormData] = useState({
       .order('location_id');
 
     setLocations(data || []);
+
+    // Auto-select default location if set and accessible
+    if (!selectedLocationId && prefs?.default_location_id && data?.some(l => l.id === prefs.default_location_id)) {
+      setSelectedLocationId(prefs.default_location_id);
+    }
   };
 
   const fetchAreas = async () => {

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun, MapPin } from 'lucide-react';
  import { Kbd } from '@/components/ui/kbd';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  import { designSystems, applyDesignSystem } from '@/config/design-systems';
@@ -124,7 +124,8 @@ const UserSettings = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [showAppMenu, setShowAppMenu] = useState(true);
    const [designSystem, setDesignSystem] = useState('default');
-
+  const [defaultLocationId, setDefaultLocationId] = useState<string | null>(null);
+  const [userLocations, setUserLocations] = useState<{ id: string; location_id: string; name: string }[]>([]);
   // Get transaction access for the user's company
   const { hasAccess, loading: accessLoading } = useTransactionAccess(profile.company_id || undefined);
 
@@ -167,8 +168,31 @@ const UserSettings = () => {
   useEffect(() => {
     if (user && profile.company_id && !accessLoading) {
       fetchPreferences();
+      fetchUserLocations();
     }
   }, [user, profile.company_id, accessLoading]);
+
+  const fetchUserLocations = async () => {
+    if (!user) return;
+    const { data: luData } = await supabase
+      .from('location_users')
+      .select('location_id')
+      .eq('user_id', user.id);
+
+    if (!luData || luData.length === 0) {
+      setUserLocations([]);
+      return;
+    }
+
+    const locIds = luData.map(l => l.location_id);
+    const { data: locs } = await supabase
+      .from('locations')
+      .select('id, location_id, name')
+      .in('id', locIds)
+      .order('location_id');
+
+    setUserLocations(locs || []);
+  };
 
   const fetchProfile = async () => {
     const { data } = await supabase
@@ -190,7 +214,7 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows, show_app_menu')
+       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows, show_app_menu, default_location_id')
       .eq('user_id', user!.id)
       .maybeSingle();
 
@@ -200,7 +224,7 @@ const UserSettings = () => {
     setMaximizePreferenceCache(data?.maximize_windows || false);
     setShowAppMenu(data?.show_app_menu ?? true);
     setAppMenuPreferenceCache(data?.show_app_menu ?? true);
-    
+    setDefaultLocationId(data?.default_location_id || null);
     // Apply saved theme
     if (data?.theme) {
       setTheme(data.theme);
@@ -323,6 +347,23 @@ const UserSettings = () => {
       await supabase.from('user_preferences').insert({ user_id: user.id, show_app_menu: checked });
     }
     toast.success('Preference saved');
+  };
+
+  const handleDefaultLocationChange = async (value: string) => {
+    const newValue = value === 'none' ? null : value;
+    setDefaultLocationId(newValue);
+    if (!user) return;
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('user_preferences').update({ default_location_id: newValue }).eq('user_id', user.id);
+    } else {
+      await supabase.from('user_preferences').insert({ user_id: user.id, default_location_id: newValue });
+    }
+    toast.success('Default location saved');
   };
 
   const handleThemeChange = async (checked: boolean) => {
@@ -590,6 +631,39 @@ const UserSettings = () => {
                     checked={showAppMenu}
                     onCheckedChange={handleShowAppMenuChange}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Cockpit</CardTitle>
+                <CardDescription>
+                  Set your default location for the Cockpit
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <Label htmlFor="default-location" className="text-base font-medium">Default Location</Label>
+                      <p className="text-sm text-muted-foreground">Auto-load this location when opening the Cockpit</p>
+                    </div>
+                  </div>
+                  <Select value={defaultLocationId || 'none'} onValueChange={handleDefaultLocationChange}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {userLocations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.location_id} – {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
