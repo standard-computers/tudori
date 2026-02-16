@@ -53,8 +53,15 @@ export function AppMenuButton() {
     load();
   }, [user, loaded]);
 
-  // Don't render on excluded pages, when not logged in, or when preference is off
-  if (!user || !showAppMenu || EXCLUDED_PATHS.includes(location.pathname)) return null;
+  const isVisible = !!user && showAppMenu && !EXCLUDED_PATHS.includes(location.pathname);
+
+  // Set a data attribute on <html> so headers can add padding via CSS
+  useEffect(() => {
+    document.documentElement.setAttribute('data-app-menu', isVisible ? 'true' : 'false');
+    return () => document.documentElement.removeAttribute('data-app-menu');
+  }, [isVisible]);
+
+  if (!isVisible) return null;
 
   const visibleApps = apps.filter(app => {
     if (hiddenTiles.has(app.name)) return false;

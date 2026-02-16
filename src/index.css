@@ -156,6 +156,11 @@
   }
 }
 
+/* When app menu button is visible, add right padding to sticky headers so buttons don't overlap */
+html[data-app-menu="true"] header[class*="sticky"] > div {
+  padding-right: 3.5rem;
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out forwards;
