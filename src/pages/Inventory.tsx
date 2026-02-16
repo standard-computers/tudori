@@ -470,7 +470,7 @@ const Inventory = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div>
+      <header className="sticky top-0 z-10 bg-background">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -523,7 +523,7 @@ const Inventory = () => {
             </Select>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="p-6">
         {!selectedLocationId ? (
