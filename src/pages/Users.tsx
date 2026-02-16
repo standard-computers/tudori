@@ -20,6 +20,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check } from 'lucide-react';
 import { z } from 'zod';
 import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
+import { UserLocationsTab } from '@/components/users/UserLocationsTab';
 
 interface TeamMember {
   id: string;
@@ -699,8 +700,9 @@ const Users = () => {
             </DialogHeader>
             <DialogBody>
               <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="locations">Locations</TabsTrigger>
                   <TabsTrigger value="access">Transaction Access</TabsTrigger>
                 </TabsList>
                 <TabsContent value="general" className="mt-4 space-y-4">
@@ -740,6 +742,11 @@ const Users = () => {
                     </p>
                   </div>
                 </TabsContent>
+                <TabsContent value="locations" className="mt-4">
+                  {editingMember && (
+                    <UserLocationsTab userId={editingMember.user_id} />
+                  )}
+                </TabsContent>
                 <TabsContent value="access" className="mt-4">
                   {editingMember && companyId && (
                     <TransactionAccessTab 
@@ -766,8 +773,9 @@ const Users = () => {
             </DialogHeader>
             <DialogBody>
               <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="locations">Locations</TabsTrigger>
                   <TabsTrigger value="access">Transaction Access</TabsTrigger>
                 </TabsList>
                 <TabsContent value="general" className="mt-4 space-y-4">
@@ -805,6 +813,11 @@ const Users = () => {
                       </div>
                     );
                   })()}
+                </TabsContent>
+                <TabsContent value="locations" className="mt-4">
+                  {viewingMember && (
+                    <UserLocationsTab userId={viewingMember.user_id} />
+                  )}
                 </TabsContent>
                 <TabsContent value="access" className="mt-4">
                   {viewingMember && companyId && (
