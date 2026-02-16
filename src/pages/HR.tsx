@@ -982,7 +982,14 @@ const HR = () => {
       </Dialog>
       {/* View Position Dialog */}
       <Dialog open={!!viewingPosition} onOpenChange={(open) => { if (!open) setViewingPosition(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isViewMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-lg max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsViewMaximized(!isViewMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
