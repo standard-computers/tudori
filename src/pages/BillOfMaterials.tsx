@@ -292,7 +292,14 @@ const BomTable = ({
             ) : (
               sortedAndFilteredData.map((bom) => (
                 <TableRow key={bom.id} className="whitespace-nowrap">
-                  {isColumnVisible('bom_id') && <TableCell className="font-mono text-sm">{bom.bom_id}</TableCell>}
+                  {isColumnVisible('bom_id') && (
+                    <TableCell
+                      className="font-mono text-sm text-primary cursor-pointer hover:underline"
+                      onClick={() => onView(bom)}
+                    >
+                      {bom.bom_id}
+                    </TableCell>
+                  )}
                   {isColumnVisible('name') && <TableCell className="font-medium">{bom.name}</TableCell>}
                   {isColumnVisible('product') && <TableCell>{bom.product?.product_id} - {bom.product?.name}</TableCell>}
                   {isColumnVisible('output_quantity') && <TableCell>{bom.output_quantity}</TableCell>}
