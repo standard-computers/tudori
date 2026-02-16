@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
 import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog';
@@ -273,6 +274,9 @@ const Deliveries = () => {
     setFilter,
     sortedAndFilteredData,
   } = useTableSort(deliveries, 'delivery_id', 'desc');
+
+  const inboundOrderedIds = useMemo(() => sortedAndFilteredData.map(d => d.id), [sortedAndFilteredData]);
+  const { handleRowSelect: handleInboundShiftSelect } = useShiftSelect(inboundOrderedIds, selectedInboundIds, setSelectedInboundIds);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -1409,14 +1413,12 @@ const Deliveries = () => {
                       const isEditable = !NON_EDITABLE_STATUSES.includes(delivery.status);
                       return (
                         <TableRow key={delivery.id}>
-                          <TableCell>
+                          <TableCell onClick={(e) => {
+                            handleInboundShiftSelect(delivery.id, !selectedInboundIds.has(delivery.id), e.shiftKey);
+                          }}>
                             <Checkbox
                               checked={selectedInboundIds.has(delivery.id)}
-                              onCheckedChange={(checked) => {
-                                const next = new Set(selectedInboundIds);
-                                if (checked) next.add(delivery.id); else next.delete(delivery.id);
-                                setSelectedInboundIds(next);
-                              }}
+                              onCheckedChange={() => {}}
                             />
                           </TableCell>
                           <TableCell className="font-mono text-sm">

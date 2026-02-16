@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
@@ -3736,15 +3737,8 @@ function OrdersTable({
     }
   };
 
-  const handleSelectRow = (orderId: string, checked: boolean) => {
-    const newSelection = new Set(selectedOrderIds);
-    if (checked) {
-      newSelection.add(orderId);
-    } else {
-      newSelection.delete(orderId);
-    }
-    onSelectionChange(newSelection);
-  };
+  const orderedIds = useMemo(() => sortedAndFilteredData.map(o => o.id), [sortedAndFilteredData]);
+  const { handleRowSelect } = useShiftSelect(orderedIds, selectedOrderIds, onSelectionChange);
 
   return (
     <div className="space-y-4">
@@ -3887,10 +3881,13 @@ function OrdersTable({
           <TableBody>
             {sortedAndFilteredData.map((order) => (
               <TableRow key={order.id} className={selectedOrderIds.has(order.id) ? "bg-muted/50" : ""}>
-                <TableCell>
+                <TableCell onClick={(e) => {
+                  handleRowSelect(order.id, !selectedOrderIds.has(order.id), e.shiftKey);
+                  e.stopPropagation();
+                }}>
                   <Checkbox
                     checked={selectedOrderIds.has(order.id)}
-                    onCheckedChange={(checked) => handleSelectRow(order.id, !!checked)}
+                    onCheckedChange={() => {}}
                   />
                 </TableCell>
                 <TableCell className="font-mono">
