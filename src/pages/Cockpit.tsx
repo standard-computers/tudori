@@ -28,6 +28,7 @@ import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
 import ViewWorkOrderDialog from '@/components/cockpit/ViewWorkOrderDialog';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import CockpitUsersTab from '@/components/cockpit/CockpitUsersTab';
 import {
   Select,
@@ -267,6 +268,11 @@ const [areaFormData, setAreaFormData] = useState({
   const [selectedFulfillOrderIds, setSelectedFulfillOrderIds] = useState<Set<string>>(new Set());
   const [isBulkFulfilling, setIsBulkFulfilling] = useState(false);
   const [isBulkFulfillDialogOpen, setIsBulkFulfillDialogOpen] = useState(false);
+  const [bulkFulfillProgressOpen, setBulkFulfillProgressOpen] = useState(false);
+  const [bulkFulfillResults, setBulkFulfillResults] = useState<ImportResult[]>([]);
+  const [bulkFulfillProcessed, setBulkFulfillProcessed] = useState(0);
+  const [bulkFulfillTotal, setBulkFulfillTotal] = useState(0);
+  const [bulkFulfillComplete, setBulkFulfillComplete] = useState(false);
 
   // Work orders (tasks) state
   const [workOrders, setWorkOrders] = useState<{ id: string; title: string; description: string | null; status: string; priority: string; due_date: string | null; source_type: string | null; source_id: string | null; assigned_to: string | null; created_at: string; assignee?: { first_name: string; last_name: string } | null }[]>([]);
@@ -1412,25 +1418,41 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
-  // Bulk fulfill handler - processes selected orders sequentially
+  // Bulk fulfill handler - processes selected orders sequentially with progress
   const handleBulkFulfill = async () => {
     if (selectedFulfillOrderIds.size === 0 || !selectedLocationId || !companyId) return;
     
+    const totalOrders = selectedFulfillOrderIds.size;
     setIsBulkFulfilling(true);
-    let successCount = 0;
-    let failCount = 0;
+    setIsBulkFulfillDialogOpen(false);
+    setBulkFulfillResults([]);
+    setBulkFulfillProcessed(0);
+    setBulkFulfillTotal(totalOrders);
+    setBulkFulfillComplete(false);
+    setBulkFulfillProgressOpen(true);
+
+    let rowIndex = 0;
 
     try {
       for (const key of selectedFulfillOrderIds) {
+        rowIndex++;
         const odId = key.replace('od-', '');
         const od = outboundOrders.find(o => o.id === odId);
-        if (!od) { failCount++; continue; }
+        if (!od) {
+          setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${key}: Order not found` }]);
+          setBulkFulfillProcessed(rowIndex);
+          continue;
+        }
         
         try {
           const sourceType = od.sales_order_id ? 'sales_order' : 'purchase_order';
           const sourceId = od.sales_order_id || od.purchase_order_id || '';
           const woCount = await checkOutstandingWorkOrders(sourceType, sourceId);
-          if (woCount > 0) { failCount++; continue; }
+          if (woCount > 0) {
+            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Has outstanding work orders` }]);
+            setBulkFulfillProcessed(rowIndex);
+            continue;
+          }
 
           let items: any[] = [];
           if (od.sales_order_id) {
@@ -1440,7 +1462,11 @@ const [areaFormData, setAreaFormData] = useState({
             const { data } = await supabase.from('purchase_order_items' as any).select('product_id, quantity').eq('purchase_order_id', od.purchase_order_id);
             items = (data as any) || [];
           }
-          if (items.length === 0) { failCount++; continue; }
+          if (items.length === 0) {
+            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: No items found` }]);
+            setBulkFulfillProcessed(rowIndex);
+            continue;
+          }
 
           let insufficientStock = false;
           for (const item of items) {
@@ -1448,7 +1474,11 @@ const [areaFormData, setAreaFormData] = useState({
             const totalAvailable = (invData || []).reduce((sum: number, inv: any) => sum + inv.quantity, 0);
             if (totalAvailable < item.quantity) { insufficientStock = true; break; }
           }
-          if (insufficientStock) { failCount++; continue; }
+          if (insufficientStock) {
+            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Insufficient inventory` }]);
+            setBulkFulfillProcessed(rowIndex);
+            continue;
+          }
 
           const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
           const { data: goodsIssue, error: giError } = await supabase
@@ -1464,14 +1494,22 @@ const [areaFormData, setAreaFormData] = useState({
               notes: `Fulfillment for OD ${od.delivery_number}`,
             })
             .select().single();
-          if (giError) { failCount++; continue; }
+          if (giError) {
+            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Failed to create goods issue` }]);
+            setBulkFulfillProcessed(rowIndex);
+            continue;
+          }
 
           const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity }));
           await supabase.from('goods_issue_items' as any).insert(giItems);
           await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'in_transit', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
 
           const postResult = await postGoodsIssue((goodsIssue as any).id, selectedLocationId);
-          if (!postResult.success) { failCount++; continue; }
+          if (!postResult.success) {
+            setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od.delivery_number}: Failed to post goods issue` }]);
+            setBulkFulfillProcessed(rowIndex);
+            continue;
+          }
 
           // Add items to outbound delivery
           const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity }));
@@ -1508,28 +1546,24 @@ const [areaFormData, setAreaFormData] = useState({
           } else if (od.purchase_order_id) {
             await supabase.from('purchase_orders' as any).update({ status: 'shipped' }).eq('id', od.purchase_order_id);
           }
-          successCount++;
+
+          setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'success', message: `${od.delivery_number}: Fulfilled` }]);
+          setBulkFulfillProcessed(rowIndex);
         } catch (err) {
           console.error(`Failed to fulfill ${key}:`, err);
-          failCount++;
+          setBulkFulfillResults(prev => [...prev, { row: rowIndex, status: 'error', message: `${od?.delivery_number || key}: ${err instanceof Error ? err.message : 'Unknown error'}` }]);
+          setBulkFulfillProcessed(rowIndex);
         }
       }
 
-      if (successCount > 0) {
-        toast.success(`Fulfilled ${successCount} order${successCount !== 1 ? 's' : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`);
-      } else {
-        toast.error(`Failed to fulfill ${failCount} order${failCount !== 1 ? 's' : ''} (insufficient inventory)`);
-      }
-
       setSelectedFulfillOrderIds(new Set());
-      setIsBulkFulfillDialogOpen(false);
       fetchOutboundOrders();
       fetchInventory();
     } catch (error) {
       console.error('Bulk fulfillment error:', error);
-      toast.error('Bulk fulfillment failed');
     } finally {
       setIsBulkFulfilling(false);
+      setBulkFulfillComplete(true);
     }
   };
 
@@ -3460,12 +3494,22 @@ const [areaFormData, setAreaFormData] = useState({
           </div>
           <DialogFooter className="shrink-0 px-6 sticky bottom-0 bg-background border-t pt-4">
             <Button onClick={handleBulkFulfill} disabled={isBulkFulfilling}>
-              {isBulkFulfilling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isBulkFulfilling ? 'Processing...' : `Fulfill ${selectedFulfillOrderIds.size} Order${selectedFulfillOrderIds.size !== 1 ? 's' : ''}`}
+              Fulfill {selectedFulfillOrderIds.size} Order{selectedFulfillOrderIds.size !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Fulfill Progress Dialog */}
+      <ImportProgressDialog
+        open={bulkFulfillProgressOpen}
+        onOpenChange={setBulkFulfillProgressOpen}
+        title="Fulfilling Orders"
+        totalRows={bulkFulfillTotal}
+        processedRows={bulkFulfillProcessed}
+        results={bulkFulfillResults}
+        isComplete={bulkFulfillComplete}
+      />
 
       {/* Work Task Preview Dialog */}
       <Dialog open={isWorkPreviewOpen} onOpenChange={(open) => {
