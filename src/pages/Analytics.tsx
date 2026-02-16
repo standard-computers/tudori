@@ -630,7 +630,7 @@ const Analytics = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search reports..."
-                  className="border-0 h-8 w-52 focus-visible:ring-0 shadow-none px-1"
+                  className="border-0 h-8 w-52 focus-visible:ring-0 shadow-none px-1 bg-transparent"
                 />
                 <Button
                   variant="ghost"
