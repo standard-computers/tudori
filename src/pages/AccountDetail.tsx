@@ -34,6 +34,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
+import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
+import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
 import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
@@ -113,6 +115,8 @@ const AccountDetail = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [canCreateInvoice, setCanCreateInvoice] = useState(false);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
+  const [isCreateCreditMemoDialogOpen, setIsCreateCreditMemoDialogOpen] = useState(false);
+  const [isCreateDebitMemoDialogOpen, setIsCreateDebitMemoDialogOpen] = useState(false);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -420,6 +424,12 @@ const AccountDetail = () => {
           </div>
           {canCreateInvoice && (
             <div className="flex items-center gap-2">
+              <Button size="icon" variant="outline" className="relative" onClick={() => setIsCreateCreditMemoDialogOpen(true)}>
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="outline" className="relative" onClick={() => setIsCreateDebitMemoDialogOpen(true)}>
+                <Plus className="h-4 w-4 text-destructive" />
+              </Button>
               {account.location_id && (
                 <Button size="icon" variant="outline" className="relative" onClick={() => setIsAutoMakeDialogOpen(true)}>
                   <Wand2 className="h-4 w-4" />
@@ -791,6 +801,25 @@ const AccountDetail = () => {
           companyId={companyId}
           onSuccess={fetchAccountAndInvoices}
         />
+      )}
+
+      {companyId && (
+        <>
+          <CreateCreditMemoDialog
+            open={isCreateCreditMemoDialogOpen}
+            onOpenChange={setIsCreateCreditMemoDialogOpen}
+            companyId={companyId}
+            defaultAccountId={account.id}
+            onSuccess={fetchAccountAndInvoices}
+          />
+          <CreateDebitMemoDialog
+            open={isCreateDebitMemoDialogOpen}
+            onOpenChange={setIsCreateDebitMemoDialogOpen}
+            companyId={companyId}
+            defaultAccountId={account.id}
+            onSuccess={fetchAccountAndInvoices}
+          />
+        </>
       )}
     </div>
   );
