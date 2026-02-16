@@ -660,6 +660,7 @@ const Products = () => {
     lead_time_days: "",
     hazardous: false,
     serialized: false,
+    is_pos_available: true,
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -1059,6 +1060,7 @@ const Products = () => {
       lead_time_days: "",
       hazardous: false,
       serialized: false,
+      is_pos_available: true,
     });
     setImageFile(null);
     setImagePreview(null);
@@ -1113,6 +1115,7 @@ const Products = () => {
       lead_time_days: product.lead_time_days?.toString() || "",
       hazardous: (product as any).hazardous || false,
       serialized: (product as any).serialized || false,
+      is_pos_available: (product as any).is_pos_available !== false,
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
@@ -1429,6 +1432,7 @@ const Products = () => {
           lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
           hazardous: formData.hazardous,
           serialized: formData.serialized,
+          is_pos_available: formData.is_pos_available,
         } as any)
         .eq("id", editingId);
 
@@ -1469,6 +1473,7 @@ const Products = () => {
           lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days) : null,
           hazardous: formData.hazardous,
           serialized: formData.serialized,
+          is_pos_available: formData.is_pos_available,
         } as any)
         .select("id")
         .single();
@@ -2677,6 +2682,30 @@ const Products = () => {
                               <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
                                 Each unit of this product will require a unique serial number for tracking through
                                 receiving, inventory, and issuing.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="border rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label htmlFor="is_pos_available" className="text-base">
+                                  Available in POS
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Show this product in Point of Sale terminals
+                                </p>
+                              </div>
+                              <Switch
+                                id="is_pos_available"
+                                checked={formData.is_pos_available}
+                                onCheckedChange={(checked) => setFormData({ ...formData, is_pos_available: checked })}
+                              />
+                            </div>
+
+                            {!formData.is_pos_available && (
+                              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                                This product will be hidden from all POS terminals regardless of location settings.
                               </p>
                             )}
                           </div>

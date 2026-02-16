@@ -169,6 +169,7 @@ const POS = () => {
       .from('products')
       .select('id, product_id, name, sku, price, image_url')
       .eq('company_id', companyId!)
+      .eq('is_pos_available', true)
       .ilike('status', 'active')
       .order('name');
 
