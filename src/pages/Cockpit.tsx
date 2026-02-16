@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import {
   Card,
   CardContent,
@@ -1923,24 +1924,17 @@ const [areaFormData, setAreaFormData] = useState({
                 </div>
               ) : (
                 <>
-                  <Select onValueChange={setSelectedLocationId}>
-                    <SelectTrigger className="w-full h-14 text-lg">
-                      <SelectValue placeholder="Select a location..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={location.id} className="py-3">
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                              {location.location_id}
-                            </span>
-                            <span className="font-medium">{location.name}</span>
-                            <span className="text-muted-foreground text-sm">({location.type})</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={locations.map((location) => ({
+                      value: location.id,
+                      label: `${location.location_id} ${location.name}`,
+                      sublabel: location.type,
+                    }))}
+                    value={selectedLocationId || ""}
+                    onValueChange={setSelectedLocationId}
+                    placeholder="Select a location..."
+                    className="w-full h-14 text-lg"
+                  />
                   <p className="text-sm text-muted-foreground text-center">
                     {locations.length} location{locations.length !== 1 ? 's' : ''} available
                   </p>
@@ -2003,21 +1997,17 @@ const [areaFormData, setAreaFormData] = useState({
               >
                 <RefreshCw className="w-4 h-4" />
               </Button>
-              <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs">{location.location_id}</span>
-                        <span>{location.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={locations.map((location) => ({
+                  value: location.id,
+                  label: `${location.location_id} ${location.name}`,
+                  sublabel: location.type,
+                }))}
+                value={selectedLocationId || ""}
+                onValueChange={setSelectedLocationId}
+                placeholder="Select a location..."
+                className="w-64"
+              />
             </div>
           </div>
         </div>
