@@ -525,7 +525,7 @@ const Inventory = () => {
         </div>
       </header>
 
-      <div className="p-6">
+      <div className="px-0">
         {!selectedLocationId ? (
           <div className="text-center py-12 text-muted-foreground">
             Select a location to view inventory
