@@ -95,7 +95,7 @@ export function AppMenuButton() {
                   }}
                 >
                   <Icon className={`w-6 h-6 ${app.color}`} />
-                  <span className="text-xs text-foreground leading-tight">{app.name}</span>
+                  <span className="text-xs text-foreground leading-tight truncate w-full">{app.name}</span>
                 </button>
               );
             })}
