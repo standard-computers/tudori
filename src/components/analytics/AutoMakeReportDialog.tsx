@@ -128,7 +128,7 @@ export function AutoMakeReportDialog({
             Press Ctrl+Enter to submit
           </p>
         </div>
-        <DialogFooter className="px-6 pb-6">
+        <DialogFooter className="px-6 pb-6 border-t-0 bg-transparent">
           <Button onClick={handleSubmit} disabled={loading || !prompt.trim()}>
             {loading ? (
               <>
