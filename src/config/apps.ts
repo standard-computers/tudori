@@ -7,7 +7,7 @@ import {
   Package, 
   BarChart3, 
   FileText, 
-  Settings, 
+   
   DollarSign,
   Calendar,
   Truck,
@@ -83,8 +83,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Tasks', icon: ClipboardList, color: 'text-rose-500', description: 'To-dos & projects', path: '/tasks' },
   { name: 'Messages', icon: MessageSquare, color: 'text-lime-500', description: 'Team communication', path: '/messages' },
   { name: 'Users', icon: UserCog, color: 'text-purple-500', description: 'Team & access control', path: '/users' },
-  { name: 'Configuration', icon: Cog, color: 'text-emerald-500', description: 'System configuration', path: '/configuration' },
-  { name: 'Settings', icon: Settings, color: 'text-slate-500', description: 'Company settings', path: '/settings' },
+  { name: 'Configuration', icon: Cog, color: 'text-emerald-500', description: 'System & company settings', path: '/configuration' },
   { name: 'Data Explorer', icon: Database, color: 'text-cyan-500', description: 'Browse database tables', path: '/data-explorer' },
   { name: 'Transportation', icon: Truck, color: 'text-amber-500', description: 'Carriers & logistics', path: '/transportation' },
   { name: 'Developers', icon: Key, color: 'text-amber-500', description: 'API keys & webhooks', path: '/developers' },

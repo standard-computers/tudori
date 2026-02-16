@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Kbd } from '@/components/ui/kbd';
-import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet, Boxes, Search, X } from 'lucide-react';
+import { ArrowLeft, Cog, Save, Loader2, AlertTriangle, ShieldAlert, FileText, ShoppingCart, Truck, Book, Users, Package, MapPin, UserCheck, Sliders, Receipt, CreditCard, Wallet, ClipboardList, PackageCheck, PackageMinus, FileSpreadsheet, Boxes, Search, X, Building2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Database } from '@/integrations/supabase/types';
+import CompanyTab from '@/components/configuration/CompanyTab';
 
 interface DocumentIdConfig {
   id?: string;
@@ -114,7 +115,7 @@ const Configuration = () => {
   const [savingControls, setSavingControls] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [documentConfigs, setDocumentConfigs] = useState<DocumentIdConfig[]>([]);
-  const [activeTab, setActiveTab] = useState('ids');
+  const [activeTab, setActiveTab] = useState('company');
   const [activeConfigTab, setActiveConfigTab] = useState('account');
   const [currentUserRoles, setCurrentUserRoles] = useState<AppRole[]>([]);
   const [poSettings, setPOSettings] = useState<POAutomationSettings>({
@@ -137,6 +138,12 @@ const Configuration = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [savingCompany, setSavingCompany] = useState(false);
+  const companySaveRef = useRef<(() => void) | null>(null);
+
+  const handleSaveCompany = () => {
+    companySaveRef.current?.();
+  };
 
   // Ctrl+F shortcut
   useEffect(() => {
@@ -167,6 +174,8 @@ const Configuration = () => {
       handleSaveConfigs();
     } else if (activeTab === 'controls' && !savingControls) {
       handleSaveControls();
+    } else if (activeTab === 'company' && !savingCompany) {
+      handleSaveCompany();
     }
   }, hasConfigAccess);
 
@@ -624,7 +633,7 @@ const Configuration = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Configuration</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pr-16">
               {searchOpen ? (
                 <div className="flex items-center gap-1 border border-border rounded-md bg-background px-2">
                   <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -645,38 +654,28 @@ const Configuration = () => {
                   </Button>
                 </div>
               ) : (
-                <Button variant="ghost" size="icon" onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}>
+                <Button variant="ghost" size="icon" className="relative" onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}>
                   <Search className="w-4 h-4" />
+                  <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
                 </Button>
               )}
-              {activeTab === 'ids' && (
-                <Button onClick={handleSaveConfigs} disabled={savingConfig}>
-                  {savingConfig ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
+              {(activeTab === 'ids' || activeTab === 'controls' || activeTab === 'company') && (
+                <Button
+                  size="icon"
+                  className="relative"
+                  onClick={() => {
+                    if (activeTab === 'ids') handleSaveConfigs();
+                    else if (activeTab === 'controls') handleSaveControls();
+                    else if (activeTab === 'company') handleSaveCompany();
+                  }}
+                  disabled={activeTab === 'ids' ? savingConfig : activeTab === 'controls' ? savingControls : savingCompany}
+                >
+                  {(activeTab === 'ids' ? savingConfig : activeTab === 'controls' ? savingControls : savingCompany) ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                      <Kbd className="ml-2">⌘S</Kbd>
-                    </>
-                  )}
-                </Button>
-              )}
-              {activeTab === 'controls' && (
-                <Button onClick={handleSaveControls} disabled={savingControls}>
-                  {savingControls ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                      <Kbd className="ml-2">⌘S</Kbd>
+                      <Save className="w-4 h-4" />
+                      <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘S</Kbd>
                     </>
                   )}
                 </Button>
@@ -689,6 +688,10 @@ const Configuration = () => {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6">
+            <TabsTrigger value="company" className="flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
+              Company
+            </TabsTrigger>
             <TabsTrigger value="ids" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Document IDs
@@ -698,6 +701,15 @@ const Configuration = () => {
               Controls
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="company" className="space-y-6">
+            <CompanyTab
+              companyId={companyId}
+              saving={savingCompany}
+              setSaving={setSavingCompany}
+              onSaveRef={companySaveRef}
+            />
+          </TabsContent>
 
           <TabsContent value="ids" className="space-y-6">
             <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400">
