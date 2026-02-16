@@ -3093,6 +3093,7 @@ export type Database = {
           status: string
           team_id: string
           updated_at: string
+          vacancies: number
           wage: number | null
         }
         Insert: {
@@ -3108,6 +3109,7 @@ export type Database = {
           status?: string
           team_id: string
           updated_at?: string
+          vacancies?: number
           wage?: number | null
         }
         Update: {
@@ -3123,6 +3125,7 @@ export type Database = {
           status?: string
           team_id?: string
           updated_at?: string
+          vacancies?: number
           wage?: number | null
         }
         Relationships: [
