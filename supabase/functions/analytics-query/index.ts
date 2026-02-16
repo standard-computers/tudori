@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Verify user token
@@ -370,44 +371,22 @@ Deno.serve(async (req) => {
     console.log("Executing SQL:", sql);
     console.log("Params:", params);
 
-    // Execute query using service role
-    const { data, error } = await supabase.rpc("execute_analytics_query", {
+    // Execute query using the user's token so auth.uid() is set inside the RPC
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data, error } = await userClient.rpc("execute_analytics_query", {
       query_text: sql,
       query_params: params,
     });
 
     if (error) {
       console.error("Query execution error:", error);
-      // Fall back to direct query if RPC doesn't exist yet
-      // Use raw SQL via PostgREST
-      const pgResponse = await fetch(
-        `${supabaseUrl}/rest/v1/rpc/execute_analytics_query`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": supabaseKey,
-            "Authorization": `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({ query_text: sql, query_params: params }),
-        }
+      return new Response(
+        JSON.stringify({ error: error.message, sql_preview: sql }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-
-      if (!pgResponse.ok) {
-        // If RPC doesn't exist, return helpful error
-        return new Response(
-          JSON.stringify({ 
-            error: "Analytics query function not ready. Please run the database migration first.",
-            sql_preview: sql,
-          }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const pgData = await pgResponse.json();
-      return new Response(JSON.stringify({ data: pgData, sql_preview: sql }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     return new Response(JSON.stringify({ data, sql_preview: sql }), {
