@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Plus, Key, Shield, Webhook, Eye, EyeOff, Copy, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Key, Shield, Webhook, Eye, EyeOff, Copy, Trash2, ToggleLeft, ToggleRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +43,7 @@ const WEBHOOK_EVENT_OPTIONS = [
 ];
 
 export default function Developers() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const statusMessage = useStatusMessage();
   const [keys, setKeys] = useState<DeveloperKey[]>([]);
@@ -183,8 +185,13 @@ export default function Developers() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 h-16">
-        <h1 className="text-xl font-semibold text-foreground">Developers</h1>
+      <div className="flex items-center justify-between px-6 h-16 pr-16">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-xl font-semibold text-foreground">Developers</h1>
+        </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => { setForm(f => ({ ...f, key_type: tab })); setDialogOpen(true); }} size="icon" className="relative">
             <Plus className="w-4 h-4" />
