@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN is_pos_available boolean NOT NULL DEFAULT true;

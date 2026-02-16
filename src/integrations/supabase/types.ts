@@ -3491,6 +3491,7 @@ export type Database = {
           image_url: string | null
           is_batched: boolean
           is_consumable: boolean
+          is_pos_available: boolean
           keep_inventory: boolean
           lead_time_days: number | null
           length: number | null
@@ -3525,6 +3526,7 @@ export type Database = {
           image_url?: string | null
           is_batched?: boolean
           is_consumable?: boolean
+          is_pos_available?: boolean
           keep_inventory?: boolean
           lead_time_days?: number | null
           length?: number | null
@@ -3559,6 +3561,7 @@ export type Database = {
           image_url?: string | null
           is_batched?: boolean
           is_consumable?: boolean
+          is_pos_available?: boolean
           keep_inventory?: boolean
           lead_time_days?: number | null
           length?: number | null
