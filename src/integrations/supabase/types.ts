@@ -3133,6 +3133,42 @@ export type Database = {
           },
         ]
       }
+      pos_location_rates: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          rate_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          rate_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          rate_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_location_rates_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_location_rates_rate_id_fkey"
+            columns: ["rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       position_locations: {
         Row: {
           created_at: string

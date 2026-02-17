@@ -45,6 +45,13 @@ interface CartItem {
   quantity: number;
 }
 
+interface LocationRate {
+  id: string;
+  name: string;
+  rate: number;
+  rate_type: string;
+}
+
 const POS = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -59,6 +66,7 @@ const POS = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [posProductIds, setPosProductIds] = useState<Set<string> | null>(null);
   const [showProductIdsOnTiles, setShowProductIdsOnTiles] = useState(false);
+  const [locationRates, setLocationRates] = useState<LocationRate[]>([]);
 
   useEffect(() => {
     setTransaction('pos');
@@ -88,6 +96,7 @@ const POS = () => {
     if (selectedLocationId && user) {
       checkLocationAdmin();
       fetchPosProducts();
+      fetchLocationRates();
       // Load show product IDs preference
       const stored = localStorage.getItem(`pos-show-ids-${selectedLocationId}`);
       setShowProductIdsOnTiles(stored === 'true');
@@ -134,6 +143,29 @@ const POS = () => {
       setPosProductIds(new Set(data.map((r) => r.product_id)));
     } else {
       setPosProductIds(null); // null means show all products
+    }
+  };
+
+  const fetchLocationRates = async () => {
+    const { data } = await supabase
+      .from('pos_location_rates')
+      .select('rate_id, tax_rates(id, name, rate, rate_type)')
+      .eq('location_id', selectedLocationId);
+
+    if (data) {
+      setLocationRates(
+        data
+          .map((r: any) => r.tax_rates)
+          .filter(Boolean)
+          .map((tr: any) => ({
+            id: tr.id,
+            name: tr.name,
+            rate: Number(tr.rate),
+            rate_type: tr.rate_type || 'percent',
+          }))
+      );
+    } else {
+      setLocationRates([]);
     }
   };
 
@@ -231,9 +263,17 @@ const POS = () => {
     setCart([]);
   };
 
-  const cartTotal = cart.reduce((sum, item) => {
+  const cartSubtotal = cart.reduce((sum, item) => {
     return sum + (item.product.price || 0) * item.quantity;
   }, 0);
+
+  // Calculate rate amounts
+  const percentRates = locationRates.filter((r) => r.rate_type === 'percent');
+  const flatRates = locationRates.filter((r) => r.rate_type === 'flat');
+  const percentTotal = percentRates.reduce((sum, r) => sum + (cartSubtotal * r.rate) / 100, 0);
+  const flatTotal = flatRates.reduce((sum, r) => sum + r.rate, 0);
+  const ratesTotal = percentTotal + flatTotal;
+  const cartTotal = cartSubtotal + ratesTotal;
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -435,7 +475,27 @@ const POS = () => {
             )}
           </div>
 
-          <div className="p-4 border-t space-y-4">
+          <div className="p-4 border-t space-y-2">
+            {locationRates.length > 0 && cart.length > 0 && (
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>${cartSubtotal.toFixed(2)}</span>
+                </div>
+                {percentRates.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{r.name} ({r.rate}%)</span>
+                    <span>${((cartSubtotal * r.rate) / 100).toFixed(2)}</span>
+                  </div>
+                ))}
+                {flatRates.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{r.name}</span>
+                    <span>${r.rate.toFixed(2)}</span>
+                  </div>
+                ))}
+              </>
+            )}
             <div className="flex items-center justify-between text-lg font-semibold">
               <span>Total</span>
               <span>${cartTotal.toFixed(2)}</span>
@@ -459,7 +519,7 @@ const POS = () => {
           locationId={selectedLocationId}
           locationName={locations.find(l => l.id === selectedLocationId)?.name || ''}
           companyId={companyId}
-          onSaved={() => fetchPosProducts()}
+          onSaved={() => { fetchPosProducts(); fetchLocationRates(); }}
           showProductIds={showProductIdsOnTiles}
           onShowProductIdsChange={(val) => {
             setShowProductIdsOnTiles(val);
