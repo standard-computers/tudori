@@ -1,0 +1,1 @@
+ALTER TABLE public.product_uoms ADD COLUMN lower_uom text;

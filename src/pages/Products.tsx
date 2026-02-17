@@ -974,11 +974,12 @@ const Products = () => {
     }
 
     setUoms(
-      data?.map((u) => ({
+      data?.map((u: any) => ({
         id: u.id,
         name: u.name,
         abbreviation: u.abbreviation || "",
         conversion_factor: u.conversion_factor?.toString() || "1",
+        lower_uom: u.lower_uom || "",
       })) || [],
     );
   };
@@ -1523,6 +1524,7 @@ const Products = () => {
           name: u.name,
           abbreviation: u.abbreviation || null,
           conversion_factor: parseFloat(u.conversion_factor) || 1,
+          lower_uom: u.lower_uom || null,
         }));
 
         const { error: uomError } = await supabase.from("product_uoms").insert(uomInserts);
