@@ -58,6 +58,7 @@ const POS = () => {
   const [isLocationAdmin, setIsLocationAdmin] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [posProductIds, setPosProductIds] = useState<Set<string> | null>(null);
+  const [showProductIdsOnTiles, setShowProductIdsOnTiles] = useState(false);
 
   useEffect(() => {
     setTransaction('pos');
@@ -87,6 +88,9 @@ const POS = () => {
     if (selectedLocationId && user) {
       checkLocationAdmin();
       fetchPosProducts();
+      // Load show product IDs preference
+      const stored = localStorage.getItem(`pos-show-ids-${selectedLocationId}`);
+      setShowProductIdsOnTiles(stored === 'true');
     }
   }, [selectedLocationId, user]);
 
@@ -344,7 +348,9 @@ const POS = () => {
                     )}
                   </div>
                   <h3 className="font-medium text-sm truncate">{product.name}</h3>
-                  <p className="text-xs text-muted-foreground truncate">{product.product_id}</p>
+                  {showProductIdsOnTiles && (
+                    <p className="text-xs text-muted-foreground truncate">{product.product_id}</p>
+                  )}
                   <p className="text-sm font-semibold mt-1">
                     ${(product.price || 0).toFixed(2)}
                   </p>
@@ -454,6 +460,11 @@ const POS = () => {
           locationName={locations.find(l => l.id === selectedLocationId)?.name || ''}
           companyId={companyId}
           onSaved={() => fetchPosProducts()}
+          showProductIds={showProductIdsOnTiles}
+          onShowProductIdsChange={(val) => {
+            setShowProductIdsOnTiles(val);
+            localStorage.setItem(`pos-show-ids-${selectedLocationId}`, String(val));
+          }}
         />
       )}
     </div>
