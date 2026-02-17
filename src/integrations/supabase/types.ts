@@ -3329,6 +3329,7 @@ export type Database = {
           conversion_factor: number
           created_at: string
           id: string
+          lower_uom: string | null
           name: string
           product_id: string
         }
@@ -3337,6 +3338,7 @@ export type Database = {
           conversion_factor?: number
           created_at?: string
           id?: string
+          lower_uom?: string | null
           name: string
           product_id: string
         }
@@ -3345,6 +3347,7 @@ export type Database = {
           conversion_factor?: number
           created_at?: string
           id?: string
+          lower_uom?: string | null
           name?: string
           product_id?: string
         }
