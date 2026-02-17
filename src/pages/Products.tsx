@@ -2257,7 +2257,7 @@ const Products = () => {
                                         {uom.abbreviation} - {uom.name}
                                       </TableCell>
                                       <TableCell>
-                                        1 {uom.abbreviation} = {uom.conversion_factor} {formData.unit}
+                                        1 {uom.abbreviation} = {uom.conversion_factor} {uom.lower_uom || formData.unit}
                                       </TableCell>
                                       <TableCell>
                                         <Button
