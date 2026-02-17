@@ -1176,22 +1176,31 @@ const Products = () => {
       return;
     }
 
+    const factor = parseFloat(newUom.conversion_factor) || 1;
+    if (factor <= 0) {
+      toast.error("Conversion factor must be greater than 0");
+      return;
+    }
+
     // Get the name from the selected abbreviation
     const selectedUomOption = BASE_UOM_OPTIONS.find((o) => o.value === newUom.abbreviation);
     const name = selectedUomOption?.label.split(" - ")[1] || newUom.abbreviation;
 
-    // Calculate conversion factor based on lower UOM
-    let finalConversionFactor = parseFloat(newUom.conversion_factor) || 1;
+    // Calculate conversion factor relative to the base unit
+    // The user enters: 1 [new UoM] = [factor] × [lower UoM]
+    // We need to compute: 1 [new UoM] = ? × [base unit]
     const lowerUom = newUom.lower_uom || formData.unit;
+    let lowerUomBaseConversion = 1; // default: lower UoM IS the base unit
 
-    // If lower UOM is not the base unit, multiply by its conversion factor (if it's an existing product UoM)
     if (lowerUom !== formData.unit) {
       const lowerUomEntry = uoms.find((u) => u.abbreviation === lowerUom);
       if (lowerUomEntry) {
-        finalConversionFactor = finalConversionFactor * (parseFloat(lowerUomEntry.conversion_factor) || 1);
+        lowerUomBaseConversion = parseFloat(lowerUomEntry.conversion_factor) || 1;
       }
-      // If lower UoM is from BASE_UOM_OPTIONS but not yet a product UoM, treat its factor as 1 (user defines the relationship)
+      // If lower UoM is from BASE_UOM_OPTIONS but not yet a product UoM, treat its base conversion as 1
     }
+
+    const finalConversionFactor = factor * lowerUomBaseConversion;
 
     setUoms([
       ...uoms,
@@ -2315,7 +2324,7 @@ const Products = () => {
                               </div>
                               <div className="space-y-1">
                                 <Label htmlFor="uom_factor" className="text-xs">
-                                  Units of lower UOM *
+                                  Quantity in lower UOM *
                                 </Label>
                                 <Input
                                   id="uom_factor"
@@ -2324,7 +2333,7 @@ const Products = () => {
                                   min="0.0001"
                                   value={newUom.conversion_factor}
                                   onChange={(e) => setNewUom({ ...newUom, conversion_factor: e.target.value })}
-                                  placeholder="e.g., 48"
+                                  placeholder="e.g., 1000 or 0.001"
                                 />
                               </div>
                               <div className="space-y-1">
