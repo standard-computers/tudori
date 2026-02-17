@@ -1184,12 +1184,13 @@ const Products = () => {
     let finalConversionFactor = parseFloat(newUom.conversion_factor) || 1;
     const lowerUom = newUom.lower_uom || formData.unit;
 
-    // If lower UOM is not the base unit, multiply by its conversion factor
+    // If lower UOM is not the base unit, multiply by its conversion factor (if it's an existing product UoM)
     if (lowerUom !== formData.unit) {
       const lowerUomEntry = uoms.find((u) => u.abbreviation === lowerUom);
       if (lowerUomEntry) {
         finalConversionFactor = finalConversionFactor * (parseFloat(lowerUomEntry.conversion_factor) || 1);
       }
+      // If lower UoM is from BASE_UOM_OPTIONS but not yet a product UoM, treat its factor as 1 (user defines the relationship)
     }
 
     setUoms([
@@ -2348,25 +2349,25 @@ const Products = () => {
                                       <CommandInput placeholder="Search UOM..." />
                                       <CommandList>
                                         <CommandEmpty>No UOM found.</CommandEmpty>
-                                        <CommandGroup>
-                                          {/* Base UOM option */}
+                                        <CommandGroup heading="Product UOMs">
+                                          {/* Product's base unit */}
                                           <CommandItem
                                             value={formData.unit || "base"}
-                                            onSelect={() => setNewUom({ ...newUom, lower_uom: "" })}
+                                            onSelect={() => setNewUom({ ...newUom, lower_uom: formData.unit || "" })}
                                           >
                                             <Check
                                               className={cn(
                                                 "mr-2 h-4 w-4",
-                                                !newUom.lower_uom ? "opacity-100" : "opacity-0",
+                                                (newUom.lower_uom === formData.unit || !newUom.lower_uom) ? "opacity-100" : "opacity-0",
                                               )}
                                             />
                                             {formData.unit} - Base Unit
                                           </CommandItem>
-                                          {/* Existing UOMs */}
+                                          {/* Existing product UOMs */}
                                           {uoms.map((uom) => (
                                             <CommandItem
                                               key={uom.abbreviation}
-                                              value={uom.name}
+                                              value={uom.name + " " + uom.abbreviation}
                                               onSelect={() => setNewUom({ ...newUom, lower_uom: uom.abbreviation })}
                                             >
                                               <Check
@@ -2378,6 +2379,25 @@ const Products = () => {
                                               {uom.abbreviation} - {uom.name}
                                             </CommandItem>
                                           ))}
+                                        </CommandGroup>
+                                        <CommandGroup heading="All UOMs">
+                                          {BASE_UOM_OPTIONS
+                                            .filter((o) => o.value !== formData.unit && !uoms.some((u) => u.abbreviation === o.value))
+                                            .map((uom) => (
+                                              <CommandItem
+                                                key={uom.value}
+                                                value={uom.label}
+                                                onSelect={() => setNewUom({ ...newUom, lower_uom: uom.value })}
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    newUom.lower_uom === uom.value ? "opacity-100" : "opacity-0",
+                                                  )}
+                                                />
+                                                {uom.label}
+                                              </CommandItem>
+                                            ))}
                                         </CommandGroup>
                                       </CommandList>
                                     </Command>
