@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Search, Package } from 'lucide-react';
 import { toast } from '@/lib/toast';
 
@@ -30,6 +32,8 @@ interface POSSettingsDialogProps {
   locationName: string;
   companyId: string;
   onSaved: () => void;
+  showProductIds?: boolean;
+  onShowProductIdsChange?: (value: boolean) => void;
 }
 
 const POSSettingsDialog = ({
@@ -39,6 +43,8 @@ const POSSettingsDialog = ({
   locationName,
   companyId,
   onSaved,
+  showProductIds = false,
+  onShowProductIdsChange,
 }: POSSettingsDialogProps) => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
@@ -158,6 +164,16 @@ const POSSettingsDialog = ({
         </DialogHeader>
         <DialogBody>
           <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <Label htmlFor="show-product-ids" className="text-sm font-medium cursor-pointer">
+                Show Product IDs on tiles
+              </Label>
+              <Switch
+                id="show-product-ids"
+                checked={showProductIds}
+                onCheckedChange={(checked) => onShowProductIdsChange?.(checked)}
+              />
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
