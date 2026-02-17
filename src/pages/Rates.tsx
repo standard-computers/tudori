@@ -18,6 +18,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -441,7 +442,7 @@ const Rates = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 px-6">
+          <DialogBody>
             <div className="space-y-2">
               <Label htmlFor="rate_id">Rate ID</Label>
               <Input
@@ -538,7 +539,7 @@ const Rates = () => {
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
             </div>
-          </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
