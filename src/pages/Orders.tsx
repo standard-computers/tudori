@@ -2298,7 +2298,7 @@ const Orders = () => {
     return filteredProducts.map((p) => ({
       value: p.id,
       label: p.name,
-      sublabel: `$${p.price?.toFixed(2) || "0.00"}`,
+      sublabel: `${p.product_id} • $${p.price?.toFixed(2) || "0.00"}`,
     }));
   }, [filteredProducts]);
 
@@ -2437,13 +2437,18 @@ const Orders = () => {
     return { errors, warnings };
   }, [formData, orderItems, products, parseVendorValue, enforceRouteRecords, assignments, locations]);
 
-  // Auto-open validation popover when route enforcement warnings are detected
+  // Auto-open validation popover when route enforcement warnings are detected (once per dialog open)
+  const hasAutoOpenedValidation = useRef(false);
   useEffect(() => {
-    if (!isCreateDialogOpen) return;
+    if (!isCreateDialogOpen) {
+      hasAutoOpenedValidation.current = false;
+      return;
+    }
 
     const hasRouteWarning = poValidation.warnings.some((w) => w.includes("No route records exist"));
 
-    if (hasRouteWarning) {
+    if (hasRouteWarning && !hasAutoOpenedValidation.current) {
+      hasAutoOpenedValidation.current = true;
       setIsValidationPopoverOpen(true);
     }
   }, [poValidation.warnings, isCreateDialogOpen]);
