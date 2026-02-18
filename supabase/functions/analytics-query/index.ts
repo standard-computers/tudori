@@ -279,6 +279,74 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Try finding a bridge entity (two-hop join through an intermediate table)
+      if (!joined) {
+        for (const bridgeEntity of entities) {
+          if (joinedTables.has(bridgeEntity.table)) continue;
+          
+          // Check if any joined table can reach the bridge, and bridge can reach the target
+          let joinedToBridge = false;
+          let bridgeJoinClause = "";
+          
+          for (const joinedTable of joinedTables) {
+            const joinedEnt = entities.find(e => e.table === joinedTable);
+            if (!joinedEnt) continue;
+            
+            // joinedTable -> bridge
+            for (const rel of joinedEnt.relationships) {
+              const t = entities.find(e => e.name === rel.targetEntity);
+              if (t && t.table === bridgeEntity.table) {
+                bridgeJoinClause = ` LEFT JOIN ${sanitizeTableName(bridgeEntity.table)} ON ${sanitizeTableName(joinedTable)}.${sanitizeIdentifier(rel.foreignKey)} = ${sanitizeTableName(bridgeEntity.table)}.${sanitizeIdentifier(rel.targetKey)}`;
+                joinedToBridge = true;
+                break;
+              }
+            }
+            if (joinedToBridge) break;
+            
+            // bridge -> joinedTable (reverse)
+            for (const rel of bridgeEntity.relationships) {
+              const t = entities.find(e => e.name === rel.targetEntity);
+              if (t && t.table === joinedTable) {
+                bridgeJoinClause = ` LEFT JOIN ${sanitizeTableName(bridgeEntity.table)} ON ${sanitizeTableName(bridgeEntity.table)}.${sanitizeIdentifier(rel.foreignKey)} = ${sanitizeTableName(joinedTable)}.${sanitizeIdentifier(rel.targetKey)}`;
+                joinedToBridge = true;
+                break;
+              }
+            }
+            if (joinedToBridge) break;
+          }
+          
+          if (!joinedToBridge) continue;
+          
+          // Now check bridge -> otherEntity
+          for (const rel of bridgeEntity.relationships) {
+            const t = entities.find(e => e.name === rel.targetEntity);
+            if (t && t.table === otherEntity.table) {
+              fromClause += bridgeJoinClause;
+              joinedTables.add(bridgeEntity.table);
+              fromClause += ` LEFT JOIN ${sanitizeTableName(otherEntity.table)} ON ${sanitizeTableName(bridgeEntity.table)}.${sanitizeIdentifier(rel.foreignKey)} = ${sanitizeTableName(otherEntity.table)}.${sanitizeIdentifier(rel.targetKey)}`;
+              joinedTables.add(otherEntity.table);
+              joined = true;
+              break;
+            }
+          }
+          if (joined) break;
+          
+          // otherEntity -> bridge (reverse)
+          for (const rel of otherEntity.relationships) {
+            const t = entities.find(e => e.name === rel.targetEntity);
+            if (t && t.table === bridgeEntity.table) {
+              fromClause += bridgeJoinClause;
+              joinedTables.add(bridgeEntity.table);
+              fromClause += ` LEFT JOIN ${sanitizeTableName(otherEntity.table)} ON ${sanitizeTableName(otherEntity.table)}.${sanitizeIdentifier(rel.foreignKey)} = ${sanitizeTableName(bridgeEntity.table)}.${sanitizeIdentifier(rel.targetKey)}`;
+              joinedTables.add(otherEntity.table);
+              joined = true;
+              break;
+            }
+          }
+          if (joined) break;
+        }
+      }
+
       if (!joined) {
         return new Response(
           JSON.stringify({ error: `Cannot join ${otherEntity.name} - no relationship found` }),
