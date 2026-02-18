@@ -305,8 +305,13 @@ Deno.serve(async (req) => {
 
       const qualifiedCol = `${sanitizeTableName(entity.table)}.${sanitizeIdentifier(field.fieldKey)}`;
       const { operator, value } = field.filter;
-      // Cast to uuid if the field looks like a UUID column
-      const castSuffix = field.fieldKey.endsWith("_id") || field.fieldKey === "id" ? "::uuid" : "";
+      // Determine cast suffix based on field type
+      let castSuffix = "";
+      if (field.fieldKey.endsWith("_id") || field.fieldKey === "id") {
+        castSuffix = "::uuid";
+      } else if (field.fieldType === "boolean" || value === "true" || value === "false") {
+        castSuffix = "::boolean";
+      }
 
       switch (operator) {
         case "eq":
