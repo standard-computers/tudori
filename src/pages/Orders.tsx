@@ -2288,16 +2288,10 @@ const Orders = () => {
     fetchOrders();
   };
 
-  // Filter products by selected vendor (handle new vendor:id format)
+  // Show all products regardless of selected vendor
   const filteredProducts = useMemo(() => {
-    if (!formData.vendor_id) return products;
-    const parsed = parseVendorValue(formData.vendor_id);
-    if (parsed?.type === "vendor") {
-      return products.filter((p) => p.vendor_id === parsed.id);
-    }
-    // For location-based vendors (DC/warehouse), show all products
     return products;
-  }, [formData.vendor_id, products, parseVendorValue]);
+  }, [products]);
 
   // Create filtered product options for SearchableSelect
   const filteredProductOptions: SearchableSelectOption[] = useMemo(() => {
