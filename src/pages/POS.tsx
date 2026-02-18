@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import POSCheckoutScreen from '@/components/pos/POSCheckoutScreen';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -62,6 +63,7 @@ const POS = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [isLocationAdmin, setIsLocationAdmin] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [posProductIds, setPosProductIds] = useState<Set<string> | null>(null);
@@ -286,8 +288,7 @@ const POS = () => {
       toast.error('Cart is empty');
       return;
     }
-    // TODO: Implement checkout flow (create sales order, goods issue, etc.)
-    toast.success('Checkout functionality coming soon!');
+    setShowCheckout(true);
   };
 
   if (locations.length === 0 && companyId) {
@@ -316,6 +317,26 @@ const POS = () => {
           </div>
         </main>
       </div>
+    );
+  }
+
+  if (showCheckout && companyId) {
+    return (
+      <POSCheckoutScreen
+        cart={cart}
+        locationRates={locationRates}
+        cartSubtotal={cartSubtotal}
+        cartTotal={cartTotal}
+        percentRates={percentRates}
+        flatRates={flatRates}
+        selectedLocationId={selectedLocationId}
+        companyId={companyId}
+        onBack={() => setShowCheckout(false)}
+        onComplete={() => {
+          setShowCheckout(false);
+          setCart([]);
+        }}
+      />
     );
   }
 
