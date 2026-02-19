@@ -565,7 +565,11 @@ export function StepByStepProductionDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={(val) => {
+          // Prevent closing while confirm dialog is open or processing
+          if (!val && (showConfirmDialog || isLoading)) return;
+          onOpenChange(val);
+        }}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
           <button
             type="button"
