@@ -440,32 +440,12 @@ export default function Go() {
               <RefreshCw className="w-4 h-4" />
             </Button>
           )}
-          {locations.length > 1 ? (
-            <Select value={selectedLocationId} onValueChange={(v) => {
-              setSelectedLocationId(v);
-              setActivity(null);
-              setInternalSubType(null);
-              setTasks([]);
-              setExpandedTaskId(null);
-            }}>
-              <SelectTrigger className="h-8 w-auto max-w-[180px] text-xs">
-                <MapPin className="w-3 h-3 mr-1 shrink-0" />
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>
-                    {loc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : selectedLocation ? (
+          {selectedLocation && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="w-3 h-3" />
               <span className="truncate max-w-[120px]">{selectedLocation.name}</span>
             </div>
-          ) : null}
+          )}
         </div>
       </header>
 
