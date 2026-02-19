@@ -85,11 +85,26 @@ interface Invoice {
   ledger?: { name: string } | null;
 }
 
+interface Payment {
+  id: string;
+  payment_number: string;
+  account_id: string;
+  invoice_id: string;
+  amount: number;
+  payment_date: string;
+  processed_by: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  invoice?: { invoice_number: string } | null;
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500',
   pending: 'bg-yellow-500',
   paid: 'bg-green-500',
   cancelled: 'bg-red-500',
+  completed: 'bg-green-500',
 };
 
 const AccountDetail = () => {
@@ -100,6 +115,7 @@ const AccountDetail = () => {
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<Account | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   
   // Dialog states
@@ -109,7 +125,8 @@ const AccountDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form states
-  const [searchQuery, setSearchQuery] = useState('');
+  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [canCreateInvoice, setCanCreateInvoice] = useState(false);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
   const [isCreateCreditMemoDialogOpen, setIsCreateCreditMemoDialogOpen] = useState(false);
@@ -121,6 +138,7 @@ const AccountDetail = () => {
   const [isMaximized, setIsMaximized] = useMaximizedState();
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
+  const { sortConfig: paymentSortConfig, sortedAndFilteredData: sortedPayments, handleSort: handlePaymentSort } = useTableSort<Payment>(payments);
 
   useKeyboardShortcut('n', () => {
     if (canCreateInvoice) setIsCreateInvoiceDialogOpen(true);
@@ -158,7 +176,6 @@ const AccountDetail = () => {
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
-      // Check if user has admin or IT role
       const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
@@ -189,7 +206,6 @@ const AccountDetail = () => {
       if (accountError) throw accountError;
       setAccount(accountData as any);
       
-      // Check if current user is the account manager
       if ((accountData as any).account_manager_id === user?.id) {
         setCanCreateInvoice(true);
       }
@@ -208,6 +224,19 @@ const AccountDetail = () => {
 
       if (invoicesError) throw invoicesError;
       setInvoices((invoicesData as any) || []);
+
+      // Fetch payments for this account
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments' as any)
+        .select(`
+          *,
+          invoice:invoices(invoice_number)
+        `)
+        .eq('account_id', id)
+        .order('created_at', { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+      setPayments((paymentsData as any) || []);
     } catch (error) {
       console.error('Error fetching account details:', error);
     } finally {
@@ -216,8 +245,8 @@ const AccountDetail = () => {
   };
 
   const filteredInvoices = useMemo(() => {
-    if (!searchQuery) return sortedAndFilteredData;
-    const query = searchQuery.toLowerCase();
+    if (!invoiceSearchQuery) return sortedAndFilteredData;
+    const query = invoiceSearchQuery.toLowerCase();
     return sortedAndFilteredData.filter(
       (invoice) =>
         invoice.invoice_number.toLowerCase().includes(query) ||
@@ -225,7 +254,18 @@ const AccountDetail = () => {
         invoice.purchase_order?.po_number?.toLowerCase().includes(query) ||
         invoice.sales_order?.so_number?.toLowerCase().includes(query)
     );
-  }, [sortedAndFilteredData, searchQuery]);
+  }, [sortedAndFilteredData, invoiceSearchQuery]);
+
+  const filteredPayments = useMemo(() => {
+    if (!paymentSearchQuery) return sortedPayments;
+    const query = paymentSearchQuery.toLowerCase();
+    return sortedPayments.filter(
+      (payment) =>
+        payment.payment_number.toLowerCase().includes(query) ||
+        payment.status.toLowerCase().includes(query) ||
+        payment.invoice?.invoice_number?.toLowerCase().includes(query)
+    );
+  }, [sortedPayments, paymentSearchQuery]);
 
   const totalAmount = useMemo(() => {
     return invoices.reduce((sum, inv) => sum + inv.amount, 0);
@@ -238,10 +278,29 @@ const AccountDetail = () => {
   }, [invoices]);
 
   const handleAcceptPayment = async () => {
-    if (!selectedInvoice) return;
+    if (!selectedInvoice || !companyId) return;
     setIsSubmitting(true);
 
     try {
+      // Generate payment number
+      const { data: paymentNumber } = await supabase.rpc('get_next_payment_number', { p_company_id: companyId });
+
+      // Create payment record
+      const { error: paymentError } = await supabase
+        .from('payments' as any)
+        .insert({
+          payment_number: paymentNumber,
+          company_id: companyId,
+          account_id: selectedInvoice.account_id,
+          invoice_id: selectedInvoice.id,
+          amount: selectedInvoice.amount,
+          payment_date: new Date().toISOString().split('T')[0],
+          processed_by: user?.id,
+          status: 'completed',
+        } as any);
+
+      if (paymentError) throw paymentError;
+
       // Update invoice status to paid
       const { error } = await supabase
         .from('invoices' as any)
@@ -310,7 +369,7 @@ const AccountDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <div>
         <div className="px-4 pr-16 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -345,7 +404,7 @@ const AccountDetail = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="flex-1 overflow-auto px-4 py-6">
         {/* Account Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="border rounded-lg p-4 flex items-center gap-2">
@@ -377,169 +436,180 @@ const AccountDetail = () => {
           </div>
         )}
 
-        {/* Invoices Section */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Invoices ({invoices.length})</h2>
-          </div>
-          <Input
-            placeholder="Search invoices..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
+        {/* Tabbed Content */}
+        <Tabs defaultValue="invoices">
+          <TabsList>
+            <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
+            <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
+          </TabsList>
 
-        <div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableTableHead
-                  label="Invoice #"
-                  sortKey="invoice_number"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <SortableTableHead
-                  label="Date"
-                  sortKey="invoice_date"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <TableHead>Reference</TableHead>
-                <TableHead>Pay To</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Location ID</TableHead>
-                <SortableTableHead
-                  label="Amount"
-                  sortKey="amount"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <TableHead>Ledger</TableHead>
-                <SortableTableHead
-                  label="Status"
-                  sortKey="status"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <SortableTableHead
-                  label="Due Date"
-                  sortKey="due_date"
-                  currentSortKey={sortConfig.key}
-                  currentSortDirection={sortConfig.direction}
-                  onSort={handleSort}
-                  filterable={false}
-                />
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvoices.length === 0 ? (
+          <TabsContent value="invoices">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold">Invoices</h2>
+              </div>
+              <Input
+                placeholder="Search invoices..."
+                value={invoiceSearchQuery}
+                onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                    No invoices found for this account.
-                  </TableCell>
+                  <SortableTableHead label="Invoice #" sortKey="invoice_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+                  <SortableTableHead label="Date" sortKey="invoice_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Pay To</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Location ID</TableHead>
+                  <SortableTableHead label="Amount" sortKey="amount" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+                  <TableHead>Ledger</TableHead>
+                  <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+                  <SortableTableHead label="Due Date" sortKey="due_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ) : (
-                filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-mono">
-                      <button
-                        onClick={() => handleViewInvoice(invoice)}
-                        className="text-primary hover:underline cursor-pointer"
-                      >
-                        {invoice.invoice_number}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(invoice.invoice_date), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.purchase_order && (
-                        <Badge variant="outline">PO: {invoice.purchase_order.po_number}</Badge>
-                      )}
-                      {invoice.sales_order && (
-                        <Badge variant="outline">SO: {invoice.sales_order.so_number}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.purchase_order?.vendor && (
-                        <div>
-                          <p className="font-medium">{invoice.purchase_order.vendor.name}</p>
-                          <p className="text-xs text-muted-foreground">{invoice.purchase_order.vendor.vendor_id}</p>
-                        </div>
-                      )}
-                      {invoice.sales_order?.customer && (
-                        <div>
-                          <p className="font-medium">{invoice.sales_order.customer.name}</p>
-                          <p className="text-xs text-muted-foreground">{invoice.sales_order.customer.customer_id}</p>
-                        </div>
-                      )}
-                      {!invoice.purchase_order?.vendor && !invoice.sales_order?.customer && '-'}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.purchase_order?.location?.name || invoice.sales_order?.location?.name || '-'}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {invoice.purchase_order?.location?.location_id || invoice.sales_order?.location?.location_id || '-'}
-                    </TableCell>
-                    <TableCell className="font-medium">${invoice.amount.toFixed(2)}</TableCell>
-                    <TableCell>{invoice.ledger?.name || '-'}</TableCell>
-                    <TableCell>
-                      <Badge className={`${statusColors[invoice.status]} text-white`}>
-                        {invoice.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {invoice.due_date
-                        ? format(new Date(invoice.due_date), 'MMM d, yyyy')
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover">
-                          <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </DropdownMenuItem>
-                          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                            <DropdownMenuItem onClick={() => openPaymentDialog(invoice)}>
-                              <DollarSign className="h-4 w-4 mr-2" />
-                              Accept Payment
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => openCreditMemoDialog(invoice)}>
-                            <Minus className="h-4 w-4 mr-2" />
-                            Add Credit Memo
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDebitMemoDialog(invoice)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Debit Memo
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                      No invoices found for this account.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  filteredInvoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-mono">
+                        <button onClick={() => handleViewInvoice(invoice)} className="text-primary hover:underline cursor-pointer">
+                          {invoice.invoice_number}
+                        </button>
+                      </TableCell>
+                      <TableCell>{format(new Date(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        {invoice.purchase_order && <Badge variant="outline">PO: {invoice.purchase_order.po_number}</Badge>}
+                        {invoice.sales_order && <Badge variant="outline">SO: {invoice.sales_order.so_number}</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        {invoice.purchase_order?.vendor && (
+                          <div>
+                            <p className="font-medium">{invoice.purchase_order.vendor.name}</p>
+                            <p className="text-xs text-muted-foreground">{invoice.purchase_order.vendor.vendor_id}</p>
+                          </div>
+                        )}
+                        {invoice.sales_order?.customer && (
+                          <div>
+                            <p className="font-medium">{invoice.sales_order.customer.name}</p>
+                            <p className="text-xs text-muted-foreground">{invoice.sales_order.customer.customer_id}</p>
+                          </div>
+                        )}
+                        {!invoice.purchase_order?.vendor && !invoice.sales_order?.customer && '-'}
+                      </TableCell>
+                      <TableCell>
+                        {invoice.purchase_order?.location?.name || invoice.sales_order?.location?.name || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {invoice.purchase_order?.location?.location_id || invoice.sales_order?.location?.location_id || '-'}
+                      </TableCell>
+                      <TableCell className="font-medium">${invoice.amount.toFixed(2)}</TableCell>
+                      <TableCell>{invoice.ledger?.name || '-'}</TableCell>
+                      <TableCell>
+                        <Badge className={`${statusColors[invoice.status]} text-white`}>
+                          {invoice.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover">
+                            <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <DropdownMenuItem onClick={() => openPaymentDialog(invoice)}>
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Accept Payment
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => openCreditMemoDialog(invoice)}>
+                              <Minus className="h-4 w-4 mr-2" />
+                              Add Credit Memo
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDebitMemoDialog(invoice)}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Debit Memo
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold">Payments</h2>
+              </div>
+              <Input
+                placeholder="Search payments..."
+                value={paymentSearchQuery}
+                onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortableTableHead label="Payment #" sortKey="payment_number" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
+                  <SortableTableHead label="Date" sortKey="payment_date" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
+                  <TableHead>Invoice</TableHead>
+                  <SortableTableHead label="Amount" sortKey="amount" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
+                  <SortableTableHead label="Status" sortKey="status" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPayments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      No payments found for this account.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPayments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell className="font-mono">{payment.payment_number}</TableCell>
+                      <TableCell>{format(new Date(payment.payment_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell className="font-mono">{payment.invoice?.invoice_number || '-'}</TableCell>
+                      <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge className={`${statusColors[payment.status] || 'bg-slate-500'} text-white`}>
+                          {payment.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Accept Payment Dialog */}
@@ -625,7 +695,6 @@ const AccountDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
 
       {/* Create Invoice Dialog */}
       <CreateInvoiceDialog
