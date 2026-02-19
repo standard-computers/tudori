@@ -300,7 +300,7 @@ const Invoices = () => {
             <FileText className="h-6 w-6 text-cyan-500" />
             <h1 className="text-2xl font-bold">Invoices</h1>
           </div>
-          <div className="flex items-center gap-2 pr-16">
+          <div className="flex items-center gap-2 pr-12">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search invoices">
               <Search className="w-4 h-4" />
             </Button>
