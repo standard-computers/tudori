@@ -1282,11 +1282,17 @@ const Products = () => {
     setComponents(components.filter((_, i) => i !== index));
   };
 
+  const getComponentUnitPrice = (comp: ProductComponent) => {
+    const basePrice = comp.product?.price || 0;
+    const selectedUom = comp.uom_id ? comp.available_uoms.find(u => u.id === comp.uom_id) : null;
+    const conversionFactor = selectedUom?.conversion_factor || 1;
+    return basePrice / conversionFactor;
+  };
+
   const handleAdoptPrice = () => {
     const total = components.reduce((sum, comp) => {
       const qty = parseFloat(comp.quantity) || 0;
-      const price = comp.product?.price || 0;
-      return sum + qty * price;
+      return sum + qty * getComponentUnitPrice(comp);
     }, 0);
     setFormData((prev) => ({ ...prev, price: total.toFixed(2) }));
     toast.success(`Price updated to $${total.toFixed(2)}`);
@@ -1295,8 +1301,7 @@ const Products = () => {
   const calculateComponentsTotal = () => {
     return components.reduce((sum, comp) => {
       const qty = parseFloat(comp.quantity) || 0;
-      const price = comp.product?.price || 0;
-      return sum + qty * price;
+      return sum + qty * getComponentUnitPrice(comp);
     }, 0);
   };
 
@@ -2512,7 +2517,10 @@ const Products = () => {
                                   <TableBody>
                                     {components.map((comp, index) => {
                                       const qty = parseFloat(comp.quantity) || 0;
-                                      const price = comp.product?.price || 0;
+                                      const basePrice = comp.product?.price || 0;
+                                      const selectedUom = comp.uom_id ? comp.available_uoms.find(u => u.id === comp.uom_id) : null;
+                                      const conversionFactor = selectedUom?.conversion_factor || 1;
+                                      const price = basePrice / conversionFactor;
                                       const lineTotal = qty * price;
                                       return (
                                         <TableRow key={index}>
