@@ -743,7 +743,7 @@ export function StepByStepProductionDialog({
 
       {/* Confirmation dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[70]">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Step Completion</AlertDialogTitle>
             <AlertDialogDescription>
