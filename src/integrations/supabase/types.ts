@@ -3286,6 +3286,7 @@ export type Database = {
           parent_product_id: string
           quantity: number
           uom_id: string | null
+          uom_name: string | null
         }
         Insert: {
           component_product_id: string
@@ -3294,6 +3295,7 @@ export type Database = {
           parent_product_id: string
           quantity?: number
           uom_id?: string | null
+          uom_name?: string | null
         }
         Update: {
           component_product_id?: string
@@ -3302,6 +3304,7 @@ export type Database = {
           parent_product_id?: string
           quantity?: number
           uom_id?: string | null
+          uom_name?: string | null
         }
         Relationships: [
           {
