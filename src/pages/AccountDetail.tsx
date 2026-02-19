@@ -34,11 +34,14 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
 import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
 import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
-import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2 } from 'lucide-react';
+import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 
 interface Account {
   id: string;
@@ -112,6 +115,10 @@ const AccountDetail = () => {
   const [isCreateCreditMemoDialogOpen, setIsCreateCreditMemoDialogOpen] = useState(false);
   const [isCreateDebitMemoDialogOpen, setIsCreateDebitMemoDialogOpen] = useState(false);
   const [memoInvoiceId, setMemoInvoiceId] = useState<string | undefined>(undefined);
+  const [isViewInvoiceDialogOpen, setIsViewInvoiceDialogOpen] = useState(false);
+  const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  const [viewItems, setViewItems] = useState<any[]>([]);
+  const [isMaximized, setIsMaximized] = useMaximizedState();
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -268,6 +275,19 @@ const AccountDetail = () => {
   const openDebitMemoDialog = (invoice: Invoice) => {
     setMemoInvoiceId(invoice.id);
     setIsCreateDebitMemoDialogOpen(true);
+  };
+
+  const handleViewInvoice = async (invoice: Invoice) => {
+    setViewingInvoice(invoice);
+    setIsViewInvoiceDialogOpen(true);
+    
+    const { data: items } = await supabase
+      .from('invoice_items' as any)
+      .select('*, product:products(name, product_id)')
+      .eq('invoice_id', invoice.id)
+      .order('created_at');
+    
+    setViewItems((items as any) || []);
   };
 
   if (authLoading || loading) {
@@ -432,7 +452,14 @@ const AccountDetail = () => {
               ) : (
                 filteredInvoices.map((invoice) => (
                   <TableRow key={invoice.id}>
-                    <TableCell className="font-mono">{invoice.invoice_number}</TableCell>
+                    <TableCell className="font-mono">
+                      <button
+                        onClick={() => handleViewInvoice(invoice)}
+                        className="text-primary hover:underline cursor-pointer"
+                      >
+                        {invoice.invoice_number}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       {format(new Date(invoice.invoice_date), 'MMM d, yyyy')}
                     </TableCell>
@@ -494,6 +521,10 @@ const AccountDetail = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-popover">
+                          <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
                           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                             <DropdownMenuItem onClick={() => openPaymentDialog(invoice)}>
                               <DollarSign className="h-4 w-4 mr-2" />
@@ -649,6 +680,133 @@ const AccountDetail = () => {
           />
         </>
       )}
+
+      {/* View Invoice Dialog */}
+      <Dialog open={isViewInvoiceDialogOpen} onOpenChange={setIsViewInvoiceDialogOpen}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[90vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <DialogHeader>
+            <DialogTitle>Invoice {viewingInvoice?.invoice_number}</DialogTitle>
+            <DialogDescription>Invoice details and line items</DialogDescription>
+          </DialogHeader>
+
+          {viewingInvoice && (
+            <Tabs defaultValue="details" className="flex-1">
+              <TabsList className="mx-6">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="items">Line Items</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="px-6 pb-4">
+                <div className="space-y-4 pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Account</Label>
+                      <p className="font-medium">{account?.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Status</Label>
+                      <Badge className={`${statusColors[viewingInvoice.status] || 'bg-slate-500'} text-white`}>
+                        {viewingInvoice.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground">Invoice Date</Label>
+                      <p>{format(new Date(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
+                    </div>
+                    {viewingInvoice.due_date && (
+                      <div>
+                        <Label className="text-muted-foreground">Due Date</Label>
+                        <p>{format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground">Reference</Label>
+                    <p>
+                      {viewingInvoice.purchase_order?.po_number && `PO: ${viewingInvoice.purchase_order.po_number}`}
+                      {viewingInvoice.sales_order?.so_number && `SO: ${viewingInvoice.sales_order.so_number}`}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div>
+                      <Label className="text-muted-foreground">Amount</Label>
+                      <p className="text-2xl font-bold font-mono">${viewingInvoice.amount?.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {viewingInvoice.ledger?.name && (
+                    <div>
+                      <Label className="text-muted-foreground">Ledger</Label>
+                      <p>{viewingInvoice.ledger.name}</p>
+                    </div>
+                  )}
+
+                  {viewingInvoice.notes && (
+                    <div>
+                      <Label className="text-muted-foreground">Notes</Label>
+                      <p>{viewingInvoice.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="items" className="px-6 pb-4">
+                <div className="pt-4">
+                  {viewItems.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No line items for this invoice.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewItems.map((item: any) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.product?.name}</p>
+                                <p className="text-sm text-muted-foreground">{item.product?.product_id}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">${(item.unit_price || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-mono">${(item.total_price || 0).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewInvoiceDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
