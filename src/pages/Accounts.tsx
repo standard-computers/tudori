@@ -66,7 +66,7 @@ interface Account {
   created_at: string;
   customer?: { name: string } | null;
   vendor?: { name: string } | null;
-  location?: { name: string } | null;
+  location?: { name: string; location_id: string } | null;
   parent_account?: { account_id: string; name: string } | null;
 }
 
@@ -100,9 +100,8 @@ const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'type', label: 'Type', defaultVisible: true },
   { key: 'parent_account', label: 'Parent Account', defaultVisible: true },
-  { key: 'customer', label: 'Customer', defaultVisible: true },
-  { key: 'vendor', label: 'Vendor', defaultVisible: true },
-  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'linked_to', label: 'Linked To', defaultVisible: true },
+  { key: 'location_id', label: 'Location', defaultVisible: true },
   { key: 'outstanding_invoices', label: 'Outstanding Invoices', defaultVisible: true },
   { key: 'is_active', label: 'Active', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
@@ -160,6 +159,7 @@ const Accounts = () => {
         : account.type === 'location' && account.location?.name
         ? account.location.name
         : '',
+      location_id_display: account.location?.location_id || '',
     })), [accounts, outstandingCounts])
   );
   const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
@@ -225,7 +225,7 @@ const Accounts = () => {
         *,
         customer:customers(name),
         vendor:vendors(name),
-        location:locations(name)
+        location:locations(name, location_id)
       `)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
@@ -597,6 +597,15 @@ const Accounts = () => {
                   onFilter={(value) => setFilter('linked_to_display', value)}
                 />
                 <SortableTableHead
+                  label="Location"
+                  sortKey="location_id_display"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['location_id_display'] || ''}
+                  onFilter={(value) => setFilter('location_id_display', value)}
+                />
+                <SortableTableHead
                   label="Status"
                   sortKey="is_active"
                   currentSortKey={sortConfig.key}
@@ -618,7 +627,7 @@ const Accounts = () => {
             <TableBody>
               {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No accounts found. Create your first account to get started.
                   </TableCell>
                 </TableRow>
@@ -658,6 +667,9 @@ const Accounts = () => {
                       {account.type === 'customer' && account.customer?.name}
                       {account.type === 'vendor' && account.vendor?.name}
                       {account.type === 'location' && account.location?.name}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {account.location?.location_id || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       <Badge variant={account.is_active ? 'default' : 'secondary'}>
