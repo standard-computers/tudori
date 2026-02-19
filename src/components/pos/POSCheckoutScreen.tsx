@@ -169,6 +169,24 @@ const POSCheckoutScreen = ({
 
       await supabase.from('invoice_items' as any).insert(invoiceItems);
 
+      // 9. Create payment record
+      const { data: payNumber } = await supabase.rpc('get_next_payment_number', {
+        p_company_id: companyId,
+      });
+
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      await supabase.from('payments' as any).insert({
+        payment_number: payNumber,
+        company_id: companyId,
+        account_id: accountData.id,
+        invoice_id: invoiceId,
+        amount: cartTotal,
+        payment_date: new Date().toISOString().split('T')[0],
+        processed_by: currentUser?.id,
+        notes: `POS ${method} payment`,
+        status: 'completed',
+      } as any);
+
       toast.success(`Order ${soNumber} completed — ${method} payment of $${cartTotal.toFixed(2)}`);
       onComplete();
     } catch (error: any) {
