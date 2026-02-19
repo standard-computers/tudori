@@ -367,7 +367,14 @@ const Invoices = () => {
               ) : (
                 sortedAndFilteredData.map((invoice) => (
                   <TableRow key={invoice.id}>
-                    <TableCell className="font-mono">{invoice.invoice_number}</TableCell>
+                    <TableCell className="font-mono">
+                      <button
+                        onClick={() => handleViewClick(invoice)}
+                        className="text-primary hover:underline cursor-pointer"
+                      >
+                        {invoice.invoice_number}
+                      </button>
+                    </TableCell>
                     <TableCell>{invoice.account?.name}</TableCell>
                     <TableCell>
                       {invoice.purchase_order?.vendor && (
