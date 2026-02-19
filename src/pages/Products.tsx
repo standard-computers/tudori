@@ -136,6 +136,8 @@ interface ProductComponent {
   id?: string;
   component_product_id: string;
   quantity: string;
+  uom_id?: string | null;
+  available_uoms?: { id: string; name: string; abbreviation: string | null; conversion_factor: number }[];
   product?: {
     product_id: string;
     name: string;
@@ -626,10 +628,12 @@ const Products = () => {
     lower_uom: "",
   });
   const [components, setComponents] = useState<ProductComponent[]>([]);
-  const [newComponent, setNewComponent] = useState<{ product_id: string; quantity: string }>({
+  const [newComponent, setNewComponent] = useState<{ product_id: string; quantity: string; uom_id: string }>({
     product_id: "",
     quantity: "1",
+    uom_id: "",
   });
+  const [newComponentUoms, setNewComponentUoms] = useState<{ id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>([]);
   const [availableComponents, setAvailableComponents] = useState<SearchableSelectOption[]>([]);
   const [formData, setFormData] = useState({
     product_id: "",
@@ -988,7 +992,7 @@ const Products = () => {
     const { data, error } = await supabase
       .from("product_components")
       .select(
-        "id, component_product_id, quantity, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
+        "id, component_product_id, quantity, uom_id, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
       )
       .eq("parent_product_id", productId);
 
@@ -997,11 +1001,29 @@ const Products = () => {
       return;
     }
 
+    // Fetch UoMs for each unique component product
+    const uniqueProductIds = [...new Set(data?.map(c => c.component_product_id) || [])];
+    const uomsByProduct: Record<string, { id: string; name: string; abbreviation: string | null; conversion_factor: number }[]> = {};
+    
+    if (uniqueProductIds.length > 0) {
+      const { data: uomData } = await supabase
+        .from("product_uoms")
+        .select("id, product_id, name, abbreviation, conversion_factor")
+        .in("product_id", uniqueProductIds);
+      
+      uomData?.forEach(u => {
+        if (!uomsByProduct[u.product_id]) uomsByProduct[u.product_id] = [];
+        uomsByProduct[u.product_id].push(u);
+      });
+    }
+
     setComponents(
       data?.map((c) => ({
         id: c.id,
         component_product_id: c.component_product_id,
         quantity: c.quantity?.toString() || "1",
+        uom_id: (c as any).uom_id || null,
+        available_uoms: uomsByProduct[c.component_product_id] || [],
         product: c.component_product as ProductComponent["product"],
       })) || [],
     );
@@ -1068,7 +1090,8 @@ const Products = () => {
     setUoms([]);
     setNewUom({ name: "", abbreviation: "", conversion_factor: "1" });
     setComponents([]);
-    setNewComponent({ product_id: "", quantity: "1" });
+    setNewComponent({ product_id: "", quantity: "1", uom_id: "" });
+    setNewComponentUoms([]);
     setSafetyStocks([]);
     setActiveTab("general");
     setIsEditing(false);
@@ -1242,11 +1265,14 @@ const Products = () => {
         {
           component_product_id: newComponent.product_id,
           quantity: newComponent.quantity || "1",
+          uom_id: newComponent.uom_id || null,
+          available_uoms: newComponentUoms,
           product: productData,
         },
       ]);
     }
-    setNewComponent({ product_id: "", quantity: "1" });
+    setNewComponent({ product_id: "", quantity: "1", uom_id: "" });
+    setNewComponentUoms([]);
   };
 
   const handleRemoveComponent = (index: number) => {
@@ -1544,6 +1570,7 @@ const Products = () => {
             parent_product_id: productId,
             component_product_id: c.component_product_id,
             quantity: parseFloat(c.quantity) || 1,
+            uom_id: c.uom_id || null,
           }));
 
           const { error: compError } = await supabase.from("product_components").insert(componentInserts);
@@ -1726,15 +1753,30 @@ const Products = () => {
                             const { data: componentData } = await supabase
                               .from("product_components")
                               .select(
-                                "component_product_id, quantity, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
+                                "component_product_id, quantity, uom_id, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
                               )
                               .eq("parent_product_id", product.id);
 
                             if (componentData && componentData.length > 0) {
+                              // Fetch UoMs for copied components
+                              const uniqueIds = [...new Set(componentData.map(c => c.component_product_id))];
+                              const uomsByProd: Record<string, { id: string; name: string; abbreviation: string | null; conversion_factor: number }[]> = {};
+                              if (uniqueIds.length > 0) {
+                                const { data: uomData } = await supabase
+                                  .from("product_uoms")
+                                  .select("id, product_id, name, abbreviation, conversion_factor")
+                                  .in("product_id", uniqueIds);
+                                uomData?.forEach(u => {
+                                  if (!uomsByProd[u.product_id]) uomsByProd[u.product_id] = [];
+                                  uomsByProd[u.product_id].push(u);
+                                });
+                              }
                               setComponents(
                                 componentData.map((c) => ({
                                   component_product_id: c.component_product_id,
                                   quantity: c.quantity?.toString() || "1",
+                                  uom_id: (c as any).uom_id || null,
+                                  available_uoms: uomsByProd[c.component_product_id] || [],
                                   product: c.component_product as ProductComponent["product"],
                                 })),
                               );
@@ -2453,11 +2495,12 @@ const Products = () => {
                             {components.length > 0 && (
                               <div className="border rounded-lg overflow-hidden mb-4">
                                 <Table>
-                                  <TableHeader>
+                                   <TableHeader>
                                     <TableRow>
                                       <TableHead>Product ID</TableHead>
                                       <TableHead>Name</TableHead>
                                       <TableHead className="text-right">Qty</TableHead>
+                                      <TableHead>UoM</TableHead>
                                       <TableHead className="text-right">Unit Price</TableHead>
                                       <TableHead className="text-right">Total</TableHead>
                                       <TableHead className="w-16"></TableHead>
@@ -2488,6 +2531,32 @@ const Products = () => {
                                               className="w-20 text-right ml-auto"
                                             />
                                           </TableCell>
+                                          <TableCell>
+                                            {comp.available_uoms && comp.available_uoms.length > 0 ? (
+                                              <Select
+                                                value={comp.uom_id || "_base"}
+                                                onValueChange={(value) => {
+                                                  const updated = [...components];
+                                                  updated[index] = { ...updated[index], uom_id: value === "_base" ? null : value };
+                                                  setComponents(updated);
+                                                }}
+                                              >
+                                                <SelectTrigger className="w-24">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="_base">{comp.product?.unit || "Base"}</SelectItem>
+                                                  {comp.available_uoms.map((uom) => (
+                                                    <SelectItem key={uom.id} value={uom.id}>
+                                                      {uom.abbreviation || uom.name}
+                                                    </SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            ) : (
+                                              <span className="text-sm text-muted-foreground">{comp.product?.unit || "—"}</span>
+                                            )}
+                                          </TableCell>
                                           <TableCell className="text-right">
                                             {price ? `$${price.toFixed(2)}` : "-"}
                                           </TableCell>
@@ -2508,7 +2577,7 @@ const Products = () => {
                                       );
                                     })}
                                     <TableRow className="bg-muted/50">
-                                      <TableCell colSpan={4} className="text-right font-medium">
+                                      <TableCell colSpan={5} className="text-right font-medium">
                                         Total:
                                       </TableCell>
                                       <TableCell className="text-right font-bold">
@@ -2523,7 +2592,7 @@ const Products = () => {
 
                             <div className="border rounded-lg p-4 space-y-4">
                               <h4 className="font-medium text-sm">Add Component</h4>
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-3 gap-3">
                                 <div className="space-y-1">
                                   <Label htmlFor="component_product" className="text-xs">
                                     Product *
@@ -2533,7 +2602,18 @@ const Products = () => {
                                       (opt) => !components.some((c) => c.component_product_id === opt.value),
                                     )}
                                     value={newComponent.product_id}
-                                    onValueChange={(value) => setNewComponent({ ...newComponent, product_id: value })}
+                                    onValueChange={async (value) => {
+                                      setNewComponent({ ...newComponent, product_id: value, uom_id: "" });
+                                      if (value) {
+                                        const { data: uomData } = await supabase
+                                          .from("product_uoms")
+                                          .select("id, product_id, name, abbreviation, conversion_factor")
+                                          .eq("product_id", value);
+                                        setNewComponentUoms(uomData || []);
+                                      } else {
+                                        setNewComponentUoms([]);
+                                      }
+                                    }}
                                     placeholder="Select component product..."
                                     allowClear
                                   />
@@ -2551,6 +2631,28 @@ const Products = () => {
                                     onChange={(e) => setNewComponent({ ...newComponent, quantity: e.target.value })}
                                     placeholder="e.g., 2"
                                   />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label htmlFor="component_uom" className="text-xs">
+                                    UoM
+                                  </Label>
+                                  <Select
+                                    value={newComponent.uom_id || "_base"}
+                                    onValueChange={(value) => setNewComponent({ ...newComponent, uom_id: value === "_base" ? "" : value })}
+                                    disabled={!newComponent.product_id}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Base unit" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="_base">Base unit</SelectItem>
+                                      {newComponentUoms.map((uom) => (
+                                        <SelectItem key={uom.id} value={uom.id}>
+                                          {uom.abbreviation || uom.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
                               </div>
                               <Button type="button" variant="outline" size="sm" onClick={handleAddComponent}>
