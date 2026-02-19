@@ -3285,6 +3285,7 @@ export type Database = {
           id: string
           parent_product_id: string
           quantity: number
+          uom_id: string | null
         }
         Insert: {
           component_product_id: string
@@ -3292,6 +3293,7 @@ export type Database = {
           id?: string
           parent_product_id: string
           quantity?: number
+          uom_id?: string | null
         }
         Update: {
           component_product_id?: string
@@ -3299,6 +3301,7 @@ export type Database = {
           id?: string
           parent_product_id?: string
           quantity?: number
+          uom_id?: string | null
         }
         Relationships: [
           {
@@ -3313,6 +3316,13 @@ export type Database = {
             columns: ["parent_product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_components_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]
