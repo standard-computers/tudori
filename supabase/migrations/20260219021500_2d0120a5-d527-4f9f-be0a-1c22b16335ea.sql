@@ -1,0 +1,1 @@
+ALTER TABLE public.product_components ADD COLUMN uom_name text;

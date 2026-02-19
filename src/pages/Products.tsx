@@ -1036,7 +1036,7 @@ const Products = () => {
     const { data, error } = await supabase
       .from("product_components")
       .select(
-        "id, component_product_id, quantity, uom_id, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
+        "id, component_product_id, quantity, uom_id, uom_name, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
       )
       .eq("parent_product_id", productId);
 
@@ -1072,14 +1072,23 @@ const Products = () => {
     }
 
     setComponents(
-      data?.map((c) => ({
-        id: c.id,
-        component_product_id: c.component_product_id,
-        quantity: c.quantity?.toString() || "1",
-        uom_id: (c as any).uom_id || null,
-        available_uoms: uomsByProduct[c.component_product_id] || [],
-        product: c.component_product as ProductComponent["product"],
-      })) || [],
+      data?.map((c) => {
+        const availUoms = uomsByProduct[c.component_product_id] || [];
+        // Re-match virtual lower UoM by name if uom_id is null but uom_name is set
+        let effectiveUomId = (c as any).uom_id || null;
+        if (!effectiveUomId && (c as any).uom_name) {
+          const matched = availUoms.find(u => (u.abbreviation || u.name).toUpperCase() === ((c as any).uom_name as string).toUpperCase());
+          if (matched) effectiveUomId = matched.id;
+        }
+        return {
+          id: c.id,
+          component_product_id: c.component_product_id,
+          quantity: c.quantity?.toString() || "1",
+          uom_id: effectiveUomId,
+          available_uoms: availUoms,
+          product: c.component_product as ProductComponent["product"],
+        };
+      }) || [],
     );
   };
 
@@ -1627,12 +1636,17 @@ const Products = () => {
         await supabase.from("product_components").delete().eq("parent_product_id", productId);
 
         if (components.length > 0) {
-          const componentInserts = components.map((c) => ({
-            parent_product_id: productId,
-            component_product_id: c.component_product_id,
-            quantity: parseFloat(c.quantity) || 1,
-            uom_id: c.uom_id && !c.uom_id.startsWith("_lower:") ? c.uom_id : null,
-          }));
+          const componentInserts = components.map((c) => {
+            const isVirtual = c.uom_id?.startsWith("_lower:");
+            const selectedUom = c.uom_id ? c.available_uoms.find(u => u.id === c.uom_id) : null;
+            return {
+              parent_product_id: productId,
+              component_product_id: c.component_product_id,
+              quantity: parseFloat(c.quantity) || 1,
+              uom_id: c.uom_id && !isVirtual ? c.uom_id : null,
+              uom_name: selectedUom ? (selectedUom.abbreviation || selectedUom.name) : null,
+            };
+          });
 
           const { error: compError } = await supabase.from("product_components").insert(componentInserts);
 
