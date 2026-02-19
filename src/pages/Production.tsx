@@ -49,6 +49,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { StepByStepProductionDialog } from '@/components/production/StepByStepProductionDialog';
+import { createProductionGoodsIssue, createProductionGoodsReceipt } from '@/lib/production-posting';
 
 interface ProductionOrder {
   id: string;
@@ -907,10 +908,120 @@ const Production = () => {
               remainingToDeduct -= deductAmount;
             }
           }
+
+          // Create Goods Issue for this step's consumed components
+          await createProductionGoodsIssue({
+            companyId: companyId!,
+            locationId: order.location_id,
+            orderId: order.id,
+            orderNumber: order.order_number,
+            items: items.map(item => ({
+              productId: item.product_id,
+              quantity: item.quantity * order.quantity,
+              binId: step.bin_id,
+            })),
+          });
         }
         
         // Mark step as completed
         completedStepIds.add(step.id);
+      }
+
+      // Create Goods Receipt for finished goods
+      const { data: bom } = await supabase
+        .from('bill_of_materials')
+        .select('product_id, output_quantity')
+        .eq('id', order.bom_id)
+        .single();
+
+      if (bom) {
+        const totalOutputQty = bom.output_quantity * order.quantity;
+        // Place finished goods in the first step's bin (component bin)
+        const firstStep = stepsData[0];
+        const targetBinId = firstStep?.bin_id || null;
+
+        await createProductionGoodsReceipt({
+          companyId: companyId!,
+          locationId: order.location_id,
+          orderId: order.id,
+          orderNumber: order.order_number,
+          productId: bom.product_id,
+          quantity: totalOutputQty,
+          binId: targetBinId,
+        });
+
+        // Add to inventory
+        if (targetBinId) {
+          const { data: existingInv } = await supabase
+            .from('inventory')
+            .select('id, quantity')
+            .eq('product_id', bom.product_id)
+            .eq('bin_id', targetBinId)
+            .eq('location_id', order.location_id)
+            .maybeSingle();
+
+          if (existingInv) {
+            await supabase
+              .from('inventory')
+              .update({ quantity: existingInv.quantity + totalOutputQty, updated_at: new Date().toISOString() })
+              .eq('id', existingInv.id);
+          } else {
+            await supabase
+              .from('inventory')
+              .insert({ product_id: bom.product_id, location_id: order.location_id, bin_id: targetBinId, quantity: totalOutputQty });
+          }
+        } else {
+          const { data: existingInv } = await supabase
+            .from('inventory')
+            .select('id, quantity')
+            .eq('product_id', bom.product_id)
+            .eq('location_id', order.location_id)
+            .is('bin_id', null)
+            .maybeSingle();
+
+          if (existingInv) {
+            await supabase
+              .from('inventory')
+              .update({ quantity: existingInv.quantity + totalOutputQty, updated_at: new Date().toISOString() })
+              .eq('id', existingInv.id);
+          } else {
+            await supabase
+              .from('inventory')
+              .insert({ product_id: bom.product_id, location_id: order.location_id, quantity: totalOutputQty });
+          }
+        }
+
+        // Create ledger transaction for output value
+        const { data: product } = await supabase
+          .from('products')
+          .select('price, name')
+          .eq('id', bom.product_id)
+          .single();
+
+        const totalValue = totalOutputQty * (product?.price || 0);
+        if (totalValue > 0) {
+          const { data: ledger } = await supabase
+            .from('ledgers')
+            .select('id')
+            .eq('location_id', order.location_id)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
+
+          if (ledger) {
+            await supabase
+              .from('ledger_transactions')
+              .insert({
+                ledger_id: ledger.id,
+                transaction_type: 'production_output',
+                reference_id: order.id,
+                reference_number: order.order_number,
+                amount: totalValue,
+                description: `Production output: ${product?.name} x${totalOutputQty} from ${order.order_number}`,
+                transaction_date: new Date().toISOString(),
+              });
+          }
+        }
       }
 
       // Update order as completed

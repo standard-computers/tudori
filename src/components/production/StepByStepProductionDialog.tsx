@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Check, X, AlertTriangle, ChevronRight, MapPin, Clock, Package, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import { createProductionGoodsIssue, createProductionGoodsReceipt } from '@/lib/production-posting';
 
 interface BomStep {
   id: string;
@@ -178,54 +179,24 @@ export function StepByStepProductionDialog({
     const unitPrice = product.price || 0;
     const totalValue = totalOutputQty * unitPrice;
 
-    // Get the final step's bin for inventory placement
-    const finalStep = steps[steps.length - 1];
-    const targetBinId = finalStep?.bin_id || null;
+    // Get the first step's bin (component bin) for finished goods placement
+    const firstStep = steps.length > 0 ? steps[0] : null;
+    const targetBinId = firstStep?.bin_id || null;
 
-    // Generate goods receipt number
-    const { data: grConfig } = await supabase
-      .from('document_id_config')
-      .select('prefix, num_digits, starting_number')
-      .eq('company_id', companyId)
-      .eq('document_type', 'goods_receipt')
-      .single();
+    // Create goods receipt via helper
+    const grId = await createProductionGoodsReceipt({
+      companyId,
+      locationId,
+      orderId,
+      orderNumber,
+      productId: bom.product_id,
+      quantity: totalOutputQty,
+      binId: targetBinId,
+    });
 
-    const { count: grCount } = await supabase
-      .from('goods_receipts')
-      .select('id', { count: 'exact', head: true })
-      .eq('company_id', companyId);
-
-    const grNumber = grConfig
-      ? `${grConfig.prefix || ''}${String((grConfig.starting_number || 1) + (grCount || 0)).padStart(grConfig.num_digits || 4, '0')}`
-      : `GR-${String((grCount || 0) + 1).padStart(4, '0')}`;
-
-    // Create goods receipt
-    const { data: goodsReceipt, error: grError } = await supabase
-      .from('goods_receipts')
-      .insert({
-        receipt_number: grNumber,
-        company_id: companyId,
-        location_id: locationId,
-        status: 'posted',
-        notes: `Production output from ${orderNumber}`,
-      })
-      .select('id')
-      .single();
-
-    if (grError || !goodsReceipt) {
+    if (!grId) {
       throw new Error('Failed to create goods receipt');
     }
-
-    // Create goods receipt item
-    await supabase
-      .from('goods_receipt_items')
-      .insert({
-        goods_receipt_id: goodsReceipt.id,
-        product_id: bom.product_id,
-        quantity: totalOutputQty,
-        bin_id: targetBinId,
-        notes: `Finished goods from production order ${orderNumber}`,
-      });
 
     // Add to inventory
     if (targetBinId) {
@@ -526,6 +497,19 @@ export function StepByStepProductionDialog({
               ledger_transaction_id: ledgerTransactionId,
             });
         }
+        
+        // Create Goods Issue for consumed components
+        await createProductionGoodsIssue({
+          companyId,
+          locationId,
+          orderId,
+          orderNumber,
+          items: items.map(item => ({
+            productId: item.product_id,
+            quantity: item.quantity * quantity,
+            binId: currentStep.bin_id,
+          })),
+        });
         
         // Refresh bin inventory
         await fetchBinInventory(currentStep.bin_id);
