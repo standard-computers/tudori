@@ -625,7 +625,18 @@ const Accounts = () => {
               ) : (
                 sortedAndFilteredData.map((account) => (
                   <TableRow key={account.id}>
-                    <TableCell className="font-mono">{account.account_id}</TableCell>
+                    <TableCell className="font-mono">
+                      <a
+                        href={`/accounts/${account.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(`/accounts/${account.id}`);
+                        }}
+                        className="text-primary hover:underline cursor-pointer"
+                      >
+                        {account.account_id}
+                      </a>
+                    </TableCell>
                     <TableCell className="font-medium">{account.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
