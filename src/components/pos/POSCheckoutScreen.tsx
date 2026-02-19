@@ -63,6 +63,7 @@ const POSCheckoutScreen = ({
         .select('id, account_id, name')
         .eq('company_id', companyId)
         .eq('location_id', selectedLocationId)
+        .eq('type', 'customer')
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
@@ -70,7 +71,7 @@ const POSCheckoutScreen = ({
       if (accountError) throw accountError;
 
       if (!accountData) {
-        toast.error('This location does not have an account. Please create an account for this location before processing POS orders.');
+        toast.error('This location does not have a customer account. Please create an account of type "Customer" linked to this location before processing POS orders.');
         setIsProcessing(false);
         setPaymentMethod(null);
         return;
