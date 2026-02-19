@@ -766,7 +766,13 @@ export function StepByStepProductionDialog({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmStep} disabled={isLoading}>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmStep();
+              }}
+              disabled={isLoading}
+            >
               {isLoading ? 'Processing...' : 'Confirm'}
             </AlertDialogAction>
           </AlertDialogFooter>
