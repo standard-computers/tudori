@@ -348,25 +348,25 @@ const AccountDetail = () => {
       <div className="container mx-auto px-4 py-6">
         {/* Account Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 flex items-center gap-2">
             <p className="text-sm text-muted-foreground">Type</p>
-            <p className="text-lg font-medium capitalize">{account.type}</p>
+            <p className="text-sm font-medium capitalize">{account.type}</p>
           </div>
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 flex items-center gap-2">
             <p className="text-sm text-muted-foreground">Linked To</p>
-            <p className="text-lg font-medium">
+            <p className="text-sm font-medium">
               {account.type === 'customer' && account.customer?.name}
               {account.type === 'vendor' && account.vendor?.name}
               {!account.customer?.name && !account.vendor?.name && '-'}
             </p>
           </div>
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 flex items-center gap-2">
             <p className="text-sm text-muted-foreground">Total Invoiced</p>
-            <p className="text-lg font-medium">${totalAmount.toFixed(2)}</p>
+            <p className="text-sm font-medium">${totalAmount.toFixed(2)}</p>
           </div>
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 flex items-center gap-2">
             <p className="text-sm text-muted-foreground">Outstanding</p>
-            <p className="text-lg font-medium text-yellow-600">${outstandingAmount.toFixed(2)}</p>
+            <p className="text-sm font-medium text-yellow-600">${outstandingAmount.toFixed(2)}</p>
           </div>
         </div>
 
