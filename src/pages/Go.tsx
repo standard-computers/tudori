@@ -28,10 +28,15 @@ import {
   ChevronRight,
   ArrowRight,
   Zap,
+  Repeat,
+  Factory,
+  MoreHorizontal,
+  BarChart3,
 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 
 type ActivityType = 'inbound' | 'outbound' | 'internal' | null;
+type InternalSubType = 'replenishments' | 'production' | 'other' | 'performance' | null;
 
 interface Location {
   id: string;
@@ -94,6 +99,7 @@ export default function Go() {
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [internalSubType, setInternalSubType] = useState<InternalSubType>(null);
 
   // Counts per activity type
   const [inboundCount, setInboundCount] = useState(0);
@@ -397,8 +403,13 @@ export default function Go() {
           size="icon"
           className="h-8 w-8 shrink-0"
           onClick={() => {
-            if (activity) {
+            if (activity === 'internal' && internalSubType) {
+              setInternalSubType(null);
+              setTasks([]);
+              setExpandedTaskId(null);
+            } else if (activity) {
               setActivity(null);
+              setInternalSubType(null);
               setTasks([]);
               setExpandedTaskId(null);
             } else {
@@ -433,6 +444,7 @@ export default function Go() {
             <Select value={selectedLocationId} onValueChange={(v) => {
               setSelectedLocationId(v);
               setActivity(null);
+              setInternalSubType(null);
               setTasks([]);
               setExpandedTaskId(null);
             }}>
@@ -518,7 +530,56 @@ export default function Go() {
                 count={internalCount}
                 iconClassName="text-amber-600 dark:text-amber-400"
                 bgClassName="bg-amber-100 dark:bg-amber-900/30"
-                onClick={() => setActivity('internal')}
+                onClick={() => {
+                  setActivity('internal');
+                  setInternalSubType(null);
+                }}
+              />
+            </div>
+          </div>
+        ) : activity === 'internal' && !internalSubType ? (
+          <div className="p-4 space-y-4">
+            <div className="pt-2 pb-1">
+              <h2 className="text-xl font-bold">Internal</h2>
+              <p className="text-sm text-muted-foreground mt-1">Select a category</p>
+            </div>
+
+            <div className="space-y-3">
+              <ActivityCard
+                icon={Repeat}
+                label="Replenishments"
+                description="Restock bins & replenish locations"
+                count={0}
+                iconClassName="text-violet-600 dark:text-violet-400"
+                bgClassName="bg-violet-100 dark:bg-violet-900/30"
+                onClick={() => setInternalSubType('replenishments')}
+              />
+              <ActivityCard
+                icon={Factory}
+                label="Production"
+                description="Manufacturing & assembly tasks"
+                count={0}
+                iconClassName="text-orange-600 dark:text-orange-400"
+                bgClassName="bg-orange-100 dark:bg-orange-900/30"
+                onClick={() => setInternalSubType('production')}
+              />
+              <ActivityCard
+                icon={MoreHorizontal}
+                label="Other"
+                description="Miscellaneous internal tasks"
+                count={0}
+                iconClassName="text-slate-600 dark:text-slate-400"
+                bgClassName="bg-slate-100 dark:bg-slate-900/30"
+                onClick={() => setInternalSubType('other')}
+              />
+              <ActivityCard
+                icon={BarChart3}
+                label="Performance"
+                description="Metrics & productivity tracking"
+                count={0}
+                iconClassName="text-teal-600 dark:text-teal-400"
+                bgClassName="bg-teal-100 dark:bg-teal-900/30"
+                onClick={() => setInternalSubType('performance')}
               />
             </div>
           </div>
