@@ -3097,6 +3097,73 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at: string
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_number: string
+          processed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_date?: string
+          payment_number: string
+          processed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_number?: string
+          processed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_location_products: {
         Row: {
           created_at: string
@@ -5220,6 +5287,10 @@ export type Database = {
       get_next_location_id: { Args: { p_company_id: string }; Returns: string }
       get_next_movement_id: { Args: { p_company_id: string }; Returns: string }
       get_next_outbound_delivery_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
+      get_next_payment_number: {
         Args: { p_company_id: string }
         Returns: string
       }
