@@ -634,6 +634,7 @@ const Products = () => {
     uom_id: "",
   });
   const [newComponentUoms, setNewComponentUoms] = useState<{ id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>([]);
+  const [newComponentBaseUnit, setNewComponentBaseUnit] = useState<string>("");
   const [availableComponents, setAvailableComponents] = useState<SearchableSelectOption[]>([]);
   const [formData, setFormData] = useState({
     product_id: "",
@@ -1092,6 +1093,7 @@ const Products = () => {
     setComponents([]);
     setNewComponent({ product_id: "", quantity: "1", uom_id: "" });
     setNewComponentUoms([]);
+    setNewComponentBaseUnit("");
     setSafetyStocks([]);
     setActiveTab("general");
     setIsEditing(false);
@@ -1273,6 +1275,7 @@ const Products = () => {
     }
     setNewComponent({ product_id: "", quantity: "1", uom_id: "" });
     setNewComponentUoms([]);
+    setNewComponentBaseUnit("");
   };
 
   const handleRemoveComponent = (index: number) => {
@@ -2605,13 +2608,22 @@ const Products = () => {
                                     onValueChange={async (value) => {
                                       setNewComponent({ ...newComponent, product_id: value, uom_id: "" });
                                       if (value) {
-                                        const { data: uomData } = await supabase
-                                          .from("product_uoms")
-                                          .select("id, product_id, name, abbreviation, conversion_factor")
-                                          .eq("product_id", value);
+                                        const [{ data: uomData }, { data: prodData }] = await Promise.all([
+                                          supabase
+                                            .from("product_uoms")
+                                            .select("id, product_id, name, abbreviation, conversion_factor")
+                                            .eq("product_id", value),
+                                          supabase
+                                            .from("products")
+                                            .select("unit")
+                                            .eq("id", value)
+                                            .single(),
+                                        ]);
                                         setNewComponentUoms(uomData || []);
+                                        setNewComponentBaseUnit(prodData?.unit || "");
                                       } else {
                                         setNewComponentUoms([]);
+                                        setNewComponentBaseUnit("");
                                       }
                                     }}
                                     placeholder="Select component product..."
@@ -2645,7 +2657,7 @@ const Products = () => {
                                       <SelectValue placeholder="Base unit" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="_base">Base unit</SelectItem>
+                                      <SelectItem value="_base">{newComponentBaseUnit || "Base unit"}</SelectItem>
                                       {newComponentUoms.map((uom) => (
                                         <SelectItem key={uom.id} value={uom.id}>
                                           {uom.abbreviation || uom.name}
