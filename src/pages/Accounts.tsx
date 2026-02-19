@@ -418,7 +418,7 @@ const Accounts = () => {
         type: formData.type,
         customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
         vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
-        location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
+        location_id: (formData.type === 'location' || formData.type === 'customer') && formData.location_id ? formData.location_id : null,
         account_manager_id: formData.account_manager_id || null,
         parent_account_id: formData.parent_account_id || null,
         description: formData.description || null,
@@ -454,7 +454,7 @@ const Accounts = () => {
           type: formData.type,
           customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
           vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
-          location_id: formData.type === 'location' && formData.location_id ? formData.location_id : null,
+          location_id: (formData.type === 'location' || formData.type === 'customer') && formData.location_id ? formData.location_id : null,
           account_manager_id: formData.account_manager_id || null,
           parent_account_id: formData.parent_account_id || null,
           description: formData.description || null,
@@ -741,21 +741,32 @@ const Accounts = () => {
                 <SelectContent className="bg-popover">
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="vendor">Vendor</SelectItem>
-                  <SelectItem value="location">Location</SelectItem>
+                  <SelectItem value="location">Internal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {formData.type === 'customer' && (
-              <div>
-                <Label>Link to Customer</Label>
-                <SearchableSelect
-                  options={customerOptions}
-                  value={formData.customer_id}
-                  onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                  placeholder="Select customer..."
-                />
-              </div>
+              <>
+                <div>
+                  <Label>Link to Customer</Label>
+                  <SearchableSelect
+                    options={customerOptions}
+                    value={formData.customer_id}
+                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+                    placeholder="Select customer..."
+                  />
+                </div>
+                <div>
+                  <Label>Link to Location</Label>
+                  <SearchableSelect
+                    options={locationOptions}
+                    value={formData.location_id}
+                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                    placeholder="Select location (optional)..."
+                  />
+                </div>
+              </>
             )}
 
             {formData.type === 'vendor' && (
@@ -855,21 +866,32 @@ const Accounts = () => {
                 <SelectContent className="bg-popover">
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="vendor">Vendor</SelectItem>
-                  <SelectItem value="location">Location</SelectItem>
+                  <SelectItem value="location">Internal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {formData.type === 'customer' && (
-              <div>
-                <Label>Link to Customer</Label>
-                <SearchableSelect
-                  options={customerOptions}
-                  value={formData.customer_id}
-                  onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                  placeholder="Select customer..."
-                />
-              </div>
+              <>
+                <div>
+                  <Label>Link to Customer</Label>
+                  <SearchableSelect
+                    options={customerOptions}
+                    value={formData.customer_id}
+                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+                    placeholder="Select customer..."
+                  />
+                </div>
+                <div>
+                  <Label>Link to Location</Label>
+                  <SearchableSelect
+                    options={locationOptions}
+                    value={formData.location_id}
+                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                    placeholder="Select location (optional)..."
+                  />
+                </div>
+              </>
             )}
 
             {formData.type === 'vendor' && (
