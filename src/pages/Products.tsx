@@ -634,6 +634,49 @@ const Products = () => {
     uom_id: "",
   });
   const [newComponentUoms, setNewComponentUoms] = useState<{ id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>([]);
+
+  // Derive all available UoMs including sub-units from lower_uom references
+  const deriveAllUoms = (
+    uomRecords: { id: string; product_id?: string; name: string; abbreviation: string | null; conversion_factor: number; lower_uom?: string | null }[],
+    baseUnit: string
+  ) => {
+    const result: { id: string; name: string; abbreviation: string | null; conversion_factor: number }[] = [];
+    const seen = new Set<string>();
+
+    // Add existing product_uom records (skip if same as base unit)
+    for (const uom of uomRecords) {
+      const label = uom.abbreviation || uom.name;
+      if (label.toUpperCase() === baseUnit.toUpperCase()) continue;
+      if (seen.has(label.toUpperCase())) continue;
+      seen.add(label.toUpperCase());
+      result.push({ id: uom.id, name: uom.name, abbreviation: uom.abbreviation, conversion_factor: uom.conversion_factor });
+    }
+
+    // Derive sub-units from lower_uom references
+    for (const uom of uomRecords) {
+      if (!uom.lower_uom) continue;
+      const lowerLabel = uom.lower_uom.toUpperCase();
+      if (lowerLabel === baseUnit.toUpperCase()) continue;
+      if (seen.has(lowerLabel)) continue;
+      // Check if lower_uom is already a product_uom record
+      const existsAsRecord = uomRecords.some(r => (r.abbreviation || r.name).toUpperCase() === lowerLabel);
+      if (existsAsRecord) continue;
+      seen.add(lowerLabel);
+      // The conversion factor for a sub-unit: if 1 CS = 1000 EA and base is CS, then EA factor = 1/1000
+      // But if base is EA and CS has conversion_factor 1000 with lower_uom EA, then EA IS the base
+      // Since lower_uom means "1 [this_uom] = conversion_factor × [lower_uom]"
+      // The effective factor for the lower_uom relative to base = 1/conversion_factor (if this_uom IS the base)
+      // Or more precisely: the sub-unit price = base_price / conversion_factor
+      result.push({
+        id: `_lower:${uom.lower_uom}`,
+        name: uom.lower_uom,
+        abbreviation: uom.lower_uom,
+        conversion_factor: uom.conversion_factor, // same factor, but price divides by this
+      });
+    }
+
+    return result;
+  };
   const [newComponentBaseUnit, setNewComponentBaseUnit] = useState<string>("");
   const [availableComponents, setAvailableComponents] = useState<SearchableSelectOption[]>([]);
   const [formData, setFormData] = useState({
@@ -1002,20 +1045,30 @@ const Products = () => {
       return;
     }
 
-    // Fetch UoMs for each unique component product
+    // Fetch UoMs for each unique component product (include lower_uom for deriving sub-units)
     const uniqueProductIds = [...new Set(data?.map(c => c.component_product_id) || [])];
     const uomsByProduct: Record<string, { id: string; name: string; abbreviation: string | null; conversion_factor: number }[]> = {};
     
     if (uniqueProductIds.length > 0) {
       const { data: uomData } = await supabase
         .from("product_uoms")
-        .select("id, product_id, name, abbreviation, conversion_factor")
+        .select("id, product_id, name, abbreviation, conversion_factor, lower_uom")
         .in("product_id", uniqueProductIds);
       
+      // Group raw UoM data by product
+      const rawByProduct: Record<string, typeof uomData> = {};
       uomData?.forEach(u => {
-        if (!uomsByProduct[u.product_id]) uomsByProduct[u.product_id] = [];
-        uomsByProduct[u.product_id].push(u);
+        if (!rawByProduct[u.product_id]) rawByProduct[u.product_id] = [];
+        rawByProduct[u.product_id]!.push(u);
       });
+
+      // Derive all UoMs (including sub-units) for each product
+      for (const comp of data || []) {
+        const pid = comp.component_product_id;
+        if (uomsByProduct[pid]) continue;
+        const baseUnit = (comp.component_product as any)?.unit || "";
+        uomsByProduct[pid] = deriveAllUoms(rawByProduct[pid] || [], baseUnit);
+      }
     }
 
     setComponents(
@@ -1578,7 +1631,7 @@ const Products = () => {
             parent_product_id: productId,
             component_product_id: c.component_product_id,
             quantity: parseFloat(c.quantity) || 1,
-            uom_id: c.uom_id || null,
+            uom_id: c.uom_id && !c.uom_id.startsWith("_lower:") ? c.uom_id : null,
           }));
 
           const { error: compError } = await supabase.from("product_components").insert(componentInserts);
@@ -2619,7 +2672,7 @@ const Products = () => {
                                         const [{ data: uomData }, { data: prodData }] = await Promise.all([
                                           supabase
                                             .from("product_uoms")
-                                            .select("id, product_id, name, abbreviation, conversion_factor")
+                                            .select("id, product_id, name, abbreviation, conversion_factor, lower_uom")
                                             .eq("product_id", value),
                                           supabase
                                             .from("products")
@@ -2627,8 +2680,9 @@ const Products = () => {
                                             .eq("id", value)
                                             .single(),
                                         ]);
-                                        setNewComponentUoms(uomData || []);
-                                        setNewComponentBaseUnit(prodData?.unit || "");
+                                        const baseUnit = prodData?.unit || "";
+                                        setNewComponentUoms(deriveAllUoms(uomData || [], baseUnit));
+                                        setNewComponentBaseUnit(baseUnit);
                                       } else {
                                         setNewComponentUoms([]);
                                         setNewComponentBaseUnit("");
