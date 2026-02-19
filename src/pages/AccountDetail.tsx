@@ -414,6 +414,7 @@ const AccountDetail = () => {
                 <TableHead>Reference</TableHead>
                 <TableHead>Pay To</TableHead>
                 <TableHead>Location</TableHead>
+                <TableHead>Location ID</TableHead>
                 <SortableTableHead
                   label="Amount"
                   sortKey="amount"
@@ -445,7 +446,7 @@ const AccountDetail = () => {
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                     No invoices found for this account.
                   </TableCell>
                 </TableRow>
@@ -487,19 +488,10 @@ const AccountDetail = () => {
                       {!invoice.purchase_order?.vendor && !invoice.sales_order?.customer && '-'}
                     </TableCell>
                     <TableCell>
-                      {invoice.purchase_order?.location && (
-                        <div>
-                          <p className="font-medium">{invoice.purchase_order.location.name}</p>
-                          <p className="text-xs text-muted-foreground">{invoice.purchase_order.location.location_id}</p>
-                        </div>
-                      )}
-                      {invoice.sales_order?.location && (
-                        <div>
-                          <p className="font-medium">{invoice.sales_order.location.name}</p>
-                          <p className="text-xs text-muted-foreground">{invoice.sales_order.location.location_id}</p>
-                        </div>
-                      )}
-                      {!invoice.purchase_order?.location && !invoice.sales_order?.location && '-'}
+                      {invoice.purchase_order?.location?.name || invoice.sales_order?.location?.name || '-'}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {invoice.purchase_order?.location?.location_id || invoice.sales_order?.location?.location_id || '-'}
                     </TableCell>
                     <TableCell className="font-medium">${invoice.amount.toFixed(2)}</TableCell>
                     <TableCell>{invoice.ledger?.name || '-'}</TableCell>
