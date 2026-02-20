@@ -443,7 +443,7 @@ const Accounts = () => {
         customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
         vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
         location_id: (formData.type === 'location' || formData.type === 'customer' || formData.type === 'inventory') && formData.location_id ? formData.location_id : null,
-        ledger_id: formData.type === 'inventory' && formData.ledger_id ? formData.ledger_id : null,
+        ledger_id: formData.ledger_id || null,
         account_manager_id: formData.account_manager_id || null,
         parent_account_id: formData.parent_account_id || null,
         description: formData.description || null,
@@ -480,7 +480,7 @@ const Accounts = () => {
           customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
           vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
           location_id: (formData.type === 'location' || formData.type === 'customer' || formData.type === 'inventory') && formData.location_id ? formData.location_id : null,
-          ledger_id: formData.type === 'inventory' && formData.ledger_id ? formData.ledger_id : null,
+          ledger_id: formData.ledger_id || null,
           account_manager_id: formData.account_manager_id || null,
           parent_account_id: formData.parent_account_id || null,
           description: formData.description || null,
@@ -833,27 +833,26 @@ const Accounts = () => {
             )}
 
             {formData.type === 'inventory' && (
-              <>
-                <div>
-                  <Label>Link to Location *</Label>
-                  <SearchableSelect
-                    options={locationOptions}
-                    value={formData.location_id}
-                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                    placeholder="Select location..."
-                  />
-                </div>
-                <div>
-                  <Label>Ledger</Label>
-                  <SearchableSelect
-                    options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
-                    value={formData.ledger_id}
-                    onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
-                    placeholder="Select ledger (optional)..."
-                  />
-                </div>
-              </>
+              <div>
+                <Label>Link to Location *</Label>
+                <SearchableSelect
+                  options={locationOptions}
+                  value={formData.location_id}
+                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                  placeholder="Select location..."
+                />
+              </div>
             )}
+
+            <div>
+              <Label>Ledger</Label>
+              <SearchableSelect
+                options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
+                value={formData.ledger_id}
+                onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                placeholder="Select ledger (optional)..."
+              />
+            </div>
 
             <div>
               <Label>Account Manager</Label>
@@ -982,27 +981,26 @@ const Accounts = () => {
             )}
 
             {formData.type === 'inventory' && (
-              <>
-                <div>
-                  <Label>Link to Location *</Label>
-                  <SearchableSelect
-                    options={locationOptions}
-                    value={formData.location_id}
-                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                    placeholder="Select location..."
-                  />
-                </div>
-                <div>
-                  <Label>Ledger</Label>
-                  <SearchableSelect
-                    options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
-                    value={formData.ledger_id}
-                    onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
-                    placeholder="Select ledger (optional)..."
-                  />
-                </div>
-              </>
+              <div>
+                <Label>Link to Location *</Label>
+                <SearchableSelect
+                  options={locationOptions}
+                  value={formData.location_id}
+                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                  placeholder="Select location..."
+                />
+              </div>
             )}
+
+            <div>
+              <Label>Ledger</Label>
+              <SearchableSelect
+                options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
+                value={formData.ledger_id}
+                onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                placeholder="Select ledger (optional)..."
+              />
+            </div>
 
             <div>
               <Label>Account Manager</Label>
