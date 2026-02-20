@@ -257,19 +257,14 @@ export function StepByStepProductionDialog({
     }
 
     // Create positive ledger transaction for finished goods value
-    const { data: ledger } = await supabase
-      .from('ledgers')
-      .select('id')
-      .eq('location_id', locationId)
-      .eq('is_active', true)
-      .limit(1)
-      .single();
+    const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+    const resolvedLedgerId = await getInventoryLedgerId(locationId, companyId);
 
-    if (ledger && totalValue > 0) {
+    if (resolvedLedgerId && totalValue > 0) {
       await supabase
         .from('ledger_transactions')
         .insert({
-          ledger_id: ledger.id,
+          ledger_id: resolvedLedgerId,
           transaction_type: 'production_output',
           reference_id: orderId,
           reference_number: orderNumber,

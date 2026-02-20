@@ -1,12 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { createPackagingUnit } from './packaging-units';
+import { getInventoryLedgerId } from './inventory-account';
 
 /**
  * Post a Goods Receipt - adds items to inventory and creates ledger transaction
  */
 export async function postGoodsReceipt(receiptId: string, locationId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get receipt with PO info to access ledger
+    // Get receipt with PO info
     const { data: receipt } = await supabase
       .from('goods_receipts' as any)
       .select('*, purchase_order:purchase_orders(id, po_number, ledger_id)')
@@ -25,12 +26,10 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
 
     // Add each item to inventory
     for (const item of items as any[]) {
-      // Check if item has a PU assigned
       const puId = item.pu_id || null;
       const batchId = item.batch_id || null;
       
       if (puId) {
-        // PU-based inventory: each PU is a separate inventory record
         await supabase
           .from('inventory')
           .insert({
@@ -42,7 +41,6 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
             batch_id: batchId,
           });
       } else {
-        // Legacy behavior: aggregate by location/product/bin/batch
         const query = supabase
           .from('inventory')
           .select('id, quantity')
@@ -82,10 +80,11 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
       }
     }
 
-    // Create positive ledger transaction if PO has a ledger
-    const po = (receipt as any)?.purchase_order;
-    if (po?.ledger_id) {
-      // Calculate total value of received goods
+    // Resolve ledger: Inventory account → location ledger → company general
+    const companyId = (receipt as any)?.company_id;
+    const ledgerId = await getInventoryLedgerId(locationId, companyId);
+
+    if (ledgerId) {
       const totalValue = (items as any[]).reduce((sum, item) => {
         const price = item.product?.price || 0;
         return sum + (price * item.quantity);
@@ -93,12 +92,12 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
 
       if (totalValue > 0) {
         await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: po.ledger_id,
+          ledger_id: ledgerId,
           transaction_type: 'goods_receipt',
           reference_id: receiptId,
           reference_number: (receipt as any).receipt_number,
-          amount: totalValue, // Positive for goods received
-          description: `Goods Receipt ${(receipt as any).receipt_number} for PO ${po.po_number}`,
+          amount: totalValue,
+          description: `Goods Receipt ${(receipt as any).receipt_number}`,
           transaction_date: new Date().toISOString().split('T')[0],
         });
       }
@@ -122,10 +121,10 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
  */
 export async function postGoodsIssue(issueId: string, locationId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get issue with SO and outbound delivery (for PO ledger) info
+    // Get issue
     const { data: issue } = await supabase
       .from('goods_issues' as any)
-      .select('*, sales_order:sales_orders(id, so_number, ledger_id), outbound_delivery:outbound_deliveries!goods_issues_outbound_delivery_id_fkey(id, purchase_order:purchase_orders(id, po_number, ledger_id))')
+      .select('*')
       .eq('id', issueId)
       .single();
 
@@ -141,7 +140,6 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
 
     // Deduct each item from inventory
     for (const item of items as any[]) {
-      // If item has a specific pu_id, use that exact record
       if (item.pu_id) {
         const { data: puInventory } = await supabase
           .from('inventory')
@@ -152,10 +150,7 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
           .maybeSingle();
         
         if (puInventory) {
-          // Delete the PU-based inventory record
           await supabase.from('inventory').delete().eq('id', puInventory.id);
-          
-          // Update PU status to 'issued'
           await supabase
             .from('packaging_units' as any)
             .update({ status: 'issued' })
@@ -164,7 +159,6 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
         continue;
       }
       
-      // If item has a specific bin_id, use it; otherwise find any available inventory
       let inventoryQuery = supabase
         .from('inventory')
         .select('id, quantity, bin_id, pu_id')
@@ -172,7 +166,6 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
         .eq('product_id', item.product_id);
       
       if (item.bin_id) {
-        // Specific bin requested
         inventoryQuery = inventoryQuery.eq('bin_id', item.bin_id);
       }
       
@@ -187,7 +180,6 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
         return { success: false, error: `No inventory found for ${productData?.name || 'product'} at this location` };
       }
 
-      // Calculate total available
       const totalAvailable = inventoryRecords.reduce((sum, inv) => sum + inv.quantity, 0);
       if (totalAvailable < item.quantity) {
         const { data: productData } = await supabase
@@ -198,7 +190,6 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
         return { success: false, error: `Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}` };
       }
 
-      // Deduct from inventory records (FIFO - start with largest quantities)
       let remainingToDeduct = item.quantity;
       for (const inv of inventoryRecords) {
         if (remainingToDeduct <= 0) break;
@@ -219,55 +210,11 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
       }
     }
 
-    // Resolve ledger: issuing location's ledger first, then company general ledger
-    let ledgerId: string | null = null;
-    let refDescription = '';
-
-    const so = (issue as any)?.sales_order;
-    const po = (issue as any)?.outbound_delivery?.purchase_order;
-
-    // Primary: ledger assigned to the issuing location
-    const { data: locationLedger } = await supabase
-      .from('ledgers' as any)
-      .select('id')
-      .eq('location_id', locationId)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
-    
-    if (locationLedger) {
-      ledgerId = (locationLedger as any).id;
-      if (so) {
-        refDescription = `Goods Issue ${(issue as any).issue_number} for SO ${so.so_number}`;
-      } else if (po) {
-        refDescription = `Goods Issue ${(issue as any).issue_number} for PO ${po.po_number}`;
-      } else {
-        refDescription = `Goods Issue ${(issue as any).issue_number} at location`;
-      }
-    }
-
-    // Fallback: company general ledger
-    if (!ledgerId) {
-      const companyId = (issue as any)?.company_id;
-      if (companyId) {
-        const { data: generalLedger } = await supabase
-          .from('ledgers' as any)
-          .select('id')
-          .eq('company_id', companyId)
-          .eq('is_active', true)
-          .is('location_id', null)
-          .limit(1)
-          .maybeSingle();
-        
-        if (generalLedger) {
-          ledgerId = (generalLedger as any).id;
-          refDescription = `Goods Issue ${(issue as any).issue_number}`;
-        }
-      }
-    }
+    // Resolve ledger: Inventory account → location ledger → company general
+    const companyId = (issue as any)?.company_id;
+    const ledgerId = await getInventoryLedgerId(locationId, companyId);
 
     if (ledgerId) {
-      // Calculate total value of issued goods
       const totalValue = (items as any[]).reduce((sum, item) => {
         const price = item.product?.price || 0;
         return sum + (price * item.quantity);
@@ -279,8 +226,8 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
           transaction_type: 'goods_issue',
           reference_id: issueId,
           reference_number: (issue as any).issue_number,
-          amount: -totalValue, // Negative for goods issued
-          description: refDescription,
+          amount: -totalValue,
+          description: `Goods Issue ${(issue as any).issue_number}`,
           transaction_date: new Date().toISOString().split('T')[0],
         });
       }

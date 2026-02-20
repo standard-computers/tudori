@@ -24,6 +24,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          ledger_id: string | null
           location_id: string | null
           name: string
           parent_account_id: string | null
@@ -40,6 +41,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          ledger_id?: string | null
           location_id?: string | null
           name: string
           parent_account_id?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          ledger_id?: string | null
           location_id?: string | null
           name?: string
           parent_account_id?: string | null
@@ -83,6 +86,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "ledgers"
             referencedColumns: ["id"]
           },
           {
