@@ -163,6 +163,8 @@ const AccountDetail = () => {
     if (canCreateInvoice) setIsCreateInvoiceDialogOpen(true);
   }, canCreateInvoice);
 
+  useKeyboardShortcut('F1', () => navigate(-1));
+
   useEffect(() => {
     setTransaction('acc/view');
     return () => setTransaction('acc');
