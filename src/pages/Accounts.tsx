@@ -59,6 +59,7 @@ interface Account {
   customer_id: string | null;
   vendor_id: string | null;
   location_id: string | null;
+  ledger_id: string | null;
   account_manager_id: string | null;
   parent_account_id: string | null;
   description: string | null;
@@ -67,7 +68,14 @@ interface Account {
   customer?: { name: string } | null;
   vendor?: { name: string } | null;
   location?: { name: string; location_id: string } | null;
+  ledger?: { name: string; ledger_id: string } | null;
   parent_account?: { account_id: string; name: string } | null;
+}
+
+interface Ledger {
+  id: string;
+  name: string;
+  ledger_id: string;
 }
 
 interface CompanyUser {
@@ -133,12 +141,14 @@ const Accounts = () => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
   // Form state
+  const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'customer',
     customer_id: '',
     vendor_id: '',
     location_id: '',
+    ledger_id: '',
     account_manager_id: '',
     parent_account_id: '',
     description: '',
@@ -156,7 +166,7 @@ const Accounts = () => {
         ? account.customer.name
         : account.type === 'vendor' && account.vendor?.name
         ? account.vendor.name
-        : account.type === 'location' && account.location?.name
+        : (account.type === 'location' || account.type === 'inventory') && account.location?.name
         ? account.location.name
         : '',
       location_id_display: account.location?.location_id || '',
@@ -200,6 +210,7 @@ const Accounts = () => {
       fetchCustomers();
       fetchVendors();
       fetchLocations();
+      fetchLedgers();
       fetchCompanyUsers();
       fetchOutstandingCounts();
     }
@@ -225,7 +236,8 @@ const Accounts = () => {
         *,
         customer:customers(name),
         vendor:vendors(name),
-        location:locations(name, location_id)
+        location:locations(name, location_id),
+        ledger:ledgers(name, ledger_id)
       `)
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
@@ -289,6 +301,16 @@ const Accounts = () => {
       .eq('company_id', companyId)
       .order('name');
     setLocations(data || []);
+  };
+
+  const fetchLedgers = async () => {
+    const { data } = await supabase
+      .from('ledgers' as any)
+      .select('id, name, ledger_id')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('name');
+    setLedgers((data as any) || []);
   };
 
   const fetchCompanyUsers = async () => {
@@ -371,6 +393,7 @@ const Accounts = () => {
       customer_id: '',
       vendor_id: '',
       location_id: '',
+      ledger_id: '',
       account_manager_id: '',
       parent_account_id: '',
       description: '',
@@ -390,6 +413,7 @@ const Accounts = () => {
       customer_id: account.customer_id || '',
       vendor_id: account.vendor_id || '',
       location_id: account.location_id || '',
+      ledger_id: account.ledger_id || '',
       account_manager_id: account.account_manager_id || '',
       parent_account_id: account.parent_account_id || '',
       description: account.description || '',
@@ -418,7 +442,8 @@ const Accounts = () => {
         type: formData.type,
         customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
         vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
-        location_id: (formData.type === 'location' || formData.type === 'customer') && formData.location_id ? formData.location_id : null,
+        location_id: (formData.type === 'location' || formData.type === 'customer' || formData.type === 'inventory') && formData.location_id ? formData.location_id : null,
+        ledger_id: formData.type === 'inventory' && formData.ledger_id ? formData.ledger_id : null,
         account_manager_id: formData.account_manager_id || null,
         parent_account_id: formData.parent_account_id || null,
         description: formData.description || null,
@@ -454,7 +479,8 @@ const Accounts = () => {
           type: formData.type,
           customer_id: formData.type === 'customer' && formData.customer_id ? formData.customer_id : null,
           vendor_id: formData.type === 'vendor' && formData.vendor_id ? formData.vendor_id : null,
-          location_id: (formData.type === 'location' || formData.type === 'customer') && formData.location_id ? formData.location_id : null,
+          location_id: (formData.type === 'location' || formData.type === 'customer' || formData.type === 'inventory') && formData.location_id ? formData.location_id : null,
+          ledger_id: formData.type === 'inventory' && formData.ledger_id ? formData.ledger_id : null,
           account_manager_id: formData.account_manager_id || null,
           parent_account_id: formData.parent_account_id || null,
           description: formData.description || null,
@@ -666,7 +692,7 @@ const Accounts = () => {
                     <TableCell>
                       {account.type === 'customer' && account.customer?.name}
                       {account.type === 'vendor' && account.vendor?.name}
-                      {account.type === 'location' && account.location?.name}
+                      {(account.type === 'location' || account.type === 'inventory') && account.location?.name}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {account.location?.location_id || <span className="text-muted-foreground">—</span>}
@@ -754,6 +780,7 @@ const Accounts = () => {
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="vendor">Vendor</SelectItem>
                   <SelectItem value="location">Internal</SelectItem>
+                  <SelectItem value="inventory">Inventory</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -803,6 +830,29 @@ const Accounts = () => {
                   placeholder="Select location..."
                 />
               </div>
+            )}
+
+            {formData.type === 'inventory' && (
+              <>
+                <div>
+                  <Label>Link to Location *</Label>
+                  <SearchableSelect
+                    options={locationOptions}
+                    value={formData.location_id}
+                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                    placeholder="Select location..."
+                  />
+                </div>
+                <div>
+                  <Label>Ledger</Label>
+                  <SearchableSelect
+                    options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
+                    value={formData.ledger_id}
+                    onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                    placeholder="Select ledger (optional)..."
+                  />
+                </div>
+              </>
             )}
 
             <div>
@@ -879,6 +929,7 @@ const Accounts = () => {
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="vendor">Vendor</SelectItem>
                   <SelectItem value="location">Internal</SelectItem>
+                  <SelectItem value="inventory">Inventory</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -928,6 +979,29 @@ const Accounts = () => {
                   placeholder="Select location..."
                 />
               </div>
+            )}
+
+            {formData.type === 'inventory' && (
+              <>
+                <div>
+                  <Label>Link to Location *</Label>
+                  <SearchableSelect
+                    options={locationOptions}
+                    value={formData.location_id}
+                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                    placeholder="Select location..."
+                  />
+                </div>
+                <div>
+                  <Label>Ledger</Label>
+                  <SearchableSelect
+                    options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
+                    value={formData.ledger_id}
+                    onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                    placeholder="Select ledger (optional)..."
+                  />
+                </div>
+              </>
             )}
 
             <div>

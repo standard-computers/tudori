@@ -1000,19 +1000,14 @@ const Production = () => {
 
         const totalValue = totalOutputQty * (product?.price || 0);
         if (totalValue > 0) {
-          const { data: ledger } = await supabase
-            .from('ledgers')
-            .select('id')
-            .eq('location_id', order.location_id)
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle();
+          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+          const resolvedLedgerId = await getInventoryLedgerId(order.location_id, companyId!);
 
-          if (ledger) {
+          if (resolvedLedgerId) {
             await supabase
               .from('ledger_transactions')
               .insert({
-                ledger_id: ledger.id,
+                ledger_id: resolvedLedgerId,
                 transaction_type: 'production_output',
                 reference_id: order.id,
                 reference_number: order.order_number,

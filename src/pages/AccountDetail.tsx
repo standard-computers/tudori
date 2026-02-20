@@ -51,12 +51,14 @@ interface Account {
   customer_id: string | null;
   vendor_id: string | null;
   location_id: string | null;
+  ledger_id: string | null;
   account_manager_id: string | null;
   description: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
   vendor?: { name: string } | null;
+  location?: { name: string; location_id: string } | null;
 }
 
 interface Invoice {
@@ -137,6 +139,22 @@ const AccountDetail = () => {
   const [viewItems, setViewItems] = useState<any[]>([]);
   const [isMaximized, setIsMaximized] = useMaximizedState();
 
+  // Inventory account: ledger transactions
+  interface LedgerTransaction {
+    id: string;
+    ledger_id: string;
+    transaction_type: string;
+    reference_id: string | null;
+    reference_number: string | null;
+    amount: number;
+    description: string | null;
+    transaction_date: string;
+    created_at: string;
+  }
+  const [ledgerTransactions, setLedgerTransactions] = useState<LedgerTransaction[]>([]);
+  const [txSearchQuery, setTxSearchQuery] = useState('');
+  const { sortConfig: txSortConfig, sortedAndFilteredData: sortedTransactions, handleSort: handleTxSort } = useTableSort<LedgerTransaction>(ledgerTransactions);
+
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
   const { sortConfig: paymentSortConfig, sortedAndFilteredData: sortedPayments, handleSort: handlePaymentSort } = useTableSort<Payment>(payments);
 
@@ -198,7 +216,8 @@ const AccountDetail = () => {
         .select(`
           *,
           customer:customers(name),
-          vendor:vendors(name)
+          vendor:vendors(name),
+          location:locations(name, location_id)
         `)
         .eq('id', id)
         .single();
@@ -208,6 +227,16 @@ const AccountDetail = () => {
       
       if ((accountData as any).account_manager_id === user?.id) {
         setCanCreateInvoice(true);
+      }
+
+      // For inventory accounts, fetch ledger transactions instead of invoices
+      if ((accountData as any).type === 'inventory' && (accountData as any).ledger_id) {
+        const { data: txData } = await supabase
+          .from('ledger_transactions' as any)
+          .select('*')
+          .eq('ledger_id', (accountData as any).ledger_id)
+          .order('transaction_date', { ascending: false });
+        setLedgerTransactions((txData as any) || []);
       }
 
       // Fetch invoices for this account
@@ -416,17 +445,33 @@ const AccountDetail = () => {
             <p className="text-sm font-medium">
               {account.type === 'customer' && account.customer?.name}
               {account.type === 'vendor' && account.vendor?.name}
-              {!account.customer?.name && !account.vendor?.name && '-'}
+              {(account.type === 'location' || account.type === 'inventory') && account.location?.name}
+              {!account.customer?.name && !account.vendor?.name && !account.location?.name && '-'}
             </p>
           </div>
-          <div className="border rounded-lg p-4 flex items-center gap-2">
-            <p className="text-sm text-muted-foreground">Total Invoiced</p>
-            <p className="text-sm font-medium">${totalAmount.toFixed(2)}</p>
-          </div>
-          <div className="border rounded-lg p-4 flex items-center gap-2">
-            <p className="text-sm text-muted-foreground">Outstanding</p>
-            <p className="text-sm font-medium text-yellow-600">${outstandingAmount.toFixed(2)}</p>
-          </div>
+          {account.type === 'inventory' ? (
+            <>
+              <div className="border rounded-lg p-4 flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">Total Value</p>
+                <p className="text-sm font-medium">${ledgerTransactions.reduce((s, t) => s + t.amount, 0).toFixed(2)}</p>
+              </div>
+              <div className="border rounded-lg p-4 flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">Transactions</p>
+                <p className="text-sm font-medium">{ledgerTransactions.length}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="border rounded-lg p-4 flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">Total Invoiced</p>
+                <p className="text-sm font-medium">${totalAmount.toFixed(2)}</p>
+              </div>
+              <div className="border rounded-lg p-4 flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">Outstanding</p>
+                <p className="text-sm font-medium text-yellow-600">${outstandingAmount.toFixed(2)}</p>
+              </div>
+            </>
+          )}
         </div>
 
         {account.description && (
@@ -437,6 +482,67 @@ const AccountDetail = () => {
         )}
 
         {/* Tabbed Content */}
+        {account.type === 'inventory' ? (
+          /* Inventory accounts show ledger transactions directly */
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold">Transactions ({ledgerTransactions.length})</h2>
+              </div>
+              <Input
+                placeholder="Search transactions..."
+                value={txSearchQuery}
+                onChange={(e) => setTxSearchQuery(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortableTableHead label="Date" sortKey="transaction_date" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterable={false} />
+                  <SortableTableHead label="Type" sortKey="transaction_type" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterable={false} />
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Description</TableHead>
+                  <SortableTableHead label="Amount" sortKey="amount" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterable={false} />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  const query = txSearchQuery.toLowerCase();
+                  const filtered = query
+                    ? sortedTransactions.filter(t =>
+                        t.transaction_type.toLowerCase().includes(query) ||
+                        (t.reference_number || '').toLowerCase().includes(query) ||
+                        (t.description || '').toLowerCase().includes(query)
+                      )
+                    : sortedTransactions;
+                  return filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No transactions found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell>{format(new Date(tx.transaction_date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">{tx.transaction_type.replace(/_/g, ' ')}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{tx.reference_number || '-'}</TableCell>
+                        <TableCell className="max-w-[300px] truncate">{tx.description || '-'}</TableCell>
+                        <TableCell className={`font-medium ${tx.amount < 0 ? 'text-destructive' : ''}`}>
+                          {tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  );
+                })()}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
         <Tabs defaultValue="invoices">
           <TabsList>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
@@ -610,6 +716,7 @@ const AccountDetail = () => {
             </Table>
           </TabsContent>
         </Tabs>
+        )}
       </div>
 
       {/* Accept Payment Dialog */}
