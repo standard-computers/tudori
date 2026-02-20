@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft, Trash2, Download, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft, Trash2, Download, ArrowUp, ArrowDown, Filter, Zap } from "lucide-react";
 import { useStatusMessage } from "@/hooks/use-status-message";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -380,6 +380,33 @@ export default function DataExplorer() {
     setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, selectedRows: new Set() } : t));
   };
 
+  const handleMassDeleteSelected = async (tab: TableTab, filteredData: Record<string, unknown>[]) => {
+    const selectedData = Array.from(tab.selectedRows).map(i => filteredData[i]).filter(Boolean);
+    if (selectedData.length === 0) return;
+
+    const ids = selectedData.map(row => row.id as string).filter(Boolean);
+    if (ids.length === 0) {
+      status.error("No records with id field found");
+      return;
+    }
+
+    setIsDeleting(true);
+    const { error, count } = await supabase
+      .from(tab.tableName as "accounts")
+      .delete({ count: 'exact' })
+      .in("id", ids);
+    setIsDeleting(false);
+
+    if (error) {
+      status.error(`Mass delete failed: ${error.message}`);
+    } else {
+      status.success(`Mass deleted ${count ?? ids.length} record(s)`);
+      refreshTab(tab.id);
+    }
+
+    setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, selectedRows: new Set() } : t));
+  };
+
   const handleExportSelected = async (tab: TableTab, filteredData: Record<string, unknown>[]) => {
     const selectedData = Array.from(tab.selectedRows).map(i => filteredData[i]).filter(Boolean);
     if (selectedData.length === 0) return;
@@ -481,7 +508,30 @@ export default function DataExplorer() {
             {activeTab.selectedRows.size > 0 && (
               <>
                 {hasITRole && (
-                  <AlertDialog>
+                  <>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={isDeleting}>
+                          <Zap className="h-4 w-4 mr-1" />
+                          Mass Delete ({activeTab.selectedRows.size})
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Mass Delete Records</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to mass delete {activeTab.selectedRows.size} record(s) at once? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleMassDeleteSelected(activeTab, getFilteredData(activeTab))}>
+                            Mass Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm" disabled={isDeleting}>
                         <Trash2 className="h-4 w-4 mr-1" />
@@ -502,7 +552,8 @@ export default function DataExplorer() {
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
-                  </AlertDialog>
+                    </AlertDialog>
+                  </>
                 )}
                 <Button variant="outline" size="sm" onClick={() => handleExportSelected(activeTab, getFilteredData(activeTab))}>
                   <Download className="h-4 w-4 mr-1" />
