@@ -229,14 +229,18 @@ const AccountDetail = () => {
         setCanCreateInvoice(true);
       }
 
-      // For inventory accounts, fetch ledger transactions instead of invoices
-      if ((accountData as any).type === 'inventory' && (accountData as any).ledger_id) {
-        const { data: txData } = await supabase
-          .from('ledger_transactions' as any)
-          .select('*')
-          .eq('ledger_id', (accountData as any).ledger_id)
-          .order('transaction_date', { ascending: false });
-        setLedgerTransactions((txData as any) || []);
+      // For inventory/location accounts, fetch ledger transactions
+      if (((accountData as any).type === 'inventory' || (accountData as any).type === 'location') && (accountData as any).location_id) {
+        const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+        const resolvedLedgerId = (accountData as any).ledger_id || await getInventoryLedgerId((accountData as any).location_id, companyId || undefined);
+        if (resolvedLedgerId) {
+          const { data: txData } = await supabase
+            .from('ledger_transactions' as any)
+            .select('*')
+            .eq('ledger_id', resolvedLedgerId)
+            .order('transaction_date', { ascending: false });
+          setLedgerTransactions((txData as any) || []);
+        }
       }
 
       // Fetch invoices for this account
@@ -411,7 +415,7 @@ const AccountDetail = () => {
               <p className="text-sm text-muted-foreground font-mono">{account.account_id}</p>
             </div>
           </div>
-          {canCreateInvoice && (
+          {canCreateInvoice && account.type !== 'inventory' && account.type !== 'location' && (
             <div className="flex items-center gap-2">
               <Button size="icon" variant="outline" className="relative" onClick={() => setIsCreateCreditMemoDialogOpen(true)}>
                 <Minus className="h-4 w-4" />
@@ -449,7 +453,7 @@ const AccountDetail = () => {
               {!account.customer?.name && !account.vendor?.name && !account.location?.name && '-'}
             </p>
           </div>
-          {account.type === 'inventory' ? (
+          {(account.type === 'inventory' || account.type === 'location') ? (
             <>
               <div className="border rounded-lg p-4 flex items-center gap-2">
                 <p className="text-sm text-muted-foreground">Total Value</p>
@@ -482,7 +486,7 @@ const AccountDetail = () => {
         )}
 
         {/* Tabbed Content */}
-        {account.type === 'inventory' ? (
+        {(account.type === 'inventory' || account.type === 'location') ? (
           /* Inventory accounts show ledger transactions directly */
           <div>
             <div className="flex items-center justify-between mb-4">
