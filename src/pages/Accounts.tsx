@@ -111,6 +111,8 @@ const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'parent_account', label: 'Parent Account', defaultVisible: true },
   { key: 'linked_to', label: 'Linked To', defaultVisible: true },
   { key: 'location_id', label: 'Location', defaultVisible: true },
+  { key: 'ledger_id_display', label: 'Ledger ID', defaultVisible: true },
+  { key: 'ledger_name_display', label: 'Ledger', defaultVisible: true },
   { key: 'outstanding_invoices', label: 'Outstanding Invoices', defaultVisible: true },
   { key: 'is_active', label: 'Active', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
@@ -171,6 +173,8 @@ const Accounts = () => {
         ? account.location.name
         : '',
       location_id_display: account.location?.location_id || '',
+      ledger_id_display: account.ledger?.ledger_id || '',
+      ledger_name_display: account.ledger?.name || '',
     })), [accounts, outstandingCounts])
   );
   const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
@@ -633,6 +637,24 @@ const Accounts = () => {
                   onFilter={(value) => setFilter('location_id_display', value)}
                 />
                 <SortableTableHead
+                  label="Ledger ID"
+                  sortKey="ledger_id_display"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['ledger_id_display'] || ''}
+                  onFilter={(value) => setFilter('ledger_id_display', value)}
+                />
+                <SortableTableHead
+                  label="Ledger"
+                  sortKey="ledger_name_display"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters['ledger_name_display'] || ''}
+                  onFilter={(value) => setFilter('ledger_name_display', value)}
+                />
+                <SortableTableHead
                   label="Status"
                   sortKey="is_active"
                   currentSortKey={sortConfig.key}
@@ -654,7 +676,7 @@ const Accounts = () => {
             <TableBody>
               {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                     No accounts found. Create your first account to get started.
                   </TableCell>
                 </TableRow>
@@ -697,6 +719,12 @@ const Accounts = () => {
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {account.location?.location_id || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {(account as any).ledger_id_display || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {(account as any).ledger_name_display || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       <Badge variant={account.is_active ? 'default' : 'secondary'}>
