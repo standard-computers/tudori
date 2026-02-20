@@ -21,12 +21,12 @@ export type Database = {
           company_id: string
           created_at: string
           customer_id: string | null
-          description: string | null
           id: string
           is_active: boolean
           ledger_id: string | null
           location_id: string | null
           name: string
+          notes: string | null
           parent_account_id: string | null
           type: string
           updated_at: string
@@ -38,12 +38,12 @@ export type Database = {
           company_id: string
           created_at?: string
           customer_id?: string | null
-          description?: string | null
           id?: string
           is_active?: boolean
           ledger_id?: string | null
           location_id?: string | null
           name: string
+          notes?: string | null
           parent_account_id?: string | null
           type?: string
           updated_at?: string
@@ -55,12 +55,12 @@ export type Database = {
           company_id?: string
           created_at?: string
           customer_id?: string | null
-          description?: string | null
           id?: string
           is_active?: boolean
           ledger_id?: string | null
           location_id?: string | null
           name?: string
+          notes?: string | null
           parent_account_id?: string | null
           type?: string
           updated_at?: string

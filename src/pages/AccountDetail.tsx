@@ -34,7 +34,7 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
 import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
 import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
-import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
@@ -53,7 +53,7 @@ interface Account {
   location_id: string | null;
   ledger_id: string | null;
   account_manager_id: string | null;
-  description: string | null;
+  notes: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
@@ -138,6 +138,7 @@ const AccountDetail = () => {
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<any[]>([]);
   const [isMaximized, setIsMaximized] = useMaximizedState();
+  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
 
   // Inventory account: ledger transactions
   interface LedgerTransaction {
@@ -417,6 +418,9 @@ const AccountDetail = () => {
           </div>
           {canCreateInvoice && (
             <div className="flex items-center gap-2">
+              <Button size="icon" variant="outline" className="relative" onClick={() => setIsNotesDialogOpen(true)} title="View Notes">
+                <StickyNote className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="outline" className="relative" onClick={() => setIsCreateCreditMemoDialogOpen(true)}>
                 <Minus className="h-4 w-4" />
               </Button>
@@ -477,13 +481,6 @@ const AccountDetail = () => {
             </>
           )}
         </div>
-
-        {account.description && (
-          <div className="border rounded-lg p-4 mb-6">
-            <p className="text-sm text-muted-foreground mb-1">Description</p>
-            <p>{account.description}</p>
-          </div>
-        )}
 
         {/* Tabbed Content */}
         <Tabs defaultValue={(account.type === 'inventory' || account.type === 'location') ? 'transactions' : 'invoices'}>
@@ -976,6 +973,31 @@ const AccountDetail = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewInvoiceDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notes Dialog */}
+      <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="h-5 w-5" />
+              Account Notes
+            </DialogTitle>
+            <DialogDescription>{account.name} ({account.account_id})</DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-2">
+            {account.notes ? (
+              <p className="text-sm whitespace-pre-wrap">{account.notes}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No notes on this account.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>

@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -62,7 +63,7 @@ interface Account {
   ledger_id: string | null;
   account_manager_id: string | null;
   parent_account_id: string | null;
-  description: string | null;
+  notes: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
@@ -151,7 +152,7 @@ const Accounts = () => {
     ledger_id: '',
     account_manager_id: '',
     parent_account_id: '',
-    description: '',
+    notes: '',
     is_active: true,
   });
 
@@ -396,7 +397,7 @@ const Accounts = () => {
       ledger_id: '',
       account_manager_id: '',
       parent_account_id: '',
-      description: '',
+      notes: '',
       is_active: true,
     });
     setIsCreateDialogOpen(true);
@@ -416,7 +417,7 @@ const Accounts = () => {
       ledger_id: account.ledger_id || '',
       account_manager_id: account.account_manager_id || '',
       parent_account_id: account.parent_account_id || '',
-      description: account.description || '',
+      notes: account.notes || '',
       is_active: account.is_active,
     });
     setIsEditDialogOpen(true);
@@ -446,7 +447,7 @@ const Accounts = () => {
         ledger_id: formData.ledger_id || null,
         account_manager_id: formData.account_manager_id || null,
         parent_account_id: formData.parent_account_id || null,
-        description: formData.description || null,
+        notes: formData.notes || null,
         is_active: formData.is_active,
       });
 
@@ -483,7 +484,7 @@ const Accounts = () => {
           ledger_id: formData.ledger_id || null,
           account_manager_id: formData.account_manager_id || null,
           parent_account_id: formData.parent_account_id || null,
-          description: formData.description || null,
+          notes: formData.notes || null,
           is_active: formData.is_active,
         })
         .eq('id', editingAccount.id);
@@ -749,141 +750,149 @@ const Accounts = () => {
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create Account</DialogTitle>
             <DialogDescription>Add a new account to track invoices.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <Label>Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Account name"
-              />
-            </div>
-
-            <div>
-              <Label>Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, type: value, customer_id: '', vendor_id: '', location_id: '' })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="vendor">Vendor</SelectItem>
-                  <SelectItem value="location">Internal</SelectItem>
-                  <SelectItem value="inventory">Inventory</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.type === 'customer' && (
-              <>
+          <Tabs defaultValue="general" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="mx-6 grid grid-cols-2">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+            </TabsList>
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <TabsContent value="general" className="space-y-4 mt-0">
                 <div>
-                  <Label>Link to Customer</Label>
-                  <SearchableSelect
-                    options={customerOptions}
-                    value={formData.customer_id}
-                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                    placeholder="Select customer..."
+                  <Label>Name *</Label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Account name"
                   />
                 </div>
+
                 <div>
-                  <Label>Link to Location</Label>
+                  <Label>Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, type: value, customer_id: '', vendor_id: '', location_id: '' })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="customer">Customer</SelectItem>
+                      <SelectItem value="vendor">Vendor</SelectItem>
+                      <SelectItem value="location">Internal</SelectItem>
+                      <SelectItem value="inventory">Inventory</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.type === 'customer' && (
+                  <>
+                    <div>
+                      <Label>Link to Customer</Label>
+                      <SearchableSelect
+                        options={customerOptions}
+                        value={formData.customer_id}
+                        onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+                        placeholder="Select customer..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Link to Location</Label>
+                      <SearchableSelect
+                        options={locationOptions}
+                        value={formData.location_id}
+                        onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                        placeholder="Select location (optional)..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                {formData.type === 'vendor' && (
+                  <div>
+                    <Label>Link to Vendor</Label>
+                    <SearchableSelect
+                      options={vendorOptions}
+                      value={formData.vendor_id}
+                      onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                      placeholder="Select vendor..."
+                    />
+                  </div>
+                )}
+
+                {formData.type === 'location' && (
+                  <div>
+                    <Label>Link to Location</Label>
+                    <SearchableSelect
+                      options={locationOptions}
+                      value={formData.location_id}
+                      onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                      placeholder="Select location..."
+                    />
+                  </div>
+                )}
+
+                {formData.type === 'inventory' && (
+                  <div>
+                    <Label>Link to Location *</Label>
+                    <SearchableSelect
+                      options={locationOptions}
+                      value={formData.location_id}
+                      onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                      placeholder="Select location..."
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <Label>Ledger</Label>
                   <SearchableSelect
-                    options={locationOptions}
-                    value={formData.location_id}
-                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                    placeholder="Select location (optional)..."
+                    options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
+                    value={formData.ledger_id}
+                    onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                    placeholder="Select ledger (optional)..."
                   />
                 </div>
-              </>
-            )}
 
-            {formData.type === 'vendor' && (
-              <div>
-                <Label>Link to Vendor</Label>
-                <SearchableSelect
-                  options={vendorOptions}
-                  value={formData.vendor_id}
-                  onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
-                  placeholder="Select vendor..."
+                <div>
+                  <Label>Account Manager</Label>
+                  <SearchableSelect
+                    options={userOptions}
+                    value={formData.account_manager_id}
+                    onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
+                    placeholder="Select account manager..."
+                  />
+                </div>
+
+                <div>
+                  <Label>Parent Account</Label>
+                  <SearchableSelect
+                    options={parentAccountOptions}
+                    value={formData.parent_account_id}
+                    onValueChange={(value) => setFormData({ ...formData, parent_account_id: value })}
+                    placeholder="Select parent account (optional)..."
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="notes" className="mt-0">
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Add notes about this account..."
+                  rows={10}
+                  className="min-h-[200px]"
                 />
-              </div>
-            )}
-
-            {formData.type === 'location' && (
-              <div>
-                <Label>Link to Location</Label>
-                <SearchableSelect
-                  options={locationOptions}
-                  value={formData.location_id}
-                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                  placeholder="Select location..."
-                />
-              </div>
-            )}
-
-            {formData.type === 'inventory' && (
-              <div>
-                <Label>Link to Location *</Label>
-                <SearchableSelect
-                  options={locationOptions}
-                  value={formData.location_id}
-                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                  placeholder="Select location..."
-                />
-              </div>
-            )}
-
-            <div>
-              <Label>Ledger</Label>
-              <SearchableSelect
-                options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
-                value={formData.ledger_id}
-                onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
-                placeholder="Select ledger (optional)..."
-              />
+              </TabsContent>
             </div>
-
-            <div>
-              <Label>Account Manager</Label>
-              <SearchableSelect
-                options={userOptions}
-                value={formData.account_manager_id}
-                onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
-                placeholder="Select account manager..."
-              />
-            </div>
-
-            <div>
-              <Label>Parent Account</Label>
-              <SearchableSelect
-                options={parentAccountOptions}
-                value={formData.parent_account_id}
-                onValueChange={(value) => setFormData({ ...formData, parent_account_id: value })}
-                placeholder="Select parent account (optional)..."
-              />
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description"
-                rows={3}
-              />
-            </div>
-          </div>
+          </Tabs>
 
           <DialogFooter>
             <Button onClick={handleCreate} disabled={isSubmitting}>
@@ -897,150 +906,158 @@ const Accounts = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Account</DialogTitle>
             <DialogDescription>Update account details.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 px-6 pb-6">
-            <div>
-              <Label>Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Account name"
-              />
-            </div>
-
-            <div>
-              <Label>Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, type: value, customer_id: '', vendor_id: '', location_id: '' })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="vendor">Vendor</SelectItem>
-                  <SelectItem value="location">Internal</SelectItem>
-                  <SelectItem value="inventory">Inventory</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.type === 'customer' && (
-              <>
+          <Tabs defaultValue="general" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="mx-6 grid grid-cols-2">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+            </TabsList>
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <TabsContent value="general" className="space-y-4 mt-0">
                 <div>
-                  <Label>Link to Customer</Label>
-                  <SearchableSelect
-                    options={customerOptions}
-                    value={formData.customer_id}
-                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                    placeholder="Select customer..."
+                  <Label>Name *</Label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Account name"
                   />
                 </div>
+
                 <div>
-                  <Label>Link to Location</Label>
+                  <Label>Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, type: value, customer_id: '', vendor_id: '', location_id: '' })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="customer">Customer</SelectItem>
+                      <SelectItem value="vendor">Vendor</SelectItem>
+                      <SelectItem value="location">Internal</SelectItem>
+                      <SelectItem value="inventory">Inventory</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.type === 'customer' && (
+                  <>
+                    <div>
+                      <Label>Link to Customer</Label>
+                      <SearchableSelect
+                        options={customerOptions}
+                        value={formData.customer_id}
+                        onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+                        placeholder="Select customer..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Link to Location</Label>
+                      <SearchableSelect
+                        options={locationOptions}
+                        value={formData.location_id}
+                        onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                        placeholder="Select location (optional)..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                {formData.type === 'vendor' && (
+                  <div>
+                    <Label>Link to Vendor</Label>
+                    <SearchableSelect
+                      options={vendorOptions}
+                      value={formData.vendor_id}
+                      onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
+                      placeholder="Select vendor..."
+                    />
+                  </div>
+                )}
+
+                {formData.type === 'location' && (
+                  <div>
+                    <Label>Link to Location</Label>
+                    <SearchableSelect
+                      options={locationOptions}
+                      value={formData.location_id}
+                      onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                      placeholder="Select location..."
+                    />
+                  </div>
+                )}
+
+                {formData.type === 'inventory' && (
+                  <div>
+                    <Label>Link to Location *</Label>
+                    <SearchableSelect
+                      options={locationOptions}
+                      value={formData.location_id}
+                      onValueChange={(value) => setFormData({ ...formData, location_id: value })}
+                      placeholder="Select location..."
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <Label>Ledger</Label>
                   <SearchableSelect
-                    options={locationOptions}
-                    value={formData.location_id}
-                    onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                    placeholder="Select location (optional)..."
+                    options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
+                    value={formData.ledger_id}
+                    onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                    placeholder="Select ledger (optional)..."
                   />
                 </div>
-              </>
-            )}
 
-            {formData.type === 'vendor' && (
-              <div>
-                <Label>Link to Vendor</Label>
-                <SearchableSelect
-                  options={vendorOptions}
-                  value={formData.vendor_id}
-                  onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}
-                  placeholder="Select vendor..."
+                <div>
+                  <Label>Account Manager</Label>
+                  <SearchableSelect
+                    options={userOptions}
+                    value={formData.account_manager_id}
+                    onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
+                    placeholder="Select account manager..."
+                  />
+                </div>
+
+                <div>
+                  <Label>Parent Account</Label>
+                  <SearchableSelect
+                    options={parentAccountOptions}
+                    value={formData.parent_account_id}
+                    onValueChange={(value) => setFormData({ ...formData, parent_account_id: value })}
+                    placeholder="Select parent account (optional)..."
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label>Active</Label>
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="notes" className="mt-0">
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Add notes about this account..."
+                  rows={10}
+                  className="min-h-[200px]"
                 />
-              </div>
-            )}
-
-            {formData.type === 'location' && (
-              <div>
-                <Label>Link to Location</Label>
-                <SearchableSelect
-                  options={locationOptions}
-                  value={formData.location_id}
-                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                  placeholder="Select location..."
-                />
-              </div>
-            )}
-
-            {formData.type === 'inventory' && (
-              <div>
-                <Label>Link to Location *</Label>
-                <SearchableSelect
-                  options={locationOptions}
-                  value={formData.location_id}
-                  onValueChange={(value) => setFormData({ ...formData, location_id: value })}
-                  placeholder="Select location..."
-                />
-              </div>
-            )}
-
-            <div>
-              <Label>Ledger</Label>
-              <SearchableSelect
-                options={ledgers.map(l => ({ value: l.id, label: l.name, sublabel: l.ledger_id }))}
-                value={formData.ledger_id}
-                onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
-                placeholder="Select ledger (optional)..."
-              />
+              </TabsContent>
             </div>
-
-            <div>
-              <Label>Account Manager</Label>
-              <SearchableSelect
-                options={userOptions}
-                value={formData.account_manager_id}
-                onValueChange={(value) => setFormData({ ...formData, account_manager_id: value })}
-                placeholder="Select account manager..."
-              />
-            </div>
-
-            <div>
-              <Label>Parent Account</Label>
-              <SearchableSelect
-                options={parentAccountOptions}
-                value={formData.parent_account_id}
-                onValueChange={(value) => setFormData({ ...formData, parent_account_id: value })}
-                placeholder="Select parent account (optional)..."
-              />
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Label>Active</Label>
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              />
-            </div>
-          </div>
+          </Tabs>
 
           <DialogFooter>
             <Button onClick={handleUpdate} disabled={isSubmitting}>
