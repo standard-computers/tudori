@@ -25,6 +25,13 @@ import {
 } from '@/components/ui/table';
 import { Wand2, Loader2, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Location {
   id: string;
@@ -60,6 +67,7 @@ export const AutoMakeAccountsDialog = ({
 
   const [accountIdTemplate, setAccountIdTemplate] = useState('@-ACCT');
   const [accountNameTemplate, setAccountNameTemplate] = useState('$ Account');
+  const [accountType, setAccountType] = useState('location');
   const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(new Set());
   const [locationSearch, setLocationSearch] = useState('');
 
@@ -68,6 +76,7 @@ export const AutoMakeAccountsDialog = ({
       setActiveTab('general');
       setAccountIdTemplate('@-ACCT');
       setAccountNameTemplate('$ Account');
+      setAccountType('location');
       setSelectedLocationIds(new Set());
       setLocationSearch('');
       setIsMaximized(false);
@@ -139,7 +148,7 @@ export const AutoMakeAccountsDialog = ({
         company_id: companyId,
         account_id: applyTemplate(accountIdTemplate, loc.location_id, loc.name),
         name: applyTemplate(accountNameTemplate, loc.location_id, loc.name),
-        type: 'location',
+        type: accountType,
         location_id: loc.id,
         is_active: true,
       }));
@@ -209,6 +218,21 @@ export const AutoMakeAccountsDialog = ({
 
           <div className="flex-1 overflow-auto px-6 py-4">
             <TabsContent value="general" className="space-y-4 mt-0">
+              <div className="space-y-2">
+                <Label>Account Type</Label>
+                <Select value={accountType} onValueChange={setAccountType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="customer">Customer</SelectItem>
+                    <SelectItem value="vendor">Vendor</SelectItem>
+                    <SelectItem value="location">Internal</SelectItem>
+                    <SelectItem value="inventory">Inventory</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label>Account ID Template</Label>
                 <Input
