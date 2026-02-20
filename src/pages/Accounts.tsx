@@ -113,6 +113,7 @@ const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'location_id', label: 'Location', defaultVisible: true },
   { key: 'ledger_id_display', label: 'Ledger ID', defaultVisible: true },
   { key: 'ledger_name_display', label: 'Ledger', defaultVisible: true },
+  { key: 'balance', label: 'Balance', defaultVisible: true },
   { key: 'outstanding_invoices', label: 'Outstanding Invoices', defaultVisible: true },
   { key: 'is_active', label: 'Active', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
@@ -130,6 +131,7 @@ const Accounts = () => {
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [outstandingCounts, setOutstandingCounts] = useState<Record<string, number>>({});
+  const [accountBalances, setAccountBalances] = useState<Record<string, number>>({});
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -158,10 +160,11 @@ const Accounts = () => {
     is_active: true,
   });
 
-  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter } = useTableSort<Account & { outstanding_invoices: number }>(
+  const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter } = useTableSort<Account & { outstanding_invoices: number; balance: number }>(
     useMemo(() => accounts.map(account => ({
       ...account,
       outstanding_invoices: outstandingCounts[account.id] || 0,
+      balance: accountBalances[account.id] || 0,
       parent_account_display: account.parent_account 
         ? `${account.parent_account.account_id} - ${account.parent_account.name}` 
         : '',
@@ -175,7 +178,7 @@ const Accounts = () => {
       location_id_display: account.location?.location_id || '',
       ledger_id_display: account.ledger?.ledger_id || '',
       ledger_name_display: account.ledger?.name || '',
-    })), [accounts, outstandingCounts])
+    })), [accounts, outstandingCounts, accountBalances])
   );
   const { visibleColumns, toggleColumn, resetToDefaults, showAll, hideAll, toggleableColumns } = useColumnVisibility('accounts', ACCOUNT_COLUMNS);
 
@@ -220,6 +223,12 @@ const Accounts = () => {
       fetchOutstandingCounts();
     }
   }, [companyId]);
+
+  useEffect(() => {
+    if (companyId && accounts.length > 0) {
+      fetchAccountBalances();
+    }
+  }, [companyId, accounts]);
 
   const fetchCompanyId = async () => {
     const { data: profile } = await supabase
@@ -346,6 +355,59 @@ const Accounts = () => {
       }
     });
     setOutstandingCounts(counts);
+  };
+
+  const fetchAccountBalances = async () => {
+    // Fetch all data in parallel
+    const [invoicesRes, paymentsRes, ledgerTxRes] = await Promise.all([
+      supabase
+        .from('invoices')
+        .select('account_id, amount')
+        .eq('company_id', companyId),
+      supabase
+        .from('payments' as any)
+        .select('account_id, amount')
+        .eq('company_id', companyId),
+      supabase
+        .from('ledger_transactions' as any)
+        .select('ledger_id, amount, transaction_type')
+        .in('transaction_type', ['goods_receipt', 'goods_issue']),
+    ]);
+
+    // Sum invoices by account_id
+    const invoiceTotals: Record<string, number> = {};
+    (invoicesRes.data || []).forEach((inv: any) => {
+      if (inv.account_id) {
+        invoiceTotals[inv.account_id] = (invoiceTotals[inv.account_id] || 0) + (inv.amount || 0);
+      }
+    });
+
+    // Sum payments by account_id
+    const paymentTotals: Record<string, number> = {};
+    (paymentsRes.data || []).forEach((pay: any) => {
+      if (pay.account_id) {
+        paymentTotals[pay.account_id] = (paymentTotals[pay.account_id] || 0) + (pay.amount || 0);
+      }
+    });
+
+    // Sum GR/GI by ledger_id (GI amounts are already negative)
+    const ledgerGrGiTotals: Record<string, number> = {};
+    (ledgerTxRes.data || []).forEach((tx: any) => {
+      if (tx.ledger_id) {
+        ledgerGrGiTotals[tx.ledger_id] = (ledgerGrGiTotals[tx.ledger_id] || 0) + (tx.amount || 0);
+      }
+    });
+
+    // Build a ledger_id -> account_id map from current accounts
+    const balances: Record<string, number> = {};
+    accounts.forEach((account) => {
+      const grGi = account.ledger_id ? (ledgerGrGiTotals[account.ledger_id] || 0) : 0;
+      const invVal = invoiceTotals[account.id] || 0;
+      const payments = paymentTotals[account.id] || 0;
+      balances[account.id] = grGi + (invVal - payments);
+    });
+
+    setAccountBalances(balances);
   };
 
   const customerOptions: SearchableSelectOption[] = useMemo(() => {
@@ -655,6 +717,14 @@ const Accounts = () => {
                   onFilter={(value) => setFilter('ledger_name_display', value)}
                 />
                 <SortableTableHead
+                  label="Balance"
+                  sortKey="balance"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                />
+                <SortableTableHead
                   label="Status"
                   sortKey="is_active"
                   currentSortKey={sortConfig.key}
@@ -676,7 +746,7 @@ const Accounts = () => {
             <TableBody>
               {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                     No accounts found. Create your first account to get started.
                   </TableCell>
                 </TableRow>
@@ -725,6 +795,16 @@ const Accounts = () => {
                     </TableCell>
                     <TableCell>
                       {(account as any).ledger_name_display || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-right">
+                      {(() => {
+                        const bal = (account as any).balance || 0;
+                        return (
+                          <span className={bal < 0 ? 'text-destructive' : bal > 0 ? 'text-primary' : 'text-muted-foreground'}>
+                            {bal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Badge variant={account.is_active ? 'default' : 'secondary'}>
