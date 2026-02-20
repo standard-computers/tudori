@@ -370,18 +370,12 @@ export const InventoryCountDialog = ({
 
       // Create a single ledger adjustment for the net valuation change
       if (netValuationChange !== 0) {
-        // Find ledger for this location
-        const { data: ledger } = await supabase
-          .from('ledgers' as any)
-          .select('id')
-          .eq('company_id', companyId)
-          .eq('location_id', locationId)
-          .eq('is_active', true)
-          .maybeSingle();
+        const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+        const ledgerId = await getInventoryLedgerId(locationId, companyId);
 
-        if (ledger) {
+        if (ledgerId) {
           await supabase.from('ledger_transactions' as any).insert({
-            ledger_id: (ledger as any).id,
+            ledger_id: ledgerId,
             transaction_type: 'inventory_adjustment',
             reference_id: selectedCount.id,
             reference_number: selectedCount.count_number,
