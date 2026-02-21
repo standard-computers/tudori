@@ -290,6 +290,17 @@ const Deliveries = () => {
     }
   }, [isDialogOpen, isEditing, setTransaction]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setShowQueryDialog(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   // Use vendor sources hook
   const { vendorOptions } = useVendorSources(companyId);
 
@@ -975,8 +986,9 @@ const Deliveries = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search deliveries">
+              <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setShowQueryDialog(true)} title="Search deliveries">
                 <Search className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
