@@ -17,7 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X } from 'lucide-react';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { z } from 'zod';
 import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
 import { UserLocationsTab } from '@/components/users/UserLocationsTab';
@@ -162,6 +163,7 @@ const Users = () => {
   const [viewingMember, setViewingMember] = useState<TeamMember | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [noCompany, setNoCompany] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -434,7 +436,7 @@ const Users = () => {
   if (noCompany) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <header className="sticky top-0 z-50">
           <div className="px-4">
             <div className="flex items-center h-16">
               <div className="flex items-center gap-4">
@@ -474,7 +476,7 @@ const Users = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="sticky top-0 z-50">
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
@@ -624,31 +626,17 @@ const Users = () => {
                             <Eye className="w-4 h-4" />
                           </Button>
                           {canEditMember && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingMember(member);
-                                }}
-                                title="Edit"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveUser(member);
-                                }}
-                                className="text-destructive hover:text-destructive"
-                                title="Remove"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingMember(member);
+                              }}
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>
@@ -694,12 +682,25 @@ const Users = () => {
 
         {/* Edit User Dialog */}
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
-          <DialogContent className="max-w-2xl">
+           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-              <DialogDescription>
-                Update {editingMember?.first_name} {editingMember?.last_name}'s access level and permissions
-              </DialogDescription>
+              <div className="flex items-center justify-between pr-8">
+                <div>
+                  <DialogTitle>Edit User</DialogTitle>
+                  <DialogDescription>
+                    Update {editingMember?.first_name} {editingMember?.last_name}'s access level and permissions
+                  </DialogDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  title="Remove user"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </DialogHeader>
             <DialogBody>
               <Tabs defaultValue="general" className="w-full">
@@ -838,6 +839,19 @@ const Users = () => {
           onOpenChange={setShowPasswordDialog} 
           email={createdPasswordEmail} 
           tempPassword={createdTempPassword} 
+        />
+        <ConfirmDeleteDialog
+          open={confirmDeleteOpen}
+          onOpenChange={setConfirmDeleteOpen}
+          title="Remove User"
+          description={`Are you sure you want to remove ${editingMember?.first_name} ${editingMember?.last_name} from the team? This action cannot be undone.`}
+          onConfirm={() => {
+            if (editingMember) {
+              handleRemoveUser(editingMember);
+              setEditingMember(null);
+              setConfirmDeleteOpen(false);
+            }
+          }}
         />
       </main>
     </div>
