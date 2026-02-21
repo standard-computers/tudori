@@ -1873,6 +1873,7 @@ const Orders = () => {
           p_to_location_id: order.location_id,
           p_status: "pending",
           p_notes: `Auto-created from PO ${order.po_number} (Internal Transfer)`,
+          p_expected_date: order.expected_delivery_date,
         });
 
         if (outboundError) {
@@ -2168,6 +2169,14 @@ const Orders = () => {
         let sharedDeliveryCreated = false;
         try {
           const poListLabel = poNumbers.join(", ");
+          // Use the latest expected_delivery_date from all POs in the group
+          const groupExpectedDates = groupOrderIds
+            .map((oid) => orders.find((o) => o.id === oid)?.expected_delivery_date)
+            .filter(Boolean) as string[];
+          const latestExpectedDate = groupExpectedDates.length > 0
+            ? groupExpectedDates.sort().pop()!
+            : null;
+
           const { data: result, error: outboundError } = await supabase.rpc("create_outbound_delivery", {
             p_company_id: companyId,
             p_purchase_order_id: groupOrderIds[0],
@@ -2175,6 +2184,7 @@ const Orders = () => {
             p_to_location_id: shipToLocationId,
             p_status: "pending",
             p_notes: `Auto-created from POs: ${poListLabel} (Internal Transfer - ${groupOrderIds.length} orders)`,
+            p_expected_date: latestExpectedDate,
           });
 
           if (!outboundError && result) {

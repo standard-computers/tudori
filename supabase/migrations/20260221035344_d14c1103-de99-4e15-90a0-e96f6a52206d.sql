@@ -1,0 +1,1 @@
+ALTER TABLE public.outbound_deliveries ADD COLUMN expected_date timestamptz DEFAULT NULL;
