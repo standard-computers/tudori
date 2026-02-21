@@ -16,7 +16,7 @@ export const ThemeSync = () => {
 
       const { data } = await supabase
         .from('user_preferences')
-         .select('theme, design_system')
+         .select('theme, design_system, custom_primary_hsl')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -24,7 +24,8 @@ export const ThemeSync = () => {
         setTheme(data.theme);
          // Apply design system with the theme
          const designSystem = data.design_system || 'default';
-         applyDesignSystem(designSystem, data.theme as 'light' | 'dark');
+         const customHsl = (data as any).custom_primary_hsl as { h: number; s: number; l: number } | null;
+         applyDesignSystem(designSystem, data.theme as 'light' | 'dark', designSystem === 'custom' && customHsl ? customHsl : undefined);
          appliedRef.current = true;
       }
     };

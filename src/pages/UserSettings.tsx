@@ -13,10 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun, MapPin } from 'lucide-react';
+import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Loader2, Moon, Sun, MapPin, Palette } from 'lucide-react';
  import { Kbd } from '@/components/ui/kbd';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
- import { designSystems, applyDesignSystem } from '@/config/design-systems';
+ import { Slider } from '@/components/ui/slider';
+ import { designSystems, applyDesignSystem, buildCustomDesignSystem } from '@/config/design-systems';
 import { setMaximizePreferenceCache } from '@/hooks/use-maximize-preference';
 import { setAppMenuPreferenceCache } from '@/hooks/use-app-menu-preference';
 import { Maximize2 } from 'lucide-react';
@@ -124,6 +125,7 @@ const UserSettings = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [showAppMenu, setShowAppMenu] = useState(true);
    const [designSystem, setDesignSystem] = useState('default');
+  const [customHsl, setCustomHsl] = useState({ h: 220, s: 50, l: 35 });
   const [defaultLocationId, setDefaultLocationId] = useState<string | null>(null);
   const [userLocations, setUserLocations] = useState<{ id: string; location_id: string; name: string }[]>([]);
   // Get transaction access for the user's company
@@ -233,7 +235,9 @@ const UserSettings = () => {
      // Apply saved design system
      if (data?.design_system) {
        setDesignSystem(data.design_system);
-       applyDesignSystem(data.design_system, (data.theme || 'light') as 'light' | 'dark');
+       const savedCustomHsl = (data as any).custom_primary_hsl as { h: number; s: number; l: number } | null;
+       if (savedCustomHsl) setCustomHsl(savedCustomHsl);
+       applyDesignSystem(data.design_system, (data.theme || 'light') as 'light' | 'dark', savedCustomHsl || undefined);
      }
     
     // Filter apps based on transaction access
@@ -369,7 +373,7 @@ const UserSettings = () => {
   const handleThemeChange = async (checked: boolean) => {
     const newTheme = checked ? 'dark' : 'light';
     setTheme(newTheme);
-     applyDesignSystem(designSystem, newTheme);
+     applyDesignSystem(designSystem, newTheme, designSystem === 'custom' ? customHsl : undefined);
     
     if (!user) return;
     
@@ -395,7 +399,7 @@ const UserSettings = () => {
  
    const handleDesignSystemChange = async (newDesignSystem: string) => {
      setDesignSystem(newDesignSystem);
-     applyDesignSystem(newDesignSystem, (theme || 'light') as 'light' | 'dark');
+     applyDesignSystem(newDesignSystem, (theme || 'light') as 'light' | 'dark', newDesignSystem === 'custom' ? customHsl : undefined);
      
      if (!user) return;
      
@@ -405,18 +409,43 @@ const UserSettings = () => {
        .eq('user_id', user.id)
        .maybeSingle();
  
+     const updatePayload: any = { design_system: newDesignSystem };
+     if (newDesignSystem === 'custom') {
+       updatePayload.custom_primary_hsl = customHsl;
+     }
+
      if (existing) {
        await supabase
          .from('user_preferences')
-         .update({ design_system: newDesignSystem })
+         .update(updatePayload)
          .eq('user_id', user.id);
      } else {
        await supabase
          .from('user_preferences')
-         .insert({ user_id: user.id, design_system: newDesignSystem });
+         .insert({ user_id: user.id, ...updatePayload });
      }
      
      toast.success('Design system saved');
+   };
+
+   const handleCustomHslChange = async (newHsl: { h: number; s: number; l: number }) => {
+     setCustomHsl(newHsl);
+     setDesignSystem('custom');
+     applyDesignSystem('custom', (theme || 'light') as 'light' | 'dark', newHsl);
+
+     if (!user) return;
+     const { data: existing } = await supabase
+       .from('user_preferences')
+       .select('id')
+       .eq('user_id', user.id)
+       .maybeSingle();
+
+     const payload: any = { design_system: 'custom', custom_primary_hsl: newHsl };
+     if (existing) {
+       await supabase.from('user_preferences').update(payload).eq('user_id', user.id);
+     } else {
+       await supabase.from('user_preferences').insert({ user_id: user.id, ...payload });
+     }
    };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -676,29 +705,7 @@ const UserSettings = () => {
                  </CardDescription>
                </CardHeader>
                <CardContent className="space-y-4">
-                 <Select value={designSystem} onValueChange={handleDesignSystemChange}>
-                   <SelectTrigger className="w-full">
-                     <SelectValue placeholder="Select a design system" />
-                   </SelectTrigger>
-                   <SelectContent>
-                     {designSystems.map((ds) => (
-                       <SelectItem key={ds.id} value={ds.id}>
-                         <div className="flex items-center gap-3">
-                           <div 
-                             className="w-4 h-4 rounded-full border border-border" 
-                             style={{ backgroundColor: ds.preview }}
-                           />
-                           <div>
-                             <span className="font-medium">{ds.name}</span>
-                             <span className="text-muted-foreground ml-2 text-xs">{ds.description}</span>
-                           </div>
-                         </div>
-                       </SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-                 
-                 <div className="grid grid-cols-5 gap-3 pt-2">
+                 <div className="grid grid-cols-5 gap-3">
                    {designSystems.map((ds) => (
                      <button
                        key={ds.id}
@@ -716,7 +723,81 @@ const UserSettings = () => {
                        <span className="text-xs font-medium text-center">{ds.name}</span>
                      </button>
                    ))}
+                   <button
+                     onClick={() => handleDesignSystemChange('custom')}
+                     className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
+                       designSystem === 'custom' 
+                         ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                         : 'border-border hover:border-muted-foreground/30'
+                     }`}
+                   >
+                     <div 
+                       className="w-8 h-8 rounded-full border-2 border-background shadow-md flex items-center justify-center"
+                       style={{ backgroundColor: `hsl(${customHsl.h}, ${customHsl.s}%, ${customHsl.l}%)` }}
+                     >
+                       <Palette className="w-4 h-4 text-white" />
+                     </div>
+                     <span className="text-xs font-medium text-center">Custom</span>
+                   </button>
                  </div>
+
+                 {designSystem === 'custom' && (
+                   <div className="space-y-4 pt-2 border-t">
+                     <div className="space-y-2">
+                       <div className="flex items-center justify-between">
+                         <Label className="text-sm">Hue</Label>
+                         <span className="text-xs text-muted-foreground">{customHsl.h}°</span>
+                       </div>
+                       <div className="relative">
+                         <div className="absolute inset-0 h-2 top-1/2 -translate-y-1/2 rounded-full" style={{ background: 'linear-gradient(to right, hsl(0,70%,50%), hsl(60,70%,50%), hsl(120,70%,50%), hsl(180,70%,50%), hsl(240,70%,50%), hsl(300,70%,50%), hsl(360,70%,50%))' }} />
+                         <Slider
+                           value={[customHsl.h]}
+                           min={0}
+                           max={360}
+                           step={1}
+                           onValueChange={([h]) => handleCustomHslChange({ ...customHsl, h })}
+                           className="relative"
+                         />
+                       </div>
+                     </div>
+                     <div className="space-y-2">
+                       <div className="flex items-center justify-between">
+                         <Label className="text-sm">Saturation</Label>
+                         <span className="text-xs text-muted-foreground">{customHsl.s}%</span>
+                       </div>
+                       <Slider
+                         value={[customHsl.s]}
+                         min={10}
+                         max={100}
+                         step={1}
+                         onValueChange={([s]) => handleCustomHslChange({ ...customHsl, s })}
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       <div className="flex items-center justify-between">
+                         <Label className="text-sm">Lightness</Label>
+                         <span className="text-xs text-muted-foreground">{customHsl.l}%</span>
+                       </div>
+                       <Slider
+                         value={[customHsl.l]}
+                         min={15}
+                         max={55}
+                         step={1}
+                         onValueChange={([l]) => handleCustomHslChange({ ...customHsl, l })}
+                       />
+                     </div>
+                     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                       <div 
+                         className="w-10 h-10 rounded-lg shadow-md border border-border" 
+                         style={{ backgroundColor: `hsl(${customHsl.h}, ${customHsl.s}%, ${customHsl.l}%)` }}
+                       />
+                       <div className="text-sm">
+                         <p className="font-medium">Preview</p>
+                         <p className="text-muted-foreground text-xs">hsl({customHsl.h}, {customHsl.s}%, {customHsl.l}%)</p>
+                       </div>
+                     </div>
+                   </div>
+                 )}
                </CardContent>
              </Card>
           </TabsContent>
