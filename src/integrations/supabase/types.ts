@@ -4887,6 +4887,7 @@ export type Database = {
       user_preferences: {
         Row: {
           created_at: string
+          custom_primary_hsl: Json | null
           dashboard_tile_order: string[] | null
           default_location_id: string | null
           design_system: string | null
@@ -4901,6 +4902,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_primary_hsl?: Json | null
           dashboard_tile_order?: string[] | null
           default_location_id?: string | null
           design_system?: string | null
@@ -4915,6 +4917,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_primary_hsl?: Json | null
           dashboard_tile_order?: string[] | null
           default_location_id?: string | null
           design_system?: string | null
