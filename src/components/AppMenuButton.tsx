@@ -142,7 +142,7 @@ export function AppMenuButton() {
               <LayoutGrid className="w-5 h-5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-72 p-2 max-h-[70vh] overflow-y-auto">
+          <PopoverContent align="end" className="w-72 p-2 max-h-[70vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
             <Input
               ref={searchRef}
               placeholder="Search apps..."
