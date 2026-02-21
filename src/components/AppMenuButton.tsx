@@ -80,11 +80,9 @@ export function AppMenuButton() {
     }
   }, [isVisible]);
 
-  // Focus search input & clear search when popover opens/closes
+  // Clear search when popover closes
   useEffect(() => {
-    if (open) {
-      setTimeout(() => searchRef.current?.focus(), 50);
-    } else {
+    if (!open) {
       setSearch('');
     }
   }, [open]);
