@@ -50,6 +50,7 @@ const DOCUMENT_TYPES = [
   { value: 'route', label: 'Route', prefix_placeholder: 'RTE-', icon: Truck },
   { value: 'sales_order', label: 'Sales Order', prefix_placeholder: 'SO-', icon: ClipboardList },
   { value: 'tax_rate', label: 'Tax Rate', prefix_placeholder: '', icon: Receipt },
+  { value: 'team', label: 'Team', prefix_placeholder: 'TM-', icon: Users },
   { value: 'profile', label: 'User', prefix_placeholder: '', icon: UserCheck },
   { value: 'vendor', label: 'Vendor', prefix_placeholder: 'VND-', icon: Users },
 ];
