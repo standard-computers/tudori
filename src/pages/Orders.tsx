@@ -2566,7 +2566,7 @@ const Orders = () => {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`absolute right-16 top-4 rounded-sm ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10 flex items-center justify-center ${
+                  className={`absolute right-[5.5rem] top-4 rounded-sm ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10 flex items-center justify-center ${
                     poValidation.errors.length > 0 ? "text-destructive opacity-100" : "text-yellow-500 opacity-90"
                   }`}
                 >
