@@ -1043,7 +1043,7 @@ export const InventoryDetailDialog = ({
             <>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" disabled={isDeleting}>
+                  <Button variant="secondary" size="sm" disabled={isDeleting}>
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete
                   </Button>
