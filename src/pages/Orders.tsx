@@ -239,7 +239,7 @@ interface Assignment {
   is_active: boolean;
 }
 
-// Helper function to calculate expected delivery date based on product lead times
+// Helper function to calculate expected delivery date based on product lead times (display string)
 const calculateExpectedDelivery = (product: Product | undefined): string => {
   const today = new Date();
   let totalLeadDays = 0;
@@ -262,6 +262,30 @@ const calculateExpectedDelivery = (product: Product | undefined): string => {
     day: "numeric",
     year: "numeric",
   });
+};
+
+// Helper to calculate the latest expected delivery date (ISO string) from order items' lead times
+const calculateLatestExpectedDeliveryDate = (
+  items: { product_id: string }[],
+  allProducts: Product[],
+): string => {
+  const today = new Date();
+  let maxLeadDays = 1; // Default minimum of 1 day
+
+  for (const item of items) {
+    if (!item.product_id) continue;
+    const product = allProducts.find((p) => p.id === item.product_id);
+    if (!product) continue;
+    const leadDays =
+      (product.transport_time_days || 0) + (product.manufacture_time_days || 0) + (product.lead_time_days || 0);
+    if (leadDays > maxLeadDays) {
+      maxLeadDays = leadDays;
+    }
+  }
+
+  const expectedDate = new Date(today);
+  expectedDate.setDate(today.getDate() + maxLeadDays);
+  return expectedDate.toISOString();
 };
 
 const statusColors: Record<string, string> = {
@@ -1506,6 +1530,7 @@ const Orders = () => {
           subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
+          expected_delivery_date: calculateLatestExpectedDeliveryDate(orderItems, products),
           notes: formData.notes || null,
           created_by: user?.id || null,
         })
@@ -1597,6 +1622,7 @@ const Orders = () => {
           subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
+          expected_delivery_date: calculateLatestExpectedDeliveryDate(orderItems, products),
           notes: formData.notes || null,
         })
         .eq("id", editOrderId);
