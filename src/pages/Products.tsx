@@ -249,6 +249,7 @@ const ProductTable = ({
   onView,
   onFilteredDataChange,
   isColumnVisible,
+  showImages,
 }: {
   products: Product[];
   onEdit: (product: Product) => void;
@@ -256,6 +257,7 @@ const ProductTable = ({
   onView: (product: Product) => void;
   onFilteredDataChange?: (data: Product[]) => void;
   isColumnVisible: (key: string) => boolean;
+  showImages?: boolean;
 }) => {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     products,
@@ -269,7 +271,7 @@ const ProductTable = ({
   }, [sortedAndFilteredData, onFilteredDataChange]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const visibleColumnCount = PRODUCT_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
+  const visibleColumnCount = PRODUCT_COLUMNS.filter((c) => isColumnVisible(c.key)).length + (showImages ? 1 : 0);
 
   return (
     <div className="space-y-2">
@@ -298,7 +300,8 @@ const ProductTable = ({
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+             <TableRow>
+              {showImages && <TableHead className="w-12" />}
               {isColumnVisible("product_id") && (
                 <SortableTableHead
                   label="ID"
@@ -510,6 +513,19 @@ const ProductTable = ({
                 const statusConfig = PRODUCT_STATUSES.find((s) => s.value === product.status) || PRODUCT_STATUSES[0];
                 return (
                   <TableRow key={product.id}>
+                    {showImages && (
+                      <TableCell className="w-12 p-1">
+                        <Avatar className="h-8 w-8 rounded">
+                          {product.image_url ? (
+                            <AvatarImage src={product.image_url} alt={product.name} className="object-cover" />
+                          ) : (
+                            <AvatarFallback className="rounded bg-muted text-muted-foreground text-xs">
+                              <Package className="h-4 w-4" />
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                      </TableCell>
+                    )}
                     {isColumnVisible("product_id") && (
                       <TableCell className="font-mono text-sm">
                         <button
@@ -626,6 +642,7 @@ const Products = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [showProductImages, setShowProductImages] = useState(false);
   const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
   const [showQueryDialog, setShowQueryDialog] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
@@ -979,6 +996,17 @@ const Products = () => {
 
     if (data?.company_id) {
       setCompanyId(data.company_id);
+      // Fetch show_product_images setting
+      const { data: settingData } = await supabase
+        .from("company_settings")
+        .select("setting_value")
+        .eq("company_id", data.company_id)
+        .eq("setting_key", "process_controls")
+        .maybeSingle();
+      if (settingData?.setting_value && typeof settingData.setting_value === "object" && !Array.isArray(settingData.setting_value)) {
+        const val = settingData.setting_value as Record<string, unknown>;
+        setShowProductImages((val.show_product_images as boolean) ?? false);
+      }
     }
   };
 
@@ -3094,6 +3122,7 @@ const Products = () => {
             onView={handleEdit}
             onFilteredDataChange={handleFilteredDataChange}
             isColumnVisible={isColumnVisible}
+            showImages={showProductImages}
           />
         )}
       </main>

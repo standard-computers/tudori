@@ -68,6 +68,7 @@ interface ProcessControlSettings {
   reduce_app_load: boolean;
   contest_time_punch: boolean;
   contest_time_punch_days: number;
+  show_product_images: boolean;
 }
 
 interface ImportExportSettings {
@@ -133,6 +134,7 @@ const Configuration = () => {
     reduce_app_load: false,
     contest_time_punch: true,
     contest_time_punch_days: 7,
+    show_product_images: false,
   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -299,6 +301,7 @@ const Configuration = () => {
           reduce_app_load: (val.reduce_app_load as boolean) ?? false,
           contest_time_punch: (val.contest_time_punch as boolean) ?? true,
           contest_time_punch_days: (val.contest_time_punch_days as number) ?? 7,
+          show_product_images: (val.show_product_images as boolean) ?? false,
         });
       }
     } catch (error) {
@@ -527,6 +530,7 @@ const Configuration = () => {
         reduce_app_load: processControls.reduce_app_load,
         contest_time_punch: processControls.contest_time_punch,
         contest_time_punch_days: processControls.contest_time_punch_days,
+        show_product_images: processControls.show_product_images,
       };
 
       if (existing) {
@@ -886,6 +890,32 @@ const Configuration = () => {
                             />
                           </div>
                         </div>
+
+                        {docType.value === 'product' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Display Settings</h4>
+                              <p className="text-xs text-muted-foreground">Configure the appearance of the Products table</p>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Show Product Images in Table</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Display product images as the first column in the Products table
+                                </p>
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                  ⚠ Enabling this will reduce performance of the Products app
+                                </p>
+                              </div>
+                              <Switch
+                                checked={processControls.show_product_images}
+                                onCheckedChange={(checked) => 
+                                  setProcessControls(prev => ({ ...prev, show_product_images: checked }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
 
                         {docType.value === 'purchase_order' && (
                           <div className="space-y-4 pt-4 border-t">
