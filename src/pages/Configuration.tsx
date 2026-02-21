@@ -70,6 +70,7 @@ interface ProcessControlSettings {
   contest_time_punch: boolean;
   contest_time_punch_days: number;
   show_product_images: boolean;
+  allow_mass_deletion: boolean;
 }
 
 interface ImportExportSettings {
@@ -136,6 +137,7 @@ const Configuration = () => {
     contest_time_punch: true,
     contest_time_punch_days: 7,
     show_product_images: false,
+    allow_mass_deletion: false,
   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -303,6 +305,7 @@ const Configuration = () => {
           contest_time_punch: (val.contest_time_punch as boolean) ?? true,
           contest_time_punch_days: (val.contest_time_punch_days as number) ?? 7,
           show_product_images: (val.show_product_images as boolean) ?? false,
+          allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
         });
       }
     } catch (error) {
@@ -532,6 +535,7 @@ const Configuration = () => {
         contest_time_punch: processControls.contest_time_punch,
         contest_time_punch_days: processControls.contest_time_punch_days,
         show_product_images: processControls.show_product_images,
+        allow_mass_deletion: processControls.allow_mass_deletion,
       };
 
       if (existing) {
@@ -1155,6 +1159,25 @@ const Configuration = () => {
                       checked={processControls.contest_time_punch}
                       onCheckedChange={(checked) => 
                         setProcessControls(prev => ({ ...prev, contest_time_punch: checked }))
+                      }
+                      className="ml-4"
+                    />
+                  </div>
+                  )}
+
+                  {/* Allow Mass Deletion */}
+                  {(!searchQuery || 'allow mass deletion'.includes(searchQuery.toLowerCase())) && (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1">
+                      <Label className="font-medium text-base">Allow Mass Deletion</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, IT users can use the Mass Delete action in the Data Explorer to instantly delete multiple records at once. This is a dangerous operation and should only be enabled when necessary.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={processControls.allow_mass_deletion}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, allow_mass_deletion: checked }))
                       }
                       className="ml-4"
                     />
