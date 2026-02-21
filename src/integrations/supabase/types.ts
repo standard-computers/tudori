@@ -30,6 +30,8 @@ export type Database = {
           parent_account_id: string | null
           type: string
           updated_at: string
+          valid_from: string | null
+          valid_to: string | null
           vendor_id: string | null
         }
         Insert: {
@@ -47,6 +49,8 @@ export type Database = {
           parent_account_id?: string | null
           type?: string
           updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
           vendor_id?: string | null
         }
         Update: {
@@ -64,6 +68,8 @@ export type Database = {
           parent_account_id?: string | null
           type?: string
           updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
           vendor_id?: string | null
         }
         Relationships: [
@@ -2586,6 +2592,7 @@ export type Database = {
           ledger_id: string
           location_id: string | null
           name: string
+          notes: string | null
           updated_at: string
         }
         Insert: {
@@ -2597,6 +2604,7 @@ export type Database = {
           ledger_id: string
           location_id?: string | null
           name: string
+          notes?: string | null
           updated_at?: string
         }
         Update: {
@@ -2608,6 +2616,7 @@ export type Database = {
           ledger_id?: string
           location_id?: string | null
           name?: string
+          notes?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -64,6 +64,8 @@ interface Account {
   account_manager_id: string | null;
   parent_account_id: string | null;
   notes: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
   is_active: boolean;
   created_at: string;
   customer?: { name: string } | null;
@@ -157,6 +159,8 @@ const Accounts = () => {
     account_manager_id: '',
     parent_account_id: '',
     notes: '',
+    valid_from: '',
+    valid_to: '',
     is_active: true,
   });
 
@@ -464,6 +468,8 @@ const Accounts = () => {
       account_manager_id: '',
       parent_account_id: '',
       notes: '',
+      valid_from: '',
+      valid_to: '',
       is_active: true,
     });
     setIsCreateDialogOpen(true);
@@ -484,6 +490,8 @@ const Accounts = () => {
       account_manager_id: account.account_manager_id || '',
       parent_account_id: account.parent_account_id || '',
       notes: account.notes || '',
+      valid_from: account.valid_from || '',
+      valid_to: account.valid_to || '',
       is_active: account.is_active,
     });
     setIsEditDialogOpen(true);
@@ -514,6 +522,8 @@ const Accounts = () => {
         account_manager_id: formData.account_manager_id || null,
         parent_account_id: formData.parent_account_id || null,
         notes: formData.notes || null,
+        valid_from: formData.valid_from || null,
+        valid_to: formData.valid_to || null,
         is_active: formData.is_active,
       });
 
@@ -551,6 +561,8 @@ const Accounts = () => {
           account_manager_id: formData.account_manager_id || null,
           parent_account_id: formData.parent_account_id || null,
           notes: formData.notes || null,
+          valid_from: formData.valid_from || null,
+          valid_to: formData.valid_to || null,
           is_active: formData.is_active,
         })
         .eq('id', editingAccount.id);
@@ -988,6 +1000,25 @@ const Accounts = () => {
                     placeholder="Select parent account (optional)..."
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Valid From</Label>
+                    <Input
+                      type="date"
+                      value={formData.valid_from}
+                      onChange={(e) => setFormData({ ...formData, valid_from: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valid To</Label>
+                    <Input
+                      type="date"
+                      value={formData.valid_to}
+                      onChange={(e) => setFormData({ ...formData, valid_to: e.target.value })}
+                    />
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="notes" className="mt-0">
@@ -1152,6 +1183,25 @@ const Accounts = () => {
                     checked={formData.is_active}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Valid From</Label>
+                    <Input
+                      type="date"
+                      value={formData.valid_from}
+                      onChange={(e) => setFormData({ ...formData, valid_from: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valid To</Label>
+                    <Input
+                      type="date"
+                      value={formData.valid_to}
+                      onChange={(e) => setFormData({ ...formData, valid_to: e.target.value })}
+                    />
+                  </div>
                 </div>
               </TabsContent>
 
