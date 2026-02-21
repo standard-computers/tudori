@@ -67,6 +67,7 @@ export default function Developers() {
   });
 
   useKeyboardShortcut('n', () => setDialogOpen(true));
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   useEffect(() => {
     if (!user) return;
@@ -187,8 +188,9 @@ export default function Developers() {
       {/* Header */}
       <div className="flex items-center justify-between px-6 h-16 pr-16">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
             <ArrowLeft className="w-4 h-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
           </Button>
           <h1 className="text-xl font-semibold text-foreground">Developers</h1>
         </div>
@@ -327,8 +329,8 @@ export default function Developers() {
           <DialogHeader>
             <DialogTitle>New {form.key_type === 'api_key' ? 'API Key' : form.key_type === 'oauth' ? 'OAuth Config' : 'Webhook'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
+          <div className="space-y-4 px-6 py-4">
+            <div className="space-y-1">
               <Label>Type</Label>
               <Select value={form.key_type} onValueChange={v => setForm(f => ({ ...f, key_type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -339,35 +341,35 @@ export default function Developers() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1">
               <Label>Name</Label>
               <Input placeholder="e.g. Production API Key" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             {form.key_type !== 'webhook' && (
               <>
-                <div>
+                <div className="space-y-1">
                   <Label>{form.key_type === 'oauth' ? 'Client ID' : 'API Key'}</Label>
                   <Input placeholder="Enter key value" value={form.key_value} onChange={e => setForm(f => ({ ...f, key_value: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1">
                   <Label>{form.key_type === 'oauth' ? 'Client Secret' : 'Secret Key'}</Label>
                   <Input type="password" placeholder="Enter secret" value={form.secret_value} onChange={e => setForm(f => ({ ...f, secret_value: e.target.value }))} />
                 </div>
               </>
             )}
             {form.key_type === 'oauth' && (
-              <div>
+              <div className="space-y-1">
                 <Label>Redirect URI</Label>
                 <Input placeholder="https://..." value={form.redirect_uri} onChange={e => setForm(f => ({ ...f, redirect_uri: e.target.value }))} />
               </div>
             )}
             {form.key_type === 'webhook' && (
               <>
-                <div>
+                <div className="space-y-1">
                   <Label>Webhook URL</Label>
                   <Input placeholder="https://..." value={form.webhook_url} onChange={e => setForm(f => ({ ...f, webhook_url: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1">
                   <Label>Events</Label>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {WEBHOOK_EVENT_OPTIONS.map(evt => (
@@ -389,7 +391,7 @@ export default function Developers() {
                 </div>
               </>
             )}
-            <div>
+            <div className="space-y-1">
               <Label>Notes</Label>
               <Textarea placeholder="Optional notes..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
