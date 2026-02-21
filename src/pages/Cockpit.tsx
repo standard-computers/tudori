@@ -163,6 +163,7 @@ interface OutboundOrder {
   goods_issue_id: string | null;
   created_at: string;
   notes: string | null;
+  expected_date: string | null;
   customer?: { name: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; country: string | null } | null;
   to_location?: { name: string; location_id: string } | null;
   sales_order?: { so_number: string; total_amount: number } | null;
@@ -1121,6 +1122,7 @@ const [areaFormData, setAreaFormData] = useState({
         goods_issue_id,
         created_at,
         notes,
+        expected_date,
         customer:customers!outbound_deliveries_customer_id_fkey(name, address_line1, city, state, postal_code, country),
         to_location:locations!outbound_deliveries_to_location_id_fkey(name, location_id),
         sales_order:sales_orders!outbound_deliveries_sales_order_id_fkey(so_number, total_amount),
@@ -1345,7 +1347,7 @@ const [areaFormData, setAreaFormData] = useState({
               vendor_id: null,
               source_location_id: selectedLocationId,
               status: 'in_transit',
-              expected_date: new Date().toISOString().split('T')[0],
+              expected_date: selectedOutboundOrder.expected_date || new Date().toISOString().split('T')[0],
               outbound_delivery_id: selectedOutboundOrder.id,
               is_fulfilled: true,
               notes: `Auto-created from outbound delivery ${selectedOutboundOrder.delivery_number}`,
@@ -1544,7 +1546,7 @@ const [areaFormData, setAreaFormData] = useState({
                   vendor_id: null,
                   source_location_id: selectedLocationId,
                   status: 'in_transit',
-                  expected_date: new Date().toISOString().split('T')[0],
+                  expected_date: od.expected_date || new Date().toISOString().split('T')[0],
                   outbound_delivery_id: od.id,
                   is_fulfilled: true,
                   notes: `Auto-created from outbound delivery ${dn}`,
