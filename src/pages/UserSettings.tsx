@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Monitor } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -370,10 +371,12 @@ const UserSettings = () => {
     toast.success('Default location saved');
   };
 
-  const handleThemeChange = async (checked: boolean) => {
-    const newTheme = checked ? 'dark' : 'light';
+  const handleThemeModeChange = async (newTheme: string) => {
     setTheme(newTheme);
-     applyDesignSystem(designSystem, newTheme, designSystem === 'custom' ? customHsl : undefined);
+    const resolvedTheme = newTheme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : newTheme;
+    applyDesignSystem(designSystem, resolvedTheme as 'light' | 'dark', designSystem === 'custom' ? customHsl : undefined);
     
     if (!user) return;
     
@@ -399,7 +402,10 @@ const UserSettings = () => {
  
    const handleDesignSystemChange = async (newDesignSystem: string) => {
      setDesignSystem(newDesignSystem);
-     applyDesignSystem(newDesignSystem, (theme || 'light') as 'light' | 'dark', newDesignSystem === 'custom' ? customHsl : undefined);
+     const resolvedTheme = theme === 'system'
+       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+       : (theme || 'light');
+     applyDesignSystem(newDesignSystem, resolvedTheme as 'light' | 'dark', newDesignSystem === 'custom' ? customHsl : undefined);
      
      if (!user) return;
      
@@ -431,7 +437,10 @@ const UserSettings = () => {
    const handleCustomHslChange = async (newHsl: { h: number; s: number; l: number }) => {
      setCustomHsl(newHsl);
      setDesignSystem('custom');
-     applyDesignSystem('custom', (theme || 'light') as 'light' | 'dark', newHsl);
+     const resolvedTheme = theme === 'system'
+       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+       : (theme || 'light');
+     applyDesignSystem('custom', resolvedTheme as 'light' | 'dark', newHsl);
 
      if (!user) return;
      const { data: existing } = await supabase
@@ -597,19 +606,45 @@ const UserSettings = () => {
                   <div className="flex items-center gap-3">
                     {theme === 'dark' ? (
                       <Moon className="w-5 h-5 text-muted-foreground" />
+                    ) : theme === 'system' ? (
+                      <Monitor className="w-5 h-5 text-muted-foreground" />
                     ) : (
                       <Sun className="w-5 h-5 text-muted-foreground" />
                     )}
                     <div>
-                      <Label htmlFor="dark-mode" className="text-base font-medium">Dark Mode</Label>
-                      <p className="text-sm text-muted-foreground">Use dark theme for the interface</p>
+                      <Label className="text-base font-medium">Theme</Label>
+                      <p className="text-sm text-muted-foreground">Choose light, dark, or match your system</p>
                     </div>
                   </div>
-                  <Switch
-                    id="dark-mode"
-                    checked={theme === 'dark'}
-                    onCheckedChange={handleThemeChange}
-                  />
+                  <div className="flex items-center rounded-lg border border-border p-1 gap-0.5">
+                    <button
+                      onClick={() => handleThemeModeChange('light')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        theme === 'light' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Sun className="w-3.5 h-3.5" />
+                      Light
+                    </button>
+                    <button
+                      onClick={() => handleThemeModeChange('dark')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        theme === 'dark' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Moon className="w-3.5 h-3.5" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => handleThemeModeChange('system')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        theme === 'system' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Monitor className="w-3.5 h-3.5" />
+                      System
+                    </button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
