@@ -122,6 +122,17 @@ const Invoices = () => {
   }, [isCreateDialogOpen, isViewDialogOpen, setTransaction]);
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setShowQueryDialog(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
@@ -301,8 +312,9 @@ const Invoices = () => {
             <h1 className="text-2xl font-bold">Invoices</h1>
           </div>
           <div className="flex items-center gap-2 pr-12">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search invoices">
+            <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setShowQueryDialog(true)} title="Search invoices">
               <Search className="w-4 h-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
             </Button>
             <Button onClick={handleCreateClick} size="icon" className="relative">
               <Plus className="h-4 w-4" />

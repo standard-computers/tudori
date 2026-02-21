@@ -961,6 +961,17 @@ const Products = () => {
     }
   }, [isDialogOpen, isEditing, setTransaction]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setShowQueryDialog(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   // Ctrl+S to save
   useSaveShortcut(() => {
     if (isDialogOpen && formRef.current) {
@@ -1753,8 +1764,9 @@ const Products = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowQueryDialog(true)} title="Search products">
+              <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setShowQueryDialog(true)} title="Search products">
                 <Search className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
               </Button>
               <ColumnToggle
                 columns={PRODUCT_COLUMNS}
