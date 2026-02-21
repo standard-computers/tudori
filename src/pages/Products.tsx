@@ -50,6 +50,7 @@ import {
   Maximize2,
   Minimize2,
   Search,
+  Printer,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -93,6 +94,7 @@ interface Product {
   vendor_id: string | null;
   vendor_part_number: string | null;
   sku: string | null;
+  upc: string | null;
   name: string;
   description: string | null;
   category: string | null;
@@ -219,6 +221,7 @@ const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: "product_id", label: "ID", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "sku", label: "SKU", defaultVisible: true },
+  { key: "upc", label: "UPC", defaultVisible: false },
   { key: "category", label: "Category", defaultVisible: true },
   { key: "vendor_id", label: "Vendor ID", defaultVisible: true },
   { key: "vendor", label: "Vendor", defaultVisible: true },
@@ -328,6 +331,17 @@ const ProductTable = ({
                   onSort={handleSort}
                   filterValue={filters["sku"]}
                   onFilter={(value) => setFilter("sku", value)}
+                />
+              )}
+              {isColumnVisible("upc") && (
+                <SortableTableHead
+                  label="UPC"
+                  sortKey="upc"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["upc"]}
+                  onFilter={(value) => setFilter("upc", value)}
                 />
               )}
               {isColumnVisible("category") && (
@@ -508,6 +522,7 @@ const ProductTable = ({
                     )}
                     {isColumnVisible("name") && <TableCell className="font-medium">{product.name}</TableCell>}
                     {isColumnVisible("sku") && <TableCell>{product.sku || "-"}</TableCell>}
+                    {isColumnVisible("upc") && <TableCell>{product.upc || "-"}</TableCell>}
                     {isColumnVisible("category") && <TableCell>{product.category || "-"}</TableCell>}
                     {isColumnVisible("vendor_id") && (
                       <TableCell className="font-mono text-sm">{product.vendors?.vendor_id || "-"}</TableCell>
@@ -684,6 +699,7 @@ const Products = () => {
     vendor_id: "",
     vendor_part_number: "",
     sku: "",
+    upc: "",
     name: "",
     description: "",
     category: "",
@@ -1122,6 +1138,7 @@ const Products = () => {
     vendor_id: "",
     vendor_part_number: "",
     sku: "",
+    upc: "",
     name: "",
       description: "",
       category: "",
@@ -1179,6 +1196,7 @@ const Products = () => {
       vendor_id: product.vendor_id || "",
       vendor_part_number: (product as any).vendor_part_number || "",
       sku: product.sku || "",
+      upc: product.upc || "",
       name: product.name,
       description: product.description || "",
       category: product.category || "",
@@ -1514,6 +1532,7 @@ const Products = () => {
           vendor_id: formData.vendor_id || null,
           vendor_part_number: formData.vendor_part_number || null,
           sku: formData.sku || null,
+          upc: formData.upc || null,
           name: formData.name,
           description: formData.description || null,
           category: formData.category || null,
@@ -1556,6 +1575,7 @@ const Products = () => {
           vendor_id: formData.vendor_id || null,
           vendor_part_number: formData.vendor_part_number || null,
           sku: formData.sku || null,
+          upc: formData.upc || null,
           name: formData.name,
           description: formData.description || null,
           category: formData.category || null,
@@ -1734,6 +1754,55 @@ const Products = () => {
                 <DialogContent
                   className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[900px] max-h-[85vh]"}`}
                 >
+                  {isEditing && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="absolute right-[4.5rem] top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+                          title="Print Barcode Label"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {formData.upc && (
+                          <DropdownMenuItem onClick={() => {
+                            import('@/lib/print-label').then(({ printInventoryLabels }) => {
+                              printInventoryLabels([{ productId: formData.product_id, productName: formData.name, sku: null, bin: null, area: null, quantity: 0, puNumber: formData.upc }]);
+                            });
+                          }}>
+                            UPC: {formData.upc}
+                          </DropdownMenuItem>
+                        )}
+                        {formData.sku && (
+                          <DropdownMenuItem onClick={() => {
+                            import('@/lib/print-label').then(({ printInventoryLabels }) => {
+                              printInventoryLabels([{ productId: formData.product_id, productName: formData.name, sku: formData.sku, bin: null, area: null, quantity: 0, puNumber: formData.sku }]);
+                            });
+                          }}>
+                            SKU: {formData.sku}
+                          </DropdownMenuItem>
+                        )}
+                        {formData.vendor_id && (
+                          <DropdownMenuItem onClick={() => {
+                            import('@/lib/print-label').then(({ printInventoryLabels }) => {
+                              printInventoryLabels([{ productId: formData.product_id, productName: formData.name, sku: null, bin: null, area: null, quantity: 0, puNumber: formData.vendor_id }]);
+                            });
+                          }}>
+                            Vendor ID: {(() => { const v = plainVendorOptions.find(o => o.value === formData.vendor_id); return v?.sublabel || formData.vendor_id; })()}
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => {
+                          import('@/lib/print-label').then(({ printInventoryLabels }) => {
+                            printInventoryLabels([{ productId: formData.product_id, productName: formData.name, sku: null, bin: null, area: null, quantity: 0, puNumber: formData.product_id }]);
+                          });
+                        }}>
+                          Product ID: {formData.product_id}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   <button
                     type="button"
                     onClick={() => setIsMaximized(!isMaximized)}
@@ -1804,6 +1873,7 @@ const Products = () => {
                             vendor_id: product.vendor_id || "",
                             vendor_part_number: (product as any).vendor_part_number || "",
                             sku: "", // Don't copy SKU as it should be unique
+                            upc: "", // Don't copy UPC as it should be unique
                             name: product.name,
                             description: product.description || "",
                             category: product.category || "",
@@ -1975,6 +2045,18 @@ const Products = () => {
                                 </p>
                               )}
                             </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="upc">UPC</Label>
+                              <Input
+                                id="upc"
+                                value={formData.upc}
+                                onChange={(e) => setFormData({ ...formData, upc: e.target.value })}
+                                placeholder="012345678901"
+                              />
+                            </div>
+                            <div />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="name">Product Name *</Label>

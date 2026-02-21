@@ -3728,6 +3728,7 @@ export type Database = {
           status: string
           transport_time_days: number | null
           unit: string | null
+          upc: string | null
           updated_at: string
           vendor_id: string | null
           vendor_part_number: string | null
@@ -3763,6 +3764,7 @@ export type Database = {
           status?: string
           transport_time_days?: number | null
           unit?: string | null
+          upc?: string | null
           updated_at?: string
           vendor_id?: string | null
           vendor_part_number?: string | null
@@ -3798,6 +3800,7 @@ export type Database = {
           status?: string
           transport_time_days?: number | null
           unit?: string | null
+          upc?: string | null
           updated_at?: string
           vendor_id?: string | null
           vendor_part_number?: string | null
