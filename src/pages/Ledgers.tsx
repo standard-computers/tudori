@@ -69,7 +69,7 @@ interface Ledger {
   ledger_id: string;
   name: string;
   location_id: string | null;
-  description: string | null;
+  notes: string | null;
   is_active: boolean;
   created_at: string;
   location?: { name: string } | null;
@@ -143,7 +143,7 @@ const Ledgers = () => {
     ledger_id: '',
     name: '',
     location_id: '',
-    description: '',
+    notes: '',
     is_active: true,
   });
   
@@ -278,7 +278,7 @@ const Ledgers = () => {
       ledger_id: nextId || '0001',
       name: '',
       location_id: '',
-      description: '',
+      notes: '',
       is_active: true,
     });
     setIsEditing(false);
@@ -292,7 +292,7 @@ const Ledgers = () => {
       ledger_id: ledger.ledger_id,
       name: ledger.name,
       location_id: ledger.location_id || '',
-      description: ledger.description || '',
+      notes: ledger.notes || '',
       is_active: ledger.is_active,
     });
     setIsEditing(true);
@@ -333,7 +333,7 @@ const Ledgers = () => {
           .update({
             name: formData.name,
             location_id: formData.location_id || null,
-            description: formData.description || null,
+            notes: formData.notes || null,
             is_active: formData.is_active,
           })
           .eq('id', editingLedgerId);
@@ -348,7 +348,7 @@ const Ledgers = () => {
             ledger_id: formData.ledger_id,
             name: formData.name,
             location_id: formData.location_id || null,
-            description: formData.description || null,
+            notes: formData.notes || null,
             is_active: formData.is_active,
           });
 
@@ -661,7 +661,7 @@ const Ledgers = () => {
                     setFormData(prev => ({
                       ...prev,
                       name: ledger.name,
-                      description: ledger.description || '',
+                      notes: ledger.notes || '',
                       location_id: ledger.location_id || '',
                       is_active: ledger.is_active,
                     }));
@@ -672,8 +672,9 @@ const Ledgers = () => {
 
             <div className="flex-1 overflow-y-auto px-6 pb-6">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                <TabsList className="grid w-full grid-cols-1">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
                 </TabsList>
 
               <TabsContent value="general" className="mt-4 space-y-4">
@@ -718,17 +719,6 @@ const Ledgers = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Optional description..."
-                    rows={3}
-                  />
-                </div>
-
                 <div className="flex items-center justify-between">
                   <Label htmlFor="is_active">Active</Label>
                   <Switch
@@ -737,6 +727,16 @@ const Ledgers = () => {
                     onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                   />
                 </div>
+              </TabsContent>
+
+              <TabsContent value="notes" className="mt-4">
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Add notes about this ledger..."
+                  rows={10}
+                  className="min-h-[200px]"
+                />
               </TabsContent>
             </Tabs>
             </div>
