@@ -69,6 +69,7 @@ import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
 import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
+import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
 
 const ORDER_QUERY_FIELDS: QueryField[] = [
   { key: "po_number", label: "PO #", placeholder: "Search by PO number..." },
@@ -2619,6 +2620,47 @@ const Orders = () => {
                 </div>
               </PopoverContent>
             </Popover>
+           )}
+          {!isEditMode && (
+            <CopyFromIdDialog
+              idLabel="PO ID"
+              className="absolute right-16 top-4 z-10"
+              onFetch={async (poId: string) => {
+                const { data: po } = await supabase
+                  .from("purchase_orders")
+                  .select("id, vendor_id, source_location_id, location_id, bill_to_location_id, ledger_id, notes")
+                  .eq("po_number", poId)
+                  .eq("company_id", companyId!)
+                  .maybeSingle();
+                if (!po) return null;
+                const { data: items } = await supabase
+                  .from("purchase_order_items")
+                  .select("product_id, quantity, unit_price")
+                  .eq("purchase_order_id", po.id);
+                return { po, items: items || [] };
+              }}
+              onApply={(data) => {
+                const { po, items } = data as any;
+                const vendorValue = po.source_location_id
+                  ? `source:${po.source_location_id}`
+                  : po.vendor_id || "";
+                setFormData({
+                  vendor_id: vendorValue,
+                  location_id: po.location_id || "",
+                  bill_to_location_id: po.bill_to_location_id || "",
+                  ledger_id: po.ledger_id || "",
+                  notes: po.notes || "",
+                });
+                setOrderItems(
+                  items.map((item: any) => ({
+                    product_id: item.product_id,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price || 0,
+                    pu_id: null,
+                  }))
+                );
+              }}
+            />
           )}
           <button
             type="button"
