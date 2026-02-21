@@ -123,6 +123,7 @@ export default function DataExplorer() {
   const { exportToExcel } = useExcel();
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasITRole, setHasITRole] = useState(false);
+  const [allowMassDeletion, setAllowMassDeletion] = useState(false);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tabs, setTabs] = useState<TableTab[]>([]);
@@ -156,6 +157,18 @@ export default function DataExplorer() {
         .in("role", ["it", "owner", "admin"]);
       
       setHasITRole(roleData && roleData.length > 0);
+
+      // Fetch mass deletion setting
+      const { data: settingData } = await supabase
+        .from("company_settings")
+        .select("setting_value")
+        .eq("company_id", profile.company_id)
+        .eq("setting_key", "process_controls")
+        .maybeSingle();
+      if (settingData?.setting_value && typeof settingData.setting_value === "object" && !Array.isArray(settingData.setting_value)) {
+        const val = settingData.setting_value as Record<string, unknown>;
+        setAllowMassDeletion((val.allow_mass_deletion as boolean) ?? false);
+      }
     };
     
     checkITRole();
@@ -507,7 +520,7 @@ export default function DataExplorer() {
             
             {activeTab.selectedRows.size > 0 && (
               <>
-                {hasITRole && (
+                {hasITRole && allowMassDeletion && (
                   <>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
