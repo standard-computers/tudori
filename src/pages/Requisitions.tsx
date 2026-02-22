@@ -52,7 +52,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
@@ -435,6 +435,44 @@ const Requisitions = () => {
     }
 
     toast.success(`Deleted ${selectedIds.size} requisition(s)`);
+    setSelectedIds(new Set());
+    fetchRequisitions();
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    const selectedReqs = requisitions.filter(r => selectedIds.has(r.id));
+    if (selectedReqs.length === 0) return;
+
+    // Check which selected reqs have linked POs
+    const { data: linkedPOs } = await supabase
+      .from('purchase_orders')
+      .select('requisition_id')
+      .in('requisition_id', selectedReqs.map(r => r.id));
+
+    const linkedReqIds = new Set((linkedPOs || []).map(po => po.requisition_id));
+    const updatableReqs = selectedReqs.filter(r => !linkedReqIds.has(r.id));
+
+    if (updatableReqs.length === 0) {
+      toast.error('Cannot update status: all selected requisitions have linked Purchase Orders');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('requisitions')
+      .update({ status: newStatus })
+      .in('id', updatableReqs.map(r => r.id));
+
+    if (error) {
+      toast.error('Failed to update status');
+      return;
+    }
+
+    const skipped = selectedReqs.length - updatableReqs.length;
+    if (skipped > 0) {
+      toast.info(`Updated ${updatableReqs.length} requisition(s), skipped ${skipped} with linked POs`);
+    } else {
+      toast.success(`Updated ${updatableReqs.length} requisition(s) to ${newStatus}`);
+    }
     setSelectedIds(new Set());
     fetchRequisitions();
   };
@@ -1198,6 +1236,24 @@ const Requisitions = () => {
                 onImport={handleImport}
                 onDownloadTemplate={handleDownloadTemplate}
               />
+              {selectedIds.size > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary">
+                      Update Status ({selectedIds.size})
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {['draft', 'pending', 'approved', 'ordered', 'completed', 'cancelled'].map((status) => (
+                      <DropdownMenuItem key={status} onClick={() => handleBulkStatusUpdate(status)}>
+                        <Badge className={`${statusColors[status]} text-white mr-2`}>{status}</Badge>
+                        Set to {status}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               {selectedIds.size > 0 && (
                 <Button onClick={handleBulkDelete} variant="destructive">
                   <Trash2 className="w-4 h-4 mr-2" />
