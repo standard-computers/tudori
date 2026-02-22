@@ -68,9 +68,10 @@ interface RequisitionItem {
 interface PlanningFlatListProps {
   companyId: string;
   enforceRouteRecords: boolean;
+  userId: string;
 }
 
-export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFlatListProps) => {
+export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: PlanningFlatListProps) => {
   const [shortfalls, setShortfalls] = useState<FlatShortfall[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -486,6 +487,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords }: PlanningFla
             total_amount: totalAmount,
             status: 'draft',
             notes: `Auto-generated from Planning (flat list)`,
+            created_by: userId,
           })
           .select('id, requisition_id')
           .single();

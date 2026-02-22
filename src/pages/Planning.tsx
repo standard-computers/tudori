@@ -890,6 +890,7 @@ const Planning = () => {
             total_amount: totalAmount,
             status: 'draft',
             notes: `Auto-generated from Planning for ${selectedLocation!.name}`,
+            created_by: user!.id,
           })
           .select('id, requisition_id')
           .single();
@@ -1005,7 +1006,7 @@ const Planning = () => {
 
       <main className="flex-1">
         {showFlatList && !selectedLocation ? (
-          <PlanningFlatList companyId={companyId!} enforceRouteRecords={enforceRouteRecords} />
+          <PlanningFlatList companyId={companyId!} enforceRouteRecords={enforceRouteRecords} userId={user!.id} />
         ) : !selectedLocation ? (
           // Location list view
           <div className="overflow-auto h-[calc(100vh-5.75rem)]">
