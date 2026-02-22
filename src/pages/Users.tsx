@@ -684,8 +684,8 @@ const Users = () => {
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
            <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <div className="flex items-center justify-between pr-8">
-                <div>
+              <div className="flex items-center gap-3 pr-14">
+                <div className="flex-1">
                   <DialogTitle>Edit User</DialogTitle>
                   <DialogDescription>
                     Update {editingMember?.first_name} {editingMember?.last_name}'s access level and permissions
@@ -694,7 +694,7 @@ const Users = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   onClick={() => setConfirmDeleteOpen(true)}
                   title="Remove user"
                 >
