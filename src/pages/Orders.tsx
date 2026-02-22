@@ -2606,8 +2606,9 @@ const Orders = () => {
                 </DropdownMenu>
               )}
               {selectedOrderIds.size > 0 && (
-                <Button onClick={handleBulkDeleteOrders} variant="destructive" size="icon">
-                  <Trash2 className="w-4 h-4" />
+                <Button onClick={handleBulkDeleteOrders} variant="destructive">
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  ({selectedOrderIds.size})
                 </Button>
               )}
               <ImportExportButtons
