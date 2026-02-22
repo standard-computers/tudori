@@ -2083,6 +2083,50 @@ const Orders = () => {
     fetchOrders();
   };
 
+  const handleBulkDeleteOrders = async () => {
+    const selectedIds = Array.from(selectedOrderIds);
+    if (selectedIds.length === 0) return;
+
+    // Check which selected POs have deliveries
+    const { data: linkedDeliveries } = await supabase
+      .from('deliveries')
+      .select('purchase_order_id')
+      .in('purchase_order_id', selectedIds);
+
+    const linkedPOIds = new Set((linkedDeliveries || []).map(d => d.purchase_order_id));
+    const deletableIds = selectedIds.filter(id => !linkedPOIds.has(id));
+
+    if (deletableIds.length === 0) {
+      toast.error('Cannot delete: all selected POs have associated deliveries');
+      return;
+    }
+
+    const skipped = selectedIds.length - deletableIds.length;
+    const confirmMsg = skipped > 0
+      ? `Delete ${deletableIds.length} PO(s)? ${skipped} with deliveries will be skipped.`
+      : `Are you sure you want to delete ${deletableIds.length} purchase order(s)?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    const { error } = await supabase
+      .from('purchase_orders')
+      .delete()
+      .in('id', deletableIds);
+
+    if (error) {
+      toast.error('Failed to delete purchase orders');
+      return;
+    }
+
+    if (skipped > 0) {
+      toast.info(`Deleted ${deletableIds.length} PO(s), skipped ${skipped} with deliveries`);
+    } else {
+      toast.success(`Deleted ${deletableIds.length} purchase order(s)`);
+    }
+    setSelectedOrderIds(new Set());
+    fetchOrders();
+  };
+
   // Auto-confirm: confirm selected POs that have no deliveries, with full quantities
   // Internal transfer POs are grouped by (source_location_id + ship-to location_id) into shared deliveries
   const handleAutoConfirm = async () => {
@@ -2560,6 +2604,11 @@ const Orders = () => {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              )}
+              {selectedOrderIds.size > 0 && (
+                <Button onClick={handleBulkDeleteOrders} variant="destructive" size="icon">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               )}
               <ImportExportButtons
                 importEnabled={isImportEnabled("purchase_order")}

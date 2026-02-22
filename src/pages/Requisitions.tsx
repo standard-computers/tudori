@@ -1255,9 +1255,8 @@ const Requisitions = () => {
                 </DropdownMenu>
               )}
               {selectedIds.size > 0 && (
-                <Button onClick={handleBulkDelete} variant="destructive">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete ({selectedIds.size})
+                <Button onClick={handleBulkDelete} variant="destructive" size="icon">
+                  <Trash2 className="w-4 h-4" />
                 </Button>
               )}
               {selectedConvertibleReqs.length > 0 && (
