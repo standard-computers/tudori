@@ -306,21 +306,22 @@ const Requisitions = () => {
       // Create purchase order
       const { data: newPO, error: poError } = await supabase
         .from('purchase_orders')
-        .insert({
-          company_id: companyId,
-          po_number: poNumber,
-          status: 'draft',
-          vendor_id: poVendorId,
-          source_location_id: poSourceLocationId,
-          location_id: requisition.location_id,
-          bill_to_location_id: requisition.location_id,
-          ledger_id: selectedLedgerId,
-          requisition_id: requisition.id,
-          subtotal,
-          tax_amount: 0,
-          total_amount: totalAmount,
-          notes: `Converted from requisition ${requisition.requisition_id}`,
-        })
+          .insert({
+            company_id: companyId,
+            po_number: poNumber,
+            status: 'draft',
+            vendor_id: poVendorId,
+            source_location_id: poSourceLocationId,
+            location_id: requisition.location_id,
+            bill_to_location_id: requisition.location_id,
+            ledger_id: selectedLedgerId,
+            requisition_id: requisition.id,
+            subtotal,
+            tax_amount: 0,
+            total_amount: totalAmount,
+            notes: `Converted from requisition ${requisition.requisition_id}`,
+            created_by: user!.id,
+          })
         .select()
         .single();
 
@@ -887,6 +888,7 @@ const Requisitions = () => {
           tax_amount: 0,
           total_amount: totalAmount,
           notes: `Converted from requisition ${requisition.requisition_id}`,
+          created_by: user!.id,
         })
         .select()
         .single();
