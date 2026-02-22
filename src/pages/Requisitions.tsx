@@ -114,7 +114,7 @@ interface RequisitionItem {
   product_id: string;
   quantity: number;
   unit_price: number | null;
-  product?: { name: string; price: number | null };
+  product?: { name: string; product_id: string; price: number | null };
 }
 
 interface Location {
@@ -756,7 +756,7 @@ const Requisitions = () => {
       .from('requisition_items')
       .select(`
         *,
-        product:products(name, price)
+        product:products(name, product_id, price)
       `)
       .eq('requisition_id', requisition.id);
 
@@ -1473,6 +1473,7 @@ const Requisitions = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Item ID</TableHead>
                         <TableHead>Product</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Unit Price</TableHead>
@@ -1482,6 +1483,7 @@ const Requisitions = () => {
                     <TableBody>
                       {viewItems.map((item) => (
                         <TableRow key={item.id}>
+                          <TableCell className="font-mono">{item.product?.product_id || '-'}</TableCell>
                           <TableCell>{item.product?.name || 'Unknown Product'}</TableCell>
                           <TableCell className="text-right">{item.quantity}</TableCell>
                           <TableCell className="text-right font-mono">
