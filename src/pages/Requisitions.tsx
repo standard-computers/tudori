@@ -72,6 +72,8 @@ interface Requisition {
   source_location?: { name: string; location_id: string } | null;
   vendor?: { name: string; vendor_id: string } | null;
   creator?: { first_name: string | null; last_name: string | null } | null;
+  requisition_items?: { id: string }[] | null;
+  item_count?: number;
 }
 
 // Full vendor details for detail dialog
@@ -538,7 +540,8 @@ const Requisitions = () => {
         *,
         location:locations!requisitions_location_id_fkey(name, location_id),
         source_location:locations!requisitions_source_location_id_fkey(name, location_id),
-        vendor:vendors(name, vendor_id)
+        vendor:vendors(name, vendor_id),
+        requisition_items(id)
       `)
       .eq('company_id', companyId) as any;
 
@@ -576,6 +579,7 @@ const Requisitions = () => {
     // Merge creator info into requisitions
     const requisitionsWithCreator = reqs.map(req => ({
       ...req,
+      item_count: req.requisition_items?.length || 0,
       creator: req.created_by ? profilesMap[req.created_by] || null : null,
     }));
 
@@ -1943,6 +1947,14 @@ function RequisitionsTable({
                 onFilter={(v) => setFilter('vendor.name', v)}
               />
               <SortableTableHead
+                label="Items"
+                sortKey="item_count"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
                 label="Total"
                 sortKey="total_amount"
                 currentSortKey={sortConfig.key}
@@ -2023,6 +2035,9 @@ function RequisitionsTable({
                 </TableCell>
                 <TableCell>
                   {req.vendor?.name || (req.source_location?.name ? `${req.source_location.name} (Internal)` : 'All Vendors')}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {req.item_count || 0}
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   ${req.total_amount?.toFixed(2) || '0.00'}
