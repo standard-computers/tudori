@@ -61,6 +61,10 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -148,6 +152,15 @@ const Ledgers = () => {
   });
   
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Import/Export
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportComplete, setIsImportComplete] = useState(false);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
 
@@ -494,6 +507,69 @@ const Ledgers = () => {
     }
   };
 
+  // --- Import/Export handlers ---
+  const handleDownloadTemplate = () => {
+    exportToExcel([], 'ledgers_template.xlsx', 'Ledgers', [
+      { header: 'Name', key: 'Name', width: 25 },
+      { header: 'Location', key: 'Location', width: 20 },
+      { header: 'Notes', key: 'Notes', width: 30 },
+    ]);
+  };
+
+  const handleExportLedgers = () => {
+    const exportData = ledgers.map(l => ({
+      'Ledger ID': l.ledger_id,
+      'Name': l.name,
+      'Location': l.location?.name || '',
+      'Balance': l.computed_balance ?? 0,
+      'Active': l.is_active ? 'Yes' : 'No',
+      'Notes': l.notes || '',
+    }));
+    exportToExcel(exportData, 'ledgers.xlsx', 'Ledgers');
+  };
+
+  const handleImportLedgers = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error('No data found in file'); return; }
+
+      setImportResults([]); setImportTotal(rows.length); setImportProcessed(0);
+      setIsImportComplete(false); setIsImportDialogOpen(true);
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]; const rowNum = i + 2;
+        try {
+          const name = row['Name']?.toString().trim();
+          if (!name) { results.push({ row: rowNum, status: 'error', message: 'Name is required' }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+
+          const locationName = row['Location']?.toString().trim();
+          let locationId: string | null = null;
+          if (locationName) {
+            const loc = locations.find(l => l.name.toLowerCase() === locationName.toLowerCase());
+            if (!loc) { results.push({ row: rowNum, status: 'error', message: `Location "${locationName}" not found` }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+            locationId = loc.id;
+          }
+
+          const notes = row['Notes']?.toString().trim() || null;
+          const { data: nextId } = await supabase.rpc('get_next_ledger_id' as any, { p_company_id: companyId });
+
+          const { error: insertError } = await supabase.from('ledgers' as any).insert({
+            company_id: companyId, ledger_id: nextId || '0001', name,
+            location_id: locationId, notes, is_active: true,
+          });
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Ledger "${name}" created` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed' });
+        }
+        setImportResults([...results]); setImportProcessed(i + 1);
+      }
+      setIsImportComplete(true); fetchLedgers(companyId);
+    } catch (err: any) { toast.error(err.message || 'Failed to read file'); }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -519,6 +595,14 @@ const Ledgers = () => {
             </div>
             {isAdmin && (
               <div className="flex items-center gap-2">
+                <ImportExportButtons
+                  importEnabled={isImportEnabled('ledger')}
+                  exportEnabled={isExportEnabled('ledger')}
+                  onImport={handleImportLedgers}
+                  onExport={handleExportLedgers}
+                  onDownloadTemplate={handleDownloadTemplate}
+                  entityName="Ledgers"
+                />
                 <Button variant="outline" onClick={() => setIsAutoMakeOpen(true)}>
                   <Wand2 className="w-4 h-4 mr-2" />
                   AutoMake
@@ -965,6 +1049,16 @@ const Ledgers = () => {
         locations={locations}
         companyId={companyId}
         onCreated={() => fetchLedgers(companyId!)}
+      />
+
+      <ImportProgressDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importing Ledgers"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={isImportComplete}
       />
     </div>
   );
