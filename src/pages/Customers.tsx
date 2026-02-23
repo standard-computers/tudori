@@ -99,13 +99,11 @@ const CustomerTable = ({
   customers,
   onView,
   onEdit,
-  onDelete,
   isColumnVisible,
 }: {
   customers: Customer[];
   onView: (customer: Customer) => void;
   onEdit: (customer: Customer) => void;
-  onDelete: (customer: Customer) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
   const {
@@ -364,13 +362,6 @@ const CustomerTable = ({
                             <DropdownMenuItem onClick={() => onEdit(customer)}>
                               <Pencil className="w-4 h-4 mr-2" />
                               Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => onDelete(customer)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -668,8 +659,17 @@ const Customers = () => {
     toast.success('Customer deleted');
     setDeleteDialogOpen(false);
     setDeletingCustomer(null);
+    setIsDialogOpen(false);
     fetchCustomers();
     fetchNextCustomerId();
+  };
+
+  const handleDeleteFromEdit = async () => {
+    if (!editingId) return;
+    const customer = customers.find(c => c.id === editingId);
+    if (customer) {
+      await handleDeleteRequest(customer);
+    }
   };
 
   const isCustomerIdInUse = customers.some(c => c.customer_id === formData.customer_id && (!isEditing || c.id !== editingId));
@@ -1008,6 +1008,17 @@ const Customers = () => {
                     </div>
                   </div>
                   <DialogFooter className="shrink-0">
+                    {isEditing && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleDeleteFromEdit}
+                        className="mr-auto"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    )}
                     <Button 
                       type="submit" 
                       disabled={!isEditing && isCustomerIdInUse}
@@ -1194,7 +1205,6 @@ const Customers = () => {
             customers={customers}
             onView={handleView}
             onEdit={handleEdit}
-            onDelete={handleDeleteRequest}
             isColumnVisible={isColumnVisible}
           />
         )}
