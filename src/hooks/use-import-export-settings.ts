@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS: ImportExportSettings = {
   assignment: { import_enabled: false, export_enabled: true },
   team: { import_enabled: false, export_enabled: true },
   bill_of_materials: { import_enabled: false, export_enabled: true },
+  production_order: { import_enabled: false, export_enabled: true },
 };
 
 export const useImportExportSettings = (companyId: string | null) => {

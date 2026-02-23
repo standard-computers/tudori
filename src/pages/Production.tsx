@@ -50,6 +50,10 @@ import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { StepByStepProductionDialog } from '@/components/production/StepByStepProductionDialog';
 import { createProductionGoodsIssue, createProductionGoodsReceipt } from '@/lib/production-posting';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 
 interface ProductionOrder {
   id: string;
@@ -411,6 +415,15 @@ const Production = () => {
   const [isForegroundDialogOpen, setIsForegroundDialogOpen] = useState(false);
   const [locationEmployees, setLocationEmployees] = useState<LocationEmployee[]>([]);
   const [isAssignMode, setIsAssignMode] = useState(false);
+
+  // Import/Export
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportComplete, setIsImportComplete] = useState(false);
 
   const [formData, setFormData] = useState({
     order_number: '',
@@ -1128,6 +1141,127 @@ const Production = () => {
   // Get selected BoM details
   const selectedBom = boms.find(b => b.id === formData.bom_id);
 
+  // --- Import/Export handlers ---
+  const handleDownloadTemplate = () => {
+    exportToExcel([], 'production_orders_template.xlsx', 'Production Orders', [
+      { header: 'BOM Name', key: 'BOM Name', width: 25 },
+      { header: 'Location', key: 'Location', width: 20 },
+      { header: 'Quantity', key: 'Quantity', width: 12 },
+      { header: 'Scheduled Date', key: 'Scheduled Date', width: 18 },
+      { header: 'Notes', key: 'Notes', width: 30 },
+    ]);
+  };
+
+  const handleExport = () => {
+    const exportData = filteredOrders.map(o => ({
+      'Order #': o.order_number,
+      'BOM': o.bom?.name || '',
+      'Output Product': o.product?.name || '',
+      'Quantity': o.quantity,
+      'Status': o.status,
+      'Duration': formatDuration(o.total_duration),
+      'Assigned To': o.assigned_employee ? `${o.assigned_employee.first_name} ${o.assigned_employee.last_name}` : '',
+      'Location': o.location?.name || '',
+      'Scheduled Date': o.scheduled_date ? format(new Date(o.scheduled_date), 'yyyy-MM-dd') : '',
+      'Notes': o.notes || '',
+    }));
+    exportToExcel(exportData, 'production_orders.xlsx', 'Production Orders');
+  };
+
+  const handleImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      setImportResults([]);
+      setImportTotal(rows.length);
+      setImportProcessed(0);
+      setIsImportComplete(false);
+      setIsImportDialogOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+
+        try {
+          const bomName = row['BOM Name']?.toString().trim();
+          if (!bomName) {
+            results.push({ row: rowNum, status: 'error', message: 'BOM Name is required' });
+            setImportResults([...results]);
+            setImportProcessed(i + 1);
+            continue;
+          }
+
+          const bom = boms.find(b => b.name.toLowerCase() === bomName.toLowerCase());
+          if (!bom) {
+            results.push({ row: rowNum, status: 'error', message: `BOM "${bomName}" not found` });
+            setImportResults([...results]);
+            setImportProcessed(i + 1);
+            continue;
+          }
+
+          const locationName = row['Location']?.toString().trim();
+          if (!locationName) {
+            results.push({ row: rowNum, status: 'error', message: 'Location is required' });
+            setImportResults([...results]);
+            setImportProcessed(i + 1);
+            continue;
+          }
+
+          const location = productionLocations.find(l => l.name.toLowerCase() === locationName.toLowerCase());
+          if (!location) {
+            results.push({ row: rowNum, status: 'error', message: `Production location "${locationName}" not found` });
+            setImportResults([...results]);
+            setImportProcessed(i + 1);
+            continue;
+          }
+
+          const quantity = Number(row['Quantity']) || 1;
+          const scheduledDate = row['Scheduled Date']?.toString().trim() || null;
+          const notes = row['Notes']?.toString().trim() || null;
+
+          const { data: nextId } = await supabase.rpc('get_next_production_order_number', {
+            p_company_id: companyId,
+          });
+
+          const { error: insertError } = await supabase
+            .from('production_orders')
+            .insert({
+              company_id: companyId,
+              order_number: nextId || `PRO-${String(i + 1).padStart(4, '0')}`,
+              bom_id: bom.id,
+              product_id: bom.product_id,
+              location_id: location.id,
+              quantity,
+              status: 'pending',
+              scheduled_date: scheduledDate,
+              notes,
+            });
+
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Order created for BOM "${bomName}"` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed to create order' });
+        }
+
+        setImportResults([...results]);
+        setImportProcessed(i + 1);
+      }
+
+      setIsImportComplete(true);
+      fetchOrders();
+      fetchNextOrderNumber();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to read file');
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -1163,6 +1297,14 @@ const Production = () => {
                 </SelectContent>
               </Select>
             </div>
+            <ImportExportButtons
+              importEnabled={isImportEnabled('production_order')}
+              exportEnabled={isExportEnabled('production_order')}
+              onImport={handleImport}
+              onExport={handleExport}
+              onDownloadTemplate={handleDownloadTemplate}
+              entityName="Production Orders"
+            />
             <Button onClick={handleOpenDialog} size="icon" className="relative">
               <Plus className="w-4 h-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -1497,6 +1639,16 @@ const Production = () => {
           onComplete={handleForegroundComplete}
         />
       )}
+
+      <ImportProgressDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importing Production Orders"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={isImportComplete}
+      />
     </div>
   );
 };
