@@ -33,6 +33,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from '@/lib/toast';
 import { TimesheetsTab } from "@/components/employees/TimesheetsTab";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useExcel } from "@/hooks/use-excel";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 
 interface Employee {
   id: string;
@@ -262,6 +266,15 @@ const Employees = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [createUserAccount, setCreateUserAccount] = useState(false);
   const [userRole, setUserRole] = useState<'member' | 'admin' | 'viewer' | 'it'>('member');
+
+  // Import/Export
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportComplete, setIsImportComplete] = useState(false);
 
   const [formData, setFormData] = useState({
     employee_id: "",
@@ -549,6 +562,91 @@ const Employees = () => {
     }
   };
 
+  // --- Import/Export handlers ---
+  const handleDownloadTemplate = () => {
+    exportToExcel([], 'employees_template.xlsx', 'Employees', [
+      { header: 'First Name', key: 'First Name', width: 15 },
+      { header: 'Last Name', key: 'Last Name', width: 15 },
+      { header: 'Email', key: 'Email', width: 25 },
+      { header: 'Phone', key: 'Phone', width: 15 },
+      { header: 'Job Title', key: 'Job Title', width: 20 },
+      { header: 'Team', key: 'Team', width: 15 },
+      { header: 'Status', key: 'Status', width: 12 },
+      { header: 'Wage', key: 'Wage', width: 12 },
+      { header: 'Hourly', key: 'Hourly', width: 8 },
+      { header: 'Hire Date', key: 'Hire Date', width: 12 },
+      { header: 'Notes', key: 'Notes', width: 30 },
+    ]);
+  };
+
+  const handleExportEmployees = () => {
+    const exportData = employees.map(e => ({
+      'Employee ID': e.employee_id,
+      'First Name': e.first_name,
+      'Last Name': e.last_name,
+      'Email': e.email || '',
+      'Phone': e.phone || '',
+      'Job Title': e.job_title || '',
+      'Team': e.department || '',
+      'Status': e.status,
+      'Wage': e.wage ?? '',
+      'Hourly': e.is_hourly ? 'Yes' : 'No',
+      'Hire Date': e.hire_date || '',
+      'Notes': e.notes || '',
+    }));
+    exportToExcel(exportData, 'employees.xlsx', 'Employees');
+  };
+
+  const handleImportEmployees = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error('No data found in file'); return; }
+
+      setImportResults([]); setImportTotal(rows.length); setImportProcessed(0);
+      setIsImportComplete(false); setIsImportDialogOpen(true);
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]; const rowNum = i + 2;
+        try {
+          const firstName = row['First Name']?.toString().trim();
+          const lastName = row['Last Name']?.toString().trim();
+          if (!firstName || !lastName) { results.push({ row: rowNum, status: 'error', message: 'First and Last Name are required' }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+
+          const teamName = row['Team']?.toString().trim() || null;
+          const status = row['Status']?.toString().trim().toLowerCase() || 'active';
+          const wage = row['Wage'] ? Number(row['Wage']) : null;
+          const isHourly = ['yes','true','1'].includes((row['Hourly']?.toString().trim() || '').toLowerCase());
+
+          const { data: nextId } = await supabase.rpc('get_next_employee_id', { p_company_id: companyId });
+
+          const { error: insertError } = await supabase.from('employees').insert({
+            company_id: companyId,
+            employee_id: nextId || `EMP-${String(i + 1).padStart(4, '0')}`,
+            first_name: firstName,
+            last_name: lastName,
+            email: row['Email']?.toString().trim() || null,
+            phone: row['Phone']?.toString().trim() || null,
+            job_title: row['Job Title']?.toString().trim() || null,
+            department: teamName,
+            hire_date: row['Hire Date']?.toString().trim() || null,
+            status: STATUSES.includes(status) ? status : 'active',
+            wage,
+            is_hourly: isHourly,
+            notes: row['Notes']?.toString().trim() || null,
+          });
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Employee "${firstName} ${lastName}" created` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed' });
+        }
+        setImportResults([...results]); setImportProcessed(i + 1);
+      }
+      setIsImportComplete(true); fetchEmployees(); fetchNextEmployeeId();
+    } catch (err: any) { toast.error(err.message || 'Failed to read file'); }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -570,10 +668,20 @@ const Employees = () => {
               <h1 className="text-xl font-semibold">Employees</h1>
             </div>
           </div>
-          <Button onClick={handleOpenDialog} size="icon" className="relative">
-            <Plus className="h-4 w-4" />
-            <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportExportButtons
+              importEnabled={isImportEnabled('employee')}
+              exportEnabled={isExportEnabled('employee')}
+              onImport={handleImportEmployees}
+              onExport={handleExportEmployees}
+              onDownloadTemplate={handleDownloadTemplate}
+              entityName="Employees"
+            />
+            <Button onClick={handleOpenDialog} size="icon" className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -1036,6 +1144,16 @@ const Employees = () => {
           </DialogBody>
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importing Employees"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={isImportComplete}
+      />
     </div>
   );
 };
