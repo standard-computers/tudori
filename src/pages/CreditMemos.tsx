@@ -32,6 +32,10 @@ import { MemoItemsEditor, MemoItem } from "@/components/accounts/MemoItemsEditor
 import { ArrowLeft, Minus, Plus, Loader2, MoreHorizontal, Trash2, Eye, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { format } from "date-fns";
+import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useExcel } from "@/hooks/use-excel";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 
 interface CreditMemo {
   id: string;
@@ -100,6 +104,15 @@ const CreditMemos = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMemo, setViewMemo] = useState<CreditMemo | null>(null);
   const [viewMemoItems, setViewMemoItems] = useState<MemoItem[]>([]);
+
+  // Import/Export
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportComplete, setIsImportComplete] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -399,6 +412,66 @@ const CreditMemos = () => {
     }
   };
 
+  // --- Import/Export handlers ---
+  const handleDownloadTemplate = () => {
+    exportToExcel([], 'credit_memos_template.xlsx', 'Credit Memos', [
+      { header: 'Account', key: 'Account', width: 20 },
+      { header: 'Amount', key: 'Amount', width: 15 },
+      { header: 'Notes', key: 'Notes', width: 30 },
+    ]);
+  };
+
+  const handleExportMemos = () => {
+    const exportData = filteredMemos.map(m => ({
+      'Memo #': m.memo_number,
+      'Date': format(new Date(m.memo_date), 'yyyy-MM-dd'),
+      'Account': m.account?.name || '',
+      'Invoice': m.invoice?.invoice_number || '',
+      'Amount': m.amount,
+      'Ledger': m.ledger?.name || '',
+      'Status': m.status,
+      'Notes': m.notes || '',
+    }));
+    exportToExcel(exportData, 'credit_memos.xlsx', 'Credit Memos');
+  };
+
+  const handleImportMemos = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error('No data found in file'); return; }
+
+      setImportResults([]); setImportTotal(rows.length); setImportProcessed(0);
+      setIsImportComplete(false); setIsImportDialogOpen(true);
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]; const rowNum = i + 2;
+        try {
+          const accountName = row['Account']?.toString().trim();
+          if (!accountName) { results.push({ row: rowNum, status: 'error', message: 'Account is required' }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+          const account = accounts.find(a => a.name.toLowerCase() === accountName.toLowerCase());
+          if (!account) { results.push({ row: rowNum, status: 'error', message: `Account "${accountName}" not found` }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+          const amount = Number(row['Amount']) || 0;
+          if (amount <= 0) { results.push({ row: rowNum, status: 'error', message: 'Amount must be > 0' }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+          const notes = row['Notes']?.toString().trim() || null;
+
+          const { data: memoNumber } = await supabase.rpc('get_next_credit_memo_number', { p_company_id: companyId });
+          const { error: insertError } = await supabase.from('credit_memos' as any).insert({
+            company_id: companyId, memo_number: memoNumber, account_id: account.id,
+            amount, notes, status: 'pending',
+          });
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Credit memo created for "${accountName}"` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed' });
+        }
+        setImportResults([...results]); setImportProcessed(i + 1);
+      }
+      setIsImportComplete(true); fetchMemos();
+    } catch (err: any) { toast.error(err.message || 'Failed to read file'); }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -418,10 +491,20 @@ const CreditMemos = () => {
             <Minus className="h-6 w-6 text-green-500" />
             <h1 className="text-2xl font-bold">Credit Memos</h1>
           </div>
-          <Button onClick={handleCreateClick} size="icon" className="relative">
-            <Plus className="h-4 w-4" />
-            <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportExportButtons
+              importEnabled={isImportEnabled('credit_memo')}
+              exportEnabled={isExportEnabled('credit_memo')}
+              onImport={handleImportMemos}
+              onExport={handleExportMemos}
+              onDownloadTemplate={handleDownloadTemplate}
+              entityName="Credit Memos"
+            />
+            <Button onClick={handleCreateClick} size="icon" className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -636,6 +719,16 @@ const CreditMemos = () => {
           <DialogFooter></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importing Credit Memos"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={isImportComplete}
+      />
     </div>
   );
 };
