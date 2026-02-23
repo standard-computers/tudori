@@ -3,6 +3,10 @@ import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -215,6 +219,15 @@ const Teams = () => {
     leader_employee_id: '',
   });
 
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importTotalRows, setImportTotalRows] = useState(0);
+  const [importProcessedRows, setImportProcessedRows] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
+
   useEffect(() => {
     if (isDialogOpen) {
       setTransaction(isEditing ? 'team/edit' : 'team/new');
@@ -312,6 +325,92 @@ const Teams = () => {
     });
     if (data) {
       setNextTeamId(data);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      { 'Name': '', 'Description': '' },
+    ];
+    exportToExcel(templateData, 'teams_template.xlsx', 'Teams', [
+      { header: 'Name', key: 'Name', width: 30 },
+      { header: 'Description', key: 'Description', width: 40 },
+    ]);
+    toast.success('Template downloaded');
+  };
+
+  const handleExport = async () => {
+    if (teams.length === 0) {
+      toast.info('No teams to export');
+      return;
+    }
+    const exportData = teams.map(t => ({
+      'Team ID': t.team_id,
+      'Name': t.name,
+      'Description': t.description || '',
+      'Leader': t.leader_name || '',
+      'Members': t.member_count || 0,
+    }));
+    await exportToExcel(exportData, 'teams.xlsx', 'Teams');
+    toast.success('Teams exported');
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      setImportTotalRows(rows.length);
+      setImportProcessedRows(0);
+      setImportResults([]);
+      setImportComplete(false);
+      setImportDialogOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2; // Excel row (header is row 1)
+
+        try {
+          const name = row['Name']?.toString().trim();
+          if (!name) {
+            results.push({ row: rowNum, status: 'error', message: 'Name is required' });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          const { data: nextId } = await supabase.rpc('get_next_team_id', {
+            p_company_id: companyId,
+          });
+
+          const { error: insertError } = await supabase.from('teams').insert({
+            company_id: companyId!,
+            team_id: nextId || `TM-${String(i + 1).padStart(4, '0')}`,
+            name,
+            description: row['Description']?.toString().trim() || null,
+          });
+
+          if (insertError) throw insertError;
+
+          results.push({ row: rowNum, status: 'success', message: `Team "${name}" created` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed to import' });
+        }
+
+        setImportResults([...results]);
+        setImportProcessedRows(i + 1);
+      }
+
+      setImportComplete(true);
+      fetchTeams();
+      fetchNextTeamId();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to read file');
     }
   };
 
@@ -414,16 +513,36 @@ const Teams = () => {
               <h1 className="text-xl font-semibold">Teams</h1>
             </div>
           </div>
-          <Button onClick={handleOpenDialog} size="icon" className="relative">
-            <Plus className="h-4 w-4" />
-            <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportExportButtons
+              importEnabled={isImportEnabled('team')}
+              exportEnabled={isExportEnabled('team')}
+              onExport={handleExport}
+              onImport={handleImport}
+              onDownloadTemplate={handleDownloadTemplate}
+              entityName="Teams"
+            />
+            <Button onClick={handleOpenDialog} size="icon" className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="p-0">
         <TeamTable teams={teams} onView={setViewingTeam} onEdit={handleEdit} onDelete={handleDelete} />
       </main>
+
+      <ImportProgressDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        title="Importing Teams"
+        totalRows={importTotalRows}
+        processedRows={importProcessedRows}
+        results={importResults}
+        isComplete={importComplete}
+      />
 
       {/* Create/Edit Team Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

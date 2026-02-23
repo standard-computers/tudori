@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: ImportExportSettings = {
   carrier: { import_enabled: false, export_enabled: true },
   route: { import_enabled: false, export_enabled: true },
   assignment: { import_enabled: false, export_enabled: true },
+  team: { import_enabled: false, export_enabled: true },
 };
 
 export const useImportExportSettings = (companyId: string | null) => {
