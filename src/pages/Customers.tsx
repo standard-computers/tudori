@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTransactionAction } from '@/hooks/use-transaction-action';
@@ -8,6 +8,7 @@ import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -389,7 +390,7 @@ const Customers = () => {
   // Import/Export settings
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
-  const { exportToExcel } = useExcel();
+  const { exportToExcel, readExcel } = useExcel();
 
   const handleExport = async () => {
     if (customers.length === 0) {
@@ -417,6 +418,137 @@ const Customers = () => {
     toast.success('Customers exported successfully');
   };
 
+  const handleDownloadTemplate = useCallback(async () => {
+    const templateData = [
+      {
+        'Name': 'Example Corp',
+        'Type': 'Business',
+        'Contact': 'John Doe',
+        'Email': 'john@example.com',
+        'Phone': '555-0100',
+        'Address': '123 Main St',
+        'Address 2': 'Suite 100',
+        'City': 'New York',
+        'State': 'NY',
+        'Postal Code': '10001',
+        'Country': 'United States',
+        'Website': 'https://example.com',
+        'Payment Terms': '30',
+        'Notes': '',
+      },
+    ];
+
+    await exportToExcel(
+      templateData,
+      'customers_import_template.xlsx',
+      'Customers',
+      [
+        { header: 'Name', key: 'Name', width: 25 },
+        { header: 'Type', key: 'Type', width: 15 },
+        { header: 'Contact', key: 'Contact', width: 20 },
+        { header: 'Email', key: 'Email', width: 25 },
+        { header: 'Phone', key: 'Phone', width: 15 },
+        { header: 'Address', key: 'Address', width: 30 },
+        { header: 'Address 2', key: 'Address 2', width: 20 },
+        { header: 'City', key: 'City', width: 15 },
+        { header: 'State', key: 'State', width: 10 },
+        { header: 'Postal Code', key: 'Postal Code', width: 12 },
+        { header: 'Country', key: 'Country', width: 15 },
+        { header: 'Website', key: 'Website', width: 25 },
+        { header: 'Payment Terms', key: 'Payment Terms', width: 15 },
+        { header: 'Notes', key: 'Notes', width: 30 },
+      ],
+    );
+    toast.success('Template downloaded');
+  }, [exportToExcel]);
+
+  const handleImport = useCallback(async (file: File) => {
+    if (!companyId) return;
+
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      const requiredCols = ['Name'];
+      const headers = Object.keys(rows[0]);
+      const missing = requiredCols.filter((c) => !headers.includes(c));
+      if (missing.length > 0) {
+        toast.error(`Missing required columns: ${missing.join(', ')}`);
+        return;
+      }
+
+      setImportTotalRows(rows.length);
+      setImportProcessedRows(0);
+      setImportResults([]);
+      setImportComplete(false);
+      setImportProgressOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+
+        try {
+          const name = row['Name']?.toString().trim();
+          if (!name) {
+            results.push({ row: rowNum, status: 'error', message: 'Name is required' });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          const { data: nextId, error: idError } = await supabase.rpc('get_next_customer_id', {
+            p_company_id: companyId,
+          });
+          if (idError) throw idError;
+
+          const paymentTerms = row['Payment Terms'] ? parseInt(row['Payment Terms'].toString(), 10) : null;
+
+          const { error: insertError } = await supabase.from('customers').insert({
+            company_id: companyId,
+            customer_id: nextId,
+            name,
+            type: row['Type']?.toString().trim() || 'Business',
+            contact_name: row['Contact']?.toString().trim() || null,
+            email: row['Email']?.toString().trim() || null,
+            phone: row['Phone']?.toString().trim() || null,
+            address_line1: row['Address']?.toString().trim() || null,
+            address_line2: row['Address 2']?.toString().trim() || null,
+            city: row['City']?.toString().trim() || null,
+            state: row['State']?.toString().trim() || null,
+            postal_code: row['Postal Code']?.toString().trim() || null,
+            country: row['Country']?.toString().trim() || 'United States',
+            website: row['Website']?.toString().trim() || null,
+            notes: row['Notes']?.toString().trim() || null,
+            payment_terms: isNaN(paymentTerms as number) ? null : paymentTerms,
+          });
+
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Created "${name}" (${nextId})` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Unknown error' });
+        }
+
+        setImportResults([...results]);
+        setImportProcessedRows(i + 1);
+      }
+
+      setImportComplete(true);
+      const successCount = results.filter((r) => r.status === 'success').length;
+      if (successCount > 0) {
+        toast.success(`Imported ${successCount} of ${rows.length} customers`);
+        fetchCustomers();
+        fetchNextCustomerId();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to read file');
+    }
+  }, [companyId, readExcel]);
+
   // Column visibility
   const {
     visibleColumns,
@@ -438,6 +570,11 @@ const Customers = () => {
   const [deleteBlocked, setDeleteBlocked] = useState(false);
   const [deleteBlockedReason, setDeleteBlockedReason] = useState('');
   const [nextCustomerId, setNextCustomerId] = useState('0001');
+  const [importProgressOpen, setImportProgressOpen] = useState(false);
+  const [importTotalRows, setImportTotalRows] = useState(0);
+  const [importProcessedRows, setImportProcessedRows] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
   const [formData, setFormData] = useState({
     customer_id: '',
     name: '',
@@ -774,6 +911,8 @@ const Customers = () => {
                 importEnabled={isImportEnabled('customer')}
                 exportEnabled={isExportEnabled('customer')}
                 onExport={handleExport}
+                onImport={handleImport}
+                onDownloadTemplate={handleDownloadTemplate}
                 entityName="Customers"
               />
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1182,6 +1321,15 @@ const Customers = () => {
             onConfirm={handleDeleteConfirm}
             isBlocked={deleteBlocked}
             blockedReason={deleteBlockedReason}
+          />
+          <ImportProgressDialog
+            title="Importing Customers"
+            open={importProgressOpen}
+            onOpenChange={setImportProgressOpen}
+            totalRows={importTotalRows}
+            processedRows={importProcessedRows}
+            results={importResults}
+            isComplete={importComplete}
           />
         </div>
         </div>
