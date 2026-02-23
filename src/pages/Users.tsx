@@ -684,22 +684,22 @@ const Users = () => {
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
            <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <div className="flex items-center gap-3 pr-14">
-                <div className="flex-1">
-                  <DialogTitle>Edit User</DialogTitle>
-                  <DialogDescription>
-                    Update {editingMember?.first_name} {editingMember?.last_name}'s access level and permissions
-                  </DialogDescription>
-                </div>
+              <div className="flex items-center gap-1 absolute right-10 top-4">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
                   onClick={() => setConfirmDeleteOpen(true)}
                   title="Remove user"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+              <div>
+                  <DialogTitle>Edit User</DialogTitle>
+                  <DialogDescription>
+                    Update {editingMember?.first_name} {editingMember?.last_name}'s access level and permissions
+                  </DialogDescription>
               </div>
             </DialogHeader>
             <DialogBody>
