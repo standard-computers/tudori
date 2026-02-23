@@ -41,6 +41,10 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 
 interface Invoice {
   id: string;
@@ -108,6 +112,15 @@ const Invoices = () => {
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+
+  // Import/Export
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportComplete, setIsImportComplete] = useState(false);
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
 
@@ -283,6 +296,117 @@ const Invoices = () => {
     }
   };
 
+  // --- Import/Export handlers ---
+  const handleDownloadTemplate = () => {
+    exportToExcel([], 'invoices_template.xlsx', 'Invoices', [
+      { header: 'Account', key: 'Account', width: 20 },
+      { header: 'Invoice Date', key: 'Invoice Date', width: 15 },
+      { header: 'Due Date', key: 'Due Date', width: 15 },
+      { header: 'Amount', key: 'Amount', width: 15 },
+      { header: 'Notes', key: 'Notes', width: 30 },
+    ]);
+  };
+
+  const handleExport = () => {
+    const exportData = sortedAndFilteredData.map(inv => ({
+      'Invoice #': inv.invoice_number,
+      'Account': inv.account?.name || '',
+      'Pay To': inv.purchase_order?.vendor?.name || inv.sales_order?.customer?.name || '',
+      'Reference': inv.purchase_order?.po_number ? `PO: ${inv.purchase_order.po_number}` : inv.sales_order?.so_number ? `SO: ${inv.sales_order.so_number}` : '',
+      'Invoice Date': inv.invoice_date ? format(new Date(inv.invoice_date), 'yyyy-MM-dd') : '',
+      'Due Date': inv.due_date ? format(new Date(inv.due_date), 'yyyy-MM-dd') : '',
+      'Subtotal': inv.subtotal,
+      'Tax': inv.tax_amount,
+      'Amount': inv.amount,
+      'Status': inv.status,
+      'Notes': inv.notes || '',
+    }));
+    exportToExcel(exportData, 'invoices.xlsx', 'Invoices');
+  };
+
+  const handleImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      // Fetch accounts for matching
+      const { data: accounts } = await supabase
+        .from('accounts')
+        .select('id, name, account_id')
+        .eq('company_id', companyId);
+
+      setImportResults([]);
+      setImportTotal(rows.length);
+      setImportProcessed(0);
+      setIsImportComplete(false);
+      setIsImportDialogOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+
+        try {
+          const accountName = row['Account']?.toString().trim();
+          if (!accountName) {
+            results.push({ row: rowNum, status: 'error', message: 'Account is required' });
+            setImportResults([...results]);
+            setImportProcessed(i + 1);
+            continue;
+          }
+
+          const account = (accounts || []).find(a => a.name.toLowerCase() === accountName.toLowerCase());
+          if (!account) {
+            results.push({ row: rowNum, status: 'error', message: `Account "${accountName}" not found` });
+            setImportResults([...results]);
+            setImportProcessed(i + 1);
+            continue;
+          }
+
+          const amount = Number(row['Amount']) || 0;
+          const invoiceDate = row['Invoice Date']?.toString().trim() || new Date().toISOString().split('T')[0];
+          const dueDate = row['Due Date']?.toString().trim() || null;
+          const notes = row['Notes']?.toString().trim() || null;
+
+          const { data: nextId } = await supabase.rpc('get_next_invoice_number', {
+            p_company_id: companyId,
+          });
+
+          const { error: insertError } = await (supabase.from('invoices' as any) as any).insert({
+            company_id: companyId,
+            invoice_number: nextId || `INV-${String(i + 1).padStart(4, '0')}`,
+            account_id: account.id,
+            invoice_date: invoiceDate,
+            due_date: dueDate,
+            subtotal: amount,
+            tax_amount: 0,
+            amount,
+            status: 'draft',
+            notes,
+          });
+
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Invoice created for account "${accountName}"` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed to create invoice' });
+        }
+
+        setImportResults([...results]);
+        setImportProcessed(i + 1);
+      }
+
+      setIsImportComplete(true);
+      fetchInvoices();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to read file');
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -316,6 +440,14 @@ const Invoices = () => {
               <Search className="w-4 h-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
             </Button>
+            <ImportExportButtons
+              importEnabled={isImportEnabled('invoice')}
+              exportEnabled={isExportEnabled('invoice')}
+              onImport={handleImport}
+              onExport={handleExport}
+              onDownloadTemplate={handleDownloadTemplate}
+              entityName="Invoices"
+            />
             <Button onClick={handleCreateClick} size="icon" className="relative">
               <Plus className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -607,6 +739,16 @@ const Invoices = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importing Invoices"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={isImportComplete}
+      />
     </div>
   );
 };
