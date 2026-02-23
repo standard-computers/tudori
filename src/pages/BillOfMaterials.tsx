@@ -5,6 +5,10 @@ import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
 import { ColumnToggle } from '@/components/ColumnToggle';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -568,6 +572,15 @@ const BillOfMaterials = () => {
     notes: '',
   });
 
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importTotalRows, setImportTotalRows] = useState(0);
+  const [importProcessedRows, setImportProcessedRows] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
+
   useEffect(() => {
     if (isDialogOpen) {
       setTransaction(isViewMode ? 'bom/view' : isEditing ? 'bom/edit' : 'bom/new');
@@ -792,6 +805,120 @@ const BillOfMaterials = () => {
     setNewStepItem({ product_id: '', quantity: '1' });
     setEditingStepIndex(null);
     setActiveTab('components');
+  };
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      { 'Name': '', 'Output Product': '', 'Output Quantity': '', 'Status': '', 'Notes': '' },
+    ];
+    exportToExcel(templateData, 'bill_of_materials_template.xlsx', 'Bill of Materials', [
+      { header: 'Name', key: 'Name', width: 30 },
+      { header: 'Output Product', key: 'Output Product', width: 25 },
+      { header: 'Output Quantity', key: 'Output Quantity', width: 15 },
+      { header: 'Status', key: 'Status', width: 15 },
+      { header: 'Notes', key: 'Notes', width: 40 },
+    ]);
+    toast.success('Template downloaded');
+  };
+
+  const handleExport = async () => {
+    if (boms.length === 0) {
+      toast.info('No bill of materials to export');
+      return;
+    }
+    const exportData = boms.map(b => ({
+      'BOM ID': b.bom_id,
+      'Name': b.name,
+      'Output Product': b.product?.name || '',
+      'Output Quantity': b.output_quantity,
+      'Status': b.status,
+      'Steps': b.steps_count || 0,
+      'Duration (min)': b.total_duration || 0,
+      'Notes': b.notes || '',
+    }));
+    await exportToExcel(exportData, 'bill_of_materials.xlsx', 'Bill of Materials');
+    toast.success('Bill of materials exported');
+  };
+
+  const handleImportBom = async (file: File) => {
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      setImportTotalRows(rows.length);
+      setImportProcessedRows(0);
+      setImportResults([]);
+      setImportComplete(false);
+      setImportDialogOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+
+        try {
+          const name = row['Name']?.toString().trim();
+          if (!name) {
+            results.push({ row: rowNum, status: 'error', message: 'Name is required' });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          const outputProductName = row['Output Product']?.toString().trim();
+          if (!outputProductName) {
+            results.push({ row: rowNum, status: 'error', message: 'Output Product is required' });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          const product = products.find(p => p.name.toLowerCase() === outputProductName.toLowerCase());
+          if (!product) {
+            results.push({ row: rowNum, status: 'error', message: `Product "${outputProductName}" not found` });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          const outputQty = Number(row['Output Quantity']) || 1;
+          const status = row['Status']?.toString().trim().toLowerCase() || 'active';
+
+          const { data: nextId } = await supabase.rpc('get_next_bom_id', {
+            p_company_id: companyId,
+          });
+
+          const { error: insertError } = await supabase.from('bill_of_materials').insert({
+            company_id: companyId!,
+            bom_id: nextId || `BOM-${String(i + 1).padStart(4, '0')}`,
+            name,
+            product_id: product.id,
+            output_quantity: outputQty,
+            status: ['active', 'draft', 'inactive'].includes(status) ? status : 'active',
+            notes: row['Notes']?.toString().trim() || null,
+          });
+
+          if (insertError) throw insertError;
+
+          results.push({ row: rowNum, status: 'success', message: `BOM "${name}" created` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed to import' });
+        }
+
+        setImportResults([...results]);
+        setImportProcessedRows(i + 1);
+      }
+
+      setImportComplete(true);
+      fetchBoms();
+      fetchNextBomId();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to read file');
+    }
   };
 
   const handleOpenDialog = () => {
@@ -1277,6 +1404,14 @@ const BillOfMaterials = () => {
               onShowAll={showAll}
               onHideAll={hideAll}
             />
+            <ImportExportButtons
+              importEnabled={isImportEnabled('bill_of_materials')}
+              exportEnabled={isExportEnabled('bill_of_materials')}
+              onExport={handleExport}
+              onImport={handleImportBom}
+              onDownloadTemplate={handleDownloadTemplate}
+              entityName="Bill of Materials"
+            />
             <Button onClick={handleOpenDialog} size="icon" className="relative">
               <Plus className="w-4 h-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -1284,6 +1419,16 @@ const BillOfMaterials = () => {
           </div>
         </div>
       </header>
+
+      <ImportProgressDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        title="Importing Bill of Materials"
+        totalRows={importTotalRows}
+        processedRows={importProcessedRows}
+        results={importResults}
+        isComplete={importComplete}
+      />
 
       <main>
         <BomTable

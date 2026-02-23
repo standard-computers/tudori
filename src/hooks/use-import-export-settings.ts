@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS: ImportExportSettings = {
   route: { import_enabled: false, export_enabled: true },
   assignment: { import_enabled: false, export_enabled: true },
   team: { import_enabled: false, export_enabled: true },
+  bill_of_materials: { import_enabled: false, export_enabled: true },
 };
 
 export const useImportExportSettings = (companyId: string | null) => {
