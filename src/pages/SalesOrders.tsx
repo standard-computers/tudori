@@ -5,6 +5,10 @@ import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
+import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useExcel } from "@/hooks/use-excel";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -291,6 +295,15 @@ const SalesOrders = () => {
     SALES_ORDER_COLUMNS,
   );
 
+  // Import/Export settings
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importTotalRows, setImportTotalRows] = useState(0);
+  const [importProcessedRows, setImportProcessedRows] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -546,6 +559,123 @@ const SalesOrders = () => {
   const hasStockIssue = useMemo(() => {
     return Object.values(itemAvailability).some((a) => !a.sufficient);
   }, [itemAvailability]);
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      { 'Customer': '', 'Ship From Location': '', 'Bill To Location': '', 'Notes': '' },
+    ];
+    exportToExcel(templateData, 'sales_orders_template.xlsx', 'Sales Orders', [
+      { header: 'Customer', key: 'Customer', width: 30 },
+      { header: 'Ship From Location', key: 'Ship From Location', width: 25 },
+      { header: 'Bill To Location', key: 'Bill To Location', width: 25 },
+      { header: 'Notes', key: 'Notes', width: 40 },
+    ]);
+    toast.success('Template downloaded');
+  };
+
+  const handleExport = async () => {
+    if (orders.length === 0) {
+      toast.info('No sales orders to export');
+      return;
+    }
+    const exportData = orders.map(o => ({
+      'SO #': o.so_number,
+      'Status': o.status,
+      'Customer': o.customer?.name || '',
+      'Ship From': o.location?.name || '',
+      'Bill To': o.bill_to_location?.name || '',
+      'Ledger': o.ledger?.name || '',
+      'Subtotal': o.subtotal,
+      'Tax': o.tax_amount,
+      'Total': o.total_amount,
+      'Order Date': o.order_date,
+      'Expected Delivery': o.expected_delivery_date || '',
+      'Notes': o.notes || '',
+    }));
+    await exportToExcel(exportData, 'sales_orders.xlsx', 'Sales Orders');
+    toast.success('Sales orders exported');
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      setImportTotalRows(rows.length);
+      setImportProcessedRows(0);
+      setImportResults([]);
+      setImportComplete(false);
+      setImportDialogOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+
+        try {
+          const customerName = row['Customer']?.toString().trim();
+          if (!customerName) {
+            results.push({ row: rowNum, status: 'error', message: 'Customer is required' });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          // Find customer by name
+          const customer = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+          if (!customer) {
+            results.push({ row: rowNum, status: 'error', message: `Customer "${customerName}" not found` });
+            setImportResults([...results]);
+            setImportProcessedRows(i + 1);
+            continue;
+          }
+
+          // Find optional location
+          const shipFromName = row['Ship From Location']?.toString().trim();
+          const shipFromLoc = shipFromName ? locations.find(l => l.name.toLowerCase() === shipFromName.toLowerCase()) : null;
+
+          const billToName = row['Bill To Location']?.toString().trim();
+          const billToLoc = billToName ? locations.find(l => l.name.toLowerCase() === billToName.toLowerCase()) : null;
+
+          const { data: nextId } = await supabase.rpc('get_next_so_number', {
+            p_company_id: companyId,
+          });
+
+          const { error: insertError } = await (supabase.from('sales_orders' as any) as any).insert({
+            company_id: companyId!,
+            so_number: nextId,
+            customer_id: customer.id,
+            location_id: shipFromLoc?.id || null,
+            bill_to_location_id: billToLoc?.id || null,
+            notes: row['Notes']?.toString().trim() || null,
+            status: 'draft',
+            order_date: new Date().toISOString().split('T')[0],
+            subtotal: 0,
+            tax_amount: 0,
+            total_amount: 0,
+          });
+
+          if (insertError) throw insertError;
+
+          results.push({ row: rowNum, status: 'success', message: `SO "${nextId}" created for ${customerName}` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed to import' });
+        }
+
+        setImportResults([...results]);
+        setImportProcessedRows(i + 1);
+      }
+
+      setImportComplete(true);
+      fetchOrders();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to read file');
+    }
+  };
 
   const handleCreateClick = () => {
     const defaultRate = taxRates.find((r) => r.is_default);
@@ -1063,6 +1193,14 @@ const SalesOrders = () => {
                 onShowAll={showAll}
                 onHideAll={hideAll}
               />
+              <ImportExportButtons
+                importEnabled={isImportEnabled('sales_order')}
+                exportEnabled={isExportEnabled('sales_order')}
+                onExport={handleExport}
+                onImport={handleImport}
+                onDownloadTemplate={handleDownloadTemplate}
+                entityName="Sales Orders"
+              />
               <Button onClick={handleCreateClick} variant="default" size="icon" className="relative">
                 <Plus className="w-4 h-4" />
                 <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -1071,6 +1209,16 @@ const SalesOrders = () => {
           </div>
         </div>
       </header>
+
+      <ImportProgressDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        title="Importing Sales Orders"
+        totalRows={importTotalRows}
+        processedRows={importProcessedRows}
+        results={importResults}
+        isComplete={importComplete}
+      />
 
       {/* Main content */}
       <main className="flex-1">
