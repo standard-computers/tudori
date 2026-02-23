@@ -53,6 +53,10 @@ import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
+import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useExcel } from '@/hooks/use-excel';
+import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 
 interface GoodsReceipt {
   id: string;
@@ -148,6 +152,15 @@ const GoodsReceipts = () => {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Import/Export
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportComplete, setIsImportComplete] = useState(false);
 
   const { vendorOptions } = useVendorSources(companyId);
 
@@ -554,6 +567,78 @@ const GoodsReceipts = () => {
     fetchReceipts();
   };
 
+  // --- Import/Export handlers ---
+  const handleDownloadTemplate = () => {
+    exportToExcel([], 'goods_receipts_template.xlsx', 'Goods Receipts', [
+      { header: 'Location', key: 'Location', width: 20 },
+      { header: 'Vendor', key: 'Vendor', width: 20 },
+      { header: 'Receipt Date', key: 'Receipt Date', width: 15 },
+      { header: 'Notes', key: 'Notes', width: 30 },
+    ]);
+  };
+
+  const handleExportReceipts = () => {
+    const exportData = receipts.map(r => ({
+      'Receipt #': r.receipt_number,
+      'Status': r.status,
+      'Location': (r.location as any)?.name || '',
+      'Vendor': (r.vendor as any)?.name || '',
+      'Delivery': (r.delivery as any)?.delivery_id || '',
+      'PO': (r.purchase_order as any)?.po_number || '',
+      'Receipt Date': format(new Date(r.receipt_date), 'yyyy-MM-dd'),
+      'Items': (r as any).goods_receipt_items?.[0]?.count ?? 0,
+      'Notes': r.notes || '',
+    }));
+    exportToExcel(exportData, 'goods_receipts.xlsx', 'Goods Receipts');
+  };
+
+  const handleImportReceipts = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) { toast.error('No data found in file'); return; }
+
+      setImportResults([]); setImportTotal(rows.length); setImportProcessed(0);
+      setIsImportComplete(false); setIsImportDialogOpen(true);
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]; const rowNum = i + 2;
+        try {
+          const locationName = row['Location']?.toString().trim();
+          if (!locationName) { results.push({ row: rowNum, status: 'error', message: 'Location is required' }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+          const location = locations.find(l => l.name.toLowerCase() === locationName.toLowerCase());
+          if (!location) { results.push({ row: rowNum, status: 'error', message: `Location "${locationName}" not found` }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+
+          const vendorName = row['Vendor']?.toString().trim();
+          let vendorId: string | null = null;
+          if (vendorName) {
+            const v = vendorOptions.find(vo => vo.label.toLowerCase() === vendorName.toLowerCase());
+            if (!v) { results.push({ row: rowNum, status: 'error', message: `Vendor "${vendorName}" not found` }); setImportResults([...results]); setImportProcessed(i + 1); continue; }
+            vendorId = v.value;
+          }
+
+          const { data: receiptNumber } = await supabase.rpc('get_next_goods_receipt_number', { p_company_id: companyId });
+          const { error: insertError } = await supabase.from('goods_receipts' as any).insert({
+            company_id: companyId,
+            receipt_number: receiptNumber,
+            location_id: location.id,
+            vendor_id: vendorId,
+            receipt_date: row['Receipt Date']?.toString().trim() || new Date().toISOString().split('T')[0],
+            status: 'pending',
+            notes: row['Notes']?.toString().trim() || null,
+          });
+          if (insertError) throw insertError;
+          results.push({ row: rowNum, status: 'success', message: `Goods receipt created at "${locationName}"` });
+        } catch (err: any) {
+          results.push({ row: rowNum, status: 'error', message: err.message || 'Failed' });
+        }
+        setImportResults([...results]); setImportProcessed(i + 1);
+      }
+      setIsImportComplete(true); fetchReceipts(); fetchNextReceiptNumber();
+    } catch (err: any) { toast.error(err.message || 'Failed to read file'); }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -576,7 +661,16 @@ const GoodsReceipts = () => {
                 <h1 className="text-xl font-display font-bold text-foreground">Goods Receipts</h1>
               </div>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <div className="flex items-center gap-2">
+              <ImportExportButtons
+                importEnabled={isImportEnabled('goods_receipt')}
+                exportEnabled={isExportEnabled('goods_receipt')}
+                onImport={handleImportReceipts}
+                onExport={handleExportReceipts}
+                onDownloadTemplate={handleDownloadTemplate}
+                entityName="Goods Receipts"
+              />
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleOpenDialog} size="icon" className="relative">
                   <Plus className="w-4 h-4" />
@@ -770,6 +864,7 @@ const GoodsReceipts = () => {
                 </Tabs>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </div>
       </header>
@@ -920,6 +1015,16 @@ const GoodsReceipts = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importing Goods Receipts"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={isImportComplete}
+      />
     </div>
   );
 };
