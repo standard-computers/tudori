@@ -684,7 +684,7 @@ const Users = () => {
         <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
            <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <div className="flex items-center gap-1 absolute right-10 top-4">
+              <div className="flex items-center gap-1 absolute right-12 top-2 z-10">
                 <Button
                   variant="ghost"
                   size="icon"
