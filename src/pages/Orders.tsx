@@ -122,6 +122,7 @@ interface PurchaseOrder {
   tax_rate?: { name: string; rate: number } | null;
   applied_tax_rates?: { tax_rate_id: string; tax_amount: number; tax_rate: { name: string; rate: number } }[];
   creator?: { first_name: string; last_name: string } | null;
+  item_count?: number;
 }
 
 interface PurchaseOrderItem {
@@ -520,7 +521,8 @@ const Orders = () => {
          bill_to_location:locations!purchase_orders_bill_to_location_id_fkey(name, location_id),
         ledger:ledgers(name),
         requisition:requisitions(requisition_id),
-        tax_rate:tax_rates(name, rate)
+        tax_rate:tax_rates(name, rate),
+        purchase_order_items(count)
       `,
       )
       .eq("company_id", companyId);
@@ -558,14 +560,15 @@ const Orders = () => {
         profiles?.map((p) => [p.user_id, { first_name: p.first_name, last_name: p.last_name }]) || [],
       );
 
-      const ordersWithCreator = ordersData.map((order) => ({
+      const ordersWithCreator = ordersData.map((order: any) => ({
         ...order,
         creator: order.created_by ? profileMap.get(order.created_by) || null : null,
+        item_count: order.purchase_order_items?.[0]?.count ?? 0,
       }));
 
       setOrders(ordersWithCreator);
     } else {
-      setOrders(ordersData.map((o) => ({ ...o, creator: null })));
+      setOrders(ordersData.map((o: any) => ({ ...o, creator: null, item_count: o.purchase_order_items?.[0]?.count ?? 0 })));
     }
   };
 
@@ -3988,6 +3991,15 @@ function OrdersTable({
                 onFilter={(v) => setFilter("bill_to_location.name", v)}
               />
               <SortableTableHead
+                label="Items"
+                sortKey="item_count"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                className="text-right"
+                filterable={false}
+              />
+              <SortableTableHead
                 label="Total"
                 sortKey="total_amount"
                 currentSortKey={sortConfig.key}
@@ -4098,6 +4110,7 @@ function OrdersTable({
                   )}
                 </TableCell>
                 <TableCell>{order.bill_to_location?.name || "-"}</TableCell>
+                <TableCell className="text-right font-mono">{order.item_count ?? 0}</TableCell>
                 <TableCell className="text-right font-mono">${Number(order.total_amount || 0).toFixed(2)}</TableCell>
                 <TableCell className="text-sm">
                   {order.creator
