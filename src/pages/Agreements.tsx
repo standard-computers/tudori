@@ -304,11 +304,7 @@ export default function Agreements() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const filtered = useMemo(() => sortedAndFilteredData.filter(a => {
-    const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.agreement_id.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || a.status === statusFilter;
-    return matchSearch && matchStatus;
-  }), [sortedAndFilteredData, search, statusFilter]);
+  const filtered = sortedAndFilteredData;
 
   const isEditMode = dialogMode === "edit";
 
@@ -354,20 +350,6 @@ export default function Agreements() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search agreements..." className="pl-8 h-8 text-sm" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
 
       {/* Table */}
       <Table>
