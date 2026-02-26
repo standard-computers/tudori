@@ -387,14 +387,13 @@ export default function Agreements() {
             <SortableTableHead label="End Date" sortKey="end_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Accounts" sortKey="account_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
             <SortableTableHead label="Items" sortKey="item_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
-            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
+            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
             <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
               <TableCell className="font-mono text-xs">{a.agreement_id}</TableCell>
@@ -408,11 +407,6 @@ export default function Agreements() {
               <TableCell className="text-sm">{a.end_date || "-"}</TableCell>
               <TableCell className="text-right font-mono">{a.account_count ?? 0}</TableCell>
               <TableCell className="text-right font-mono">{a.item_count ?? 0}</TableCell>
-              <TableCell onClick={e => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(a)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -433,6 +427,16 @@ export default function Agreements() {
                 </>
               ) : "New Agreement"}
             </DialogTitle>
+            {isEditMode && selectedAgreement && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-10 top-2 z-10 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => { setDialogOpen(false); setDeleteTarget(selectedAgreement); }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </DialogHeader>
 
           <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex flex-col flex-1 min-h-0">
