@@ -163,6 +163,8 @@ export type Database = {
       agreement_items: {
         Row: {
           agreement_id: string
+          cadence: string | null
+          cadence_day: string | null
           created_at: string
           id: string
           notes: string | null
@@ -172,6 +174,8 @@ export type Database = {
         }
         Insert: {
           agreement_id: string
+          cadence?: string | null
+          cadence_day?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -181,6 +185,8 @@ export type Database = {
         }
         Update: {
           agreement_id?: string
+          cadence?: string | null
+          cadence_day?: string | null
           created_at?: string
           id?: string
           notes?: string | null

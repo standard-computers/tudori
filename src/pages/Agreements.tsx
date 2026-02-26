@@ -63,6 +63,8 @@ interface AgreementItem {
   quantity: number;
   unit_price: number;
   notes: string | null;
+  cadence: string | null;
+  cadence_day: string | null;
   product: { name: string; product_id: string };
 }
 
@@ -78,7 +80,28 @@ const statusColor: Record<string, string> = {
 };
 
 const emptyForm = { name: "", status: "draft", start_date: "", end_date: "", notes: "" };
-const emptyItem = { product_id: "", quantity: "1", unit_price: "0", notes: "" };
+const CADENCE_OPTIONS = ["daily", "weekly", "biweekly", "monthly", "quarterly", "yearly"];
+const DAYS_OF_WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS_OF_YEAR = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const getCadenceDayOptions = (cadence: string) => {
+  if (cadence === "weekly" || cadence === "biweekly")
+    return DAYS_OF_WEEK.map((d, i) => ({ value: String(i), label: d }));
+  if (cadence === "monthly" || cadence === "bimonthly")
+    return Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: `Day ${i + 1}` }));
+  if (cadence === "quarterly" || cadence === "yearly")
+    return MONTHS_OF_YEAR.map((m, i) => ({ value: String(i + 1), label: m }));
+  return [];
+};
+
+const getCadenceDayLabel = (cadence: string) => {
+  if (cadence === "weekly" || cadence === "biweekly") return "Day of Week";
+  if (cadence === "monthly" || cadence === "bimonthly") return "Day of Month";
+  if (cadence === "quarterly" || cadence === "yearly") return "Month";
+  return null;
+};
+
+const emptyItem = { product_id: "", quantity: "1", unit_price: "0", notes: "", cadence: "", cadence_day: "" };
 
 export default function Agreements() {
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -158,7 +181,7 @@ export default function Agreements() {
         .select("id, account_id, account:accounts(id, account_id, name, type)")
         .eq("agreement_id", id),
       supabase.from("agreement_items")
-        .select("id, product_id, quantity, unit_price, notes, product:products(name, product_id)")
+        .select("id, product_id, quantity, unit_price, notes, cadence, cadence_day, product:products(name, product_id)")
         .eq("agreement_id", id),
     ]);
     setLinkedAccounts((accs || []).map((a: any) => ({ ...a, account: a.account })));
@@ -288,6 +311,8 @@ export default function Agreements() {
       quantity: Number(addItem.quantity) || 1,
       unit_price: Number(addItem.unit_price) || 0,
       notes: addItem.notes || null,
+      cadence: addItem.cadence || null,
+      cadence_day: addItem.cadence_day || null,
     });
     if (error) { toast.error("Failed to add item"); return; }
     setAddItem({ ...emptyItem });
@@ -550,6 +575,31 @@ export default function Agreements() {
                       <Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" step="0.01" />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">Cadence</Label>
+                      <Select value={addItem.cadence} onValueChange={v => setAddItem(i => ({ ...i, cadence: v, cadence_day: "" }))}>
+                        <SelectTrigger><SelectValue placeholder="No cadence" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No cadence</SelectItem>
+                          {CADENCE_OPTIONS.map(c => <SelectItem key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {addItem.cadence && getCadenceDayLabel(addItem.cadence) && (
+                      <div>
+                        <Label className="mb-1.5 block text-xs text-muted-foreground">{getCadenceDayLabel(addItem.cadence)}</Label>
+                        <Select value={addItem.cadence_day} onValueChange={v => setAddItem(i => ({ ...i, cadence_day: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            {getCadenceDayOptions(addItem.cadence).map(o => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <Label className="mb-1.5 block text-xs text-muted-foreground">Notes (optional)</Label>
@@ -576,35 +626,45 @@ export default function Agreements() {
                           <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Qty</th>
                           <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Unit Price</th>
                           <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Total</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cadence</th>
                           <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
                           <th className="w-10" />
                         </tr>
                       </thead>
                       <tbody>
-                        {linkedItems.map((item, i) => (
-                          <tr key={item.id} className={i < linkedItems.length - 1 ? "border-b border-border" : ""}>
-                            <td className="px-4 py-2.5">
-                              <span className="font-mono text-xs text-muted-foreground mr-2">{item.product?.product_id}</span>
-                              <span className="font-medium">{item.product?.name}</span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono">{item.quantity}</td>
-                            <td className="px-4 py-2.5 text-right font-mono">${Number(item.unit_price).toFixed(2)}</td>
-                            <td className="px-4 py-2.5 text-right font-mono font-medium">${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{item.notes || "—"}</td>
-                            <td className="px-2 py-2">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
+                        {linkedItems.map((item, i) => {
+                          const dayOpts = item.cadence ? getCadenceDayOptions(item.cadence) : [];
+                          const dayLabel = item.cadence_day ? (dayOpts.find(o => o.value === item.cadence_day)?.label ?? item.cadence_day) : null;
+                          return (
+                            <tr key={item.id} className={i < linkedItems.length - 1 ? "border-b border-border" : ""}>
+                              <td className="px-4 py-2.5">
+                                <span className="font-mono text-xs text-muted-foreground mr-2">{item.product?.product_id}</span>
+                                <span className="font-medium">{item.product?.name}</span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-mono">{item.quantity}</td>
+                              <td className="px-4 py-2.5 text-right font-mono">${Number(item.unit_price).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-right font-mono font-medium">${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-muted-foreground text-xs">
+                                {item.cadence ? (
+                                  <span className="capitalize">{item.cadence}{dayLabel ? ` · ${dayLabel}` : ""}</span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground text-xs">{item.notes || "—"}</td>
+                              <td className="px-2 py-2">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       {linkedItems.length > 0 && (
                         <tfoot className="border-t border-border bg-muted/40">
                           <tr>
                             <td colSpan={3} className="px-4 py-2.5 text-right text-sm font-medium text-muted-foreground">Agreement Total</td>
                             <td className="px-4 py-2.5 text-right font-mono font-semibold">${itemsTotal.toFixed(2)}</td>
-                            <td colSpan={2} />
+                            <td colSpan={3} />
                           </tr>
                         </tfoot>
                       )}
