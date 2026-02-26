@@ -441,7 +441,7 @@ export default function Agreements() {
 
             {/* ── Details ── */}
             <TabsContent value="details">
-              <div className="p-1 space-y-4 mt-2">
+              <div className="px-1 py-4 space-y-4">
                 {!isEditMode && (
                   <p className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
                     Create the agreement first — you'll be taken straight to the Accounts tab to link accounts and items.
@@ -485,7 +485,7 @@ export default function Agreements() {
 
             {/* ── Accounts ── */}
             <TabsContent value="accounts">
-              <div className="p-1 space-y-4 mt-2 max-h-[60vh] overflow-y-auto">
+              <div className="px-1 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Label className="mb-1.5 block text-xs text-muted-foreground">Search and select an account</Label>
@@ -540,7 +540,7 @@ export default function Agreements() {
 
             {/* ── Items ── */}
             <TabsContent value="items">
-              <div className="p-1 space-y-4 mt-2 max-h-[60vh] overflow-y-auto">
+              <div className="px-1 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 {/* Add item row */}
                 <div className="space-y-2">
                   <div className="grid grid-cols-[1fr_90px_120px] gap-2">
