@@ -428,8 +428,9 @@ export default function Agreements() {
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={dialogTab} onValueChange={setDialogTab}>
-            <TabsList>
+          <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex flex-col flex-1 min-h-0">
+            <div className="px-6 pt-2 shrink-0">
+              <TabsList>
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="accounts" disabled={!isEditMode}>
                 Accounts{isEditMode ? ` (${linkedAccounts.length})` : ""}
@@ -438,10 +439,11 @@ export default function Agreements() {
                 Items{isEditMode ? ` (${linkedItems.length})` : ""}
               </TabsTrigger>
             </TabsList>
+            </div>
 
             {/* ── Details ── */}
-            <TabsContent value="details">
-              <div className="px-1 py-4 space-y-4">
+            <TabsContent value="details" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
                 {!isEditMode && (
                   <p className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
                     Create the agreement first — you'll be taken straight to the Accounts tab to link accounts and items.
@@ -484,8 +486,8 @@ export default function Agreements() {
             </TabsContent>
 
             {/* ── Accounts ── */}
-            <TabsContent value="accounts">
-              <div className="px-1 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            <TabsContent value="accounts" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Label className="mb-1.5 block text-xs text-muted-foreground">Search and select an account</Label>
@@ -539,8 +541,8 @@ export default function Agreements() {
             </TabsContent>
 
             {/* ── Items ── */}
-            <TabsContent value="items">
-              <div className="px-1 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            <TabsContent value="items" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
                 {/* Add item row */}
                 <div className="space-y-2">
                   <div className="grid grid-cols-[1fr_90px_120px] gap-2">
