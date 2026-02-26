@@ -124,6 +124,137 @@ export type Database = {
           },
         ]
       }
+      agreement_accounts: {
+        Row: {
+          account_id: string
+          agreement_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          account_id: string
+          agreement_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          account_id?: string
+          agreement_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_accounts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_accounts_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agreement_items: {
+        Row: {
+          agreement_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          agreement_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          agreement_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_items_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agreements: {
+        Row: {
+          agreement_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreement_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreement_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       areas: {
         Row: {
           area_id: string
@@ -5303,6 +5434,7 @@ export type Database = {
       generate_route_id: { Args: { p_company_id: string }; Returns: string }
       get_auth_email: { Args: { _user_id: string }; Returns: string }
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_agreement_id: { Args: { p_company_id: string }; Returns: string }
       get_next_bom_id: { Args: { p_company_id: string }; Returns: string }
       get_next_count_number: { Args: { p_company_id: string }; Returns: string }
       get_next_credit_memo_number: {

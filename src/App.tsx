@@ -61,6 +61,7 @@ import CalendarPage from "./pages/Calendar";
 import Me from "./pages/Me";
 import NotFound from "./pages/NotFound";
 import Developers from "./pages/Developers";
+import Agreements from "./pages/Agreements";
 
 const queryClient = new QueryClient();
 
@@ -130,6 +131,7 @@ const App = () => (
                   <Route path="/go" element={<ProtectedRoute><Go /></ProtectedRoute>} />
                   <Route path="/hr" element={<ProtectedRoute><HR /></ProtectedRoute>} />
                   <Route path="/developers" element={<ProtectedRoute><Developers /></ProtectedRoute>} />
+                  <Route path="/agreements" element={<ProtectedRoute><Agreements /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
