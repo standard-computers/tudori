@@ -7,7 +7,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
-import { Plus, Handshake, Trash2, Search, X, Pencil } from "lucide-react";
+import { Plus, Handshake, Trash2, Search, X } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Agreement {
@@ -77,6 +78,7 @@ const statusColor: Record<string, string> = {
 };
 
 const emptyForm = { name: "", status: "draft", start_date: "", end_date: "", notes: "" };
+const emptyItem = { product_id: "", quantity: "1", unit_price: "0", notes: "" };
 
 export default function Agreements() {
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -96,7 +98,6 @@ export default function Agreements() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Support data
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
@@ -108,20 +109,19 @@ export default function Agreements() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
 
-  // Accounts & items linked to open agreement
   const [linkedAccounts, setLinkedAccounts] = useState<AgreementAccount[]>([]);
   const [linkedItems, setLinkedItems] = useState<AgreementItem[]>([]);
 
-  // Add rows
+  // Add rows state
   const [addAccountId, setAddAccountId] = useState("");
-  const [addItem, setAddItem] = useState({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
+  const [addItem, setAddItem] = useState({ ...emptyItem });
 
-  // Delete agreement
+  // Delete
   const [deleteTarget, setDeleteTarget] = useState<Agreement | null>(null);
 
   const { sortConfig, handleSort, sortedAndFilteredData } = useTableSort<Agreement>(agreements, "created_at", "desc");
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchAgreements = useCallback(async () => {
     if (!companyId) return;
@@ -154,8 +154,12 @@ export default function Agreements() {
 
   const fetchLinked = useCallback(async (id: string) => {
     const [{ data: accs }, { data: items }] = await Promise.all([
-      supabase.from("agreement_accounts").select("id, account_id, account:accounts(id, account_id, name, type)").eq("agreement_id", id),
-      supabase.from("agreement_items").select("id, product_id, quantity, unit_price, notes, product:products(name, product_id)").eq("agreement_id", id),
+      supabase.from("agreement_accounts")
+        .select("id, account_id, account:accounts(id, account_id, name, type)")
+        .eq("agreement_id", id),
+      supabase.from("agreement_items")
+        .select("id, product_id, quantity, unit_price, notes, product:products(name, product_id)")
+        .eq("agreement_id", id),
     ]);
     setLinkedAccounts((accs || []).map((a: any) => ({ ...a, account: a.account })));
     setLinkedItems((items || []).map((i: any) => ({ ...i, product: i.product })));
@@ -163,7 +167,7 @@ export default function Agreements() {
 
   useEffect(() => { fetchAgreements(); fetchSupportData(); }, [fetchAgreements, fetchSupportData]);
 
-  // ── Open dialog ───────────────────────────────────────────────────────────
+  // ── Dialog open helpers ────────────────────────────────────────────────────
 
   const openCreate = () => {
     setSelectedAgreement(null);
@@ -171,7 +175,7 @@ export default function Agreements() {
     setLinkedAccounts([]);
     setLinkedItems([]);
     setAddAccountId("");
-    setAddItem({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
+    setAddItem({ ...emptyItem });
     setDialogMode("create");
     setDialogTab("details");
     setDialogOpen(true);
@@ -187,14 +191,14 @@ export default function Agreements() {
       notes: agreement.notes || "",
     });
     setAddAccountId("");
-    setAddItem({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
+    setAddItem({ ...emptyItem });
     setDialogMode("edit");
     setDialogTab("details");
     setDialogOpen(true);
     fetchLinked(agreement.id);
   };
 
-  // ── Save details ──────────────────────────────────────────────────────────
+  // ── Save details ───────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
@@ -202,22 +206,26 @@ export default function Agreements() {
     if (dialogMode === "create") {
       if (!companyId) { setSaving(false); return; }
       const { data: idData } = await supabase.rpc("get_next_agreement_id", { p_company_id: companyId });
-      const { data: newRow, error } = await supabase.from("agreements").insert({
-        company_id: companyId,
-        agreement_id: idData,
-        name: form.name.trim(),
-        status: form.status,
-        start_date: form.start_date || null,
-        end_date: form.end_date || null,
-        notes: form.notes || null,
-        created_by: (await supabase.auth.getUser()).data.user?.id,
-      }).select().single();
+      const { data: newRow, error } = await supabase
+        .from("agreements")
+        .insert({
+          company_id: companyId,
+          agreement_id: idData,
+          name: form.name.trim(),
+          status: form.status,
+          start_date: form.start_date || null,
+          end_date: form.end_date || null,
+          notes: form.notes || null,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        })
+        .select()
+        .single();
       setSaving(false);
       if (error) { toast.error("Failed to create agreement"); return; }
-      toast.success("Agreement created");
-      // Switch to edit mode so user can add accounts/items immediately
+      toast.success("Agreement created — add accounts and items below");
       setSelectedAgreement({ ...(newRow as any), account_count: 0, item_count: 0 });
       setDialogMode("edit");
+      setDialogTab("accounts");
       fetchAgreements();
     } else {
       if (!selectedAgreement) { setSaving(false); return; }
@@ -231,15 +239,16 @@ export default function Agreements() {
       setSaving(false);
       if (error) { toast.error("Failed to save agreement"); return; }
       toast.success("Agreement saved");
-      setSelectedAgreement(a => a ? { ...a, ...form, start_date: form.start_date || null, end_date: form.end_date || null } : a);
+      setSelectedAgreement(a => a ? { ...a, name: form.name.trim(), status: form.status, start_date: form.start_date || null, end_date: form.end_date || null, notes: form.notes || null } : a);
       fetchAgreements();
     }
   };
 
-  // ── Delete agreement ──────────────────────────────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────────────────
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    // CASCADE delete handles agreement_accounts and agreement_items automatically
     const { error } = await supabase.from("agreements").delete().eq("id", deleteTarget.id);
     if (error) { toast.error("Failed to delete agreement"); return; }
     toast.success("Agreement deleted");
@@ -248,13 +257,15 @@ export default function Agreements() {
     fetchAgreements();
   };
 
-  // ── Accounts ──────────────────────────────────────────────────────────────
+  // ── Accounts ───────────────────────────────────────────────────────────────
 
   const handleAddAccount = async () => {
     if (!selectedAgreement || !addAccountId) return;
-    const { error } = await supabase.from("agreement_accounts").insert({ agreement_id: selectedAgreement.id, account_id: addAccountId });
+    const { error } = await supabase.from("agreement_accounts").insert({
+      agreement_id: selectedAgreement.id,
+      account_id: addAccountId,
+    });
     if (error) { toast.error(error.code === "23505" ? "Account already linked" : "Failed to add account"); return; }
-    toast.success("Account linked");
     setAddAccountId("");
     fetchLinked(selectedAgreement.id);
     fetchAgreements();
@@ -267,7 +278,7 @@ export default function Agreements() {
     fetchAgreements();
   };
 
-  // ── Items ─────────────────────────────────────────────────────────────────
+  // ── Items ──────────────────────────────────────────────────────────────────
 
   const handleAddItem = async () => {
     if (!selectedAgreement || !addItem.product_id) return;
@@ -279,8 +290,7 @@ export default function Agreements() {
       notes: addItem.notes || null,
     });
     if (error) { toast.error("Failed to add item"); return; }
-    toast.success("Item added");
-    setAddItem({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
+    setAddItem({ ...emptyItem });
     fetchLinked(selectedAgreement.id);
     fetchAgreements();
   };
@@ -292,7 +302,7 @@ export default function Agreements() {
     fetchAgreements();
   };
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => sortedAndFilteredData.filter(a => {
     const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.agreement_id.toLowerCase().includes(search.toLowerCase());
@@ -300,11 +310,35 @@ export default function Agreements() {
     return matchSearch && matchStatus;
   }), [sortedAndFilteredData, search, statusFilter]);
 
-  const availableAccounts = allAccounts.filter(a => !linkedAccounts.some(la => la.account_id === a.id));
-
   const isEditMode = dialogMode === "edit";
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // SearchableSelect options
+  const accountOptions = useMemo(() =>
+    allAccounts
+      .filter(a => !linkedAccounts.some(la => la.account_id === a.id))
+      .map(a => ({
+        value: a.id,
+        label: a.name,
+        sublabel: `${a.account_id} · ${a.type}`,
+      })),
+    [allAccounts, linkedAccounts]
+  );
+
+  const productOptions = useMemo(() =>
+    allProducts.map(p => ({
+      value: p.id,
+      label: p.name,
+      sublabel: `${p.product_id}${p.price != null ? ` · $${Number(p.price).toFixed(2)}` : ""}`,
+    })),
+    [allProducts]
+  );
+
+  const itemsTotal = useMemo(() =>
+    linkedItems.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
+    [linkedItems]
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4">
@@ -377,11 +411,11 @@ export default function Agreements() {
         </TableBody>
       </Table>
 
-      {/* Unified Create / Edit Dialog */}
+      {/* Unified Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               {isEditMode ? (
                 <>
                   <span className="font-mono text-sm text-muted-foreground font-normal">{selectedAgreement?.agreement_id}</span>
@@ -394,180 +428,214 @@ export default function Agreements() {
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={dialogTab} onValueChange={setDialogTab}>
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="accounts" disabled={!isEditMode}>
-                Accounts {isEditMode && `(${linkedAccounts.length})`}
-              </TabsTrigger>
-              <TabsTrigger value="items" disabled={!isEditMode}>
-                Items {isEditMode && `(${linkedItems.length})`}
-              </TabsTrigger>
-            </TabsList>
+          <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex flex-col flex-1 min-h-0">
+            <div className="px-6 pt-4 shrink-0">
+              <TabsList>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="accounts" disabled={!isEditMode}>
+                  Accounts{isEditMode ? ` (${linkedAccounts.length})` : ""}
+                </TabsTrigger>
+                <TabsTrigger value="items" disabled={!isEditMode}>
+                  Items{isEditMode ? ` (${linkedItems.length})` : ""}
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            {/* ── Details Tab ── */}
-            <TabsContent value="details" className="mt-4 space-y-4">
-              {!isEditMode && (
-                <p className="text-sm text-muted-foreground">Save the agreement first, then you can add accounts and items.</p>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label>Name *</Label>
-                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Agreement name" />
+            {/* ── Details ── */}
+            <TabsContent value="details" className="flex-1 overflow-y-auto px-6 pb-6 mt-0">
+              <div className="pt-4 space-y-4">
+                {!isEditMode && (
+                  <p className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+                    Create the agreement first — you'll be taken straight to the Accounts tab to link accounts and items.
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label className="mb-1.5 block">Name <span className="text-destructive">*</span></Label>
+                    <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Agreement name" />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block">Status</Label>
+                    <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div />
+                  <div>
+                    <Label className="mb-1.5 block">Start Date</Label>
+                    <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block">End Date</Label>
+                    <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="mb-1.5 block">Notes</Label>
+                    <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={4} placeholder="Optional notes about this agreement..." />
+                  </div>
                 </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="flex justify-end pt-2">
+                  <Button onClick={handleSave} disabled={saving || !form.name.trim()}>
+                    {saving ? "Saving..." : isEditMode ? "Save Changes" : "Create Agreement"}
+                  </Button>
                 </div>
-                <div />
-                <div>
-                  <Label>Start Date</Label>
-                  <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
-                </div>
-                <div>
-                  <Label>End Date</Label>
-                  <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
-                </div>
-                <div className="col-span-2">
-                  <Label>Notes</Label>
-                  <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving || !form.name.trim()}>
-                  {saving ? "Saving..." : isEditMode ? "Save Changes" : "Create Agreement"}
-                </Button>
               </div>
             </TabsContent>
 
-            {/* ── Accounts Tab ── */}
-            <TabsContent value="accounts" className="mt-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Select value={addAccountId} onValueChange={setAddAccountId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select an account to link..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableAccounts.length === 0 ? (
-                      <SelectItem value="__none__" disabled>All accounts already linked</SelectItem>
-                    ) : availableAccounts.map(a => (
-                      <SelectItem key={a.id} value={a.id}>
-                        <span className="font-mono text-xs mr-2 text-muted-foreground">{a.account_id}</span>
-                        {a.name}
-                        <span className="ml-2 text-xs text-muted-foreground capitalize">({a.type})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" onClick={handleAddAccount} disabled={!addAccountId || addAccountId === "__none__"}>
-                  <Plus className="h-4 w-4 mr-1" />Link
-                </Button>
-              </div>
+            {/* ── Accounts ── */}
+            <TabsContent value="accounts" className="flex-1 overflow-y-auto px-6 pb-6 mt-0">
+              <div className="pt-4 space-y-4">
+                {/* Add account row */}
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Label className="mb-1.5 block text-xs text-muted-foreground">Search and select an account</Label>
+                    <SearchableSelect
+                      options={accountOptions}
+                      value={addAccountId}
+                      onValueChange={setAddAccountId}
+                      placeholder="Search accounts..."
+                      emptyMessage="No accounts found"
+                    />
+                  </div>
+                  <Button onClick={handleAddAccount} disabled={!addAccountId} className="shrink-0">
+                    <Plus className="h-4 w-4 mr-1" /> Link Account
+                  </Button>
+                </div>
 
-              {linkedAccounts.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8 text-sm">No accounts linked yet</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Account ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {linkedAccounts.map(la => (
-                      <TableRow key={la.id}>
-                        <TableCell className="font-mono text-xs">{la.account?.account_id}</TableCell>
-                        <TableCell className="font-medium">{la.account?.name}</TableCell>
-                        <TableCell className="capitalize text-sm text-muted-foreground">{la.account?.type}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemoveAccount(la.id)}>
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                {/* Accounts list */}
+                {linkedAccounts.length === 0 ? (
+                  <div className="border border-dashed rounded-lg py-12 flex flex-col items-center gap-2 text-muted-foreground">
+                    <p className="text-sm">No accounts linked to this agreement yet</p>
+                    <p className="text-xs">Use the search above to add accounts</p>
+                  </div>
+                ) : (
+                  <div className="border border-border rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/60 border-b border-border">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Account ID</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Name</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Type</th>
+                          <th className="w-10" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {linkedAccounts.map((la, i) => (
+                          <tr key={la.id} className={i < linkedAccounts.length - 1 ? "border-b border-border" : ""}>
+                            <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{la.account?.account_id}</td>
+                            <td className="px-4 py-2.5 font-medium">{la.account?.name}</td>
+                            <td className="px-4 py-2.5 capitalize text-muted-foreground">{la.account?.type}</td>
+                            <td className="px-2 py-2">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveAccount(la.id)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
-            {/* ── Items Tab ── */}
-            <TabsContent value="items" className="mt-4 space-y-4">
-              <div className="grid grid-cols-[1fr_80px_110px_1fr_auto] gap-2 items-end">
-                <div>
-                  <Label className="text-xs mb-1 block">Product</Label>
-                  <Select value={addItem.product_id} onValueChange={v => {
-                    const p = allProducts.find(x => x.id === v);
-                    setAddItem(i => ({ ...i, product_id: v, unit_price: p?.price?.toString() ?? "0" }));
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="Select product..." /></SelectTrigger>
-                    <SelectContent>
-                      {allProducts.map(p => (
-                        <SelectItem key={p.id} value={p.id}>
-                          <span className="font-mono text-xs mr-2 text-muted-foreground">{p.product_id}</span>{p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {/* ── Items ── */}
+            <TabsContent value="items" className="flex-1 overflow-y-auto px-6 pb-6 mt-0">
+              <div className="pt-4 space-y-4">
+                {/* Add item row */}
+                <div className="grid grid-cols-[1fr_90px_110px_auto] gap-2 items-end">
+                  <div className="col-span-4">
+                    <Label className="mb-1.5 block text-xs text-muted-foreground">Search and select a product</Label>
+                  </div>
+                  <div className="col-span-1">
+                    <SearchableSelect
+                      options={productOptions}
+                      value={addItem.product_id}
+                      onValueChange={v => {
+                        const p = allProducts.find(x => x.id === v);
+                        setAddItem(i => ({ ...i, product_id: v, unit_price: p?.price?.toString() ?? "0" }));
+                      }}
+                      placeholder="Search products..."
+                      emptyMessage="No products found"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs text-muted-foreground">Qty</Label>
+                    <Input type="number" value={addItem.quantity} onChange={e => setAddItem(i => ({ ...i, quantity: e.target.value }))} min="0" />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs text-muted-foreground">Unit Price ($)</Label>
+                    <Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" step="0.01" />
+                  </div>
+                  <Button onClick={handleAddItem} disabled={!addItem.product_id} className="shrink-0">
+                    <Plus className="h-4 w-4 mr-1" /> Add
+                  </Button>
                 </div>
-                <div>
-                  <Label className="text-xs mb-1 block">Qty</Label>
-                  <Input type="number" value={addItem.quantity} onChange={e => setAddItem(i => ({ ...i, quantity: e.target.value }))} min="0" />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1 block">Unit Price</Label>
-                  <Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1 block">Notes</Label>
-                  <Input value={addItem.notes} onChange={e => setAddItem(i => ({ ...i, notes: e.target.value }))} placeholder="Optional" />
-                </div>
-                <Button size="sm" onClick={handleAddItem} disabled={!addItem.product_id} className="mb-0">
-                  <Plus className="h-4 w-4 mr-1" />Add
-                </Button>
-              </div>
 
-              {linkedItems.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8 text-sm">No items in scope yet</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {linkedItems.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <span className="font-mono text-xs mr-2 text-muted-foreground">{item.product?.product_id}</span>
-                          {item.product?.name}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">{item.quantity}</TableCell>
-                        <TableCell className="text-right font-mono">${Number(item.unit_price).toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-mono">${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{item.notes || "-"}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                {/* Notes field for item */}
+                {addItem.product_id && (
+                  <div>
+                    <Label className="mb-1.5 block text-xs text-muted-foreground">Item notes (optional)</Label>
+                    <Input value={addItem.notes} onChange={e => setAddItem(i => ({ ...i, notes: e.target.value }))} placeholder="e.g. special terms for this product" />
+                  </div>
+                )}
+
+                {/* Items list */}
+                {linkedItems.length === 0 ? (
+                  <div className="border border-dashed rounded-lg py-12 flex flex-col items-center gap-2 text-muted-foreground">
+                    <p className="text-sm">No items in scope yet</p>
+                    <p className="text-xs">Use the search above to add products</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="border border-border rounded-md overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/60 border-b border-border">
+                          <tr>
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Product</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Qty</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Unit Price</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Total</th>
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
+                            <th className="w-10" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {linkedItems.map((item, i) => (
+                            <tr key={item.id} className={i < linkedItems.length - 1 ? "border-b border-border" : ""}>
+                              <td className="px-4 py-2.5">
+                                <span className="font-mono text-xs text-muted-foreground mr-2">{item.product?.product_id}</span>
+                                <span className="font-medium">{item.product?.name}</span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-mono">{item.quantity}</td>
+                              <td className="px-4 py-2.5 text-right font-mono">${Number(item.unit_price).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-right font-mono font-medium">${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-muted-foreground text-xs">{item.notes || "—"}</td>
+                              <td className="px-2 py-2">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {linkedItems.length > 1 && (
+                          <tfoot className="border-t border-border bg-muted/40">
+                            <tr>
+                              <td colSpan={3} className="px-4 py-2.5 text-right text-sm font-medium text-muted-foreground">Agreement Total</td>
+                              <td className="px-4 py-2.5 text-right font-mono font-semibold">${itemsTotal.toFixed(2)}</td>
+                              <td colSpan={2} />
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </DialogContent>
@@ -579,7 +647,7 @@ export default function Agreements() {
         onOpenChange={open => !open && setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Agreement"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? All linked accounts and items will also be removed.`}
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? All linked accounts and items will be removed.`}
       />
     </div>
   );
