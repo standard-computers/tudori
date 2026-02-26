@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
-import { Plus, Handshake, Trash2, Search, X } from "lucide-react";
+import { Plus, Handshake, Trash2, Search, X, Pencil } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Agreement {
@@ -65,6 +65,8 @@ interface AgreementItem {
   product: { name: string; product_id: string };
 }
 
+type DialogMode = "create" | "edit";
+
 const STATUS_OPTIONS = ["draft", "active", "expired", "terminated"];
 
 const statusColor: Record<string, string> = {
@@ -73,6 +75,8 @@ const statusColor: Record<string, string> = {
   expired: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   terminated: "bg-destructive/10 text-destructive",
 };
+
+const emptyForm = { name: "", status: "draft", start_date: "", end_date: "", notes: "" };
 
 export default function Agreements() {
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -92,29 +96,32 @@ export default function Agreements() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Detail dialog
-  const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailTab, setDetailTab] = useState("accounts");
-  const [agreementAccounts, setAgreementAccounts] = useState<AgreementAccount[]>([]);
-  const [agreementItems, setAgreementItems] = useState<AgreementItem[]>([]);
+  // Support data
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
-  // Create dialog
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", status: "draft", start_date: "", end_date: "", notes: "" });
+  // Unified dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<DialogMode>("create");
+  const [dialogTab, setDialogTab] = useState("details");
+  const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
+  const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
 
-  // Add account to agreement
+  // Accounts & items linked to open agreement
+  const [linkedAccounts, setLinkedAccounts] = useState<AgreementAccount[]>([]);
+  const [linkedItems, setLinkedItems] = useState<AgreementItem[]>([]);
+
+  // Add rows
   const [addAccountId, setAddAccountId] = useState("");
-  // Add item to agreement
   const [addItem, setAddItem] = useState({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
 
-  // Delete
+  // Delete agreement
   const [deleteTarget, setDeleteTarget] = useState<Agreement | null>(null);
 
   const { sortConfig, handleSort, sortedAndFilteredData } = useTableSort<Agreement>(agreements, "created_at", "desc");
+
+  // ── Fetch ─────────────────────────────────────────────────────────────────
 
   const fetchAgreements = useCallback(async () => {
     if (!companyId) return;
@@ -145,45 +152,91 @@ export default function Agreements() {
     setAllProducts(prods || []);
   }, [companyId]);
 
-  useEffect(() => { fetchAgreements(); fetchSupportData(); }, [fetchAgreements, fetchSupportData]);
-
-  const fetchAgreementDetail = useCallback(async (id: string) => {
+  const fetchLinked = useCallback(async (id: string) => {
     const [{ data: accs }, { data: items }] = await Promise.all([
       supabase.from("agreement_accounts").select("id, account_id, account:accounts(id, account_id, name, type)").eq("agreement_id", id),
       supabase.from("agreement_items").select("id, product_id, quantity, unit_price, notes, product:products(name, product_id)").eq("agreement_id", id),
     ]);
-    setAgreementAccounts((accs || []).map((a: any) => ({ ...a, account: a.account })));
-    setAgreementItems((items || []).map((i: any) => ({ ...i, product: i.product })));
+    setLinkedAccounts((accs || []).map((a: any) => ({ ...a, account: a.account })));
+    setLinkedItems((items || []).map((i: any) => ({ ...i, product: i.product })));
   }, []);
 
-  const openDetail = (agreement: Agreement) => {
-    setSelectedAgreement(agreement);
-    setDetailTab("accounts");
-    setDetailOpen(true);
-    fetchAgreementDetail(agreement.id);
+  useEffect(() => { fetchAgreements(); fetchSupportData(); }, [fetchAgreements, fetchSupportData]);
+
+  // ── Open dialog ───────────────────────────────────────────────────────────
+
+  const openCreate = () => {
+    setSelectedAgreement(null);
+    setForm({ ...emptyForm });
+    setLinkedAccounts([]);
+    setLinkedItems([]);
+    setAddAccountId("");
+    setAddItem({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
+    setDialogMode("create");
+    setDialogTab("details");
+    setDialogOpen(true);
   };
 
-  const handleCreate = async () => {
-    if (!companyId || !form.name.trim()) return;
-    setSaving(true);
-    const { data: idData } = await supabase.rpc("get_next_agreement_id", { p_company_id: companyId });
-    const { error } = await supabase.from("agreements").insert({
-      company_id: companyId,
-      agreement_id: idData,
-      name: form.name.trim(),
-      status: form.status,
-      start_date: form.start_date || null,
-      end_date: form.end_date || null,
-      notes: form.notes || null,
-      created_by: (await supabase.auth.getUser()).data.user?.id,
+  const openEdit = (agreement: Agreement) => {
+    setSelectedAgreement(agreement);
+    setForm({
+      name: agreement.name,
+      status: agreement.status,
+      start_date: agreement.start_date || "",
+      end_date: agreement.end_date || "",
+      notes: agreement.notes || "",
     });
-    setSaving(false);
-    if (error) { toast.error("Failed to create agreement"); return; }
-    toast.success("Agreement created");
-    setCreateOpen(false);
-    setForm({ name: "", status: "draft", start_date: "", end_date: "", notes: "" });
-    fetchAgreements();
+    setAddAccountId("");
+    setAddItem({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
+    setDialogMode("edit");
+    setDialogTab("details");
+    setDialogOpen(true);
+    fetchLinked(agreement.id);
   };
+
+  // ── Save details ──────────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    if (dialogMode === "create") {
+      if (!companyId) { setSaving(false); return; }
+      const { data: idData } = await supabase.rpc("get_next_agreement_id", { p_company_id: companyId });
+      const { data: newRow, error } = await supabase.from("agreements").insert({
+        company_id: companyId,
+        agreement_id: idData,
+        name: form.name.trim(),
+        status: form.status,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        notes: form.notes || null,
+        created_by: (await supabase.auth.getUser()).data.user?.id,
+      }).select().single();
+      setSaving(false);
+      if (error) { toast.error("Failed to create agreement"); return; }
+      toast.success("Agreement created");
+      // Switch to edit mode so user can add accounts/items immediately
+      setSelectedAgreement({ ...(newRow as any), account_count: 0, item_count: 0 });
+      setDialogMode("edit");
+      fetchAgreements();
+    } else {
+      if (!selectedAgreement) { setSaving(false); return; }
+      const { error } = await supabase.from("agreements").update({
+        name: form.name.trim(),
+        status: form.status,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        notes: form.notes || null,
+      }).eq("id", selectedAgreement.id);
+      setSaving(false);
+      if (error) { toast.error("Failed to save agreement"); return; }
+      toast.success("Agreement saved");
+      setSelectedAgreement(a => a ? { ...a, ...form, start_date: form.start_date || null, end_date: form.end_date || null } : a);
+      fetchAgreements();
+    }
+  };
+
+  // ── Delete agreement ──────────────────────────────────────────────────────
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -191,8 +244,11 @@ export default function Agreements() {
     if (error) { toast.error("Failed to delete agreement"); return; }
     toast.success("Agreement deleted");
     setDeleteTarget(null);
+    if (dialogOpen && selectedAgreement?.id === deleteTarget.id) setDialogOpen(false);
     fetchAgreements();
   };
+
+  // ── Accounts ──────────────────────────────────────────────────────────────
 
   const handleAddAccount = async () => {
     if (!selectedAgreement || !addAccountId) return;
@@ -200,17 +256,18 @@ export default function Agreements() {
     if (error) { toast.error(error.code === "23505" ? "Account already linked" : "Failed to add account"); return; }
     toast.success("Account linked");
     setAddAccountId("");
-    fetchAgreementDetail(selectedAgreement.id);
+    fetchLinked(selectedAgreement.id);
     fetchAgreements();
   };
 
   const handleRemoveAccount = async (id: string) => {
     const { error } = await supabase.from("agreement_accounts").delete().eq("id", id);
     if (error) { toast.error("Failed to remove account"); return; }
-    toast.success("Account removed");
-    if (selectedAgreement) fetchAgreementDetail(selectedAgreement.id);
+    if (selectedAgreement) fetchLinked(selectedAgreement.id);
     fetchAgreements();
   };
+
+  // ── Items ─────────────────────────────────────────────────────────────────
 
   const handleAddItem = async () => {
     if (!selectedAgreement || !addItem.product_id) return;
@@ -224,17 +281,18 @@ export default function Agreements() {
     if (error) { toast.error("Failed to add item"); return; }
     toast.success("Item added");
     setAddItem({ product_id: "", quantity: "1", unit_price: "0", notes: "" });
-    fetchAgreementDetail(selectedAgreement.id);
+    fetchLinked(selectedAgreement.id);
     fetchAgreements();
   };
 
   const handleRemoveItem = async (id: string) => {
     const { error } = await supabase.from("agreement_items").delete().eq("id", id);
     if (error) { toast.error("Failed to remove item"); return; }
-    toast.success("Item removed");
-    if (selectedAgreement) fetchAgreementDetail(selectedAgreement.id);
+    if (selectedAgreement) fetchLinked(selectedAgreement.id);
     fetchAgreements();
   };
+
+  // ── Derived ───────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => sortedAndFilteredData.filter(a => {
     const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.agreement_id.toLowerCase().includes(search.toLowerCase());
@@ -242,7 +300,11 @@ export default function Agreements() {
     return matchSearch && matchStatus;
   }), [sortedAndFilteredData, search, statusFilter]);
 
-  const availableAccounts = allAccounts.filter(a => !agreementAccounts.some(aa => aa.account_id === a.id));
+  const availableAccounts = allAccounts.filter(a => !linkedAccounts.some(la => la.account_id === a.id));
+
+  const isEditMode = dialogMode === "edit";
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4">
@@ -253,7 +315,7 @@ export default function Agreements() {
           <h1 className="text-xl font-semibold">Agreements</h1>
           <Badge variant="secondary">{agreements.length}</Badge>
         </div>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
+        <Button onClick={openCreate} size="sm">
           <Plus className="h-4 w-4 mr-1" /> New Agreement
         </Button>
       </div>
@@ -293,7 +355,7 @@ export default function Agreements() {
           ) : filtered.length === 0 ? (
             <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
-            <TableRow key={a.id} className="cursor-pointer" onClick={() => openDetail(a)}>
+            <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
               <TableCell className="font-mono text-xs">{a.agreement_id}</TableCell>
               <TableCell className="font-medium">{a.name}</TableCell>
               <TableCell>
@@ -315,74 +377,98 @@ export default function Agreements() {
         </TableBody>
       </Table>
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>New Agreement</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Agreement name" /></div>
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Start Date</Label><Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
-              <div><Label>End Date</Label><Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
-            </div>
-            <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={saving || !form.name.trim()}>{saving ? "Creating..." : "Create"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Detail Dialog */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-3xl">
+      {/* Unified Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-sm text-muted-foreground">{selectedAgreement?.agreement_id}</span>
-              <DialogTitle>{selectedAgreement?.name}</DialogTitle>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${statusColor[selectedAgreement?.status || ""] || ""}`}>
-                {selectedAgreement?.status}
-              </span>
-            </div>
-            {(selectedAgreement?.start_date || selectedAgreement?.end_date) && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {selectedAgreement?.start_date || "—"} → {selectedAgreement?.end_date || "—"}
-              </p>
-            )}
+            <DialogTitle className="flex items-center gap-2">
+              {isEditMode ? (
+                <>
+                  <span className="font-mono text-sm text-muted-foreground font-normal">{selectedAgreement?.agreement_id}</span>
+                  <span>{form.name || selectedAgreement?.name}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${statusColor[form.status] || ""}`}>
+                    {form.status}
+                  </span>
+                </>
+              ) : "New Agreement"}
+            </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={detailTab} onValueChange={setDetailTab}>
+          <Tabs value={dialogTab} onValueChange={setDialogTab}>
             <TabsList>
-              <TabsTrigger value="accounts">Accounts ({agreementAccounts.length})</TabsTrigger>
-              <TabsTrigger value="items">Items ({agreementItems.length})</TabsTrigger>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="accounts" disabled={!isEditMode}>
+                Accounts {isEditMode && `(${linkedAccounts.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="items" disabled={!isEditMode}>
+                Items {isEditMode && `(${linkedItems.length})`}
+              </TabsTrigger>
             </TabsList>
 
-            {/* Accounts Tab */}
-            <TabsContent value="accounts" className="mt-3 space-y-3">
+            {/* ── Details Tab ── */}
+            <TabsContent value="details" className="mt-4 space-y-4">
+              {!isEditMode && (
+                <p className="text-sm text-muted-foreground">Save the agreement first, then you can add accounts and items.</p>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Name *</Label>
+                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Agreement name" />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div />
+                <div>
+                  <Label>Start Date</Label>
+                  <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>End Date</Label>
+                  <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <Label>Notes</Label>
+                  <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleSave} disabled={saving || !form.name.trim()}>
+                  {saving ? "Saving..." : isEditMode ? "Save Changes" : "Create Agreement"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* ── Accounts Tab ── */}
+            <TabsContent value="accounts" className="mt-4 space-y-4">
               <div className="flex items-center gap-2">
                 <Select value={addAccountId} onValueChange={setAddAccountId}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select an account to link..." /></SelectTrigger>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select an account to link..." />
+                  </SelectTrigger>
                   <SelectContent>
-                    {availableAccounts.map(a => (
+                    {availableAccounts.length === 0 ? (
+                      <SelectItem value="__none__" disabled>All accounts already linked</SelectItem>
+                    ) : availableAccounts.map(a => (
                       <SelectItem key={a.id} value={a.id}>
-                        <span className="font-mono text-xs mr-2 text-muted-foreground">{a.account_id}</span>{a.name}
+                        <span className="font-mono text-xs mr-2 text-muted-foreground">{a.account_id}</span>
+                        {a.name}
                         <span className="ml-2 text-xs text-muted-foreground capitalize">({a.type})</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Button size="sm" onClick={handleAddAccount} disabled={!addAccountId}><Plus className="h-4 w-4 mr-1" />Link</Button>
+                <Button size="sm" onClick={handleAddAccount} disabled={!addAccountId || addAccountId === "__none__"}>
+                  <Plus className="h-4 w-4 mr-1" />Link
+                </Button>
               </div>
-              {agreementAccounts.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6 text-sm">No accounts linked yet</p>
+
+              {linkedAccounts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No accounts linked yet</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -394,13 +480,13 @@ export default function Agreements() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {agreementAccounts.map(aa => (
-                      <TableRow key={aa.id}>
-                        <TableCell className="font-mono text-xs">{aa.account?.account_id}</TableCell>
-                        <TableCell>{aa.account?.name}</TableCell>
-                        <TableCell className="capitalize text-sm text-muted-foreground">{aa.account?.type}</TableCell>
+                    {linkedAccounts.map(la => (
+                      <TableRow key={la.id}>
+                        <TableCell className="font-mono text-xs">{la.account?.account_id}</TableCell>
+                        <TableCell className="font-medium">{la.account?.name}</TableCell>
+                        <TableCell className="capitalize text-sm text-muted-foreground">{la.account?.type}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemoveAccount(aa.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleRemoveAccount(la.id)}>
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </TableCell>
@@ -411,14 +497,14 @@ export default function Agreements() {
               )}
             </TabsContent>
 
-            {/* Items Tab */}
-            <TabsContent value="items" className="mt-3 space-y-3">
-              <div className="grid grid-cols-[1fr_80px_100px_1fr_auto] gap-2 items-end">
+            {/* ── Items Tab ── */}
+            <TabsContent value="items" className="mt-4 space-y-4">
+              <div className="grid grid-cols-[1fr_80px_110px_1fr_auto] gap-2 items-end">
                 <div>
-                  <Label className="text-xs">Product</Label>
+                  <Label className="text-xs mb-1 block">Product</Label>
                   <Select value={addItem.product_id} onValueChange={v => {
                     const p = allProducts.find(x => x.id === v);
-                    setAddItem(i => ({ ...i, product_id: v, unit_price: p?.price?.toString() || "0" }));
+                    setAddItem(i => ({ ...i, product_id: v, unit_price: p?.price?.toString() ?? "0" }));
                   }}>
                     <SelectTrigger><SelectValue placeholder="Select product..." /></SelectTrigger>
                     <SelectContent>
@@ -430,13 +516,25 @@ export default function Agreements() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label className="text-xs">Qty</Label><Input type="number" value={addItem.quantity} onChange={e => setAddItem(i => ({ ...i, quantity: e.target.value }))} min="0" /></div>
-                <div><Label className="text-xs">Unit Price</Label><Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" /></div>
-                <div><Label className="text-xs">Notes</Label><Input value={addItem.notes} onChange={e => setAddItem(i => ({ ...i, notes: e.target.value }))} placeholder="Optional" /></div>
-                <Button size="sm" onClick={handleAddItem} disabled={!addItem.product_id} className="mt-5"><Plus className="h-4 w-4 mr-1" />Add</Button>
+                <div>
+                  <Label className="text-xs mb-1 block">Qty</Label>
+                  <Input type="number" value={addItem.quantity} onChange={e => setAddItem(i => ({ ...i, quantity: e.target.value }))} min="0" />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Unit Price</Label>
+                  <Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Notes</Label>
+                  <Input value={addItem.notes} onChange={e => setAddItem(i => ({ ...i, notes: e.target.value }))} placeholder="Optional" />
+                </div>
+                <Button size="sm" onClick={handleAddItem} disabled={!addItem.product_id} className="mb-0">
+                  <Plus className="h-4 w-4 mr-1" />Add
+                </Button>
               </div>
-              {agreementItems.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6 text-sm">No items in scope yet</p>
+
+              {linkedItems.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No items in scope yet</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -450,7 +548,7 @@ export default function Agreements() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {agreementItems.map(item => (
+                    {linkedItems.map(item => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <span className="font-mono text-xs mr-2 text-muted-foreground">{item.product?.product_id}</span>
@@ -481,7 +579,7 @@ export default function Agreements() {
         onOpenChange={open => !open && setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Agreement"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? This will also remove all linked accounts and items.`}
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? All linked accounts and items will also be removed.`}
       />
     </div>
   );
