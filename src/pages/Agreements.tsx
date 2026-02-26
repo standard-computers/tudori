@@ -413,8 +413,8 @@ export default function Agreements() {
 
       {/* Unified Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
+        <DialogContent className="max-w-3xl" aria-describedby={undefined}>
+          <DialogHeader>
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               {isEditMode ? (
                 <>
@@ -428,22 +428,20 @@ export default function Agreements() {
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs value={dialogTab} onValueChange={setDialogTab} className="flex flex-col flex-1 min-h-0">
-            <div className="px-6 pt-4 shrink-0">
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="accounts" disabled={!isEditMode}>
-                  Accounts{isEditMode ? ` (${linkedAccounts.length})` : ""}
-                </TabsTrigger>
-                <TabsTrigger value="items" disabled={!isEditMode}>
-                  Items{isEditMode ? ` (${linkedItems.length})` : ""}
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <Tabs value={dialogTab} onValueChange={setDialogTab}>
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="accounts" disabled={!isEditMode}>
+                Accounts{isEditMode ? ` (${linkedAccounts.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="items" disabled={!isEditMode}>
+                Items{isEditMode ? ` (${linkedItems.length})` : ""}
+              </TabsTrigger>
+            </TabsList>
 
             {/* ── Details ── */}
-            <TabsContent value="details" className="flex-1 overflow-y-auto px-6 pb-6 mt-0">
-              <div className="pt-4 space-y-4">
+            <TabsContent value="details">
+              <div className="p-1 space-y-4 mt-2">
                 {!isEditMode && (
                   <p className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
                     Create the agreement first — you'll be taken straight to the Accounts tab to link accounts and items.
@@ -477,7 +475,7 @@ export default function Agreements() {
                     <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={4} placeholder="Optional notes about this agreement..." />
                   </div>
                 </div>
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-end pt-1">
                   <Button onClick={handleSave} disabled={saving || !form.name.trim()}>
                     {saving ? "Saving..." : isEditMode ? "Save Changes" : "Create Agreement"}
                   </Button>
@@ -486,9 +484,8 @@ export default function Agreements() {
             </TabsContent>
 
             {/* ── Accounts ── */}
-            <TabsContent value="accounts" className="flex-1 overflow-y-auto px-6 pb-6 mt-0">
-              <div className="pt-4 space-y-4">
-                {/* Add account row */}
+            <TabsContent value="accounts">
+              <div className="p-1 space-y-4 mt-2 max-h-[60vh] overflow-y-auto">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Label className="mb-1.5 block text-xs text-muted-foreground">Search and select an account</Label>
@@ -505,7 +502,6 @@ export default function Agreements() {
                   </Button>
                 </div>
 
-                {/* Accounts list */}
                 {linkedAccounts.length === 0 ? (
                   <div className="border border-dashed rounded-lg py-12 flex flex-col items-center gap-2 text-muted-foreground">
                     <p className="text-sm">No accounts linked to this agreement yet</p>
@@ -543,45 +539,43 @@ export default function Agreements() {
             </TabsContent>
 
             {/* ── Items ── */}
-            <TabsContent value="items" className="flex-1 overflow-y-auto px-6 pb-6 mt-0">
-              <div className="pt-4 space-y-4">
+            <TabsContent value="items">
+              <div className="p-1 space-y-4 mt-2 max-h-[60vh] overflow-y-auto">
                 {/* Add item row */}
-                <div className="grid grid-cols-[1fr_90px_110px_auto] gap-2 items-end">
-                  <div className="col-span-4">
-                    <Label className="mb-1.5 block text-xs text-muted-foreground">Search and select a product</Label>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_90px_120px] gap-2">
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">Product</Label>
+                      <SearchableSelect
+                        options={productOptions}
+                        value={addItem.product_id}
+                        onValueChange={v => {
+                          const p = allProducts.find(x => x.id === v);
+                          setAddItem(i => ({ ...i, product_id: v, unit_price: p?.price?.toString() ?? "0" }));
+                        }}
+                        placeholder="Search products..."
+                        emptyMessage="No products found"
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">Qty</Label>
+                      <Input type="number" value={addItem.quantity} onChange={e => setAddItem(i => ({ ...i, quantity: e.target.value }))} min="0" />
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">Unit Price ($)</Label>
+                      <Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" step="0.01" />
+                    </div>
                   </div>
-                  <div className="col-span-1">
-                    <SearchableSelect
-                      options={productOptions}
-                      value={addItem.product_id}
-                      onValueChange={v => {
-                        const p = allProducts.find(x => x.id === v);
-                        setAddItem(i => ({ ...i, product_id: v, unit_price: p?.price?.toString() ?? "0" }));
-                      }}
-                      placeholder="Search products..."
-                      emptyMessage="No products found"
-                    />
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">Notes (optional)</Label>
+                      <Input value={addItem.notes} onChange={e => setAddItem(i => ({ ...i, notes: e.target.value }))} placeholder="e.g. special terms for this product" />
+                    </div>
+                    <Button onClick={handleAddItem} disabled={!addItem.product_id} className="shrink-0">
+                      <Plus className="h-4 w-4 mr-1" /> Add Item
+                    </Button>
                   </div>
-                  <div>
-                    <Label className="mb-1.5 block text-xs text-muted-foreground">Qty</Label>
-                    <Input type="number" value={addItem.quantity} onChange={e => setAddItem(i => ({ ...i, quantity: e.target.value }))} min="0" />
-                  </div>
-                  <div>
-                    <Label className="mb-1.5 block text-xs text-muted-foreground">Unit Price ($)</Label>
-                    <Input type="number" value={addItem.unit_price} onChange={e => setAddItem(i => ({ ...i, unit_price: e.target.value }))} min="0" step="0.01" />
-                  </div>
-                  <Button onClick={handleAddItem} disabled={!addItem.product_id} className="shrink-0">
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
                 </div>
-
-                {/* Notes field for item */}
-                {addItem.product_id && (
-                  <div>
-                    <Label className="mb-1.5 block text-xs text-muted-foreground">Item notes (optional)</Label>
-                    <Input value={addItem.notes} onChange={e => setAddItem(i => ({ ...i, notes: e.target.value }))} placeholder="e.g. special terms for this product" />
-                  </div>
-                )}
 
                 {/* Items list */}
                 {linkedItems.length === 0 ? (
@@ -590,50 +584,48 @@ export default function Agreements() {
                     <p className="text-xs">Use the search above to add products</p>
                   </div>
                 ) : (
-                  <>
-                    <div className="border border-border rounded-md overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/60 border-b border-border">
-                          <tr>
-                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Product</th>
-                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Qty</th>
-                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Unit Price</th>
-                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Total</th>
-                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
-                            <th className="w-10" />
+                  <div className="border border-border rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/60 border-b border-border">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Product</th>
+                          <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Qty</th>
+                          <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Unit Price</th>
+                          <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Total</th>
+                          <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
+                          <th className="w-10" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {linkedItems.map((item, i) => (
+                          <tr key={item.id} className={i < linkedItems.length - 1 ? "border-b border-border" : ""}>
+                            <td className="px-4 py-2.5">
+                              <span className="font-mono text-xs text-muted-foreground mr-2">{item.product?.product_id}</span>
+                              <span className="font-medium">{item.product?.name}</span>
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono">{item.quantity}</td>
+                            <td className="px-4 py-2.5 text-right font-mono">${Number(item.unit_price).toFixed(2)}</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-medium">${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{item.notes || "—"}</td>
+                            <td className="px-2 py-2">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {linkedItems.map((item, i) => (
-                            <tr key={item.id} className={i < linkedItems.length - 1 ? "border-b border-border" : ""}>
-                              <td className="px-4 py-2.5">
-                                <span className="font-mono text-xs text-muted-foreground mr-2">{item.product?.product_id}</span>
-                                <span className="font-medium">{item.product?.name}</span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-mono">{item.quantity}</td>
-                              <td className="px-4 py-2.5 text-right font-mono">${Number(item.unit_price).toFixed(2)}</td>
-                              <td className="px-4 py-2.5 text-right font-mono font-medium">${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td>
-                              <td className="px-4 py-2.5 text-muted-foreground text-xs">{item.notes || "—"}</td>
-                              <td className="px-2 py-2">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        {linkedItems.length > 1 && (
-                          <tfoot className="border-t border-border bg-muted/40">
-                            <tr>
-                              <td colSpan={3} className="px-4 py-2.5 text-right text-sm font-medium text-muted-foreground">Agreement Total</td>
-                              <td className="px-4 py-2.5 text-right font-mono font-semibold">${itemsTotal.toFixed(2)}</td>
-                              <td colSpan={2} />
-                            </tr>
-                          </tfoot>
-                        )}
-                      </table>
-                    </div>
-                  </>
+                        ))}
+                      </tbody>
+                      {linkedItems.length > 0 && (
+                        <tfoot className="border-t border-border bg-muted/40">
+                          <tr>
+                            <td colSpan={3} className="px-4 py-2.5 text-right text-sm font-medium text-muted-foreground">Agreement Total</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-semibold">${itemsTotal.toFixed(2)}</td>
+                            <td colSpan={2} />
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
                 )}
               </div>
             </TabsContent>
