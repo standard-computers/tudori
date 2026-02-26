@@ -7,7 +7,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody,
 } from "@/components/ui/dialog";
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
@@ -21,7 +21,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
-import { Plus, Handshake, Trash2, Search, X } from "lucide-react";
+import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Agreement {
@@ -69,6 +69,16 @@ interface AgreementItem {
 }
 
 type DialogMode = "create" | "edit";
+
+interface PendingDocument {
+  type: "purchase_order" | "sales_order";
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  items: { productId: string; productName: string; quantity: number; unitPrice: number }[];
+  reason: string; // why it needs to be created
+}
+
 
 const STATUS_OPTIONS = ["draft", "active", "expired", "terminated"];
 
@@ -141,6 +151,12 @@ export default function Agreements() {
 
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<Agreement | null>(null);
+
+  // Check / Execute
+  const [checkDialogOpen, setCheckDialogOpen] = useState(false);
+  const [pendingDocs, setPendingDocs] = useState<PendingDocument[]>([]);
+  const [checking, setChecking] = useState(false);
+  const [executing, setExecuting] = useState(false);
 
   const { sortConfig, handleSort, sortedAndFilteredData } = useTableSort<Agreement>(agreements, "created_at", "desc");
 
@@ -280,7 +296,216 @@ export default function Agreements() {
     fetchAgreements();
   };
 
+  // ── Check / Execute ────────────────────────────────────────────────────────
+
+  const isDueToday = (item: AgreementItem): boolean => {
+    const today = new Date();
+    const dow = today.getDay(); // 0=Sun
+    const dom = today.getDate(); // 1-31
+    const month = today.getMonth() + 1; // 1-12
+    const c = item.cadence;
+    const day = item.cadence_day;
+    if (!c) return true; // no cadence = always due
+    if (c === "daily") return true;
+    if (c === "weekly") return day !== null && Number(day) === dow;
+    if (c === "biweekly") return day !== null && Number(day) === dow; // simplified
+    if (c === "monthly" || c === "bimonthly") return day !== null && Number(day) === dom;
+    if (c === "quarterly") return day !== null && Number(day) === month && [1, 4, 7, 10].includes(month);
+    if (c === "yearly") return day !== null && Number(day) === month;
+    return false;
+  };
+
+  const handleCheck = async () => {
+    if (!selectedAgreement || !companyId) return;
+    setChecking(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const docs: PendingDocument[] = [];
+
+      for (const la of linkedAccounts) {
+        const acc = la.account;
+        const isCustomer = acc.type?.toLowerCase() === "customer";
+
+        // Get items due today
+        const dueItems = linkedItems.filter(isDueToday);
+        if (dueItems.length === 0) continue;
+
+        if (isCustomer) {
+          // Check existing sales order created today for this account with these items
+          const { data: existingSOs } = await supabase
+            .from("sales_orders")
+            .select("id, so_number, created_at")
+            .eq("company_id", companyId)
+            .gte("created_at", today + "T00:00:00")
+            .lte("created_at", today + "T23:59:59");
+
+          // Check if any SO today has these items (simple: if any SO today, skip)
+          const hasSO = (existingSOs || []).length > 0;
+
+          if (!hasSO) {
+            docs.push({
+              type: "sales_order",
+              accountId: acc.id,
+              accountName: acc.name,
+              accountType: acc.type,
+              items: dueItems.map(i => ({
+                productId: i.product_id,
+                productName: i.product?.name ?? i.product_id,
+                quantity: i.quantity,
+                unitPrice: i.unit_price,
+              })),
+              reason: `No sales order found for today (${today})`,
+            });
+          }
+        } else {
+          // Vendor/other account → purchase order
+          const { data: existingPOs } = await supabase
+            .from("purchase_orders")
+            .select("id, po_number, created_at")
+            .eq("company_id", companyId)
+            .gte("created_at", today + "T00:00:00")
+            .lte("created_at", today + "T23:59:59");
+
+          const hasPO = (existingPOs || []).length > 0;
+
+          if (!hasPO) {
+            docs.push({
+              type: "purchase_order",
+              accountId: acc.id,
+              accountName: acc.name,
+              accountType: acc.type,
+              items: dueItems.map(i => ({
+                productId: i.product_id,
+                productName: i.product?.name ?? i.product_id,
+                quantity: i.quantity,
+                unitPrice: i.unit_price,
+              })),
+              reason: `No purchase order found for today (${today})`,
+            });
+          }
+        }
+      }
+
+      setPendingDocs(docs);
+      setCheckDialogOpen(true);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!companyId) return;
+    setExecuting(true);
+    let created = 0;
+    let errors = 0;
+
+    for (const doc of pendingDocs) {
+      try {
+        if (doc.type === "sales_order") {
+          // Get next SO number
+          const { data: soNum } = await supabase.rpc("get_next_so_number", { p_company_id: companyId });
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          const total = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+
+          const { data: so, error: soErr } = await supabase
+            .from("sales_orders")
+            .insert({
+              company_id: companyId,
+              so_number: soNum,
+              status: "draft",
+              total_amount: total,
+              subtotal: total,
+              created_by: userId,
+            })
+            .select()
+            .single();
+
+          if (soErr) throw soErr;
+
+          // Insert SO items
+          const soItems = doc.items.map(i => ({
+            sales_order_id: so.id,
+            product_id: i.productId,
+            quantity: i.quantity,
+            unit_price: i.unitPrice,
+          }));
+          await supabase.from("sales_order_items").insert(soItems);
+
+          // Create invoice for the SO on the account
+          const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
+          await supabase.from("invoices").insert({
+            company_id: companyId,
+            invoice_number: invNum,
+            account_id: doc.accountId,
+            amount: total,
+            status: "draft",
+            invoice_date: new Date().toISOString().slice(0, 10),
+          });
+
+          created++;
+        } else {
+          // Purchase Order — need a vendor_id from the account's vendor
+          const { data: accData } = await supabase
+            .from("accounts")
+            .select("vendor_id, location_id")
+            .eq("id", doc.accountId)
+            .single();
+
+          const { data: poNum } = await supabase.rpc("get_next_po_number", { p_company_id: companyId });
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          const total = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+
+          const { data: po, error: poErr } = await supabase
+            .from("purchase_orders")
+            .insert({
+              company_id: companyId,
+              po_number: poNum,
+              status: "draft",
+              vendor_id: accData?.vendor_id ?? null,
+              location_id: accData?.location_id ?? null,
+              total_amount: total,
+              created_by: userId,
+            })
+            .select()
+            .single();
+
+          if (poErr) throw poErr;
+
+          const poItems = doc.items.map(i => ({
+            purchase_order_id: po.id,
+            product_id: i.productId,
+            quantity: i.quantity,
+            unit_price: i.unitPrice,
+          }));
+          await supabase.from("purchase_order_items").insert(poItems);
+
+          // Create invoice for the PO
+          const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
+          await supabase.from("invoices").insert({
+            company_id: companyId,
+            invoice_number: invNum,
+            account_id: doc.accountId,
+            amount: total,
+            status: "draft",
+            invoice_date: new Date().toISOString().slice(0, 10),
+          });
+
+          created++;
+        }
+      } catch (e) {
+        console.error("Failed to create document:", e);
+        errors++;
+      }
+    }
+
+    setExecuting(false);
+    setCheckDialogOpen(false);
+    if (created > 0) toast.success(`Created ${created} document${created !== 1 ? "s" : ""} successfully`);
+    if (errors > 0) toast.error(`${errors} document${errors !== 1 ? "s" : ""} failed to create`);
+  };
+
   // ── Accounts ───────────────────────────────────────────────────────────────
+
 
   const handleAddAccount = async () => {
     if (!selectedAgreement || !addAccountId) return;
@@ -428,14 +653,26 @@ export default function Agreements() {
               ) : "New Agreement"}
             </DialogTitle>
             {isEditMode && selectedAgreement && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-10 top-2 z-10 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => { setDialogOpen(false); setDeleteTarget(selectedAgreement); }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="absolute right-10 top-2 z-10 flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  disabled={checking || linkedAccounts.length === 0 || linkedItems.length === 0}
+                  onClick={handleCheck}
+                >
+                  {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardCheck className="h-3 w-3" />}
+                  Check
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => { setDialogOpen(false); setDeleteTarget(selectedAgreement); }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </DialogHeader>
 
@@ -689,6 +926,91 @@ export default function Agreements() {
         title="Delete Agreement"
         description={`Are you sure you want to delete "${deleteTarget?.name}"? All linked accounts and items will be removed.`}
       />
+
+      {/* Check / Execute Dialog */}
+      <Dialog open={checkDialogOpen} onOpenChange={setCheckDialogOpen}>
+        <DialogContent className="max-w-2xl" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              Agreement Check — {selectedAgreement?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {pendingDocs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+                <ClipboardCheck className="h-8 w-8 text-primary" />
+                <p className="text-sm font-medium text-foreground">All up to date</p>
+                <p className="text-xs">No documents need to be created for today.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  The following <span className="font-semibold text-foreground">{pendingDocs.length}</span> document{pendingDocs.length !== 1 ? "s" : ""} will be created for today. Review and click <strong>Execute</strong> to proceed.
+                </p>
+                {pendingDocs.map((doc, idx) => (
+                  <div key={idx} className="border border-border rounded-md overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/60 border-b border-border">
+                      {doc.type === "sales_order" ? (
+                        <FileText className="h-4 w-4 text-primary" />
+                      ) : (
+                        <ShoppingCart className="h-4 w-4 text-primary" />
+                      )}
+                      <span className="font-medium text-sm capitalize">
+                        {doc.type === "sales_order" ? "Sales Order" : "Purchase Order"} + Invoice
+                      </span>
+                      <span className="text-muted-foreground text-xs">→</span>
+                      <span className="text-sm">{doc.accountName}</span>
+                      <Badge variant="secondary" className="ml-auto capitalize text-xs">{doc.accountType}</Badge>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left px-4 py-2 font-medium text-muted-foreground text-xs">Product</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground text-xs">Qty</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground text-xs">Unit Price</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground text-xs">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {doc.items.map((item, ii) => (
+                          <tr key={ii} className={ii < doc.items.length - 1 ? "border-b border-border" : ""}>
+                            <td className="px-4 py-2">{item.productName}</td>
+                            <td className="px-4 py-2 text-right font-mono">{item.quantity}</td>
+                            <td className="px-4 py-2 text-right font-mono">${Number(item.unitPrice).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right font-mono font-medium">${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="border-t border-border bg-muted/30">
+                        <tr>
+                          <td colSpan={3} className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Total</td>
+                          <td className="px-4 py-2 text-right font-mono font-semibold text-sm">
+                            ${doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <div className="px-4 py-2 bg-muted/20 border-t border-border">
+                      <p className="text-xs text-muted-foreground">{doc.reason}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCheckDialogOpen(false)} disabled={executing}>
+              Cancel
+            </Button>
+            {pendingDocs.length > 0 && (
+              <Button onClick={handleExecute} disabled={executing}>
+                {executing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Executing...</> : `Execute (${pendingDocs.length})`}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
