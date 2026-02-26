@@ -578,10 +578,10 @@ export default function Agreements() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="mb-1.5 block text-xs text-muted-foreground">Cadence</Label>
-                      <Select value={addItem.cadence} onValueChange={v => setAddItem(i => ({ ...i, cadence: v, cadence_day: "" }))}>
+                      <Select value={addItem.cadence || "none"} onValueChange={v => setAddItem(i => ({ ...i, cadence: v === "none" ? "" : v, cadence_day: "" }))}>
                         <SelectTrigger><SelectValue placeholder="No cadence" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No cadence</SelectItem>
+                          <SelectItem value="none">No cadence</SelectItem>
                           {CADENCE_OPTIONS.map(c => <SelectItem key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
                         </SelectContent>
                       </Select>
