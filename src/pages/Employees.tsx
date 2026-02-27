@@ -174,15 +174,6 @@ const EmployeeTable = ({
                 onFilter={(value) => setFilter("email", value)}
               />
               <SortableTableHead
-                label="Job Title"
-                sortKey="job_title"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["job_title"]}
-                onFilter={(value) => setFilter("job_title", value)}
-              />
-              <SortableTableHead
                 label="Team"
                 sortKey="department"
                 currentSortKey={sortConfig.key}
@@ -190,6 +181,15 @@ const EmployeeTable = ({
                 onSort={handleSort}
                 filterValue={filters["department"]}
                 onFilter={(value) => setFilter("department", value)}
+              />
+              <SortableTableHead
+                label="Job Title"
+                sortKey="job_title"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters["job_title"]}
+                onFilter={(value) => setFilter("job_title", value)}
               />
               <SortableTableHead
                 label="Status"
@@ -225,8 +225,8 @@ const EmployeeTable = ({
                 <TableCell className="font-medium">{employee.first_name}</TableCell>
                 <TableCell className="font-medium">{employee.last_name}</TableCell>
                 <TableCell>{employee.email || "-"}</TableCell>
-                <TableCell>{employee.position_name || employee.job_title || "-"}</TableCell>
                 <TableCell>{employee.department || "-"}</TableCell>
+                <TableCell>{employee.position_name || employee.job_title || "-"}</TableCell>
                 <TableCell>
                   <Badge variant={employee.status === "active" ? "default" : "secondary"}>{employee.status}</Badge>
                 </TableCell>
