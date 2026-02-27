@@ -494,14 +494,18 @@ export default function Agreements() {
 
           // Create invoice for the SO on the account
           const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
-          await supabase.from("invoices").insert({
+          const { error: invErr } = await supabase.from("invoices").insert({
             company_id: companyId,
             invoice_number: invNum,
             account_id: doc.accountId,
+            sales_order_id: so.id,
             amount: total,
+            subtotal: total,
+            tax_amount: 0,
             status: "draft",
             invoice_date: doc.periodDate,
           });
+          if (invErr) throw invErr;
 
           created++;
         } else {
@@ -543,14 +547,18 @@ export default function Agreements() {
 
           // Create invoice for the PO
           const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
-          await supabase.from("invoices").insert({
+          const { error: invErr } = await supabase.from("invoices").insert({
             company_id: companyId,
             invoice_number: invNum,
             account_id: doc.accountId,
+            purchase_order_id: po.id,
             amount: total,
+            subtotal: total,
+            tax_amount: 0,
             status: "draft",
             invoice_date: doc.periodDate,
           });
+          if (invErr) throw invErr;
 
           created++;
         }
