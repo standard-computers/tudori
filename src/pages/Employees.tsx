@@ -79,7 +79,8 @@ const STATUSES = ["active", "inactive", "on_leave"];
 // Column definitions for Employees table
 const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
   { key: "employee_id", label: "ID", defaultVisible: true },
-  { key: "name", label: "Name", defaultVisible: true },
+  { key: "first_name", label: "First Name", defaultVisible: true },
+  { key: "last_name", label: "Last Name", defaultVisible: true },
   { key: "email", label: "Email", defaultVisible: true },
   { key: "phone", label: "Phone", defaultVisible: true },
   { key: "job_title", label: "Job Title", defaultVisible: true },
@@ -145,7 +146,16 @@ const EmployeeTable = ({
                 className="w-24"
               />
               <SortableTableHead
-                label="Name"
+                label="First Name"
+                sortKey="first_name"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters["first_name"]}
+                onFilter={(value) => setFilter("first_name", value)}
+              />
+              <SortableTableHead
+                label="Last Name"
                 sortKey="last_name"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
@@ -211,9 +221,8 @@ const EmployeeTable = ({
                     {employee.employee_id}
                   </button>
                 </TableCell>
-                <TableCell className="font-medium">
-                  {employee.first_name} {employee.last_name}
-                </TableCell>
+                <TableCell className="font-medium">{employee.first_name}</TableCell>
+                <TableCell className="font-medium">{employee.last_name}</TableCell>
                 <TableCell>{employee.email || "-"}</TableCell>
                 <TableCell>{employee.job_title || "-"}</TableCell>
                 <TableCell>{employee.department || "-"}</TableCell>
@@ -234,7 +243,7 @@ const EmployeeTable = ({
             ))}
             {sortedAndFilteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   No employees found
                 </TableCell>
               </TableRow>
