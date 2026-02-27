@@ -373,25 +373,25 @@ export default function Agreements() {
       // Fetch all existing SOs and POs for this company with their items, to check against
       const [{ data: allSOs }, { data: allPOs }] = await Promise.all([
         supabase.from("sales_order_items")
-          .select("sales_order_id, product_id, sales_orders!inner(created_at, company_id)")
+          .select("sales_order_id, product_id, sales_orders!inner(order_date, created_at, company_id)")
           .eq("sales_orders.company_id", companyId)
           .in("product_id", productIds.length > 0 ? productIds : ["none"]),
         supabase.from("purchase_order_items")
-          .select("purchase_order_id, product_id, purchase_orders!inner(created_at, company_id)")
+          .select("purchase_order_id, product_id, purchase_orders!inner(order_date, created_at, company_id)")
           .eq("purchase_orders.company_id", companyId)
           .in("product_id", productIds.length > 0 ? productIds : ["none"]),
       ]);
 
-      // Build lookup: date -> Set of product_ids covered by existing SO
+      // Build lookup: date -> Set of product_ids covered by existing SO (use order_date for backdate matching)
       const soDateProducts: Record<string, Set<string>> = {};
       for (const row of (allSOs || []) as any[]) {
-        const date = (row.sales_orders?.created_at || "").slice(0, 10);
+        const date = (row.sales_orders?.order_date || row.sales_orders?.created_at || "").slice(0, 10);
         if (!soDateProducts[date]) soDateProducts[date] = new Set();
         soDateProducts[date].add(row.product_id);
       }
       const poDateProducts: Record<string, Set<string>> = {};
       for (const row of (allPOs || []) as any[]) {
-        const date = (row.purchase_orders?.created_at || "").slice(0, 10);
+        const date = (row.purchase_orders?.order_date || row.purchase_orders?.created_at || "").slice(0, 10);
         if (!poDateProducts[date]) poDateProducts[date] = new Set();
         poDateProducts[date].add(row.product_id);
       }
@@ -475,6 +475,7 @@ export default function Agreements() {
               status: "draft",
               total_amount: total,
               subtotal: total,
+              order_date: doc.periodDate,
               created_by: userId,
             })
             .select()
@@ -524,6 +525,7 @@ export default function Agreements() {
               vendor_id: accData?.vendor_id ?? null,
               location_id: accData?.location_id ?? null,
               total_amount: total,
+              order_date: doc.periodDate,
               created_by: userId,
             })
             .select()
