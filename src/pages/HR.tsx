@@ -190,7 +190,7 @@ const HR = () => {
   const fetchEmployees = async () => {
     const { data } = await supabase
       .from('employees')
-      .select('id, employee_id, first_name, last_name, email, phone, job_title, department, status, user_id')
+      .select('id, employee_id, first_name, last_name, email, phone, job_title, department, status, user_id, positions(name)')
       .eq('company_id', companyId!)
       .order('last_name');
     setEmployees(data || []);
@@ -580,8 +580,8 @@ const HR = () => {
                   <TableRow>
                     <TableCell className="font-medium w-24">ID</TableCell>
                     <TableCell className="font-medium">Name</TableCell>
-                    <TableCell className="font-medium">Job Title</TableCell>
                     <TableCell className="font-medium">Team</TableCell>
+                    <TableCell className="font-medium">Job Title</TableCell>
                     <TableCell className="font-medium">Contact</TableCell>
                     <TableCell className="font-medium w-24">Status</TableCell>
                     <TableCell className="font-medium w-20">Clock</TableCell>
@@ -603,8 +603,8 @@ const HR = () => {
                         <TableCell className="font-medium">
                           {employee.first_name} {employee.last_name}
                         </TableCell>
-                        <TableCell className="text-sm">{employee.job_title || '-'}</TableCell>
                         <TableCell className="text-sm">{employee.department || '-'}</TableCell>
+                        <TableCell className="text-sm">{(employee as any).positions?.[0]?.name || employee.job_title || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {employee.email && (
@@ -758,7 +758,7 @@ const HR = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Job Title</p>
-                      <p className="font-medium">{viewingEmployee.job_title || '-'}</p>
+                      <p className="font-medium">{(viewingEmployee as any).positions?.[0]?.name || viewingEmployee.job_title || '-'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Clock Status</p>
