@@ -76,7 +76,8 @@ interface PendingDocument {
   accountName: string;
   accountType: string;
   items: { productId: string; productName: string; quantity: number; unitPrice: number }[];
-  reason: string; // why it needs to be created
+  reason: string;
+  periodDate: string; // the date this document is for
 }
 
 
@@ -298,94 +299,153 @@ export default function Agreements() {
 
   // ── Check / Execute ────────────────────────────────────────────────────────
 
-  const isDueToday = (item: AgreementItem): boolean => {
-    const today = new Date();
-    const dow = today.getDay(); // 0=Sun
-    const dom = today.getDate(); // 1-31
-    const month = today.getMonth() + 1; // 1-12
+  // Get all due dates for an item from startDate to today
+  const getDueDates = (item: AgreementItem, startDate: Date, endDate: Date): string[] => {
+    const dates: string[] = [];
     const c = item.cadence;
-    const day = item.cadence_day;
-    if (!c) return true; // no cadence = always due
-    if (c === "daily") return true;
-    if (c === "weekly") return day !== null && Number(day) === dow;
-    if (c === "biweekly") return day !== null && Number(day) === dow; // simplified
-    if (c === "monthly" || c === "bimonthly") return day !== null && Number(day) === dom;
-    if (c === "quarterly") return day !== null && Number(day) === month && [1, 4, 7, 10].includes(month);
-    if (c === "yearly") return day !== null && Number(day) === month;
-    return false;
+    const dayVal = item.cadence_day !== null ? Number(item.cadence_day) : null;
+
+    if (!c || c === "daily") {
+      // Every day
+      const cur = new Date(startDate);
+      while (cur <= endDate) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else if (c === "weekly" || c === "biweekly") {
+      // dayVal = 0-6 (day of week)
+      const step = c === "biweekly" ? 14 : 7;
+      const cur = new Date(startDate);
+      // advance to first matching day
+      while (cur.getDay() !== dayVal && cur <= endDate) cur.setDate(cur.getDate() + 1);
+      while (cur <= endDate) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + step);
+      }
+    } else if (c === "monthly") {
+      // dayVal = 1-31 (day of month)
+      const cur = new Date(startDate.getFullYear(), startDate.getMonth(), dayVal ?? 1);
+      if (cur < startDate) cur.setMonth(cur.getMonth() + 1);
+      while (cur <= endDate) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    } else if (c === "quarterly") {
+      // dayVal = 1-12 (month of quarter start: 1=Jan,4=Apr,7=Jul,10=Oct)
+      const quarterMonths = [1, 4, 7, 10];
+      const cur = new Date(startDate.getFullYear(), 0, 1);
+      while (cur <= endDate) {
+        for (const m of quarterMonths) {
+          const d = new Date(cur.getFullYear(), m - 1, 1);
+          if (d >= startDate && d <= endDate) {
+            dates.push(d.toISOString().slice(0, 10));
+          }
+        }
+        cur.setFullYear(cur.getFullYear() + 1);
+      }
+    } else if (c === "yearly") {
+      // dayVal = 1-12 (month of year)
+      const cur = new Date(startDate.getFullYear(), (dayVal ?? 1) - 1, 1);
+      if (cur < startDate) cur.setFullYear(cur.getFullYear() + 1);
+      while (cur <= endDate) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setFullYear(cur.getFullYear() + 1);
+      }
+    }
+
+    return dates;
   };
 
   const handleCheck = async () => {
     if (!selectedAgreement || !companyId) return;
     setChecking(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = selectedAgreement.start_date ? new Date(selectedAgreement.start_date) : today;
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = selectedAgreement.end_date ? new Date(Math.min(new Date(selectedAgreement.end_date).getTime(), today.getTime())) : today;
+      endDate.setHours(0, 0, 0, 0);
+
       const docs: PendingDocument[] = [];
+      const productIds = linkedItems.map(i => i.product_id);
+
+      // Fetch all existing SOs and POs for this company with their items, to check against
+      const [{ data: allSOs }, { data: allPOs }] = await Promise.all([
+        supabase.from("sales_order_items")
+          .select("sales_order_id, product_id, sales_orders!inner(created_at, company_id)")
+          .eq("sales_orders.company_id", companyId)
+          .in("product_id", productIds.length > 0 ? productIds : ["none"]),
+        supabase.from("purchase_order_items")
+          .select("purchase_order_id, product_id, purchase_orders!inner(created_at, company_id)")
+          .eq("purchase_orders.company_id", companyId)
+          .in("product_id", productIds.length > 0 ? productIds : ["none"]),
+      ]);
+
+      // Build lookup: date -> Set of product_ids covered by existing SO
+      const soDateProducts: Record<string, Set<string>> = {};
+      for (const row of (allSOs || []) as any[]) {
+        const date = (row.sales_orders?.created_at || "").slice(0, 10);
+        if (!soDateProducts[date]) soDateProducts[date] = new Set();
+        soDateProducts[date].add(row.product_id);
+      }
+      const poDateProducts: Record<string, Set<string>> = {};
+      for (const row of (allPOs || []) as any[]) {
+        const date = (row.purchase_orders?.created_at || "").slice(0, 10);
+        if (!poDateProducts[date]) poDateProducts[date] = new Set();
+        poDateProducts[date].add(row.product_id);
+      }
 
       for (const la of linkedAccounts) {
         const acc = la.account;
         const isCustomer = acc.type?.toLowerCase() === "customer";
+        const lookup = isCustomer ? soDateProducts : poDateProducts;
 
-        // Get items due today
-        const dueItems = linkedItems.filter(isDueToday);
-        if (dueItems.length === 0) continue;
+        for (const item of linkedItems) {
+          if (!item.cadence && linkedItems.length === 0) continue;
+          const dueDates = getDueDates(item, startDate, endDate);
 
-        if (isCustomer) {
-          // Check existing sales order created today for this account with these items
-          const { data: existingSOs } = await supabase
-            .from("sales_orders")
-            .select("id, so_number, created_at")
-            .eq("company_id", companyId)
-            .gte("created_at", today + "T00:00:00")
-            .lte("created_at", today + "T23:59:59");
-
-          // Check if any SO today has these items (simple: if any SO today, skip)
-          const hasSO = (existingSOs || []).length > 0;
-
-          if (!hasSO) {
-            docs.push({
-              type: "sales_order",
-              accountId: acc.id,
-              accountName: acc.name,
-              accountType: acc.type,
-              items: dueItems.map(i => ({
-                productId: i.product_id,
-                productName: i.product?.name ?? i.product_id,
-                quantity: i.quantity,
-                unitPrice: i.unit_price,
-              })),
-              reason: `No sales order found for today (${today})`,
-            });
-          }
-        } else {
-          // Vendor/other account → purchase order
-          const { data: existingPOs } = await supabase
-            .from("purchase_orders")
-            .select("id, po_number, created_at")
-            .eq("company_id", companyId)
-            .gte("created_at", today + "T00:00:00")
-            .lte("created_at", today + "T23:59:59");
-
-          const hasPO = (existingPOs || []).length > 0;
-
-          if (!hasPO) {
-            docs.push({
-              type: "purchase_order",
-              accountId: acc.id,
-              accountName: acc.name,
-              accountType: acc.type,
-              items: dueItems.map(i => ({
-                productId: i.product_id,
-                productName: i.product?.name ?? i.product_id,
-                quantity: i.quantity,
-                unitPrice: i.unit_price,
-              })),
-              reason: `No purchase order found for today (${today})`,
-            });
+          for (const dateStr of dueDates) {
+            // Check if this product is covered on this date
+            const covered = lookup[dateStr]?.has(item.product_id);
+            if (!covered) {
+              // Check if we already have a pending doc for this date+account combo
+              const existing = docs.find(
+                d => d.periodDate === dateStr && d.accountId === acc.id && d.type === (isCustomer ? "sales_order" : "purchase_order")
+              );
+              if (existing) {
+                // Add item to existing pending doc if not already there
+                if (!existing.items.find(i => i.productId === item.product_id)) {
+                  existing.items.push({
+                    productId: item.product_id,
+                    productName: item.product?.name ?? item.product_id,
+                    quantity: item.quantity,
+                    unitPrice: item.unit_price,
+                  });
+                }
+              } else {
+                docs.push({
+                  type: isCustomer ? "sales_order" : "purchase_order",
+                  accountId: acc.id,
+                  accountName: acc.name,
+                  accountType: acc.type,
+                  items: [{
+                    productId: item.product_id,
+                    productName: item.product?.name ?? item.product_id,
+                    quantity: item.quantity,
+                    unitPrice: item.unit_price,
+                  }],
+                  reason: `Missing ${isCustomer ? "sales order" : "purchase order"} for ${dateStr}`,
+                  periodDate: dateStr,
+                });
+              }
+            }
           }
         }
       }
 
+      // Sort by date
+      docs.sort((a, b) => a.periodDate.localeCompare(b.periodDate));
       setPendingDocs(docs);
       setCheckDialogOpen(true);
     } finally {
@@ -439,7 +499,7 @@ export default function Agreements() {
             account_id: doc.accountId,
             amount: total,
             status: "draft",
-            invoice_date: new Date().toISOString().slice(0, 10),
+            invoice_date: doc.periodDate,
           });
 
           created++;
@@ -487,7 +547,7 @@ export default function Agreements() {
             account_id: doc.accountId,
             amount: total,
             status: "draft",
-            invoice_date: new Date().toISOString().slice(0, 10),
+            invoice_date: doc.periodDate,
           });
 
           created++;
@@ -946,7 +1006,7 @@ export default function Agreements() {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  The following <span className="font-semibold text-foreground">{pendingDocs.length}</span> document{pendingDocs.length !== 1 ? "s" : ""} will be created for today. Review and click <strong>Execute</strong> to proceed.
+                  The following <span className="font-semibold text-foreground">{pendingDocs.length}</span> document{pendingDocs.length !== 1 ? "s" : ""} are missing across all agreement periods from start date to today. Review and click <strong>Execute</strong> to create them.
                 </p>
                 {pendingDocs.map((doc, idx) => (
                   <div key={idx} className="border border-border rounded-md overflow-hidden">
@@ -962,6 +1022,7 @@ export default function Agreements() {
                       <span className="text-muted-foreground text-xs">→</span>
                       <span className="text-sm">{doc.accountName}</span>
                       <Badge variant="secondary" className="ml-auto capitalize text-xs">{doc.accountType}</Badge>
+                      <span className="text-xs text-muted-foreground font-mono">{doc.periodDate}</span>
                     </div>
                     <table className="w-full text-sm">
                       <thead>
