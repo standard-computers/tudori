@@ -51,7 +51,7 @@ import {
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 import { ArrowLeft, Plus, PackageMinus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
@@ -630,7 +630,7 @@ const GoodsIssues = () => {
       'Customer': (i.customer as any)?.name || '',
       'Sales Order': (i.sales_order as any)?.so_number || '',
       'Outbound Delivery': (i.outbound_delivery as any)?.delivery_number || '',
-      'Issue Date': format(new Date(i.issue_date), 'yyyy-MM-dd'),
+      'Issue Date': format(parseISO(i.issue_date), 'yyyy-MM-dd'),
       'Items': (i as any).goods_issue_items?.[0]?.count ?? 0,
       'Notes': i.notes || '',
     }));
@@ -959,7 +959,7 @@ const GoodsIssues = () => {
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Date</Label>
-                      <p>{format(new Date(viewingIssue.issue_date), 'MMM d, yyyy')}</p>
+                      <p>{format(parseISO(viewingIssue.issue_date), 'MMM d, yyyy')}</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Status</Label>
@@ -1202,7 +1202,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
                     {issue.issue_number}
                   </button>
                 </TableCell>
-                <TableCell>{format(new Date(issue.issue_date), 'MMM d, yyyy')}</TableCell>
+                <TableCell>{format(parseISO(issue.issue_date), 'MMM d, yyyy')}</TableCell>
                 <TableCell>{issue.location?.name || '-'}</TableCell>
                 <TableCell>{issue.customer?.name || '-'}</TableCell>
                 <TableCell className="font-mono text-muted-foreground">{issue.sales_order?.so_number || '-'}</TableCell>

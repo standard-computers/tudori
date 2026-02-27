@@ -31,7 +31,7 @@ import { SearchableSelect, SearchableSelectOption } from "@/components/Searchabl
 import { MemoItemsEditor, MemoItem } from "@/components/accounts/MemoItemsEditor";
 import { ArrowLeft, Minus, Plus, Loader2, MoreHorizontal, Trash2, Eye, X } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { useExcel } from "@/hooks/use-excel";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
@@ -424,7 +424,7 @@ const CreditMemos = () => {
   const handleExportMemos = () => {
     const exportData = filteredMemos.map(m => ({
       'Memo #': m.memo_number,
-      'Date': format(new Date(m.memo_date), 'yyyy-MM-dd'),
+      'Date': format(parseISO(m.memo_date), 'yyyy-MM-dd'),
       'Account': m.account?.name || '',
       'Invoice': m.invoice?.invoice_number || '',
       'Amount': m.amount,
@@ -555,7 +555,7 @@ const CreditMemos = () => {
               filteredMemos.map((memo) => (
                 <TableRow key={memo.id}>
                   <TableCell className="font-mono cursor-pointer hover:underline" onClick={() => handleView(memo)}>{memo.memo_number}</TableCell>
-                  <TableCell>{format(new Date(memo.memo_date), "MMM d, yyyy")}</TableCell>
+                  <TableCell>{format(parseISO(memo.memo_date), "MMM d, yyyy")}</TableCell>
                   <TableCell>{memo.account?.name || "-"}</TableCell>
                   <TableCell>{memo.invoice?.invoice_number || "-"}</TableCell>
                   <TableCell className="font-medium text-green-600">-${memo.amount.toFixed(2)}</TableCell>
@@ -673,7 +673,7 @@ const CreditMemos = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Date</p>
-                  <p className="font-medium">{format(new Date(viewMemo.memo_date), "MMM d, yyyy")}</p>
+                  <p className="font-medium">{format(parseISO(viewMemo.memo_date), "MMM d, yyyy")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>

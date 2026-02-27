@@ -23,7 +23,7 @@ import { toast } from '@/lib/toast';
 import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { AreaBinSelector } from '@/components/inventory/AreaBinSelector';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 interface InventoryCountDialogProps {
   open: boolean;
@@ -487,7 +487,7 @@ export const InventoryCountDialog = ({
               ? `Count sheets for ${locationName}`
               : view === 'select_scope'
               ? `Choose which areas and bins to include in the count for ${locationName}`
-              : `Status: ${selectedCount?.status || ''} • ${selectedCount?.count_date ? format(new Date(selectedCount.count_date), 'MMM d, yyyy') : ''}`}
+              : `Status: ${selectedCount?.status || ''} • ${selectedCount?.count_date ? format(parseISO(selectedCount.count_date), 'MMM d, yyyy') : ''}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -527,7 +527,7 @@ export const InventoryCountDialog = ({
                     {counts.map((count) => (
                       <TableRow key={count.id}>
                         <TableCell className="font-mono text-sm">{count.count_number}</TableCell>
-                        <TableCell>{format(new Date(count.count_date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>{format(parseISO(count.count_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell>
                           <Badge variant="secondary" className={statusColors[count.status] || ''}>
                             {count.status.replace('_', ' ')}

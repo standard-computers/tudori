@@ -35,7 +35,7 @@ import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDi
 import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
 import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
 import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
@@ -537,7 +537,7 @@ const AccountDetail = () => {
                     ) : (
                       filtered.map((tx) => (
                         <TableRow key={tx.id}>
-                          <TableCell>{format(new Date(tx.transaction_date), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>{format(parseISO(tx.transaction_date), 'MMM d, yyyy')}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="capitalize">{tx.transaction_type.replace(/_/g, ' ')}</Badge>
                           </TableCell>
@@ -600,7 +600,7 @@ const AccountDetail = () => {
                           {invoice.invoice_number}
                         </button>
                       </TableCell>
-                      <TableCell>{format(new Date(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>{format(parseISO(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>
                       <TableCell>
                         {invoice.purchase_order && <Badge variant="outline">PO: {invoice.purchase_order.po_number}</Badge>}
                         {invoice.sales_order && <Badge variant="outline">SO: {invoice.sales_order.so_number}</Badge>}
@@ -634,7 +634,7 @@ const AccountDetail = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '-'}
+                        {invoice.due_date ? format(parseISO(invoice.due_date), 'MMM d, yyyy') : '-'}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -707,7 +707,7 @@ const AccountDetail = () => {
                   filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell className="font-mono">{payment.payment_number}</TableCell>
-                      <TableCell>{format(new Date(payment.payment_date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>{format(parseISO(payment.payment_date), 'MMM d, yyyy')}</TableCell>
                       <TableCell className="font-mono">{payment.invoice?.invoice_number || '-'}</TableCell>
                       <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>
                       <TableCell>
@@ -767,12 +767,12 @@ const AccountDetail = () => {
                 )}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Invoice Date</span>
-                  <span className="font-medium">{format(new Date(selectedInvoice.invoice_date), 'MMM d, yyyy')}</span>
-                </div>
-                {selectedInvoice.due_date && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Due Date</span>
-                    <span className="font-medium">{format(new Date(selectedInvoice.due_date), 'MMM d, yyyy')}</span>
+                   <span className="font-medium">{format(parseISO(selectedInvoice.invoice_date), 'MMM d, yyyy')}</span>
+                 </div>
+                 {selectedInvoice.due_date && (
+                   <div className="flex justify-between">
+                     <span className="text-sm text-muted-foreground">Due Date</span>
+                     <span className="font-medium">{format(parseISO(selectedInvoice.due_date), 'MMM d, yyyy')}</span>
                   </div>
                 )}
                 {selectedInvoice.ledger?.name && (
@@ -894,12 +894,12 @@ const AccountDetail = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Invoice Date</Label>
-                      <p>{format(new Date(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
+                      <p>{format(parseISO(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
                     </div>
                     {viewingInvoice.due_date && (
                       <div>
                         <Label className="text-muted-foreground">Due Date</Label>
-                        <p>{format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
+                        <p>{format(parseISO(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
                       </div>
                     )}
                   </div>

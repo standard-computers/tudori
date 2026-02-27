@@ -69,7 +69,7 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { ViewDeliveryItemsTab } from '@/components/deliveries/ViewDeliveryItemsTab';
 import { PackingTab } from '@/components/deliveries/PackingTab';
 import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 // Statuses that prevent editing
 const NON_EDITABLE_STATUSES = ['delivered', 'shipped', 'in_transit'];
@@ -1564,7 +1564,7 @@ const Deliveries = () => {
                           </TableCell>
                           <TableCell>
                             {delivery.expected_date 
-                              ? format(new Date(delivery.expected_date), 'MMM d, yyyy')
+                              ? format(parseISO(delivery.expected_date), 'MMM d, yyyy')
                               : '—'}
                           </TableCell>
                           <TableCell>
@@ -1793,15 +1793,15 @@ const Deliveries = () => {
                     <Label className="text-muted-foreground">Expected Date</Label>
                     <p className="text-sm">
                       {viewDelivery.expected_date 
-                        ? format(new Date(viewDelivery.expected_date), 'MMM d, yyyy')
+                        ? format(parseISO(viewDelivery.expected_date), 'MMM d, yyyy')
                         : '—'}
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Delivered Date</Label>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Delivered Date</Label>
                     <p className="text-sm">
-                      {viewDelivery.delivered_date 
-                        ? format(new Date(viewDelivery.delivered_date), 'MMM d, yyyy')
+                      {viewDelivery.delivered_date
+                        ? format(parseISO(viewDelivery.delivered_date), 'MMM d, yyyy')
                         : '—'}
                     </p>
                   </div>
@@ -2023,11 +2023,11 @@ const Deliveries = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-xs">Order Date</Label>
-                  <p>{detailPO.order_date ? format(new Date(detailPO.order_date), 'MMM d, yyyy') : '-'}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Expected Delivery</Label>
-                  <p>{detailPO.expected_delivery_date ? format(new Date(detailPO.expected_delivery_date), 'MMM d, yyyy') : '-'}</p>
+                   <p>{detailPO.order_date ? format(parseISO(detailPO.order_date), 'MMM d, yyyy') : '-'}</p>
+                 </div>
+                 <div>
+                   <Label className="text-muted-foreground text-xs">Expected Delivery</Label>
+                   <p>{detailPO.expected_delivery_date ? format(parseISO(detailPO.expected_delivery_date), 'MMM d, yyyy') : '-'}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

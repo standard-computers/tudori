@@ -40,7 +40,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
@@ -313,8 +313,8 @@ const Invoices = () => {
       'Account': inv.account?.name || '',
       'Pay To': inv.purchase_order?.vendor?.name || inv.sales_order?.customer?.name || '',
       'Reference': inv.purchase_order?.po_number ? `PO: ${inv.purchase_order.po_number}` : inv.sales_order?.so_number ? `SO: ${inv.sales_order.so_number}` : '',
-      'Invoice Date': inv.invoice_date ? format(new Date(inv.invoice_date), 'yyyy-MM-dd') : '',
-      'Due Date': inv.due_date ? format(new Date(inv.due_date), 'yyyy-MM-dd') : '',
+      'Invoice Date': inv.invoice_date ? format(parseISO(inv.invoice_date), 'yyyy-MM-dd') : '',
+      'Due Date': inv.due_date ? format(parseISO(inv.due_date), 'yyyy-MM-dd') : '',
       'Subtotal': inv.subtotal,
       'Tax': inv.tax_amount,
       'Amount': inv.amount,
@@ -549,7 +549,7 @@ const Invoices = () => {
                         <Badge variant="outline">SO: {invoice.sales_order.so_number}</Badge>
                       )}
                     </TableCell>
-                    <TableCell>{format(new Date(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>{format(parseISO(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>
                     <TableCell className="font-mono">
                       ${invoice.amount?.toFixed(2)}
                     </TableCell>
@@ -645,12 +645,12 @@ const Invoices = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Invoice Date</Label>
-                      <p>{format(new Date(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
+                      <p>{format(parseISO(viewingInvoice.invoice_date), 'MMM d, yyyy')}</p>
                     </div>
                     {viewingInvoice.due_date && (
                       <div>
                         <Label className="text-muted-foreground">Due Date</Label>
-                        <p>{format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
+                        <p>{format(parseISO(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
                       </div>
                     )}
                   </div>

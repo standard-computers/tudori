@@ -59,7 +59,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
@@ -898,7 +898,7 @@ const Ledgers = () => {
                       onClick={() => setViewingTransaction(tx)}
                     >
                       <TableCell className="whitespace-nowrap">
-                        {format(new Date(tx.transaction_date), 'MMM d, yyyy')}
+                        {format(parseISO(tx.transaction_date), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
@@ -958,7 +958,7 @@ const Ledgers = () => {
                 <div>
                   <Label className="text-xs text-muted-foreground">Date</Label>
                   <p className="text-sm font-medium">
-                    {format(new Date(viewingTransaction.transaction_date), 'MMM d, yyyy')}
+                    {format(parseISO(viewingTransaction.transaction_date), 'MMM d, yyyy')}
                   </p>
                 </div>
                 <div>
