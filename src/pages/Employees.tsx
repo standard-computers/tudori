@@ -998,7 +998,7 @@ const Employees = () => {
             {isEditing && editingId && (
               <Button
                 type="button"
-                variant="destructive"
+                variant="secondary"
                 onClick={() => {
                   handleDelete(editingId);
                   setIsDialogOpen(false);
