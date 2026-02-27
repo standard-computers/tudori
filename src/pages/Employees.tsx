@@ -46,6 +46,7 @@ interface Employee {
   email: string | null;
   phone: string | null;
   job_title: string | null;
+  position_name?: string | null;
   department: string | null;
   hire_date: string | null;
   status: string;
@@ -224,7 +225,7 @@ const EmployeeTable = ({
                 <TableCell className="font-medium">{employee.first_name}</TableCell>
                 <TableCell className="font-medium">{employee.last_name}</TableCell>
                 <TableCell>{employee.email || "-"}</TableCell>
-                <TableCell>{employee.job_title || "-"}</TableCell>
+                <TableCell>{employee.position_name || employee.job_title || "-"}</TableCell>
                 <TableCell>{employee.department || "-"}</TableCell>
                 <TableCell>
                   <Badge variant={employee.status === "active" ? "default" : "secondary"}>{employee.status}</Badge>
@@ -371,7 +372,7 @@ const Employees = () => {
   const fetchEmployees = async () => {
     const { data, error } = await supabase
       .from("employees")
-      .select("*")
+      .select("*, positions(name)")
       .eq("company_id", companyId)
       .order("employee_id");
 
@@ -381,7 +382,11 @@ const Employees = () => {
       return;
     }
 
-    setEmployees(data || []);
+    const mapped = (data || []).map((e: any) => ({
+      ...e,
+      position_name: Array.isArray(e.positions) && e.positions.length > 0 ? e.positions[0].name : null,
+    }));
+    setEmployees(mapped);
   };
 
   const fetchNextEmployeeId = async () => {
@@ -1077,7 +1082,7 @@ const Employees = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Job Title</p>
-                      <p className="font-medium">{viewingEmployee.job_title || "-"}</p>
+                      <p className="font-medium">{viewingEmployee.position_name || viewingEmployee.job_title || "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Hire Date</p>
