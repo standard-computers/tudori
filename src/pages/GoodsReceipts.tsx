@@ -52,7 +52,7 @@ import {
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
 import { ArrowLeft, Plus, PackagePlus, Pencil, Trash2, Check, X, Eye, MoreHorizontal, History, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
@@ -585,7 +585,7 @@ const GoodsReceipts = () => {
       'Vendor': (r.vendor as any)?.name || '',
       'Delivery': (r.delivery as any)?.delivery_id || '',
       'PO': (r.purchase_order as any)?.po_number || '',
-      'Receipt Date': format(new Date(r.receipt_date), 'yyyy-MM-dd'),
+      'Receipt Date': format(parseISO(r.receipt_date), 'yyyy-MM-dd'),
       'Items': (r as any).goods_receipt_items?.[0]?.count ?? 0,
       'Notes': r.notes || '',
     }));
@@ -926,7 +926,7 @@ const GoodsReceipts = () => {
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Date</Label>
-                      <p>{format(new Date(viewingReceipt.receipt_date), 'MMM d, yyyy')}</p>
+                      <p>{format(parseISO(viewingReceipt.receipt_date), 'MMM d, yyyy')}</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Status</Label>
@@ -1168,7 +1168,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
                   </button>
                 </TableCell>
                 <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
-                <TableCell>{format(new Date(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
+                <TableCell>{format(parseISO(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
                 <TableCell>{receipt.location?.name || '-'}</TableCell>
                 <TableCell>{receipt.vendor?.name || '-'}</TableCell>
                 <TableCell className="font-mono text-muted-foreground">{receipt.purchase_order?.po_number || '-'}</TableCell>

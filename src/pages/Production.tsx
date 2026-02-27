@@ -47,7 +47,7 @@ import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPi
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { StepByStepProductionDialog } from '@/components/production/StepByStepProductionDialog';
 import { createProductionGoodsIssue, createProductionGoodsReceipt } from '@/lib/production-posting';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
@@ -319,7 +319,7 @@ const ProductionOrderTable = ({
                       : '-'}
                   </TableCell>
                   <TableCell>
-                    {order.scheduled_date ? format(new Date(order.scheduled_date), 'MMM d, yyyy') : '-'}
+                    {order.scheduled_date ? format(parseISO(order.scheduled_date), 'MMM d, yyyy') : '-'}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -1162,7 +1162,7 @@ const Production = () => {
       'Duration': formatDuration(o.total_duration),
       'Assigned To': o.assigned_employee ? `${o.assigned_employee.first_name} ${o.assigned_employee.last_name}` : '',
       'Location': o.location?.name || '',
-      'Scheduled Date': o.scheduled_date ? format(new Date(o.scheduled_date), 'yyyy-MM-dd') : '',
+      'Scheduled Date': o.scheduled_date ? format(parseISO(o.scheduled_date), 'yyyy-MM-dd') : '',
       'Notes': o.notes || '',
     }));
     exportToExcel(exportData, 'production_orders.xlsx', 'Production Orders');

@@ -52,7 +52,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { toast } from '@/lib/toast';
 
 interface OutboundDeliveryItem {
@@ -582,7 +582,7 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                 <TableCell>{delivery.carrier || '—'}</TableCell>
                 <TableCell>
                   {delivery.shipped_date
-                    ? format(new Date(delivery.shipped_date), 'MMM d, yyyy')
+                    ? format(parseISO(delivery.shipped_date), 'MMM d, yyyy')
                     : '—'}
                 </TableCell>
                 <TableCell>
@@ -762,15 +762,15 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                   <Label className="text-muted-foreground">Shipped Date</Label>
                   <p className="text-sm">
                     {viewDelivery.shipped_date
-                      ? format(new Date(viewDelivery.shipped_date), 'MMM d, yyyy')
+                      ? format(parseISO(viewDelivery.shipped_date), 'MMM d, yyyy')
                       : '—'}
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Delivered Date</Label>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Delivered Date</Label>
                   <p className="text-sm">
                     {viewDelivery.delivered_date
-                      ? format(new Date(viewDelivery.delivered_date), 'MMM d, yyyy')
+                      ? format(parseISO(viewDelivery.delivered_date), 'MMM d, yyyy')
                       : '—'}
                   </p>
                 </div>
