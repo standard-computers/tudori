@@ -1020,7 +1020,7 @@ const Employees = () => {
 
       <Dialog open={!!viewingEmployee} onOpenChange={(open) => { if (!open) { setViewingEmployee(null); setIsViewMaximized(false); } }}>
         <DialogContent className={isViewMaximized ? "max-w-[95vw] max-h-[95vh]" : "max-w-2xl max-h-[85vh]"}>
-          <div className="absolute right-12 top-4 z-10 flex items-center gap-2">
+          <div className="absolute right-10 top-2 z-10 flex items-center gap-1">
             <button
               className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               onClick={() => {
