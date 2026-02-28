@@ -461,11 +461,20 @@ export default function Agreements() {
 
     for (const doc of pendingDocs) {
       try {
+        // Fetch account data (ledger, vendor, location) for all doc types
+        const { data: accData } = await supabase
+          .from("accounts")
+          .select("vendor_id, location_id, ledger_id")
+          .eq("id", doc.accountId)
+          .single();
+
+        const accountLedgerId = accData?.ledger_id ?? null;
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        const total = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+
         if (doc.type === "sales_order") {
           // Get next SO number
           const { data: soNum } = await supabase.rpc("get_next_so_number", { p_company_id: companyId });
-          const userId = (await supabase.auth.getUser()).data.user?.id;
-          const total = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
           const { data: so, error: soErr } = await supabase
             .from("sales_orders")
@@ -477,6 +486,7 @@ export default function Agreements() {
               subtotal: total,
               order_date: doc.periodDate,
               created_by: userId,
+              ledger_id: accountLedgerId,
             })
             .select()
             .single();
@@ -492,33 +502,39 @@ export default function Agreements() {
           }));
           await supabase.from("sales_order_items").insert(soItems);
 
-          // Create invoice for the SO on the account
+          // Create invoice linked to SO with account's ledger
           const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
-          const { error: invErr } = await supabase.from("invoices").insert({
+          const { data: inv, error: invErr } = await supabase.from("invoices").insert({
             company_id: companyId,
             invoice_number: invNum,
             account_id: doc.accountId,
             sales_order_id: so.id,
+            ledger_id: accountLedgerId,
             amount: total,
             subtotal: total,
             tax_amount: 0,
             status: "draft",
             invoice_date: doc.periodDate,
-          });
+          }).select().single();
           if (invErr) throw invErr;
+
+          // Post ledger transaction if ledger is assigned
+          if (accountLedgerId && inv) {
+            await supabase.from("ledger_transactions" as any).insert({
+              ledger_id: accountLedgerId,
+              transaction_type: "invoice",
+              reference_id: (inv as any).id,
+              reference_number: invNum,
+              amount: -total,
+              description: `Invoice ${invNum} for SO ${soNum}`,
+              transaction_date: doc.periodDate,
+            });
+          }
 
           created++;
         } else {
-          // Purchase Order — need a vendor_id from the account's vendor
-          const { data: accData } = await supabase
-            .from("accounts")
-            .select("vendor_id, location_id")
-            .eq("id", doc.accountId)
-            .single();
-
+          // Purchase Order
           const { data: poNum } = await supabase.rpc("get_next_po_number", { p_company_id: companyId });
-          const userId = (await supabase.auth.getUser()).data.user?.id;
-          const total = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
           const { data: po, error: poErr } = await supabase
             .from("purchase_orders")
@@ -531,6 +547,7 @@ export default function Agreements() {
               total_amount: total,
               order_date: doc.periodDate,
               created_by: userId,
+              ledger_id: accountLedgerId,
             })
             .select()
             .single();
@@ -545,20 +562,34 @@ export default function Agreements() {
           }));
           await supabase.from("purchase_order_items").insert(poItems);
 
-          // Create invoice for the PO
+          // Create invoice linked to PO with account's ledger
           const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
-          const { error: invErr } = await supabase.from("invoices").insert({
+          const { data: inv, error: invErr } = await supabase.from("invoices").insert({
             company_id: companyId,
             invoice_number: invNum,
             account_id: doc.accountId,
             purchase_order_id: po.id,
+            ledger_id: accountLedgerId,
             amount: total,
             subtotal: total,
             tax_amount: 0,
             status: "draft",
             invoice_date: doc.periodDate,
-          });
+          }).select().single();
           if (invErr) throw invErr;
+
+          // Post ledger transaction if ledger is assigned
+          if (accountLedgerId && inv) {
+            await supabase.from("ledger_transactions" as any).insert({
+              ledger_id: accountLedgerId,
+              transaction_type: "invoice",
+              reference_id: (inv as any).id,
+              reference_number: invNum,
+              amount: -total,
+              description: `Invoice ${invNum} for PO ${poNum}`,
+              transaction_date: doc.periodDate,
+            });
+          }
 
           created++;
         }
