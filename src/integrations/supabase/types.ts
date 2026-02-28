@@ -211,6 +211,42 @@ export type Database = {
           },
         ]
       }
+      agreement_rates: {
+        Row: {
+          agreement_id: string
+          created_at: string
+          id: string
+          rate_id: string
+        }
+        Insert: {
+          agreement_id: string
+          created_at?: string
+          id?: string
+          rate_id: string
+        }
+        Update: {
+          agreement_id?: string
+          created_at?: string
+          id?: string
+          rate_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreement_rates_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreement_rates_rate_id_fkey"
+            columns: ["rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agreements: {
         Row: {
           agreement_id: string
