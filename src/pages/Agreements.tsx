@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -21,7 +22,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
-import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2 } from "lucide-react";
+import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Agreement {
@@ -66,6 +67,15 @@ interface AgreementItem {
   cadence: string | null;
   cadence_day: string | null;
   product: { name: string; product_id: string };
+}
+
+interface TaxRate {
+  id: string;
+  rate_id: string;
+  name: string;
+  rate: number;
+  rate_type: string;
+  description: string | null;
 }
 
 type DialogMode = "create" | "edit";
@@ -145,6 +155,9 @@ export default function Agreements() {
 
   const [linkedAccounts, setLinkedAccounts] = useState<AgreementAccount[]>([]);
   const [linkedItems, setLinkedItems] = useState<AgreementItem[]>([]);
+  const [allRates, setAllRates] = useState<TaxRate[]>([]);
+  const [linkedRateIds, setLinkedRateIds] = useState<Set<string>>(new Set());
+  const [rateSearch, setRateSearch] = useState("");
 
   // Add rows state
   const [addAccountId, setAddAccountId] = useState("");
@@ -184,25 +197,29 @@ export default function Agreements() {
 
   const fetchSupportData = useCallback(async () => {
     if (!companyId) return;
-    const [{ data: accs }, { data: prods }] = await Promise.all([
+    const [{ data: accs }, { data: prods }, { data: rates }] = await Promise.all([
       supabase.from("accounts").select("id, account_id, name, type").eq("company_id", companyId).order("name"),
       supabase.from("products").select("id, product_id, name, price").eq("company_id", companyId).order("name"),
+      supabase.from("tax_rates").select("id, rate_id, name, rate, rate_type, description").eq("company_id", companyId).eq("is_active", true).order("name"),
     ]);
     setAllAccounts(accs || []);
     setAllProducts(prods || []);
+    setAllRates(rates || []);
   }, [companyId]);
 
   const fetchLinked = useCallback(async (id: string) => {
-    const [{ data: accs }, { data: items }] = await Promise.all([
+    const [{ data: accs }, { data: items }, { data: agrRates }] = await Promise.all([
       supabase.from("agreement_accounts")
         .select("id, account_id, account:accounts(id, account_id, name, type)")
         .eq("agreement_id", id),
       supabase.from("agreement_items")
         .select("id, product_id, quantity, unit_price, notes, cadence, cadence_day, product:products(name, product_id)")
         .eq("agreement_id", id),
+      supabase.from("agreement_rates" as any).select("rate_id").eq("agreement_id", id),
     ]);
     setLinkedAccounts((accs || []).map((a: any) => ({ ...a, account: a.account })));
     setLinkedItems((items || []).map((i: any) => ({ ...i, product: i.product })));
+    setLinkedRateIds(new Set((agrRates || []).map((r: any) => r.rate_id)));
   }, []);
 
   useEffect(() => { fetchAgreements(); fetchSupportData(); }, [fetchAgreements, fetchSupportData]);
@@ -214,6 +231,8 @@ export default function Agreements() {
     setForm({ ...emptyForm });
     setLinkedAccounts([]);
     setLinkedItems([]);
+    setLinkedRateIds(new Set());
+    setRateSearch("");
     setAddAccountId("");
     setAddItem({ ...emptyItem });
     setDialogMode("create");
@@ -230,6 +249,7 @@ export default function Agreements() {
       end_date: agreement.end_date || "",
       notes: agreement.notes || "",
     });
+    setRateSearch("");
     setAddAccountId("");
     setAddItem({ ...emptyItem });
     setDialogMode("edit");
@@ -470,7 +490,26 @@ export default function Agreements() {
 
         const accountLedgerId = accData?.ledger_id ?? null;
         const userId = (await supabase.auth.getUser()).data.user?.id;
-        const total = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+        const subtotal = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+
+        // Fetch linked rates for this agreement
+        const { data: agrRatesData } = await supabase
+          .from("agreement_rates" as any)
+          .select("rate_id")
+          .eq("agreement_id", selectedAgreement!.id);
+        const agrRateIds = (agrRatesData || []).map((r: any) => r.rate_id);
+        let taxAmount = 0;
+        if (agrRateIds.length > 0) {
+          const { data: ratesData } = await supabase
+            .from("tax_rates")
+            .select("id, rate, rate_type")
+            .in("id", agrRateIds);
+          for (const r of (ratesData || [])) {
+            if (r.rate_type === "flat") taxAmount += Number(r.rate);
+            else taxAmount += subtotal * Number(r.rate) / 100;
+          }
+        }
+        const total = subtotal + taxAmount;
 
         if (doc.type === "sales_order") {
           // Get next SO number
@@ -483,7 +522,8 @@ export default function Agreements() {
               so_number: soNum,
               status: "draft",
               total_amount: total,
-              subtotal: total,
+              subtotal: subtotal,
+              tax_amount: taxAmount,
               order_date: doc.periodDate,
               created_by: userId,
               ledger_id: accountLedgerId,
@@ -511,8 +551,8 @@ export default function Agreements() {
             sales_order_id: so.id,
             ledger_id: accountLedgerId,
             amount: total,
-            subtotal: total,
-            tax_amount: 0,
+            subtotal: subtotal,
+            tax_amount: taxAmount,
             status: "draft",
             invoice_date: doc.periodDate,
           }).select().single();
@@ -571,8 +611,8 @@ export default function Agreements() {
             purchase_order_id: po.id,
             ledger_id: accountLedgerId,
             amount: total,
-            subtotal: total,
-            tax_amount: 0,
+            subtotal: subtotal,
+            tax_amount: taxAmount,
             status: "draft",
             invoice_date: doc.periodDate,
           }).select().single();
@@ -651,6 +691,31 @@ export default function Agreements() {
     if (error) { toast.error("Failed to remove item"); return; }
     if (selectedAgreement) fetchLinked(selectedAgreement.id);
     fetchAgreements();
+  };
+
+  // ── Rates ──────────────────────────────────────────────────────────────────
+
+  const toggleRate = (rateId: string) => {
+    setLinkedRateIds(prev => {
+      const next = new Set(prev);
+      if (next.has(rateId)) next.delete(rateId);
+      else next.add(rateId);
+      return next;
+    });
+  };
+
+  const handleSaveRates = async () => {
+    if (!selectedAgreement) return;
+    await supabase.from("agreement_rates" as any).delete().eq("agreement_id", selectedAgreement.id);
+    if (linkedRateIds.size > 0) {
+      const rows = Array.from(linkedRateIds).map(rate_id => ({
+        agreement_id: selectedAgreement.id,
+        rate_id,
+      }));
+      const { error } = await supabase.from("agreement_rates" as any).insert(rows);
+      if (error) { toast.error("Failed to save rates"); return; }
+    }
+    toast.success("Rates saved");
   };
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -786,6 +851,9 @@ export default function Agreements() {
               </TabsTrigger>
               <TabsTrigger value="items" disabled={!isEditMode}>
                 Items{isEditMode ? ` (${linkedItems.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="rates" disabled={!isEditMode}>
+                Rates{isEditMode ? ` (${linkedRateIds.size})` : ""}
               </TabsTrigger>
             </TabsList>
             </div>
@@ -1013,6 +1081,63 @@ export default function Agreements() {
                     </table>
                   </div>
                 )}
+              </div>
+            </TabsContent>
+
+            {/* ── Rates ── */}
+            <TabsContent value="rates" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search rates..."
+                    value={rateSearch}
+                    onChange={e => setRateSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                {(() => {
+                  const filteredRates = allRates.filter(r =>
+                    r.name.toLowerCase().includes(rateSearch.toLowerCase()) ||
+                    r.rate_id.toLowerCase().includes(rateSearch.toLowerCase()) ||
+                    (r.description && r.description.toLowerCase().includes(rateSearch.toLowerCase()))
+                  );
+                  const formatRate = (r: TaxRate) =>
+                    r.rate_type === "flat" ? `$${Number(r.rate).toFixed(2)}` : `${Number(r.rate).toFixed(2)}%`;
+                  return (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{linkedRateIds.size} of {allRates.length} selected</span>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto border rounded-lg divide-y">
+                        {filteredRates.length === 0 ? (
+                          <div className="flex flex-col items-center py-8 text-muted-foreground">
+                            <Percent className="w-8 h-8 mb-2" />
+                            <p className="text-sm">No rates found</p>
+                          </div>
+                        ) : filteredRates.map(rate => (
+                          <label key={rate.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50">
+                            <Checkbox
+                              checked={linkedRateIds.has(rate.id)}
+                              onCheckedChange={() => toggleRate(rate.id)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{rate.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {rate.rate_id} · {formatRate(rate)}
+                                {rate.description ? ` · ${rate.description}` : ""}
+                              </p>
+                            </div>
+                            <span className="text-sm font-medium shrink-0">{formatRate(rate)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveRates}>Save Rates</Button>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
