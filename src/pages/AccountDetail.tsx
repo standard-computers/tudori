@@ -359,7 +359,7 @@ const AccountDetail = () => {
           transaction_type: 'payment',
           reference_id: selectedInvoice.id,
           reference_number: paymentNumber,
-          amount: selectedInvoice.amount,
+          amount: Math.abs(selectedInvoice.amount),
           description: `Payment ${paymentNumber} for Invoice ${selectedInvoice.invoice_number}`,
           transaction_date: new Date().toISOString().split('T')[0],
         } as any);
