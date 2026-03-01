@@ -60,13 +60,20 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
     return () => unregisterStatusBarHandler();
   }, [addMessage]);
 
-  // Auto-remove messages after 5 seconds
+  // Auto-remove older messages after 5 seconds, but keep the last one until a new one arrives
   useEffect(() => {
     if (messages.length === 0) return;
-    
+
     const timer = setTimeout(() => {
       const now = Date.now();
-      setMessages(prev => prev.filter(msg => now - msg.timestamp < 5000));
+      setMessages(prev => {
+        const filtered = prev.filter(msg => now - msg.timestamp < 5000);
+        // Always keep the last message
+        if (filtered.length === 0 && prev.length > 0) {
+          return [prev[prev.length - 1]];
+        }
+        return filtered;
+      });
     }, 5000);
 
     return () => clearTimeout(timer);
