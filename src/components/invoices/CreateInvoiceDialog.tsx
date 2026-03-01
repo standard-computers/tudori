@@ -530,8 +530,21 @@ export const CreateInvoiceDialog = ({
         if (taxError) throw taxError;
       }
 
+      // Resolve ledger: prefer PO/SO ledger, fallback to account's ledger
+      if (!ledgerId && formData.account_id) {
+        const { data: acctData } = await supabase
+          .from('accounts' as any)
+          .select('ledger_id, location_id')
+          .eq('id', formData.account_id)
+          .maybeSingle();
+        ledgerId = (acctData as any)?.ledger_id || null;
+        if (!ledgerId && (acctData as any)?.location_id) {
+          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+          ledgerId = await getInventoryLedgerId((acctData as any).location_id, companyId || undefined);
+        }
+      }
+
       if (ledgerId) {
-        const transactionAmount = formData.reference_type === 'sales_order' ? grandTotal : -grandTotal;
         const referenceNumber =
           formData.reference_type === 'purchase_order'
             ? purchaseOrders.find((p) => p.id === formData.purchase_order_id)?.po_number
@@ -542,7 +555,7 @@ export const CreateInvoiceDialog = ({
           transaction_type: 'invoice',
           reference_id: (invoice as any).id,
           reference_number: invoiceNumber,
-          amount: transactionAmount,
+          amount: grandTotal,
           description: `Invoice ${invoiceNumber} for ${referenceNumber}`,
         });
 
