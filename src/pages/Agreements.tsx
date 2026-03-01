@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
-import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent, CheckCircle2, XCircle, ChevronLeft } from "lucide-react";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
@@ -127,6 +128,7 @@ const getCadenceDayLabel = (cadence: string) => {
 const emptyItem = { product_id: "", quantity: "1", unit_price: "0", notes: "", cadence: "", cadence_day: "" };
 
 export default function Agreements() {
+  const navigate = useNavigate();
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -251,6 +253,7 @@ export default function Agreements() {
   };
 
   useKeyboardShortcut('n', openCreate);
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   const openEdit = (agreement: Agreement) => {
     setSelectedAgreement(agreement);
@@ -800,6 +803,10 @@ export default function Agreements() {
         <div className="px-4">
           <div className="flex items-center justify-between h-16 pr-16">
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
+                <ChevronLeft className="h-4 w-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
+              </Button>
               <Handshake className="h-5 w-5 text-primary" />
               <h1 className="text-xl font-semibold">Agreements</h1>
               <Badge variant="secondary">{agreements.length}</Badge>
