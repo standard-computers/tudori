@@ -459,101 +459,102 @@ const AccountDetail = () => {
               {!account.customer?.name && !account.vendor?.name && !account.location?.name && '-'}
             </p>
           </div>
-          {(account.type === 'inventory' || account.type === 'location') ? (
-            <>
-              <div className="border rounded-lg p-4 flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">Total Value</p>
-                <p className="text-sm font-medium">${ledgerTransactions.reduce((s, t) => s + t.amount, 0).toFixed(2)}</p>
-              </div>
-              <div className="border rounded-lg p-4 flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">Transactions</p>
-                <p className="text-sm font-medium">{ledgerTransactions.length}</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="border rounded-lg p-4 flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">Total Invoiced</p>
-                <p className="text-sm font-medium">${totalAmount.toFixed(2)}</p>
-              </div>
-              <div className="border rounded-lg p-4 flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">Outstanding</p>
-                <p className="text-sm font-medium text-yellow-600">${outstandingAmount.toFixed(2)}</p>
-              </div>
-            </>
-          )}
+          <div className="border rounded-lg p-4 flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">Total Invoiced</p>
+            <p className="text-sm font-medium">${totalAmount.toFixed(2)}</p>
+          </div>
+          <div className="border rounded-lg p-4 flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">Outstanding</p>
+            <p className="text-sm font-medium text-yellow-600">${outstandingAmount.toFixed(2)}</p>
+          </div>
         </div>
 
         {/* Tabbed Content */}
-        <Tabs defaultValue={(account.type === 'inventory' || account.type === 'location') ? 'transactions' : 'invoices'}>
+        <Tabs defaultValue="transactions">
           <TabsList>
-            {(account.type === 'inventory' || account.type === 'location') && (
-              <TabsTrigger value="transactions">Transactions ({ledgerTransactions.length})</TabsTrigger>
-            )}
+            <TabsTrigger value="transactions">Transactions ({ledgerTransactions.length + payments.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
             <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
           </TabsList>
 
-          {(account.type === 'inventory' || account.type === 'location') && (
-            <TabsContent value="transactions">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="text-lg font-semibold">Transactions</h2>
-                </div>
-                <Input
-                  placeholder="Search transactions..."
-                  value={txSearchQuery}
-                  onChange={(e) => setTxSearchQuery(e.target.value)}
-                  className="max-w-sm"
-                />
+          <TabsContent value="transactions">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold">Transactions</h2>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableTableHead label="Date" sortKey="transaction_date" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterable={false} />
-                    <SortableTableHead label="Type" sortKey="transaction_type" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterable={false} />
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Description</TableHead>
-                    <SortableTableHead label="Amount" sortKey="amount" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterable={false} />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(() => {
-                    const query = txSearchQuery.toLowerCase();
-                    const filtered = query
-                      ? sortedTransactions.filter(t =>
-                          t.transaction_type.toLowerCase().includes(query) ||
-                          (t.reference_number || '').toLowerCase().includes(query) ||
-                          (t.description || '').toLowerCase().includes(query)
-                        )
-                      : sortedTransactions;
-                    return filtered.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          No transactions found.
+              <Input
+                placeholder="Search transactions..."
+                value={txSearchQuery}
+                onChange={(e) => setTxSearchQuery(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  // Merge ledger transactions and payments into a unified list
+                  const paymentRows = payments.map(p => ({
+                    id: `pay-${p.id}`,
+                    date: p.payment_date,
+                    type: 'payment',
+                    reference: p.payment_number,
+                    description: p.invoice?.invoice_number ? `Payment for Invoice ${p.invoice.invoice_number}` : (p.notes || 'Payment'),
+                    amount: p.amount,
+                  }));
+                  const ledgerRows = ledgerTransactions.map(t => ({
+                    id: `tx-${t.id}`,
+                    date: t.transaction_date,
+                    type: t.transaction_type,
+                    reference: t.reference_number,
+                    description: t.description,
+                    amount: t.amount,
+                  }));
+                  const combined = [...paymentRows, ...ledgerRows].sort(
+                    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+                  );
+                  const query = txSearchQuery.toLowerCase();
+                  const filtered = query
+                    ? combined.filter(r =>
+                        r.type.toLowerCase().includes(query) ||
+                        (r.reference || '').toLowerCase().includes(query) ||
+                        (r.description || '').toLowerCase().includes(query)
+                      )
+                    : combined;
+                  return filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No transactions found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell>{format(parseISO(row.date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">{row.type.replace(/_/g, ' ')}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{row.reference || '-'}</TableCell>
+                        <TableCell className="max-w-[300px] truncate">{row.description || '-'}</TableCell>
+                        <TableCell className={`font-medium ${row.amount < 0 ? 'text-destructive' : ''}`}>
+                          {row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toFixed(2)}
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      filtered.map((tx) => (
-                        <TableRow key={tx.id}>
-                          <TableCell>{format(parseISO(tx.transaction_date), 'MMM d, yyyy')}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="capitalize">{tx.transaction_type.replace(/_/g, ' ')}</Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">{tx.reference_number || '-'}</TableCell>
-                          <TableCell className="max-w-[300px] truncate">{tx.description || '-'}</TableCell>
-                          <TableCell className={`font-medium ${tx.amount < 0 ? 'text-destructive' : ''}`}>
-                            {tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    );
-                  })()}
-                </TableBody>
-              </Table>
-            </TabsContent>
-          )}
+                    ))
+                  );
+                })()}
+              </TableBody>
+            </Table>
+          </TabsContent>
 
           <TabsContent value="invoices">
             <div className="flex items-center justify-between mb-4">
