@@ -132,7 +132,7 @@ const emptyItem = { product_id: "", quantity: "1", unit_price: "0", notes: "", c
 export default function Agreements() {
   const navigate = useNavigate();
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const { vendorOptions, parseVendorValue } = useVendorSources(companyId, { includeAllLocations: true });
+  const { vendorOptions, parseVendorValue, getVendorDisplayName } = useVendorSources(companyId, { includeAllLocations: true });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -842,15 +842,16 @@ export default function Agreements() {
             <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Start Date" sortKey="start_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="End Date" sortKey="end_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+            <SortableTableHead label="Vendor / Source" sortKey="vendor_source" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Accounts" sortKey="account_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
             <SortableTableHead label="Items" sortKey="item_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
             <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
               <TableCell className="font-mono text-xs">{a.agreement_id}</TableCell>
@@ -862,6 +863,7 @@ export default function Agreements() {
               </TableCell>
               <TableCell className="text-sm">{a.start_date || "-"}</TableCell>
               <TableCell className="text-sm">{a.end_date || "-"}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{a.vendor_source ? getVendorDisplayName(a.vendor_source) : "-"}</TableCell>
               <TableCell className="text-right font-mono">{a.account_count ?? 0}</TableCell>
               <TableCell className="text-right font-mono">{a.item_count ?? 0}</TableCell>
             </TableRow>
