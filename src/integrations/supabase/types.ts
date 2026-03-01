@@ -260,6 +260,7 @@ export type Database = {
           start_date: string | null
           status: string
           updated_at: string
+          vendor_source: string | null
         }
         Insert: {
           agreement_id: string
@@ -273,6 +274,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+          vendor_source?: string | null
         }
         Update: {
           agreement_id?: string
@@ -286,6 +288,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+          vendor_source?: string | null
         }
         Relationships: [
           {

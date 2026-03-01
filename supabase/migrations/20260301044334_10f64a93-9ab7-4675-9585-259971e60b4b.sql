@@ -1,0 +1,1 @@
+ALTER TABLE public.agreements ADD COLUMN IF NOT EXISTS vendor_source TEXT NULL;

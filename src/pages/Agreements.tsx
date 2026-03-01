@@ -27,6 +27,7 @@ import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileT
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { useVendorSources } from "@/hooks/use-vendor-sources";
 
 interface Agreement {
   id: string;
@@ -36,6 +37,7 @@ interface Agreement {
   start_date: string | null;
   end_date: string | null;
   notes: string | null;
+  vendor_source: string | null;
   created_at: string;
   account_count?: number;
   item_count?: number;
@@ -103,7 +105,7 @@ const statusColor: Record<string, string> = {
   terminated: "bg-destructive/10 text-destructive",
 };
 
-const emptyForm = { name: "", status: "draft", start_date: "", end_date: "", notes: "" };
+const emptyForm = { name: "", status: "draft", start_date: "", end_date: "", notes: "", vendor_source: "" };
 const CADENCE_OPTIONS = ["daily", "weekly", "biweekly", "monthly", "quarterly", "yearly"];
 const DAYS_OF_WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MONTHS_OF_YEAR = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -130,6 +132,7 @@ const emptyItem = { product_id: "", quantity: "1", unit_price: "0", notes: "", c
 export default function Agreements() {
   const navigate = useNavigate();
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const { vendorOptions, parseVendorValue } = useVendorSources(companyId, { includeAllLocations: true });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -263,6 +266,7 @@ export default function Agreements() {
       start_date: agreement.start_date || "",
       end_date: agreement.end_date || "",
       notes: agreement.notes || "",
+      vendor_source: agreement.vendor_source || "",
     });
     setRateSearch("");
     setAddAccountId("");
@@ -291,6 +295,7 @@ export default function Agreements() {
           start_date: form.start_date || null,
           end_date: form.end_date || null,
           notes: form.notes || null,
+          vendor_source: form.vendor_source || null,
           created_by: (await supabase.auth.getUser()).data.user?.id,
         })
         .select()
@@ -310,11 +315,12 @@ export default function Agreements() {
         start_date: form.start_date || null,
         end_date: form.end_date || null,
         notes: form.notes || null,
+        vendor_source: form.vendor_source || null,
       }).eq("id", selectedAgreement.id);
       setSaving(false);
       if (error) { toast.error("Failed to save agreement"); return; }
       toast.success("Agreement saved");
-      setSelectedAgreement(a => a ? { ...a, name: form.name.trim(), status: form.status, start_date: form.start_date || null, end_date: form.end_date || null, notes: form.notes || null } : a);
+      setSelectedAgreement(a => a ? { ...a, name: form.name.trim(), status: form.status, start_date: form.start_date || null, end_date: form.end_date || null, notes: form.notes || null, vendor_source: form.vendor_source || null } : a);
       fetchAgreements();
     }
   };
@@ -520,6 +526,11 @@ export default function Agreements() {
 
         const accountLedgerId = accData?.ledger_id ?? null;
         const userId = (await supabase.auth.getUser()).data.user?.id;
+
+        // Resolve vendor_source from the agreement for SO/PO
+        const vendorSourceParsed = selectedAgreement?.vendor_source ? parseVendorValue(selectedAgreement.vendor_source) : null;
+        const agreementVendorId = vendorSourceParsed?.type === 'vendor' ? vendorSourceParsed.id : null;
+        const agreementLocationId = vendorSourceParsed?.type === 'location' ? vendorSourceParsed.id : null;
         const subtotal = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
         // Fetch linked rates for this agreement
@@ -557,6 +568,7 @@ export default function Agreements() {
               order_date: doc.periodDate,
               created_by: userId,
               ledger_id: accountLedgerId,
+              vendor_id: agreementVendorId,
             })
             .select()
             .single();
@@ -618,8 +630,8 @@ export default function Agreements() {
               company_id: companyId,
               po_number: poNum,
               status: "draft",
-              vendor_id: accData?.vendor_id ?? null,
-              location_id: accData?.location_id ?? null,
+              vendor_id: agreementVendorId ?? accData?.vendor_id ?? null,
+              location_id: agreementLocationId ?? accData?.location_id ?? null,
               total_amount: total,
               order_date: doc.periodDate,
               created_by: userId,
@@ -946,6 +958,17 @@ export default function Agreements() {
                   <div className="col-span-2">
                     <Label className="mb-1.5 block">Notes</Label>
                     <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={4} placeholder="Optional notes about this agreement..." />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="mb-1.5 block">Vendor / Source</Label>
+                    <SearchableSelect
+                      options={vendorOptions}
+                      value={form.vendor_source}
+                      onValueChange={v => setForm(f => ({ ...f, vendor_source: v }))}
+                      placeholder="Select vendor or internal location..."
+                      emptyMessage="No vendors found"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Used as the vendor on Sales Orders and Purchase Orders created during execution.</p>
                   </div>
                 </div>
                 <div className="flex justify-end pt-1">
