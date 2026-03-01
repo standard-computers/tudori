@@ -811,7 +811,7 @@ export default function Agreements() {
           </div>
         </div>
       </header>
-      <main className="flex-1 p-4">
+      <main className="flex-1">
 
 
       {/* Table */}
