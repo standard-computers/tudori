@@ -798,7 +798,7 @@ export default function Agreements() {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
-          <div className="flex items-center justify-between h-16 pr-12">
+          <div className="flex items-center justify-between h-16 pr-16">
             <div className="flex items-center gap-2">
               <Handshake className="h-5 w-5 text-primary" />
               <h1 className="text-xl font-semibold">Agreements</h1>
