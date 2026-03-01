@@ -353,7 +353,7 @@ const AccountDetail = () => {
         paymentLedgerId = await getInventoryLedgerId(account.location_id, companyId);
       }
       if (paymentLedgerId) {
-        await supabase.from('ledger_transactions' as any).insert({
+        const { error: ledgerError } = await supabase.from('ledger_transactions' as any).insert({
           ledger_id: paymentLedgerId,
           company_id: companyId,
           transaction_type: 'payment',
@@ -363,6 +363,12 @@ const AccountDetail = () => {
           description: `Payment ${paymentNumber} for Invoice ${selectedInvoice.invoice_number}`,
           transaction_date: new Date().toISOString().split('T')[0],
         } as any);
+        if (ledgerError) {
+          console.error('Ledger transaction error:', ledgerError);
+          throw new Error(`Ledger posting failed: ${ledgerError.message}`);
+        }
+      } else {
+        console.warn('No ledger found for payment - invoice ledger_id:', selectedInvoice.ledger_id, 'account ledger_id:', account?.ledger_id);
       }
 
       toast.success('Payment accepted successfully');
