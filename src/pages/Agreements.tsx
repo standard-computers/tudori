@@ -23,6 +23,8 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
 import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent, CheckCircle2, XCircle } from "lucide-react";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
+import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Agreement {
@@ -247,6 +249,8 @@ export default function Agreements() {
     setDialogTab("details");
     setDialogOpen(true);
   };
+
+  useKeyboardShortcut('n', openCreate);
 
   const openEdit = (agreement: Agreement) => {
     setSelectedAgreement(agreement);
@@ -799,8 +803,9 @@ export default function Agreements() {
           <h1 className="text-xl font-semibold">Agreements</h1>
           <Badge variant="secondary">{agreements.length}</Badge>
         </div>
-        <Button onClick={openCreate} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> New Agreement
+        <Button onClick={openCreate} size="icon" className="relative">
+          <Plus className="h-4 w-4" />
+          <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
         </Button>
       </div>
 
