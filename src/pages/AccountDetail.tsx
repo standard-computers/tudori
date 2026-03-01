@@ -535,6 +535,7 @@ const AccountDetail = () => {
                     reference: p.payment_number,
                     description: p.invoice?.invoice_number ? `Payment for Invoice ${p.invoice.invoice_number}` : (p.notes || 'Payment'),
                     amount: p.amount,
+                    invoiceId: p.invoice_id || null,
                   }));
                   const invoiceRows = invoices.map(inv => ({
                     id: `inv-${inv.id}`,
@@ -543,26 +544,56 @@ const AccountDetail = () => {
                     reference: inv.invoice_number,
                     description: inv.purchase_order?.po_number ? `Invoice for PO ${inv.purchase_order.po_number}` : inv.notes || 'Invoice',
                     amount: -inv.amount,
+                    invoiceId: inv.id,
                   }));
-                  const sorted = [...paymentRows, ...invoiceRows].sort(
-                    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-                  );
+
+                  const allRows = [...paymentRows, ...invoiceRows];
                   const query = txSearchQuery.toLowerCase();
-                  const filtered = query
-                    ? sorted.filter(r =>
+                  const filteredRows = query
+                    ? allRows.filter(r =>
                         r.type.toLowerCase().includes(query) ||
                         (r.reference || '').toLowerCase().includes(query) ||
                         (r.description || '').toLowerCase().includes(query)
                       )
-                    : sorted;
-                  return filtered.length === 0 ? (
+                    : allRows;
+
+                  // Build groups: each invoice + its payments form a group
+                  const groupMap = new Map<string, typeof allRows>();
+                  const ungrouped: typeof allRows = [];
+                  for (const row of filteredRows) {
+                    if (row.type === 'invoice') {
+                      const key = row.invoiceId!;
+                      if (!groupMap.has(key)) groupMap.set(key, []);
+                      groupMap.get(key)!.push(row);
+                    } else if (row.invoiceId && groupMap.has(row.invoiceId)) {
+                      groupMap.get(row.invoiceId)!.push(row);
+                    } else {
+                      ungrouped.push(row);
+                    }
+                  }
+
+                  type TxRow = typeof allRows[0];
+                  type Group = { rows: TxRow[]; subtotal: number; groupDate: string };
+                  const groups: Group[] = [];
+                  for (const rows of groupMap.values()) {
+                    const s = [...rows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    groups.push({ rows: s, subtotal: s.reduce((acc, r) => acc + r.amount, 0), groupDate: s[0].date });
+                  }
+                  for (const row of ungrouped) {
+                    groups.push({ rows: [row], subtotal: row.amount, groupDate: row.date });
+                  }
+                  groups.sort((a, b) => new Date(b.groupDate).getTime() - new Date(a.groupDate).getTime());
+
+                  if (groups.length === 0) return (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        No transactions found.
+                        No transactions found
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filtered.map((row) => (
+                  );
+
+                  return groups.flatMap((group, gi) => {
+                    const rowEls = group.rows.map((row) => (
                       <TableRow key={row.id}>
                         <TableCell>{format(parseISO(row.date), 'MMM d, yyyy')}</TableCell>
                         <TableCell>
@@ -574,8 +605,19 @@ const AccountDetail = () => {
                           {row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toFixed(2)}
                         </TableCell>
                       </TableRow>
-                    ))
-                  );
+                    ));
+                    const subtotalEl = group.rows.length > 1 ? (
+                      <TableRow key={`sub-${gi}`} className="bg-muted/40 border-t border-border/60">
+                        <TableCell colSpan={4} className="text-right text-xs text-muted-foreground font-medium uppercase tracking-wide pr-4">
+                          Group Subtotal
+                        </TableCell>
+                        <TableCell className={`font-semibold text-sm ${group.subtotal < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                          {group.subtotal < 0 ? '-' : ''}${Math.abs(group.subtotal).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ) : null;
+                    return subtotalEl ? [...rowEls, subtotalEl] : rowEls;
+                  });
                 })()}
               </TableBody>
             </Table>
