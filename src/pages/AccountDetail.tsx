@@ -346,10 +346,15 @@ const AccountDetail = () => {
 
       if (error) throw error;
 
-      // Post payment to the account's ledger if one is linked
-      if (account?.ledger_id) {
+      // Post payment to the account's ledger - resolve ledger with fallback
+      let paymentLedgerId = account?.ledger_id || null;
+      if (!paymentLedgerId && account?.location_id && companyId) {
+        const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+        paymentLedgerId = await getInventoryLedgerId(account.location_id, companyId);
+      }
+      if (paymentLedgerId) {
         await supabase.from('ledger_transactions' as any).insert({
-          ledger_id: account.ledger_id,
+          ledger_id: paymentLedgerId,
           company_id: companyId,
           transaction_type: 'payment',
           reference_id: selectedInvoice.id,
