@@ -22,7 +22,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
-import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent } from "lucide-react";
+import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent, CheckCircle2, XCircle } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Agreement {
@@ -171,6 +171,14 @@ export default function Agreements() {
   const [pendingDocs, setPendingDocs] = useState<PendingDocument[]>([]);
   const [checking, setChecking] = useState(false);
   const [executing, setExecuting] = useState(false);
+
+  // Progress dialog state
+  interface ProgressEntry { label: string; status: "pending" | "success" | "error"; detail?: string }
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false);
+  const [progressEntries, setProgressEntries] = useState<ProgressEntry[]>([]);
+  const [progressCurrent, setProgressCurrent] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [progressDone, setProgressDone] = useState(false);
 
   const { sortConfig, handleSort, sortedAndFilteredData } = useTableSort<Agreement>(agreements, "created_at", "desc");
 
@@ -476,10 +484,25 @@ export default function Agreements() {
   const handleExecute = async () => {
     if (!companyId) return;
     setExecuting(true);
+    setCheckDialogOpen(false);
+
+    // Initialize progress dialog
+    const entries: ProgressEntry[] = pendingDocs.map(doc => ({
+      label: `${doc.type === "sales_order" ? "SO" : "PO"} + Invoice — ${doc.accountName} (${doc.periodDate})`,
+      status: "pending" as const,
+    }));
+    setProgressEntries(entries);
+    setProgressCurrent(0);
+    setProgressTotal(pendingDocs.length);
+    setProgressDone(false);
+    setProgressDialogOpen(true);
+
     let created = 0;
     let errors = 0;
 
-    for (const doc of pendingDocs) {
+    for (let idx = 0; idx < pendingDocs.length; idx++) {
+      const doc = pendingDocs[idx];
+      setProgressCurrent(idx + 1);
       try {
         // Fetch account data (ledger, vendor, location) for all doc types
         const { data: accData } = await supabase
@@ -511,8 +534,8 @@ export default function Agreements() {
         }
         const total = subtotal + taxAmount;
 
+        let docRef = "";
         if (doc.type === "sales_order") {
-          // Get next SO number
           const { data: soNum } = await supabase.rpc("get_next_so_number", { p_company_id: companyId });
 
           const { data: so, error: soErr } = await supabase
@@ -532,8 +555,8 @@ export default function Agreements() {
             .single();
 
           if (soErr) throw soErr;
+          docRef = soNum;
 
-          // Insert SO items
           const soItems = doc.items.map(i => ({
             sales_order_id: so.id,
             product_id: i.productId,
@@ -542,7 +565,6 @@ export default function Agreements() {
           }));
           await supabase.from("sales_order_items").insert(soItems);
 
-          // Create invoice linked to SO with account's ledger
           const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
           const { data: inv, error: invErr } = await supabase.from("invoices").insert({
             company_id: companyId,
@@ -558,7 +580,6 @@ export default function Agreements() {
           }).select().single();
           if (invErr) throw invErr;
 
-          // Insert invoice items mirroring the SO items
           const invoiceItemsSO = doc.items.map(i => ({
             invoice_id: (inv as any).id,
             product_id: i.productId,
@@ -567,22 +588,21 @@ export default function Agreements() {
           }));
           await supabase.from("invoice_items" as any).insert(invoiceItemsSO);
 
-          // Post ledger transaction if ledger is assigned
           if (accountLedgerId && inv) {
             await supabase.from("ledger_transactions" as any).insert({
               ledger_id: accountLedgerId,
               transaction_type: "invoice",
               reference_id: (inv as any).id,
               reference_number: invNum,
-              amount: -total,
+              amount: total,
               description: `Invoice ${invNum} for SO ${soNum}`,
               transaction_date: doc.periodDate,
             });
           }
 
+          setProgressEntries(prev => prev.map((e, i) => i === idx ? { ...e, status: "success", detail: `${soNum} + ${invNum}` } : e));
           created++;
         } else {
-          // Purchase Order
           const { data: poNum } = await supabase.rpc("get_next_po_number", { p_company_id: companyId });
 
           const { data: po, error: poErr } = await supabase
@@ -602,6 +622,7 @@ export default function Agreements() {
             .single();
 
           if (poErr) throw poErr;
+          docRef = poNum;
 
           const poItems = doc.items.map(i => ({
             purchase_order_id: po.id,
@@ -611,7 +632,6 @@ export default function Agreements() {
           }));
           await supabase.from("purchase_order_items").insert(poItems);
 
-          // Create invoice linked to PO with account's ledger
           const { data: invNum } = await supabase.rpc("get_next_invoice_number", { p_company_id: companyId });
           const { data: inv, error: invErr } = await supabase.from("invoices").insert({
             company_id: companyId,
@@ -627,7 +647,6 @@ export default function Agreements() {
           }).select().single();
           if (invErr) throw invErr;
 
-          // Insert invoice items mirroring the PO items
           const invoiceItemsPO = doc.items.map(i => ({
             invoice_id: (inv as any).id,
             product_id: i.productId,
@@ -636,31 +655,32 @@ export default function Agreements() {
           }));
           await supabase.from("invoice_items" as any).insert(invoiceItemsPO);
 
-          // Post ledger transaction if ledger is assigned
           if (accountLedgerId && inv) {
             await supabase.from("ledger_transactions" as any).insert({
               ledger_id: accountLedgerId,
               transaction_type: "invoice",
               reference_id: (inv as any).id,
               reference_number: invNum,
-              amount: -total,
+              amount: total,
               description: `Invoice ${invNum} for PO ${poNum}`,
               transaction_date: doc.periodDate,
             });
           }
 
+          setProgressEntries(prev => prev.map((e, i) => i === idx ? { ...e, status: "success", detail: `${poNum} + ${invNum}` } : e));
           created++;
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to create document:", e);
+        setProgressEntries(prev => prev.map((e2, i) => i === idx ? { ...e2, status: "error", detail: e?.message || "Unknown error" } : e2));
         errors++;
       }
     }
 
     setExecuting(false);
-    setCheckDialogOpen(false);
+    setProgressDone(true);
     if (created > 0) toast.success(`Created ${created} document${created !== 1 ? "s" : ""} successfully`);
-    if (errors > 0) toast.error(`${errors} document${errors !== 1 ? "s" : ""} failed to create`);
+    if (errors > 0) toast.error(`${errors} document${errors !== 1 ? "s" : ""} failed`);
   };
 
   // ── Accounts ───────────────────────────────────────────────────────────────
@@ -1253,6 +1273,66 @@ export default function Agreements() {
                 {executing ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Executing...</> : `Execute (${pendingDocs.length})`}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Progress Dialog */}
+      <Dialog open={progressDialogOpen} onOpenChange={open => { if (progressDone) setProgressDialogOpen(open); }}>
+        <DialogContent className="max-w-lg" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              Executing Agreement — {selectedAgreement?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="space-y-4">
+              {/* Progress bar */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{progressDone ? "Complete" : `Processing ${progressCurrent} of ${progressTotal}...`}</span>
+                  <span>{progressEntries.filter(e => e.status === "success").length} created · {progressEntries.filter(e => e.status === "error").length} failed</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${progressTotal > 0 ? (progressCurrent / progressTotal) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Log list */}
+              <div className="max-h-72 overflow-y-auto rounded-md border divide-y text-sm">
+                {progressEntries.map((entry, i) => (
+                  <div key={i} className="flex items-start gap-2 px-3 py-2">
+                    {entry.status === "pending" && (
+                      i === progressCurrent - 1 && !progressDone
+                        ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mt-0.5 shrink-0" />
+                        : <div className="h-4 w-4 mt-0.5 shrink-0" />
+                    )}
+                    {entry.status === "success" && <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />}
+                    {entry.status === "error" && <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{entry.label}</p>
+                      {entry.detail && (
+                        <p className={`text-xs ${entry.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                          {entry.detail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={!progressDone}
+              onClick={() => setProgressDialogOpen(false)}
+            >
+              {progressDone ? "Close" : <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Processing...</>}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
