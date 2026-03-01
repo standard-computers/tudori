@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { cn } from '@/lib/utils';
-import { Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Info, MessageSquare } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Transaction code to route mapping
 interface TransactionRoute {
@@ -77,6 +79,7 @@ export function StatusBar() {
   const { transaction, isLoading, loadingText, messages, addMessage } = useStatusBar();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const latestMessage = messages[messages.length - 1];
@@ -212,27 +215,69 @@ export function StatusBar() {
         </AnimatePresence>
       </div>
 
-      {/* Right: Animated messages */}
+      {/* Right: Animated messages (clickable) */}
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0 max-w-[40%] overflow-hidden">
         <AnimatePresence mode="wait">
           {latestMessage && (
-            <motion.div
+            <motion.button
               key={latestMessage.id}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
+              onClick={() => setIsMessageDialogOpen(true)}
               className={cn(
-                'flex items-center gap-1.5 truncate',
+                'flex items-center gap-1.5 truncate cursor-pointer hover:opacity-80 transition-opacity',
                 getMessageColor(latestMessage.type)
               )}
+              title="Click to view full message"
             >
               {getMessageIcon(latestMessage.type)}
               <span className="truncate">{latestMessage.text}</span>
-            </motion.div>
+            </motion.button>
           )}
         </AnimatePresence>
+        {messages.length > 0 && (
+          <button
+            onClick={() => setIsMessageDialogOpen(true)}
+            className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            title="View message history"
+          >
+            <MessageSquare className="w-3 h-3" />
+          </button>
+        )}
       </div>
+
+      {/* Message history dialog */}
+      <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Message Log</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-96">
+            {messages.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No messages yet.</p>
+            ) : (
+              <div className="space-y-2 pr-2">
+                {[...messages].reverse().map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      'flex items-start gap-2.5 p-2.5 rounded-md border text-sm',
+                      msg.type === 'success' && 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',
+                      msg.type === 'error' && 'bg-destructive/10 border-destructive/30',
+                      msg.type === 'info' && 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800',
+                    )}
+                  >
+                    <span className="mt-0.5 flex-shrink-0">{getMessageIcon(msg.type)}</span>
+                    <span className={cn('break-words flex-1', getMessageColor(msg.type))}>{msg.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
