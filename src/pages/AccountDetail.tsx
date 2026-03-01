@@ -232,18 +232,19 @@ const AccountDetail = () => {
         setCanCreateInvoice(true);
       }
 
-      // For inventory/location accounts, fetch ledger transactions
-      if (((accountData as any).type === 'inventory' || (accountData as any).type === 'location') && (accountData as any).location_id) {
+      // Fetch ledger transactions for any account that has a ledger linked
+      let resolvedLedgerId = (accountData as any).ledger_id;
+      if (!resolvedLedgerId && ((accountData as any).type === 'inventory' || (accountData as any).type === 'location') && (accountData as any).location_id) {
         const { getInventoryLedgerId } = await import('@/lib/inventory-account');
-        const resolvedLedgerId = (accountData as any).ledger_id || await getInventoryLedgerId((accountData as any).location_id, companyId || undefined);
-        if (resolvedLedgerId) {
-          const { data: txData } = await supabase
-            .from('ledger_transactions' as any)
-            .select('*')
-            .eq('ledger_id', resolvedLedgerId)
-            .order('transaction_date', { ascending: false });
-          setLedgerTransactions((txData as any) || []);
-        }
+        resolvedLedgerId = await getInventoryLedgerId((accountData as any).location_id, companyId || undefined);
+      }
+      if (resolvedLedgerId) {
+        const { data: txData } = await supabase
+          .from('ledger_transactions' as any)
+          .select('*')
+          .eq('ledger_id', resolvedLedgerId)
+          .order('transaction_date', { ascending: false });
+        setLedgerTransactions((txData as any) || []);
       }
 
       // Fetch invoices for this account
