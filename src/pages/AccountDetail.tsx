@@ -267,7 +267,7 @@ const AccountDetail = () => {
         .from('payments' as any)
         .select(`
           *,
-          invoice:invoices(invoice_number)
+          invoice:invoices(invoice_number, id)
         `)
         .eq('account_id', id)
         .order('created_at', { ascending: false });
@@ -557,18 +557,24 @@ const AccountDetail = () => {
                       )
                     : allRows;
 
-                  // Build groups: each invoice + its payments form a group
+                  // Build groups with two passes: first invoices, then payments
                   const groupMap = new Map<string, typeof allRows>();
                   const ungrouped: typeof allRows = [];
+                  // Pass 1: register all invoice groups
                   for (const row of filteredRows) {
                     if (row.type === 'invoice') {
-                      const key = row.invoiceId!;
-                      if (!groupMap.has(key)) groupMap.set(key, []);
-                      groupMap.get(key)!.push(row);
-                    } else if (row.invoiceId && groupMap.has(row.invoiceId)) {
-                      groupMap.get(row.invoiceId)!.push(row);
-                    } else {
-                      ungrouped.push(row);
+                      if (!groupMap.has(row.invoiceId!)) groupMap.set(row.invoiceId!, []);
+                      groupMap.get(row.invoiceId!)!.push(row);
+                    }
+                  }
+                  // Pass 2: attach payments to their invoice group or standalone
+                  for (const row of filteredRows) {
+                    if (row.type !== 'invoice') {
+                      if (row.invoiceId && groupMap.has(row.invoiceId)) {
+                        groupMap.get(row.invoiceId)!.push(row);
+                      } else {
+                        ungrouped.push(row);
+                      }
                     }
                   }
 
