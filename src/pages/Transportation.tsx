@@ -984,8 +984,9 @@ const Transportation = () => {
         <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="h-16 px-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
                 <ArrowLeft className="h-5 w-5" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
               </Button>
               <h1 className="text-xl font-semibold">Transportation</h1>
               <TabsList>

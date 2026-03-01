@@ -616,8 +616,9 @@ const Analytics = () => {
         {/* Header */}
         <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
           <div className="flex items-center gap-4 px-4 h-14">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
               <ArrowLeft className="h-5 w-5" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
             </Button>
             <h1 className="text-lg font-semibold">Analytics</h1>
             <div className="flex-1" />
