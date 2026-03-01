@@ -1175,8 +1175,9 @@ const Locations = () => {
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
                 <ArrowLeft className="w-5 h-5" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
               </Button>
               <div className="flex items-center gap-3">
                 <MapPin className="w-7 h-7 text-green-500" />

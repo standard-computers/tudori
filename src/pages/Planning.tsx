@@ -950,8 +950,9 @@ const Planning = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <header className="bg-background sticky top-0 z-20">
         <div className="h-16 flex items-center px-4">
-          <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2">
+          <Button variant="ghost" size="icon" onClick={handleBack} className="relative mr-2">
             <ArrowLeft className="w-4 h-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
           </Button>
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />

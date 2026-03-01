@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard, Settings } from 'lucide-react';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
 import POSSettingsDialog from '@/components/pos/POSSettingsDialog';
 
@@ -297,8 +298,9 @@ const POS = () => {
         <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shrink-0">
           <div className="px-4">
             <div className="flex items-center gap-4 h-14">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
                 <ArrowLeft className="w-5 h-5" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
               </Button>
               <h1 className="text-xl font-semibold">Point of Sale</h1>
             </div>
@@ -346,8 +348,9 @@ const POS = () => {
         <div className="px-4">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
                 <ArrowLeft className="w-5 h-5" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
               </Button>
               <h1 className="text-xl font-semibold">Point of Sale</h1>
             </div>

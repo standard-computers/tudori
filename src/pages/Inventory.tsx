@@ -26,6 +26,7 @@ import {
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { ArrowLeft, Warehouse, X, ClipboardList, RefreshCw, Download, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
 import { InventoryCountDialog } from '@/components/inventory/InventoryCountDialog';
 import { InventoryDetailDialog } from '@/components/InventoryDetailDialog';
@@ -480,8 +481,9 @@ const Inventory = () => {
       <header className="sticky top-0 z-10 bg-background">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
               <ArrowLeft className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
             </Button>
             <div className="flex items-center gap-2">
               <Warehouse className="h-5 w-5 text-blue-500" />

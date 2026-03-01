@@ -484,8 +484,9 @@ const DebitMemos = () => {
       <div>
         <div className="flex items-center justify-between px-4 pr-16 h-16">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
               <ArrowLeft className="h-5 w-5" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
             </Button>
             <Plus className="h-6 w-6 text-red-500" />
             <h1 className="text-2xl font-bold">Debit Memos</h1>
