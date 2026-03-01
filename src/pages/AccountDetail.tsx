@@ -535,7 +535,15 @@ const AccountDetail = () => {
                     description: p.invoice?.invoice_number ? `Payment for Invoice ${p.invoice.invoice_number}` : (p.notes || 'Payment'),
                     amount: p.amount,
                   }));
-                  const sorted = [...paymentRows].sort(
+                  const invoiceRows = invoices.map(inv => ({
+                    id: `inv-${inv.id}`,
+                    date: inv.invoice_date,
+                    type: 'invoice',
+                    reference: inv.invoice_number,
+                    description: inv.purchase_order?.po_number ? `Invoice for PO ${inv.purchase_order.po_number}` : inv.notes || 'Invoice',
+                    amount: -inv.amount,
+                  }));
+                  const sorted = [...paymentRows, ...invoiceRows].sort(
                     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
                   );
                   const query = txSearchQuery.toLowerCase();
