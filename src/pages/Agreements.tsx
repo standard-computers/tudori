@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { useChangeHistorySettings } from "@/hooks/use-change-history-settings";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -133,6 +135,7 @@ export default function Agreements() {
   const navigate = useNavigate();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const { vendorOptions, parseVendorValue, getVendorDisplayName } = useVendorSources(companyId, { includeAllLocations: true });
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -923,6 +926,9 @@ export default function Agreements() {
               <TabsTrigger value="rates" disabled={!isEditMode}>
                 Rates{isEditMode ? ` (${linkedRateIds.size})` : ""}
               </TabsTrigger>
+              {isEditMode && isHistoryEnabled("agreement") && (
+                <TabsTrigger value="history">History</TabsTrigger>
+              )}
             </TabsList>
             </div>
 
@@ -1219,6 +1225,27 @@ export default function Agreements() {
                 </div>
               </div>
             </TabsContent>
+
+            {/* ── History ── */}
+            {isEditMode && isHistoryEnabled("agreement") && selectedAgreement && (
+              <TabsContent value="history" className="flex-1 overflow-y-auto mt-0">
+                <div className="px-6 py-4">
+                  <AuditHistoryTab
+                    tableName="agreements"
+                    recordId={selectedAgreement.id}
+                    fieldLabels={{
+                      name: "Name",
+                      status: "Status",
+                      start_date: "Start Date",
+                      end_date: "End Date",
+                      notes: "Notes",
+                      vendor_source: "Vendor / Source",
+                      created_by: "Created By",
+                    }}
+                  />
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>
