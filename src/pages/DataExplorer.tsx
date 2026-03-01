@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft, Trash2, Download, ArrowUp, ArrowDown, Filter, Zap } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
 import { useStatusMessage } from "@/hooks/use-status-message";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -497,8 +498,9 @@ export default function DataExplorer() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="bg-background h-16 flex items-center px-4 shrink-0">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
           <ArrowLeft className="h-5 w-5" />
+          <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
         </Button>
         <Database className="h-5 w-5 text-primary ml-2" />
         <h1 className="font-semibold ml-2">Data Explorer</h1>

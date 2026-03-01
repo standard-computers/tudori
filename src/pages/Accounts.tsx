@@ -616,8 +616,9 @@ const Accounts = () => {
       <div>
         <div className="px-4 pr-16 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
               <ArrowLeft className="h-5 w-5" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
             </Button>
             <Users className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold">Accounts</h1>

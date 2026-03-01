@@ -1388,8 +1388,9 @@ const BillOfMaterials = () => {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center gap-4 px-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
             <ArrowLeft className="w-4 h-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
           </Button>
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-amber-500" />

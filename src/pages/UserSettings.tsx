@@ -522,8 +522,9 @@ const UserSettings = () => {
       <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
           <div className="flex items-center h-16 gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
               <ArrowLeft className="w-5 h-5" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
             </Button>
             <h1 className="text-lg font-display font-bold text-foreground">User Settings</h1>
           </div>
