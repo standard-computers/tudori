@@ -555,7 +555,7 @@ export const CreateInvoiceDialog = ({
           transaction_type: 'invoice',
           reference_id: (invoice as any).id,
           reference_number: invoiceNumber,
-          amount: grandTotal,
+          amount: -grandTotal,
           description: `Invoice ${invoiceNumber} for ${referenceNumber}`,
         });
 

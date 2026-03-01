@@ -594,7 +594,7 @@ export default function Agreements() {
               transaction_type: "invoice",
               reference_id: (inv as any).id,
               reference_number: invNum,
-              amount: total,
+              amount: -total,
               description: `Invoice ${invNum} for SO ${soNum}`,
               transaction_date: doc.periodDate,
             });
@@ -661,7 +661,7 @@ export default function Agreements() {
               transaction_type: "invoice",
               reference_id: (inv as any).id,
               reference_number: invNum,
-              amount: total,
+              amount: -total,
               description: `Invoice ${invNum} for PO ${poNum}`,
               transaction_date: doc.periodDate,
             });
