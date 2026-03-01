@@ -345,6 +345,20 @@ const AccountDetail = () => {
 
       if (error) throw error;
 
+      // Post payment to the account's ledger if one is linked
+      if (account?.ledger_id) {
+        await supabase.from('ledger_transactions' as any).insert({
+          ledger_id: account.ledger_id,
+          company_id: companyId,
+          transaction_type: 'payment',
+          reference_id: selectedInvoice.id,
+          reference_number: paymentNumber,
+          amount: selectedInvoice.amount,
+          description: `Payment ${paymentNumber} for Invoice ${selectedInvoice.invoice_number}`,
+          transaction_date: new Date().toISOString().split('T')[0],
+        } as any);
+      }
+
       toast.success('Payment accepted successfully');
       setIsPaymentDialogOpen(false);
       setSelectedInvoice(null);
