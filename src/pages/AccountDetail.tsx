@@ -355,7 +355,6 @@ const AccountDetail = () => {
       if (paymentLedgerId) {
         const { error: ledgerError } = await supabase.from('ledger_transactions' as any).insert({
           ledger_id: paymentLedgerId,
-          company_id: companyId,
           transaction_type: 'payment',
           reference_id: selectedInvoice.id,
           reference_number: paymentNumber,
