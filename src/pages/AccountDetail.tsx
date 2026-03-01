@@ -498,7 +498,7 @@ const AccountDetail = () => {
         {/* Tabbed Content */}
         <Tabs defaultValue="transactions">
           <TabsList>
-            <TabsTrigger value="transactions">Transactions ({ledgerTransactions.length + payments.length})</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions ({payments.length + invoices.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
             <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
           </TabsList>
