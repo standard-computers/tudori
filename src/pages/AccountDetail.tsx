@@ -346,8 +346,8 @@ const AccountDetail = () => {
 
       if (error) throw error;
 
-      // Post payment to the account's ledger - resolve ledger with fallback
-      let paymentLedgerId = account?.ledger_id || null;
+      // Post payment to ledger - prefer invoice's ledger, fallback to account's ledger
+      let paymentLedgerId = selectedInvoice.ledger_id || account?.ledger_id || null;
       if (!paymentLedgerId && account?.location_id && companyId) {
         const { getInventoryLedgerId } = await import('@/lib/inventory-account');
         paymentLedgerId = await getInventoryLedgerId(account.location_id, companyId);
