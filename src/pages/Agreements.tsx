@@ -1248,13 +1248,40 @@ export default function Agreements() {
                         ))}
                       </tbody>
                       <tfoot className="border-t border-border bg-muted/30">
-                        <tr>
-                          <td colSpan={3} className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Total</td>
-                          <td className="px-4 py-2 text-right font-mono font-semibold text-sm">
-                            ${doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
+                         {(() => {
+                           const docSubtotal = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+                           const linkedRates = allRates.filter(r => linkedRateIds.has(r.id));
+                           const rateLines = linkedRates.map(r => ({
+                             name: r.name,
+                             amount: r.rate_type === "flat" ? r.rate : docSubtotal * r.rate / 100,
+                             label: r.rate_type === "flat" ? `$${r.rate.toFixed(2)}` : `${r.rate}%`,
+                           }));
+                           const taxTotal = rateLines.reduce((s, r) => s + r.amount, 0);
+                           const grandTotal = docSubtotal + taxTotal;
+                           return (
+                             <>
+                               {rateLines.length > 0 && (
+                                 <tr>
+                                   <td colSpan={3} className="px-4 py-1.5 text-right text-xs font-medium text-muted-foreground">Subtotal</td>
+                                   <td className="px-4 py-1.5 text-right font-mono text-xs">${docSubtotal.toFixed(2)}</td>
+                                 </tr>
+                               )}
+                               {rateLines.map((rl, ri) => (
+                                 <tr key={ri}>
+                                   <td colSpan={3} className="px-4 py-1 text-right text-xs text-muted-foreground">{rl.name} ({rl.label})</td>
+                                   <td className="px-4 py-1 text-right font-mono text-xs">${rl.amount.toFixed(2)}</td>
+                                 </tr>
+                               ))}
+                               <tr>
+                                 <td colSpan={3} className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Total</td>
+                                 <td className="px-4 py-2 text-right font-mono font-semibold text-sm">
+                                    ${grandTotal.toFixed(2)}
+                                 </td>
+                               </tr>
+                             </>
+                           );
+                         })()}
+                       </tfoot>
                     </table>
                     <div className="px-4 py-2 bg-muted/20 border-t border-border">
                       <p className="text-xs text-muted-foreground">{doc.reason}</p>
