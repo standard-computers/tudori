@@ -801,7 +801,7 @@ export default function Agreements() {
     <div className="flex flex-col min-h-screen bg-background">
       <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-4">
-          <div className="flex items-center justify-between h-16 pr-16">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
                 <ChevronLeft className="h-4 w-4" />
