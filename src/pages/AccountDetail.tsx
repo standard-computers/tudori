@@ -527,7 +527,6 @@ const AccountDetail = () => {
               </TableHeader>
               <TableBody>
                 {(() => {
-                  // Merge ledger transactions and payments into a unified list
                   const paymentRows = payments.map(p => ({
                     id: `pay-${p.id}`,
                     date: p.payment_date,
@@ -536,25 +535,17 @@ const AccountDetail = () => {
                     description: p.invoice?.invoice_number ? `Payment for Invoice ${p.invoice.invoice_number}` : (p.notes || 'Payment'),
                     amount: p.amount,
                   }));
-                  const ledgerRows = ledgerTransactions.map(t => ({
-                    id: `tx-${t.id}`,
-                    date: t.transaction_date,
-                    type: t.transaction_type,
-                    reference: t.reference_number,
-                    description: t.description,
-                    amount: t.amount,
-                  }));
-                  const combined = [...paymentRows, ...ledgerRows].sort(
+                  const sorted = [...paymentRows].sort(
                     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
                   );
                   const query = txSearchQuery.toLowerCase();
                   const filtered = query
-                    ? combined.filter(r =>
+                    ? sorted.filter(r =>
                         r.type.toLowerCase().includes(query) ||
                         (r.reference || '').toLowerCase().includes(query) ||
                         (r.description || '').toLowerCase().includes(query)
                       )
-                    : combined;
+                    : sorted;
                   return filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
