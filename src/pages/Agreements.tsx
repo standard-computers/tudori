@@ -558,6 +558,15 @@ export default function Agreements() {
           }).select().single();
           if (invErr) throw invErr;
 
+          // Insert invoice items mirroring the SO items
+          const invoiceItemsSO = doc.items.map(i => ({
+            invoice_id: (inv as any).id,
+            product_id: i.productId,
+            quantity: i.quantity,
+            unit_price: i.unitPrice,
+          }));
+          await supabase.from("invoice_items" as any).insert(invoiceItemsSO);
+
           // Post ledger transaction if ledger is assigned
           if (accountLedgerId && inv) {
             await supabase.from("ledger_transactions" as any).insert({
@@ -617,6 +626,15 @@ export default function Agreements() {
             invoice_date: doc.periodDate,
           }).select().single();
           if (invErr) throw invErr;
+
+          // Insert invoice items mirroring the PO items
+          const invoiceItemsPO = doc.items.map(i => ({
+            invoice_id: (inv as any).id,
+            product_id: i.productId,
+            quantity: i.quantity,
+            unit_price: i.unitPrice,
+          }));
+          await supabase.from("invoice_items" as any).insert(invoiceItemsPO);
 
           // Post ledger transaction if ledger is assigned
           if (accountLedgerId && inv) {
