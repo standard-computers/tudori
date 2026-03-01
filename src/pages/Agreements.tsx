@@ -795,19 +795,23 @@ export default function Agreements() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 pr-16">
-        <div className="flex items-center gap-2">
-          <Handshake className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-semibold">Agreements</h1>
-          <Badge variant="secondary">{agreements.length}</Badge>
+    <div className="flex flex-col min-h-screen bg-background">
+      <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="px-4">
+          <div className="flex items-center justify-between h-16 pr-12">
+            <div className="flex items-center gap-2">
+              <Handshake className="h-5 w-5 text-primary" />
+              <h1 className="text-xl font-semibold">Agreements</h1>
+              <Badge variant="secondary">{agreements.length}</Badge>
+            </div>
+            <Button onClick={openCreate} size="icon" className="relative">
+              <Plus className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+            </Button>
+          </div>
         </div>
-        <Button onClick={openCreate} size="icon" className="relative">
-          <Plus className="h-4 w-4" />
-          <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-        </Button>
-      </div>
+      </header>
+      <main className="flex-1 p-4">
 
 
       {/* Table */}
@@ -1368,6 +1372,7 @@ export default function Agreements() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </main>
     </div>
   );
 }
