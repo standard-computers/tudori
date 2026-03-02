@@ -34,7 +34,7 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
 import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
 import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
-import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote } from 'lucide-react';
+import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote, Info } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
@@ -139,6 +139,7 @@ const AccountDetail = () => {
   const [viewItems, setViewItems] = useState<any[]>([]);
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
 
   // Inventory account: ledger transactions
   interface LedgerTransaction {
@@ -446,6 +447,9 @@ const AccountDetail = () => {
           </div>
           {canCreateInvoice && (
             <div className="flex items-center gap-2">
+              <Button size="icon" variant="outline" className="relative" onClick={() => setIsInfoDialogOpen(true)} title="Account Info">
+                <Info className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="outline" className="relative" onClick={() => setIsNotesDialogOpen(true)} title="View Notes">
                 <StickyNote className="h-4 w-4" />
               </Button>
@@ -1074,6 +1078,70 @@ const AccountDetail = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Account Info Dialog */}
+      <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Account Information
+            </DialogTitle>
+            <DialogDescription>{account.name} ({account.account_id})</DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-2 space-y-3">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <span className="text-muted-foreground">Account ID</span>
+              <span className="font-mono">{account.account_id}</span>
+
+              <span className="text-muted-foreground">Name</span>
+              <span>{account.name}</span>
+
+              <span className="text-muted-foreground">Type</span>
+              <span className="capitalize">{account.type}</span>
+
+              <span className="text-muted-foreground">Status</span>
+              <span>{account.is_active ? 'Active' : 'Inactive'}</span>
+
+              {account.customer && (
+                <>
+                  <span className="text-muted-foreground">Customer</span>
+                  <span>{account.customer.name}</span>
+                </>
+              )}
+
+              {account.vendor && (
+                <>
+                  <span className="text-muted-foreground">Vendor</span>
+                  <span>{account.vendor.name}</span>
+                </>
+              )}
+
+              {account.location && (
+                <>
+                  <span className="text-muted-foreground">Location</span>
+                  <span>{account.location.name} ({account.location.location_id})</span>
+                </>
+              )}
+
+              <span className="text-muted-foreground">Created</span>
+              <span>{format(parseISO(account.created_at), 'MMM d, yyyy')}</span>
+            </div>
+
+            {account.notes && (
+              <div className="pt-2 border-t">
+                <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                <p className="text-sm whitespace-pre-wrap">{account.notes}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInfoDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>
