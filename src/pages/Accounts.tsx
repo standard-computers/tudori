@@ -492,9 +492,8 @@ const Accounts = () => {
   useKeyboardShortcut('n', handleCreateClick);
   useTransactionAction('new', handleCreateClick);
 
-  // Ctrl+F to open search dialog when reduce app load is enabled
+  // Ctrl+F to open search dialog
   useEffect(() => {
-    if (!reduceAppLoad) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
@@ -503,7 +502,7 @@ const Accounts = () => {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [reduceAppLoad]);
+  }, []);
 
   const handleEditClick = (account: Account) => {
     setEditingAccount(account);
@@ -651,12 +650,10 @@ const Accounts = () => {
             <h1 className="text-2xl font-bold">Accounts</h1>
           </div>
           <div className="flex items-center gap-2">
-            {reduceAppLoad && (
-              <Button variant="outline" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
-                <Search className="h-4 w-4" />
-                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
-              </Button>
-            )}
+            <Button variant="outline" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
+              <Search className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
+            </Button>
             <ColumnToggle
               columns={toggleableColumns} 
               visibleColumns={visibleColumns}
