@@ -651,7 +651,13 @@ const Accounts = () => {
             <h1 className="text-2xl font-bold">Accounts</h1>
           </div>
           <div className="flex items-center gap-2">
-            <ColumnToggle 
+            {reduceAppLoad && (
+              <Button variant="outline" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
+                <Search className="h-4 w-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
+              </Button>
+            )}
+            <ColumnToggle
               columns={toggleableColumns} 
               visibleColumns={visibleColumns}
               onToggleColumn={toggleColumn}
@@ -667,12 +673,6 @@ const Accounts = () => {
             <Button onClick={() => setIsAutoMakeOpen(true)} variant="outline" size="icon" className="relative" title="AutoMake Accounts">
               <Wand2 className="h-4 w-4" />
             </Button>
-            {reduceAppLoad && (
-              <Button variant="outline" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
-                <Search className="h-4 w-4" />
-                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
-              </Button>
-            )}
             <Button onClick={handleCreateClick} size="icon" className="relative">
               <Plus className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
