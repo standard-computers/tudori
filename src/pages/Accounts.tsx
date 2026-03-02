@@ -650,7 +650,7 @@ const Accounts = () => {
             <h1 className="text-2xl font-bold">Accounts</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
               <Search className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
             </Button>
