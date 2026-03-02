@@ -6,6 +6,8 @@ import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibi
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
+import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
+import { AppLoadQueryDialog } from '@/components/AppLoadQueryDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -48,7 +50,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
-import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil, Eye, Wand2 } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Loader2, MoreHorizontal, Trash2, Pencil, Eye, Wand2, Search } from 'lucide-react';
 import { AutoMakeAccountsDialog } from '@/components/accounts/AutoMakeAccountsDialog';
 import { toast } from '@/lib/toast';
 
@@ -134,6 +136,11 @@ const Accounts = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [outstandingCounts, setOutstandingCounts] = useState<Record<string, number>>({});
   const [accountBalances, setAccountBalances] = useState<Record<string, number>>({});
+  const [queryDialogOpen, setQueryDialogOpen] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Reduce app load
+  const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -217,16 +224,20 @@ const Accounts = () => {
   }, [user]);
 
   useEffect(() => {
-    if (companyId) {
-      fetchAccounts();
+    if (companyId && !reduceAppLoadLoading) {
       fetchCustomers();
       fetchVendors();
       fetchLocations();
       fetchLedgers();
       fetchCompanyUsers();
-      fetchOutstandingCounts();
+      if (!reduceAppLoad) {
+        fetchAccounts();
+        fetchOutstandingCounts();
+      } else {
+        setQueryDialogOpen(true);
+      }
     }
-  }, [companyId]);
+  }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
   useEffect(() => {
     if (companyId && accounts.length > 0) {
@@ -247,8 +258,9 @@ const Accounts = () => {
     setLoading(false);
   };
 
-  const fetchAccounts = async () => {
-    const { data, error } = await supabase
+  const fetchAccounts = async (filters?: Record<string, string>) => {
+    setLoading(true);
+    let query = supabase
       .from('accounts' as any)
       .select(`
         *,
@@ -260,13 +272,19 @@ const Accounts = () => {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
 
+    if (filters?.account_id) query = query.ilike('account_id', `%${filters.account_id}%`);
+    if (filters?.name) query = query.ilike('name', `%${filters.name}%`);
+    if (filters?.type) query = query.eq('type', filters.type);
+
+    const { data, error } = await query;
+
+    setLoading(false);
     if (error) {
       console.error('Error fetching accounts:', error);
       toast.error('Failed to load accounts');
       return;
     }
 
-    // Manually fetch parent account names for accounts that have parent_account_id
     const accountsData = (data as any) || [];
     const parentIds = [...new Set(accountsData.filter((a: any) => a.parent_account_id).map((a: any) => a.parent_account_id))];
     
@@ -279,19 +297,15 @@ const Accounts = () => {
       const parentMap = new Map((parentAccounts || []).map((p: any) => [p.id, p]));
       
       accountsData.forEach((account: any) => {
-        if (account.parent_account_id) {
-          account.parent_account = parentMap.get(account.parent_account_id) || null;
-        } else {
-          account.parent_account = null;
-        }
+        account.parent_account = account.parent_account_id ? (parentMap.get(account.parent_account_id) || null) : null;
       });
     } else {
-      accountsData.forEach((account: any) => {
-        account.parent_account = null;
-      });
+      accountsData.forEach((account: any) => { account.parent_account = null; });
     }
     
     setAccounts(accountsData);
+    setDataLoaded(true);
+    fetchOutstandingCounts();
   };
 
   const fetchCustomers = async () => {
@@ -478,6 +492,19 @@ const Accounts = () => {
   useKeyboardShortcut('n', handleCreateClick);
   useTransactionAction('new', handleCreateClick);
 
+  // Ctrl+F to open search dialog when reduce app load is enabled
+  useEffect(() => {
+    if (!reduceAppLoad) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setQueryDialogOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [reduceAppLoad]);
+
   const handleEditClick = (account: Account) => {
     setEditingAccount(account);
     setFormData({
@@ -640,6 +667,12 @@ const Accounts = () => {
             <Button onClick={() => setIsAutoMakeOpen(true)} variant="outline" size="icon" className="relative" title="AutoMake Accounts">
               <Wand2 className="h-4 w-4" />
             </Button>
+            {reduceAppLoad && (
+              <Button variant="outline" size="icon" className="relative" onClick={() => setQueryDialogOpen(true)} title="Search Accounts (Ctrl+F)">
+                <Search className="h-4 w-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
+              </Button>
+            )}
             <Button onClick={handleCreateClick} size="icon" className="relative">
               <Plus className="h-4 w-4" />
               <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
@@ -654,6 +687,20 @@ const Accounts = () => {
         locations={locations}
         companyId={companyId}
         onCreated={fetchAccounts}
+      />
+
+      <AppLoadQueryDialog
+        open={queryDialogOpen}
+        onClose={() => setQueryDialogOpen(false)}
+        onQuery={(filters) => { setQueryDialogOpen(false); fetchAccounts(filters); }}
+        onLoadAll={() => { setQueryDialogOpen(false); fetchAccounts(); }}
+        loading={loading}
+        title="Load Accounts"
+        fields={[
+          { key: 'account_id', label: 'Account ID', placeholder: 'Search by ID...' },
+          { key: 'name', label: 'Name', placeholder: 'Search by name...' },
+          { key: 'type', label: 'Type', placeholder: 'customer, vendor, location...' },
+        ]}
       />
 
       <div className="w-full">
@@ -760,7 +807,9 @@ const Accounts = () => {
               {sortedAndFilteredData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
-                    No accounts found. Create your first account to get started.
+                    {reduceAppLoad && !dataLoaded
+                      ? 'Use the search button to load accounts.'
+                      : 'No accounts found. Create your first account to get started.'}
                   </TableCell>
                 </TableRow>
               ) : (
