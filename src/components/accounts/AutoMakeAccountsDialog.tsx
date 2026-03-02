@@ -224,7 +224,7 @@ export const AutoMakeAccountsDialog = ({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover">
+                  <SelectContent className="bg-popover z-[70]">
                     <SelectItem value="customer">Customer</SelectItem>
                     <SelectItem value="vendor">Vendor</SelectItem>
                     <SelectItem value="location">Internal</SelectItem>
