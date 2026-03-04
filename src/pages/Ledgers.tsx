@@ -269,7 +269,7 @@ const Ledgers = () => {
       .from('ledger_transactions' as any)
       .select('*')
       .eq('ledger_id', ledgerId)
-      .order('transaction_date', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching transactions:', error);
@@ -885,6 +885,7 @@ const Ledgers = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Time</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead>Description</TableHead>
@@ -900,6 +901,9 @@ const Ledgers = () => {
                     >
                       <TableCell className="whitespace-nowrap">
                         {format(parseISO(tx.transaction_date), 'MMM d, yyyy')}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {format(new Date(tx.created_at), 'h:mm a')}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
