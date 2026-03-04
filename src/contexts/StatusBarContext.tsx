@@ -16,6 +16,7 @@ interface StatusBarContextValue {
   startLoading: (text?: string) => void;
   stopLoading: () => void;
   messages: StatusMessage[];
+  visibleMessages: StatusMessage[];
   addMessage: (text: string, type?: 'success' | 'error' | 'info') => void;
   clearMessages: () => void;
 }
@@ -39,6 +40,9 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
     setLoadingText('');
   }, []);
 
+  // visibleMessages: only recent ones shown in status bar (last message always kept)
+  const [visibleMessages, setVisibleMessages] = useState<StatusMessage[]>([]);
+
   const addMessage = useCallback((text: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = `msg-${++messageIdRef.current}`;
     const newMessage: StatusMessage = {
@@ -47,11 +51,15 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
       type,
       timestamp: Date.now(),
     };
-    setMessages(prev => [...prev.slice(-4), newMessage]); // Keep last 5 messages
+    // Keep all messages for session history
+    setMessages(prev => [...prev, newMessage]);
+    // Visible in status bar (auto-fades)
+    setVisibleMessages(prev => [...prev, newMessage]);
   }, []);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setVisibleMessages([]);
   }, []);
 
   // Register global toast bridge
@@ -60,15 +68,14 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
     return () => unregisterStatusBarHandler();
   }, [addMessage]);
 
-  // Auto-remove older messages after 5 seconds, but keep the last one until a new one arrives
+  // Auto-remove from status bar after 5 seconds, but keep the last one visible
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (visibleMessages.length === 0) return;
 
     const timer = setTimeout(() => {
       const now = Date.now();
-      setMessages(prev => {
+      setVisibleMessages(prev => {
         const filtered = prev.filter(msg => now - msg.timestamp < 5000);
-        // Always keep the last message
         if (filtered.length === 0 && prev.length > 0) {
           return [prev[prev.length - 1]];
         }
@@ -77,7 +84,7 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [messages]);
+  }, [visibleMessages]);
 
   return (
     <StatusBarContext.Provider
@@ -89,6 +96,7 @@ export function StatusBarProvider({ children }: { children: React.ReactNode }) {
         startLoading,
         stopLoading,
         messages,
+        visibleMessages,
         addMessage,
         clearMessages,
       }}
