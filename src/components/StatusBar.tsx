@@ -76,13 +76,13 @@ const TRANSACTION_ROUTES: Record<string, TransactionRoute> = {
 
 export function StatusBar() {
   const navigate = useNavigate();
-  const { transaction, isLoading, loadingText, messages, addMessage } = useStatusBar();
+  const { transaction, isLoading, loadingText, messages, visibleMessages, addMessage } = useStatusBar();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const latestMessage = messages[messages.length - 1];
+  const latestMessage = visibleMessages[visibleMessages.length - 1];
 
   // Focus input when popover opens
   useEffect(() => {
@@ -237,15 +237,13 @@ export function StatusBar() {
             </motion.button>
           )}
         </AnimatePresence>
-        {messages.length > 0 && (
-          <button
-            onClick={() => setIsMessageDialogOpen(true)}
-            className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-            title="View message history"
-          >
-            <MessageSquare className="w-3 h-3" />
-          </button>
-        )}
+        <button
+          onClick={() => setIsMessageDialogOpen(true)}
+          className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+          title="View message history"
+        >
+          <MessageSquare className="w-3 h-3" />
+        </button>
       </div>
 
       {/* Message history dialog */}
@@ -258,7 +256,7 @@ export function StatusBar() {
             {messages.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No messages yet.</p>
             ) : (
-              <div className="space-y-2 pr-2">
+              <div className="space-y-2 p-4">
                 {[...messages].reverse().map((msg) => (
                   <div
                     key={msg.id}
