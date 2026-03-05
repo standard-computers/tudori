@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -131,9 +131,21 @@ const getStatusColor = (status: string) => {
 
 const GoodsReceipts = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useAuth();
   const { setTransaction } = useStatusBar();
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
+
+  // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
+  useEffect(() => {
+    const ref = (location.state as any)?.openRef;
+    if (!ref || !receipts.length) return;
+    const match = receipts.find(r => r.receipt_number === ref);
+    if (match) {
+      handleView(match);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.state, receipts]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
