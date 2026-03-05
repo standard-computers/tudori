@@ -850,7 +850,7 @@ const Ledgers = () => {
 
       {/* View Transactions Dialog */}
       <Dialog open={!!viewingLedger} onOpenChange={() => setViewingLedger(null)}>
-        <DialogContent className={isViewMaximized ? "!max-w-[95vw] !h-[95vh]" : "sm:max-w-[700px]"}>
+        <DialogContent className={isViewMaximized ? "!w-screen !h-screen !max-w-none !max-h-none !rounded-none" : "sm:max-w-[700px]"}>
           <DialogHeader>
             <DialogTitle>
               {viewingLedger?.name} - Transactions
