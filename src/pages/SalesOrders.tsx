@@ -9,7 +9,7 @@ import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { useExcel } from "@/hooks/use-excel";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,10 +210,22 @@ const SALES_ORDER_COLUMNS: ColumnDefinition[] = [
 
 const SalesOrders = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
+
+  // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
+  useEffect(() => {
+    const ref = (location.state as any)?.openRef;
+    if (!ref || !orders.length) return;
+    const match = orders.find(o => o.so_number === ref);
+    if (match) {
+      handleViewOrder(match);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.state, orders]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);

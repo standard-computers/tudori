@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,10 +87,22 @@ const statusColors: Record<string, string> = {
 
 const CreditMemos = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [memos, setMemos] = useState<CreditMemo[]>([]);
+
+  // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
+  useEffect(() => {
+    const ref = (location.state as any)?.openRef;
+    if (!ref || !memos.length) return;
+    const match = memos.find(m => m.memo_number === ref);
+    if (match) {
+      handleView(match);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.state, memos]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);

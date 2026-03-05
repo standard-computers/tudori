@@ -5,7 +5,7 @@ import { AppLoadQueryDialog, QueryField } from '@/components/AppLoadQueryDialog'
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,10 +100,22 @@ const statusColors: Record<string, string> = {
 
 const Invoices = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+
+  // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
+  useEffect(() => {
+    const ref = (location.state as any)?.openRef;
+    if (!ref || !invoices.length) return;
+    const match = invoices.find(i => i.invoice_number === ref);
+    if (match) {
+      handleViewClick(match);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.state, invoices]);
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Dialog states

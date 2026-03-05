@@ -7,7 +7,7 @@ import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useVendorSources } from "@/hooks/use-vendor-sources";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -326,11 +326,23 @@ const ORDER_COLUMNS: ColumnDefinition[] = [
 
 const Orders = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
   const { exportToExcel } = useExcel();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+
+  // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
+  useEffect(() => {
+    const ref = (location.state as any)?.openRef;
+    if (!ref || !orders.length) return;
+    const match = orders.find(o => o.po_number === ref);
+    if (match) {
+      handleViewOrder(match);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [location.state, orders]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
