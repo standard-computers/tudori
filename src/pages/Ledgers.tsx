@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,7 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 import { AutoMakeLedgersDialog } from '@/components/ledgers/AutoMakeLedgersDialog';
 import {
   AlertDialog,
@@ -65,6 +65,33 @@ import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
+
+// Maps document types to their table/id-field/number-field/display config
+const DOC_TYPE_CONFIG: Record<string, {
+  table: string;
+  numberField: string;
+  label: string;
+  fields: string;
+}> = {
+  sales_order:     { table: 'sales_orders',    numberField: 'so_number',       label: 'Sales Order',    fields: 'id,so_number,status,customer_id,location_id,total_amount,notes,order_date,created_at' },
+  purchase_order:  { table: 'purchase_orders',  numberField: 'po_number',       label: 'Purchase Order', fields: 'id,po_number,status,vendor_id,location_id,total_amount,notes,order_date,created_at' },
+  invoice:         { table: 'invoices',         numberField: 'invoice_number',  label: 'Invoice',        fields: 'id,invoice_number,status,account_id,amount,due_date,invoice_date,notes,created_at' },
+  goods_receipt:   { table: 'goods_receipts',   numberField: 'receipt_number',  label: 'Goods Receipt',  fields: 'id,receipt_number,status,vendor_id,location_id,notes,receipt_date,created_at' },
+  goods_issue:     { table: 'goods_issues',     numberField: 'issue_number',    label: 'Goods Issue',    fields: 'id,issue_number,status,customer_id,location_id,notes,issue_date,created_at' },
+  credit_memo:     { table: 'credit_memos',     numberField: 'memo_number',     label: 'Credit Memo',    fields: 'id,memo_number,status,account_id,amount,memo_date,notes,created_at' },
+  debit_memo:      { table: 'debit_memos',      numberField: 'memo_number',     label: 'Debit Memo',     fields: 'id,memo_number,status,account_id,amount,memo_date,notes,created_at' },
+};
+
+interface DocIdConfig {
+  document_type: string;
+  prefix: string | null;
+}
+
+interface LinkedDoc {
+  docType: string;
+  label: string;
+  data: Record<string, any>;
+}
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -136,6 +163,11 @@ const Ledgers = () => {
   const [isDeletingTx, setIsDeletingTx] = useState(false);
   const [isAdjustingOff, setIsAdjustingOff] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Linked doc dialog
+  const [linkedDoc, setLinkedDoc] = useState<LinkedDoc | null>(null);
+  const [loadingLinkedDoc, setLoadingLinkedDoc] = useState(false);
+  const [docIdConfigs, setDocIdConfigs] = useState<DocIdConfig[]>([]);
   
   // Maximize states
   const [isCreateMaximized, setIsCreateMaximized] = useMaximizedState();
@@ -215,6 +247,7 @@ const Ledgers = () => {
       await Promise.all([
         fetchLedgers(profile.company_id),
         fetchLocations(profile.company_id),
+        fetchDocIdConfigs(profile.company_id),
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -262,6 +295,75 @@ const Ledgers = () => {
       .order('name');
     setLocations(data || []);
   };
+
+  const fetchDocIdConfigs = async (cId: string) => {
+    const { data } = await supabase
+      .from('document_id_config')
+      .select('document_type, prefix')
+      .eq('company_id', cId);
+    setDocIdConfigs((data as DocIdConfig[]) || []);
+  };
+
+  // Given a reference_number string, determine the document type and fetch the doc
+  const resolveReferenceDocType = useCallback((refNumber: string): string | null => {
+    if (!refNumber) return null;
+    // Default prefix-to-type mappings (fallback if no config)
+    const defaultMappings: Record<string, string> = {
+      'SO-':   'sales_order',
+      'PO-':   'purchase_order',
+      'INV-':  'invoice',
+      'GR-':   'goods_receipt',
+      'GI-':   'goods_issue',
+      'CM-':   'credit_memo',
+      'DM-':   'debit_memo',
+    };
+    // First try doc_id_config prefixes
+    for (const cfg of docIdConfigs) {
+      if (cfg.prefix && refNumber.startsWith(cfg.prefix) && DOC_TYPE_CONFIG[cfg.document_type]) {
+        return cfg.document_type;
+      }
+    }
+    // Fallback to default mappings
+    for (const [prefix, docType] of Object.entries(defaultMappings)) {
+      if (refNumber.toUpperCase().startsWith(prefix)) {
+        return docType;
+      }
+    }
+    return null;
+  }, [docIdConfigs]);
+
+  const handleReferenceClick = useCallback(async (e: React.MouseEvent, refNumber: string) => {
+    e.stopPropagation();
+    if (!refNumber || !companyId) return;
+
+    const docType = resolveReferenceDocType(refNumber);
+    if (!docType || !DOC_TYPE_CONFIG[docType]) {
+      toast.error('Cannot resolve document type for this reference');
+      return;
+    }
+
+    setLoadingLinkedDoc(true);
+    try {
+      const config = DOC_TYPE_CONFIG[docType];
+      const { data, error } = await supabase
+        .from(config.table as any)
+        .select('*')
+        .eq('company_id', companyId)
+        .eq(config.numberField, refNumber)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.error(`Document ${refNumber} not found`);
+        return;
+      }
+      setLinkedDoc({ docType, label: config.label, data: data as Record<string, any> });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load document');
+    } finally {
+      setLoadingLinkedDoc(false);
+    }
+  }, [companyId, resolveReferenceDocType]);
 
   const fetchLedgerTransactions = async (ledgerId: string) => {
     setLoadingTransactions(true);
@@ -590,7 +692,7 @@ const Ledgers = () => {
                 <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
               </Button>
               <div className="flex items-center gap-3">
-                <BookOpen className="w-7 h-7 text-stone-500" />
+                <BookOpen className="w-7 h-7 text-muted-foreground" />
                 <h1 className="text-xl font-display font-bold text-foreground">Ledgers</h1>
               </div>
             </div>
@@ -911,7 +1013,19 @@ const Ledgers = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {tx.reference_number || '—'}
+                        {tx.reference_number && resolveReferenceDocType(tx.reference_number) ? (
+                          <button
+                            type="button"
+                            className="text-primary hover:underline font-mono text-sm flex items-center gap-1"
+                            onClick={(e) => handleReferenceClick(e, tx.reference_number!)}
+                            disabled={loadingLinkedDoc}
+                          >
+                            {tx.reference_number}
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        ) : (
+                          tx.reference_number || '—'
+                        )}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {tx.description || '—'}
@@ -939,7 +1053,7 @@ const Ledgers = () => {
               {viewingTransaction && viewingTransaction.amount < 0 ? (
                 <TrendingDown className="w-5 h-5 text-destructive" />
               ) : (
-                <TrendingUp className="w-5 h-5 text-green-600" />
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
               )}
               Transaction Details
             </DialogTitle>
@@ -1046,6 +1160,44 @@ const Ledgers = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Linked Document Dialog */}
+      <Dialog open={!!linkedDoc} onOpenChange={() => setLinkedDoc(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ExternalLink className="w-5 h-5 text-primary" />
+              {linkedDoc?.label}
+            </DialogTitle>
+            <DialogDescription>
+              Referenced document details
+            </DialogDescription>
+          </DialogHeader>
+          {linkedDoc && (
+            <div className="space-y-3 px-1 py-2 max-h-[60vh] overflow-y-auto">
+              {Object.entries(linkedDoc.data)
+                .filter(([key]) => !['id', 'company_id'].includes(key))
+                .map(([key, value]) => {
+                  const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                  const displayValue = value === null || value === undefined ? '—'
+                    : typeof value === 'boolean' ? (value ? 'Yes' : 'No')
+                    : key.includes('_at') || key.includes('_date') ? (() => { try { return format(new Date(value as string), 'MMM d, yyyy h:mm a'); } catch { return String(value); } })()
+                    : key.includes('amount') || key === 'total' ? (() => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value)); } catch { return String(value); } })()
+                    : String(value);
+                  return (
+                    <div key={key} className="flex justify-between items-start py-1 border-b border-border/50 last:border-0">
+                      <span className="text-xs text-muted-foreground font-medium w-1/2">{label}</span>
+                      <span className="text-sm text-right w-1/2 font-mono">{displayValue}</span>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkedDoc(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* AutoMake Dialog */}
       <AutoMakeLedgersDialog
