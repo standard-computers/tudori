@@ -903,9 +903,11 @@ const [areaFormData, setAreaFormData] = useState({
         min_quantity,
         max_quantity,
         pu_id,
+        batch_id,
         product:products(name, product_id, sku, company_id, hazardous),
         bin:bins(bin_id, name),
-        packaging_unit:packaging_units(pu_number)
+        packaging_unit:packaging_units(pu_number),
+        batch:batches(batch_number, expiration_date)
       `)
       .eq('location_id', selectedLocationId)
       .order('quantity', { ascending: false });
