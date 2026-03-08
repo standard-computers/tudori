@@ -266,7 +266,8 @@ const Ledgers = () => {
     const ledgersWithBalance = ((data as any) || []).map((ledger: any) => {
       const transactions = (allTransactions || []).filter((t: any) => t.ledger_id === ledger.id);
       const computed_balance = transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-      return { ...ledger, computed_balance };
+      const transaction_count = transactions.length;
+      return { ...ledger, computed_balance, transaction_count };
     });
 
     setLedgers(ledgersWithBalance);
