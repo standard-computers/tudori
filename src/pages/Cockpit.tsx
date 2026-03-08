@@ -3013,6 +3013,12 @@ const [areaFormData, setAreaFormData] = useState({
                               <TableCell className="text-right font-medium">{item.quantity}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '—'}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.batch?.batch_number || '—'}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {item.batch?.expiration_date
+                                  ? new Date(item.batch.expiration_date).toLocaleDateString()
+                                  : '—'}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
