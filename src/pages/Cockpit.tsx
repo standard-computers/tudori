@@ -3011,6 +3011,15 @@ const [areaFormData, setAreaFormData] = useState({
                           filterValue={inventoryFilters['batch.expiration_date']}
                           onFilter={(value) => setInventoryFilter('batch.expiration_date', value)}
                         />
+                        <SortableTableHead
+                          label="Received"
+                          sortKey="received_at"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['received_at']}
+                          onFilter={(value) => setInventoryFilter('received_at', value)}
+                        />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -3068,6 +3077,11 @@ const [areaFormData, setAreaFormData] = useState({
                               <TableCell className="text-sm text-muted-foreground">
                                 {item.batch?.expiration_date
                                   ? new Date(item.batch.expiration_date).toLocaleDateString()
+                                  : '—'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {item.received_at
+                                  ? new Date(item.received_at).toLocaleDateString()
                                   : '—'}
                               </TableCell>
                             </TableRow>
