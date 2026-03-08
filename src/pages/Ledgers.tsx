@@ -758,13 +758,15 @@ const Ledgers = () => {
                                 <Pencil className="w-4 h-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDelete(ledger)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
+                              {!(ledger.transaction_count && ledger.transaction_count > 0) && (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDelete(ledger)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
                             </>
                           )}
                         </DropdownMenuContent>
