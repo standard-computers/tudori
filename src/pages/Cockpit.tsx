@@ -146,9 +146,11 @@ interface InventoryItem {
   min_quantity: number | null;
   max_quantity: number | null;
   pu_id: string | null;
+  batch_id: string | null;
   product?: { name: string; product_id: string; sku: string | null; company_id: string; hazardous?: boolean };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
+  batch?: { batch_number: string; expiration_date: string | null } | null;
 }
 
 interface OutboundOrder {
