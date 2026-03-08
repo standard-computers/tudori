@@ -146,9 +146,11 @@ interface InventoryItem {
   min_quantity: number | null;
   max_quantity: number | null;
   pu_id: string | null;
+  batch_id: string | null;
   product?: { name: string; product_id: string; sku: string | null; company_id: string; hazardous?: boolean };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
+  batch?: { batch_number: string; expiration_date: string | null } | null;
 }
 
 interface OutboundOrder {
@@ -901,9 +903,11 @@ const [areaFormData, setAreaFormData] = useState({
         min_quantity,
         max_quantity,
         pu_id,
+        batch_id,
         product:products(name, product_id, sku, company_id, hazardous),
         bin:bins(bin_id, name),
-        packaging_unit:packaging_units(pu_number)
+        packaging_unit:packaging_units(pu_number),
+        batch:batches(batch_number, expiration_date)
       `)
       .eq('location_id', selectedLocationId)
       .order('quantity', { ascending: false });
@@ -2938,6 +2942,24 @@ const [areaFormData, setAreaFormData] = useState({
                           onFilter={(value) => setInventoryFilter('max_quantity', value)}
                           className="text-right"
                         />
+                        <SortableTableHead
+                          label="Batch"
+                          sortKey="batch.batch_number"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['batch.batch_number']}
+                          onFilter={(value) => setInventoryFilter('batch.batch_number', value)}
+                        />
+                        <SortableTableHead
+                          label="Expiration"
+                          sortKey="batch.expiration_date"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['batch.expiration_date']}
+                          onFilter={(value) => setInventoryFilter('batch.expiration_date', value)}
+                        />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -2991,6 +3013,12 @@ const [areaFormData, setAreaFormData] = useState({
                               <TableCell className="text-right font-medium">{item.quantity}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '—'}</TableCell>
+                              <TableCell className="font-mono text-sm">{item.batch?.batch_number || '—'}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {item.batch?.expiration_date
+                                  ? new Date(item.batch.expiration_date).toLocaleDateString()
+                                  : '—'}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
