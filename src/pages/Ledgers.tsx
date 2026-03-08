@@ -94,6 +94,7 @@ interface Ledger {
   created_at: string;
   location?: { name: string } | null;
   computed_balance?: number; // Computed from transactions
+  transaction_count?: number; // Number of transactions
 }
 
 interface LedgerTransaction {
