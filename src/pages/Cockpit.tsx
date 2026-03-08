@@ -151,6 +151,7 @@ interface InventoryItem {
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
   batch?: { batch_number: string; expiration_date: string | null } | null;
+  received_at?: string | null; // Date product arrived in its current bin (or was first received)
 }
 
 interface OutboundOrder {
