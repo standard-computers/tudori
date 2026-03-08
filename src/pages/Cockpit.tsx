@@ -2942,6 +2942,24 @@ const [areaFormData, setAreaFormData] = useState({
                           onFilter={(value) => setInventoryFilter('max_quantity', value)}
                           className="text-right"
                         />
+                        <SortableTableHead
+                          label="Batch"
+                          sortKey="batch.batch_number"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['batch.batch_number']}
+                          onFilter={(value) => setInventoryFilter('batch.batch_number', value)}
+                        />
+                        <SortableTableHead
+                          label="Expiration"
+                          sortKey="batch.expiration_date"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['batch.expiration_date']}
+                          onFilter={(value) => setInventoryFilter('batch.expiration_date', value)}
+                        />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
