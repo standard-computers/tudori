@@ -94,6 +94,7 @@ interface Ledger {
   created_at: string;
   location?: { name: string } | null;
   computed_balance?: number; // Computed from transactions
+  transaction_count?: number; // Number of transactions
 }
 
 interface LedgerTransaction {
@@ -266,7 +267,8 @@ const Ledgers = () => {
     const ledgersWithBalance = ((data as any) || []).map((ledger: any) => {
       const transactions = (allTransactions || []).filter((t: any) => t.ledger_id === ledger.id);
       const computed_balance = transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-      return { ...ledger, computed_balance };
+      const transaction_count = transactions.length;
+      return { ...ledger, computed_balance, transaction_count };
     });
 
     setLedgers(ledgersWithBalance);
@@ -756,13 +758,15 @@ const Ledgers = () => {
                                 <Pencil className="w-4 h-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDelete(ledger)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
+                              {!(ledger.transaction_count && ledger.transaction_count > 0) && (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDelete(ledger)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
                             </>
                           )}
                         </DropdownMenuContent>
