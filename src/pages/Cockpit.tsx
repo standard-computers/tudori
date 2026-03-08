@@ -917,7 +917,57 @@ const [areaFormData, setAreaFormData] = useState({
       console.error('Failed to fetch inventory:', error);
       return;
     }
-    setInventory((data || []) as unknown as InventoryItem[]);
+
+    // Fetch material movements for this location to derive received_at dates
+    const { data: movements } = await supabase
+      .from('material_movements')
+      .select('product_id, pu_id, destination_bin_id, bin_id, movement_type, created_at')
+      .eq('location_id', selectedLocationId)
+      .in('movement_type', ['receipt', 'move_in', 'transfer'])
+      .order('created_at', { ascending: false });
+
+    const movementList = (movements || []) as Array<{
+      product_id: string;
+      pu_id: string | null;
+      destination_bin_id: string | null;
+      bin_id: string | null;
+      movement_type: string;
+      created_at: string;
+    }>;
+
+    const inventoryWithDates = ((data || []) as any[]).map((item: any) => {
+      let received_at: string | null = null;
+
+      if (item.bin_id) {
+        // Binned: find latest move_in or transfer into this bin for this product
+        const match = movementList.find(
+          m =>
+            m.product_id === item.product_id &&
+            (m.pu_id === item.pu_id || (!m.pu_id && !item.pu_id)) &&
+            (m.destination_bin_id === item.bin_id || m.bin_id === item.bin_id) &&
+            (m.movement_type === 'move_in' || m.movement_type === 'transfer')
+        );
+        // Fallback to any receipt movement for this product if no bin movement found
+        received_at = match?.created_at ?? (
+          movementList.find(
+            m => m.product_id === item.product_id && m.movement_type === 'receipt'
+          )?.created_at ?? null
+        );
+      } else {
+        // Unbinned: latest receipt movement for this product(/pu)
+        const match = movementList.find(
+          m =>
+            m.product_id === item.product_id &&
+            (m.pu_id === item.pu_id || (!m.pu_id && !item.pu_id)) &&
+            m.movement_type === 'receipt'
+        );
+        received_at = match?.created_at ?? null;
+      }
+
+      return { ...item, received_at };
+    });
+
+    setInventory(inventoryWithDates as unknown as InventoryItem[]);
     setSelectedInventoryIds(new Set());
   };
 
