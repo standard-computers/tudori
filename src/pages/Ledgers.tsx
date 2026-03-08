@@ -672,9 +672,8 @@ const Ledgers = () => {
                   onDownloadTemplate={handleDownloadTemplate}
                   entityName="Ledgers"
                 />
-                <Button variant="outline" onClick={() => setIsAutoMakeOpen(true)}>
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  AutoMake
+                <Button variant="outline" size="icon" onClick={() => setIsAutoMakeOpen(true)}>
+                  <Wand2 className="w-4 h-4" />
                 </Button>
                 <Button onClick={openCreateDialog} size="icon" className="relative">
                   <Plus className="w-4 h-4" />
