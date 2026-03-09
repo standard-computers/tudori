@@ -2074,6 +2074,28 @@ const SalesOrders = () => {
               </Tabs>
             </div>
           )}
+
+          <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={handleDownloadXlsx}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Download as XLSX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadPdf}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Download as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Detail View Dialog (Customer/Location) */}
