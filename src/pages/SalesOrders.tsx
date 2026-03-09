@@ -144,7 +144,7 @@ interface SalesOrderItem {
   quantity: number;
   unit_price: number | null;
   total_price: number | null;
-  product?: { name: string; price: number | null };
+  product?: { name: string; price: number | null; product_id?: string };
 }
 
 interface Location {
