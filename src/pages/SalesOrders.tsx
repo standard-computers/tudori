@@ -355,6 +355,8 @@ const SalesOrders = () => {
 
     if (profile?.company_id) {
       setCompanyId(profile.company_id);
+      const { data: companyData } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
+      if (companyData) setCompany(companyData);
     }
     setLoading(false);
   };
