@@ -978,7 +978,7 @@ const SalesOrders = () => {
       .select(
         `
         *,
-        product:products(name, price)
+        product:products(name, price, product_id)
       `,
       )
       .eq("sales_order_id", order.id);
