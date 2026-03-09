@@ -56,6 +56,10 @@ import {
   Minimize2,
   History,
   Search,
+  Download,
+  ChevronDown,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
