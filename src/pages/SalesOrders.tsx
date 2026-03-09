@@ -237,6 +237,7 @@ const SalesOrders = () => {
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [company, setCompany] = useState<any>(null);
   const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
   const [showQueryDialog, setShowQueryDialog] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
