@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import jsPDF from "jspdf";
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
