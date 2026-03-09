@@ -970,6 +970,130 @@ const SalesOrders = () => {
     }
   };
 
+  // Download SO as XLSX
+  const handleDownloadXlsx = async () => {
+    if (!viewOrder || viewItems.length === 0) return;
+    const data = viewItems.map((item, index) => ({
+      "Line #": index + 1,
+      "Product ID": item.product?.product_id || "",
+      "Product Name": item.product?.name || "Unknown",
+      Quantity: item.quantity,
+      "Unit Price": Number(item.unit_price || 0).toFixed(2),
+      Total: Number(item.total_price || 0).toFixed(2),
+    }));
+    data.push({ "Line #": "", "Product ID": "", "Product Name": "", Quantity: "", "Unit Price": "Subtotal:", Total: Number(viewOrder.subtotal || 0).toFixed(2) } as any);
+    const percentTaxes = viewTaxRates.filter((vt) => (vt.tax_rate as any).rate_type !== "flat");
+    const flatFees = viewTaxRates.filter((vt) => (vt.tax_rate as any).rate_type === "flat");
+    percentTaxes.forEach((vt) => {
+      data.push({ "Line #": "", "Product ID": "", "Product Name": "", Quantity: "", "Unit Price": `${vt.tax_rate.name} (${vt.tax_rate.rate}%):`, Total: Number(vt.tax_amount || 0).toFixed(2) } as any);
+    });
+    flatFees.forEach((vt) => {
+      data.push({ "Line #": "", "Product ID": "", "Product Name": "", Quantity: "", "Unit Price": `${vt.tax_rate.name} (Fee):`, Total: Number(vt.tax_amount || 0).toFixed(2) } as any);
+    });
+    data.push({ "Line #": "", "Product ID": "", "Product Name": "", Quantity: "", "Unit Price": "Total:", Total: Number(viewOrder.total_amount || 0).toFixed(2) } as any);
+    await exportToExcel(data, `SO_${viewOrder.so_number}.xlsx`, "Sales Order");
+    toast.success("Downloaded as XLSX");
+  };
+
+  // Download SO as PDF
+  const handleDownloadPdf = async () => {
+    if (!viewOrder || viewItems.length === 0) return;
+    const doc = new jsPDF();
+    let yPos = 20;
+    const leftMargin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    if (company?.logo_url) {
+      try {
+        const response = await fetch(company.logo_url);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        await new Promise<void>((resolve) => {
+          reader.onloadend = () => { doc.addImage(reader.result as string, "PNG", leftMargin, yPos, 40, 20); resolve(); };
+          reader.readAsDataURL(blob);
+        });
+        yPos += 25;
+      } catch (error) { console.error("Failed to load company logo:", error); }
+    }
+
+    if (company?.name) { doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text(company.name, leftMargin, yPos); yPos += 6; }
+    if (company?.address_line1) {
+      doc.setFontSize(9); doc.setFont("helvetica", "normal");
+      doc.text(company.address_line1, leftMargin, yPos); yPos += 4;
+      doc.text(`${company.city}, ${company.state} ${company.postal_code}`, leftMargin, yPos); yPos += 4;
+      if (company.phone) { doc.text(company.phone, leftMargin, yPos); yPos += 4; }
+    }
+    yPos += 6;
+
+    doc.setFontSize(20); doc.setFont("helvetica", "bold");
+    doc.text("SALES ORDER", pageWidth - leftMargin, 25, { align: "right" });
+    doc.setFontSize(12); doc.text(viewOrder.so_number, pageWidth - leftMargin, 33, { align: "right" });
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text(`Date: ${new Date(viewOrder.order_date).toLocaleDateString()}`, pageWidth - leftMargin, 40, { align: "right" });
+    yPos = Math.max(yPos, 50);
+
+    const renderAddressBlock = (label: string, name: string, address: any, xStart: number) => {
+      doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text(label, xStart, yPos);
+      let localY = yPos + 5; doc.setFontSize(9); doc.setFont("helvetica", "normal");
+      doc.text(name, xStart, localY); localY += 4;
+      if (address?.address_line1) { doc.text(address.address_line1, xStart, localY); localY += 4; }
+      const cityLine = [address?.city, address?.state, address?.postal_code].filter(Boolean).join(", ");
+      if (cityLine) { doc.text(cityLine, xStart, localY); localY += 4; }
+      return localY;
+    };
+
+    const colWidth = (pageWidth - leftMargin * 2) / 3;
+    const savedY = yPos; let maxY = yPos;
+    if (viewOrder.customer) { const endY = renderAddressBlock("Customer:", viewOrder.customer.name, viewOrder.customer, leftMargin); maxY = Math.max(maxY, endY); }
+    if (viewOrder.location) { yPos = savedY; const endY = renderAddressBlock("Ship From:", viewOrder.location.name, viewOrder.location, leftMargin + colWidth); maxY = Math.max(maxY, endY); }
+    if (viewOrder.bill_to_location) { yPos = savedY; const endY = renderAddressBlock("Bill To:", viewOrder.bill_to_location.name, viewOrder.bill_to_location, leftMargin + colWidth * 2); maxY = Math.max(maxY, endY); }
+    yPos = maxY + 12;
+
+    const colWidths = [15, 35, 55, 20, 25, 25];
+    const tableHeaders = ["#", "Item ID", "Product", "Qty", "Unit Price", "Total"];
+    doc.setFillColor(240, 240, 240);
+    doc.rect(leftMargin, yPos - 4, pageWidth - leftMargin * 2, 8, "F");
+    doc.setFontSize(9); doc.setFont("helvetica", "bold");
+    let xPos = leftMargin;
+    tableHeaders.forEach((header, i) => { doc.text(header, xPos + 2, yPos); xPos += colWidths[i]; });
+    yPos += 8;
+
+    doc.setFont("helvetica", "normal");
+    viewItems.forEach((item, index) => {
+      if (yPos > 270) { doc.addPage(); yPos = 20; }
+      xPos = leftMargin;
+      doc.text(String(index + 1), xPos + 2, yPos); xPos += colWidths[0];
+      doc.text(item.product?.product_id || "-", xPos + 2, yPos); xPos += colWidths[1];
+      doc.text((item.product?.name || "Unknown").substring(0, 30), xPos + 2, yPos); xPos += colWidths[2];
+      doc.text(String(item.quantity), xPos + 2, yPos); xPos += colWidths[3];
+      doc.text(`$${Number(item.unit_price || 0).toFixed(2)}`, xPos + 2, yPos); xPos += colWidths[4];
+      doc.text(`$${Number(item.total_price || 0).toFixed(2)}`, xPos + 2, yPos);
+      yPos += 6;
+    });
+
+    yPos += 4; doc.setDrawColor(200, 200, 200); doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos); yPos += 8;
+    const totalsX = pageWidth - 70;
+    doc.setFont("helvetica", "normal");
+    doc.text("Subtotal:", totalsX, yPos); doc.text(`$${Number(viewOrder.subtotal || 0).toFixed(2)}`, pageWidth - leftMargin, yPos, { align: "right" }); yPos += 6;
+    viewTaxRates.forEach((vt) => {
+      const rateDisplay = (vt.tax_rate as any).rate_type === "flat" ? `$${vt.tax_rate.rate.toFixed(2)}` : `${vt.tax_rate.rate}%`;
+      doc.text(`${vt.tax_rate.name} (${rateDisplay}):`, totalsX, yPos);
+      doc.text(`$${Number(vt.tax_amount || 0).toFixed(2)}`, pageWidth - leftMargin, yPos, { align: "right" }); yPos += 6;
+    });
+    doc.setFont("helvetica", "bold");
+    doc.text("Total:", totalsX, yPos); doc.text(`$${Number(viewOrder.total_amount || 0).toFixed(2)}`, pageWidth - leftMargin, yPos, { align: "right" });
+
+    if (viewOrder.notes) {
+      yPos += 15; doc.setFont("helvetica", "bold"); doc.text("Notes:", leftMargin, yPos); yPos += 5;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      const splitNotes = doc.splitTextToSize(viewOrder.notes, pageWidth - leftMargin * 2);
+      doc.text(splitNotes, leftMargin, yPos);
+    }
+
+    doc.save(`SO_${viewOrder.so_number}.pdf`);
+    toast.success("Downloaded as PDF");
+  };
+
   const handleViewOrder = async (order: SalesOrder) => {
     setViewOrder(order);
 
