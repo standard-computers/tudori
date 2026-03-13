@@ -308,6 +308,8 @@ const SalesOrders = () => {
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
   const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
+  const [isValidationPopoverOpen, setIsValidationPopoverOpen] = useState(false);
+  const hasAutoOpenedValidation = useRef(false);
 
   // Column visibility for table
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
