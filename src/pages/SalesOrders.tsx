@@ -60,7 +60,9 @@ import {
   ChevronDown,
   FileSpreadsheet,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
