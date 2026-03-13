@@ -180,6 +180,17 @@ interface OutboundOrderItem {
   product?: { name: string; product_id: string };
 }
 
+interface ProductionOrder {
+  id: string;
+  order_number: string;
+  status: string;
+  quantity: number;
+  created_at: string;
+  product?: { name: string; product_id: string } | null;
+  bom?: { name: string; bom_id: string } | null;
+}
+
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
   pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
