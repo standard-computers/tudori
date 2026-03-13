@@ -2654,6 +2654,7 @@ const [areaFormData, setAreaFormData] = useState({
                     </TableBody>
                   </Table>
                 )}
+              </div>
             </div>
           )}
 
