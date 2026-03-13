@@ -38,6 +38,7 @@ import {
   Heart,
   Key,
   LogOut,
+  Scale,
   LucideIcon
 } from 'lucide-react';
 
