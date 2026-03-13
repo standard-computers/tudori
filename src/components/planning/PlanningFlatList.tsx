@@ -567,6 +567,16 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 onFilter={(value) => setFilter('locationName', value)}
               />
               <SortableTableHead
+                label="ID"
+                sortKey="productCode"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['productCode'] || ''}
+                onFilter={(value) => setFilter('productCode', value)}
+                className="w-24"
+              />
+              <SortableTableHead
                 label="Product"
                 sortKey="productName"
                 currentSortKey={sortConfig.key}
