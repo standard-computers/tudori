@@ -176,10 +176,11 @@ const Accounting = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      const { data: ledgerTxData } = await supabase
+      const ledgerTxResult = await (supabase
         .from('ledger_transactions')
         .select('id, ledger_id, amount')
-        .eq('company_id', companyId);
+        .eq('company_id', companyId) as any);
+      const ledgerTxData: Array<{ id: string; ledger_id: string; amount: number }> = ledgerTxResult.data || [];
 
       // Build ledger balance map
       const balanceMap: Record<string, number> = {};
