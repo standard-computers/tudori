@@ -655,6 +655,7 @@ export type Database = {
           name: string
           picking_sequence: number | null
           put_away_sequence: number | null
+          replenishment_sequence: number | null
           updated_at: string
           weight_capacity: number | null
           weight_capacity_uom: string | null
@@ -681,6 +682,7 @@ export type Database = {
           name: string
           picking_sequence?: number | null
           put_away_sequence?: number | null
+          replenishment_sequence?: number | null
           updated_at?: string
           weight_capacity?: number | null
           weight_capacity_uom?: string | null
@@ -707,6 +709,7 @@ export type Database = {
           name?: string
           picking_sequence?: number | null
           put_away_sequence?: number | null
+          replenishment_sequence?: number | null
           updated_at?: string
           weight_capacity?: number | null
           weight_capacity_uom?: string | null
