@@ -150,44 +150,36 @@ const Accounting = () => {
     else setLoading(true);
 
     try {
-      const [
-        { data: acctData },
-        { data: ledgerData },
-        { data: grData },
-        { data: giData },
-        { data: ledgerTxData },
-      ] = await Promise.all([
-        supabase
-          .from('accounts')
-          .select('id, account_id, name, type, is_active')
-          .eq('company_id', companyId)
-          .order('created_at', { ascending: false }),
+      const { data: acctData } = await supabase
+        .from('accounts')
+        .select('id, account_id, name, type, is_active')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
 
-        supabase
-          .from('ledgers')
-          .select('id, ledger_id, name, is_active')
-          .eq('company_id', companyId)
-          .order('created_at', { ascending: false }),
+      const { data: ledgerData } = await supabase
+        .from('ledgers')
+        .select('id, ledger_id, name, is_active')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
 
-        supabase
-          .from('goods_receipts')
-          .select('id, receipt_number, status, created_at, total_amount, location:locations!goods_receipts_location_id_fkey(name)')
-          .eq('company_id', companyId)
-          .order('created_at', { ascending: false })
-          .limit(10),
+      const { data: grData } = await supabase
+        .from('goods_receipts')
+        .select('id, receipt_number, status, created_at, total_amount, location:locations!goods_receipts_location_id_fkey(name)')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-        supabase
-          .from('goods_issues')
-          .select('id, issue_number, status, created_at, total_amount, location:locations!goods_issues_location_id_fkey(name)')
-          .eq('company_id', companyId)
-          .order('created_at', { ascending: false })
-          .limit(10),
+      const { data: giData } = await supabase
+        .from('goods_issues')
+        .select('id, issue_number, status, created_at, total_amount, location:locations!goods_issues_location_id_fkey(name)')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-        supabase
-          .from('ledger_transactions')
-          .select('id, ledger_id, amount')
-          .eq('company_id', companyId) as any,
-      ]);
+      const { data: ledgerTxData } = await supabase
+        .from('ledger_transactions')
+        .select('id, ledger_id, amount')
+        .eq('company_id', companyId);
 
       // Build ledger balance map
       const balanceMap: Record<string, number> = {};
