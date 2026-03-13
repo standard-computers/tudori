@@ -1164,6 +1164,16 @@ const Planning = () => {
                       />
                     </TableHead>
                     <SortableTableHead
+                      label="ID"
+                      sortKey="productCode"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['productCode'] || ''}
+                      onFilter={(value) => setShortfallsFilter('productCode', value)}
+                      className="w-24"
+                    />
+                    <SortableTableHead
                       label="Product"
                       sortKey="productName"
                       currentSortKey={shortfallsSortConfig.key}
@@ -1254,12 +1264,8 @@ const Planning = () => {
                           onCheckedChange={() => {}}
                         />
                       </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{item.productName}</div>
-                          <div className="text-sm text-muted-foreground">{item.productCode}</div>
-                        </div>
-                      </TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">{item.productCode}</TableCell>
+                      <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell>
                         {item.vendorName || <span className="text-muted-foreground">-</span>}
                       </TableCell>
@@ -1335,6 +1341,7 @@ const Planning = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-24">ID</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead className="w-32">Quantity</TableHead>
@@ -1343,12 +1350,8 @@ const Planning = () => {
               <TableBody>
                 {requisitionItems.map((item) => (
                   <TableRow key={item.productId}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.productName}</div>
-                        <div className="text-sm text-muted-foreground">{item.productCode}</div>
-                      </div>
-                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{item.productCode}</TableCell>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
                     <TableCell>
                       {item.vendorId ? (
                         shortfalls.find(s => s.productId === item.productId)?.vendorName || '-'

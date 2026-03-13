@@ -567,6 +567,16 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 onFilter={(value) => setFilter('locationName', value)}
               />
               <SortableTableHead
+                label="ID"
+                sortKey="productCode"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['productCode'] || ''}
+                onFilter={(value) => setFilter('productCode', value)}
+                className="w-24"
+              />
+              <SortableTableHead
                 label="Product"
                 sortKey="productName"
                 currentSortKey={sortConfig.key}
@@ -666,12 +676,8 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{item.productName}</div>
-                    <div className="text-sm text-muted-foreground">{item.productCode}</div>
-                  </div>
-                </TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground">{item.productCode}</TableCell>
+                <TableCell className="font-medium">{item.productName}</TableCell>
                 <TableCell>
                   {item.vendorName || <span className="text-muted-foreground">-</span>}
                 </TableCell>
@@ -723,6 +729,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
               <TableHeader>
                 <TableRow>
                   <TableHead>Location</TableHead>
+                  <TableHead className="w-24">ID</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead className="w-32">Quantity</TableHead>
@@ -732,12 +739,8 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 {requisitionItems.map((item) => (
                   <TableRow key={`${item.locationId}-${item.productId}`}>
                     <TableCell className="text-sm">{item.locationName}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.productName}</div>
-                        <div className="text-sm text-muted-foreground">{item.productCode}</div>
-                      </div>
-                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{item.productCode}</TableCell>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
                     <TableCell>
                       {item.vendorId ? (
                         shortfalls.find(s => s.locationId === item.locationId && s.productId === item.productId)?.vendorName || '-'
