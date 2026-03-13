@@ -306,15 +306,6 @@ const [areaFormData, setAreaFormData] = useState({
   const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
 
   // Production orders state
-  interface ProductionOrder {
-    id: string;
-    order_number: string;
-    status: string;
-    quantity: number;
-    created_at: string;
-    product?: { name: string; product_id: string } | null;
-    bom?: { name: string; bom_id: string } | null;
-  }
   const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>([]);
 
   // Receiving tasks state
