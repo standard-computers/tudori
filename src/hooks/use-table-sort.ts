@@ -17,7 +17,7 @@ export type FilterCondition =
   | 'lte';
 
 export interface ColumnFilterConfig {
-  values: string[];        // multiple values — each is OR'd
+  values: string[];
   condition: FilterCondition;
 }
 
@@ -53,22 +53,21 @@ export function useTableSort<T extends Record<string, any>>(
     });
   };
 
-  /** Set a structured filter */
+  /**
+   * Legacy-compatible setFilter.
+   * Accepts a plain string (treated as "contains" single-value) or a full ColumnFilterConfig.
+   */
   const setFilter = (key: string, valueOrConfig: string | ColumnFilterConfig) => {
     setFiltersState((current) => {
       if (typeof valueOrConfig === 'string') {
-        // Legacy: treat plain string as "contains" single value
         if (!valueOrConfig) {
           const next = { ...current };
           delete next[key];
           return next;
         }
-        return {
-          ...current,
-          [key]: { values: [valueOrConfig], condition: 'contains' },
-        };
+        return { ...current, [key]: { values: [valueOrConfig], condition: 'contains' as FilterCondition } };
       }
-      if (!valueOrConfig.values.length) {
+      if (!valueOrConfig.values.filter((v) => v.trim()).length && valueOrConfig.condition !== 'is_empty' && valueOrConfig.condition !== 'is_not_empty') {
         const next = { ...current };
         delete next[key];
         return next;
@@ -87,11 +86,22 @@ export function useTableSort<T extends Record<string, any>>(
 
   const clearAllFilters = () => setFiltersState({});
 
+  /**
+   * Returns a legacy-compatible string value for a filter key.
+   * Used by existing callers that pass filters[key] as a string to filterValue prop.
+   */
+  const getFilterValue = (key: string): string => {
+    const cfg = filters[key];
+    if (!cfg) return '';
+    if (cfg.condition === 'is_empty') return '__is_empty__';
+    if (cfg.condition === 'is_not_empty') return '__is_not_empty__';
+    return cfg.values[0] ?? '';
+  };
+
   /** Evaluate a single cell value against a filter config */
   const matchesFilter = (rawValue: any, config: ColumnFilterConfig): boolean => {
     const { condition, values } = config;
 
-    // Null-check conditions
     if (condition === 'is_empty') {
       return rawValue === null || rawValue === undefined || String(rawValue).trim() === '';
     }
@@ -99,13 +109,11 @@ export function useTableSort<T extends Record<string, any>>(
       return rawValue !== null && rawValue !== undefined && String(rawValue).trim() !== '';
     }
 
-    // If no values provided, skip filter
     if (!values.length || values.every((v) => v.trim() === '')) return true;
 
     const cellStr = rawValue === null || rawValue === undefined ? '' : String(rawValue).toLowerCase();
     const cellNum = parseFloat(cellStr);
 
-    // Multi-value: each non-empty filter term is OR'd
     return values
       .filter((v) => v.trim() !== '')
       .some((v) => {
@@ -131,7 +139,6 @@ export function useTableSort<T extends Record<string, any>>(
   const sortedAndFilteredData = useMemo(() => {
     let result = [...data];
 
-    // Apply filters
     Object.entries(filters).forEach(([key, config]) => {
       result = result.filter((item) => {
         const itemValue = getNestedValue(item, key);
@@ -139,7 +146,6 @@ export function useTableSort<T extends Record<string, any>>(
       });
     });
 
-    // Apply sorting
     if (sortConfig.key && sortConfig.direction) {
       result.sort((a, b) => {
         const aValue = getNestedValue(a, sortConfig.key);
@@ -170,6 +176,7 @@ export function useTableSort<T extends Record<string, any>>(
     setFilter,
     clearFilter,
     clearAllFilters,
+    getFilterValue,
     sortedAndFilteredData,
   };
 }
