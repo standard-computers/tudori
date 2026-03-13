@@ -180,6 +180,17 @@ interface OutboundOrderItem {
   product?: { name: string; product_id: string };
 }
 
+interface ProductionOrder {
+  id: string;
+  order_number: string;
+  status: string;
+  quantity: number;
+  created_at: string;
+  product?: { name: string; product_id: string } | null;
+  bom?: { name: string; bom_id: string } | null;
+}
+
+
 const statusColors: Record<string, string> = {
   draft: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
   pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
@@ -192,7 +203,7 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'areas' | 'bins' | 'users' | 'inventory';
+type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'production' | 'areas' | 'bins' | 'users' | 'inventory';
 
 const Cockpit = () => {
   const navigate = useNavigate();
@@ -293,6 +304,9 @@ const [areaFormData, setAreaFormData] = useState({
   const [viewingWorkOrder, setViewingWorkOrder] = useState<typeof workOrders[number] | null>(null);
   const [isDeleteWorkOrdersOpen, setIsDeleteWorkOrdersOpen] = useState(false);
   const [workOrderIdsToDelete, setWorkOrderIdsToDelete] = useState<string[]>([]);
+
+  // Production orders state
+  const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>([]);
 
   // Receiving tasks state
   const [isCreatingReceiveTasks, setIsCreatingReceiveTasks] = useState(false);
@@ -738,6 +752,7 @@ const [areaFormData, setAreaFormData] = useState({
     fetchInventory();
     fetchOutboundOrders();
     fetchWorkOrders();
+    fetchProductionOrders();
   }, [selectedLocationId]);
 
   useEffect(() => {
@@ -755,11 +770,13 @@ const [areaFormData, setAreaFormData] = useState({
       fetchInventory();
       fetchOutboundOrders();
       fetchWorkOrders();
+      fetchProductionOrders();
     } else {
       setPendingDeliveriesCount(0);
       setInventory([]);
       setOutboundOrders([]);
       setWorkOrders([]);
+      setProductionOrders([]);
     }
   }, [selectedLocationId]);
 
@@ -1255,7 +1272,23 @@ const [areaFormData, setAreaFormData] = useState({
     })));
   };
 
-  // Check if an order has outstanding (todo or in_progress) work orders
+  // Fetch production orders for the selected location
+  const fetchProductionOrders = async () => {
+    if (!selectedLocationId || !companyId) return;
+    const { data, error } = await supabase
+      .from('production_orders')
+      .select('id, order_number, status, quantity, created_at, product:products(name, product_id), bom:bill_of_materials(name, bom_id)')
+      .eq('company_id', companyId)
+      .eq('location_id', selectedLocationId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Failed to fetch production orders:', error);
+      return;
+    }
+    setProductionOrders((data || []) as ProductionOrder[]);
+  };
+
+
   const checkOutstandingWorkOrders = async (sourceType: string, sourceId: string): Promise<number> => {
     if (!companyId) return 0;
     const { count } = await supabase
@@ -2005,15 +2038,19 @@ const [areaFormData, setAreaFormData] = useState({
     );
   }
 
+  const locationAllowsProduction = areas.some(a => a.is_production_enabled);
+
   const sidebarItems: { id: SidebarTab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: 'deliveries', label: 'Inbound Shipments', icon: Truck, count: pendingDeliveriesCount },
     { id: 'orders', label: 'Orders to Fulfill', icon: ShoppingCart, count: outboundOrders.length },
     { id: 'work_orders', label: 'Work Orders', icon: ClipboardList, count: workOrders.length },
+    ...(locationAllowsProduction ? [{ id: 'production' as SidebarTab, label: 'Production', icon: TrendingUp, count: productionOrders.length }] : []),
     { id: 'inventory', label: 'Inventory', icon: Boxes, count: inventory.length },
     { id: 'areas', label: 'Areas', icon: Grid3X3, count: areas.length },
     { id: 'bins', label: 'Bins', icon: Box, count: bins.length },
     { id: 'users', label: 'Users', icon: Users },
   ];
+
 
   // Location Dashboard with Sidebar
   return (
@@ -2611,6 +2648,89 @@ const [areaFormData, setAreaFormData] = useState({
                                 </Button>
                               )}
                             </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Production Tab */}
+          {activeTab === 'production' && (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    Production
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Production orders at this location</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/production')}>
+                  View All
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto">
+                {productionOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <TrendingUp className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No production orders</p>
+                    <p className="text-xs mt-1">Create production orders from the Production app</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order #</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>BOM</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {productionOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono text-sm">
+                            <button
+                              type="button"
+                              className="text-primary hover:underline"
+                              onClick={() => navigate('/production')}
+                            >
+                              {order.order_number}
+                            </button>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {order.product ? (
+                              <div>
+                                <p className="text-sm">{order.product.name}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{order.product.product_id}</p>
+                              </div>
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {order.bom?.name || '—'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">{order.quantity}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              order.status === 'completed'
+                                ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                                : order.status === 'in_progress'
+                                ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                : order.status === 'cancelled'
+                                ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                                : 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+                            }>
+                              {order.status === 'in_progress' ? 'In Progress' : order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString()}
                           </TableCell>
                         </TableRow>
                       ))}
