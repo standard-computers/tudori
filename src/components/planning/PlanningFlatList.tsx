@@ -729,6 +729,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
               <TableHeader>
                 <TableRow>
                   <TableHead>Location</TableHead>
+                  <TableHead className="w-24">ID</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead className="w-32">Quantity</TableHead>
@@ -738,12 +739,8 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 {requisitionItems.map((item) => (
                   <TableRow key={`${item.locationId}-${item.productId}`}>
                     <TableCell className="text-sm">{item.locationName}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.productName}</div>
-                        <div className="text-sm text-muted-foreground">{item.productCode}</div>
-                      </div>
-                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{item.productCode}</TableCell>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
                     <TableCell>
                       {item.vendorId ? (
                         shortfalls.find(s => s.locationId === item.locationId && s.productId === item.productId)?.vendorName || '-'
