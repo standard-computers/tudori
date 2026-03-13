@@ -258,6 +258,7 @@ const [areaFormData, setAreaFormData] = useState({
   // Receive delivery state
   const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [isNoInventoryAccountOpen, setIsNoInventoryAccountOpen] = useState(false);
 
   // Inventory state
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
