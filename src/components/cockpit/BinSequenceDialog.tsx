@@ -24,6 +24,7 @@ interface Bin {
   area_id: string;
   picking_sequence?: number | null;
   put_away_sequence?: number | null;
+  replenishment_sequence?: number | null;
 }
 
 interface Area {
@@ -40,12 +41,13 @@ interface BinSequenceDialogProps {
   onSaved: () => void;
 }
 
-type SequenceType = 'picking' | 'put_away';
+type SequenceType = 'picking' | 'put_away' | 'replenishment';
 
 const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequenceDialogProps) => {
   const [activeTab, setActiveTab] = useState<SequenceType>('picking');
   const [pickingSequences, setPickingSequences] = useState<Record<string, number | null>>({});
   const [putAwaySequences, setPutAwaySequences] = useState<Record<string, number | null>>({});
+  const [replenishmentSequences, setReplenishmentSequences] = useState<Record<string, number | null>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isMaximized, setIsMaximized] = useMaximizedState();
 
@@ -53,12 +55,15 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
     if (open) {
       const pickMap: Record<string, number | null> = {};
       const putMap: Record<string, number | null> = {};
+      const repMap: Record<string, number | null> = {};
       bins.forEach(b => {
         pickMap[b.id] = b.picking_sequence ?? null;
         putMap[b.id] = b.put_away_sequence ?? null;
+        repMap[b.id] = b.replenishment_sequence ?? null;
       });
       setPickingSequences(pickMap);
       setPutAwaySequences(putMap);
+      setReplenishmentSequences(repMap);
     }
   }, [open, bins]);
 
@@ -67,8 +72,14 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
     return area ? `${area.area_id} — ${area.name}` : areaId;
   };
 
+  const getSeqMap = (type: SequenceType) => {
+    if (type === 'picking') return pickingSequences;
+    if (type === 'put_away') return putAwaySequences;
+    return replenishmentSequences;
+  };
+
   const getSortedBins = (type: SequenceType) => {
-    const seqMap = type === 'picking' ? pickingSequences : putAwaySequences;
+    const seqMap = getSeqMap(type);
     return [...bins].sort((a, b) => {
       const seqA = seqMap[a.id];
       const seqB = seqMap[b.id];
@@ -80,26 +91,28 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
   };
 
   const handleSequenceChange = (binId: string, value: string, type: SequenceType) => {
-    const setter = type === 'picking' ? setPickingSequences : setPutAwaySequences;
     const numVal = value === '' ? null : parseInt(value, 10);
-    setter(prev => ({ ...prev, [binId]: isNaN(numVal as number) ? null : numVal }));
+    const parsed = isNaN(numVal as number) ? null : numVal;
+    if (type === 'picking') setPickingSequences(prev => ({ ...prev, [binId]: parsed }));
+    else if (type === 'put_away') setPutAwaySequences(prev => ({ ...prev, [binId]: parsed }));
+    else setReplenishmentSequences(prev => ({ ...prev, [binId]: parsed }));
   };
 
   const autoNumber = (type: SequenceType) => {
     const sorted = [...bins].sort((a, b) => a.bin_id.localeCompare(b.bin_id));
     const newSeq: Record<string, number | null> = {};
-    sorted.forEach((bin, i) => {
-      newSeq[bin.id] = i + 1;
-    });
+    sorted.forEach((bin, i) => { newSeq[bin.id] = i + 1; });
     if (type === 'picking') setPickingSequences(newSeq);
-    else setPutAwaySequences(newSeq);
+    else if (type === 'put_away') setPutAwaySequences(newSeq);
+    else setReplenishmentSequences(newSeq);
   };
 
   const clearAll = (type: SequenceType) => {
     const newSeq: Record<string, number | null> = {};
     bins.forEach(b => { newSeq[b.id] = null; });
     if (type === 'picking') setPickingSequences(newSeq);
-    else setPutAwaySequences(newSeq);
+    else if (type === 'put_away') setPutAwaySequences(newSeq);
+    else setReplenishmentSequences(newSeq);
   };
 
   const handleSave = async () => {
@@ -111,7 +124,8 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
           .update({
             picking_sequence: pickingSequences[bin.id] ?? null,
             put_away_sequence: putAwaySequences[bin.id] ?? null,
-          })
+            replenishment_sequence: replenishmentSequences[bin.id] ?? null,
+          } as any)
           .eq('id', bin.id)
       );
       const results = await Promise.all(updates);
@@ -134,7 +148,7 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
 
   const renderTable = (type: SequenceType) => {
     const sorted = getSortedBins(type);
-    const seqMap = type === 'picking' ? pickingSequences : putAwaySequences;
+    const seqMap = getSeqMap(type);
 
     return (
       <div className="space-y-3">
@@ -210,15 +224,19 @@ const BinSequenceDialog = ({ open, onOpenChange, bins, areas, onSaved }: BinSequ
         </DialogHeader>
         <DialogBody>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SequenceType)}>
-            <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="picking">Picking Sequence</TabsTrigger>
-              <TabsTrigger value="put_away">Put Away Sequence</TabsTrigger>
+            <TabsList className="grid grid-cols-3 mb-4">
+              <TabsTrigger value="picking">Picking</TabsTrigger>
+              <TabsTrigger value="put_away">Put Away</TabsTrigger>
+              <TabsTrigger value="replenishment">Replenishment</TabsTrigger>
             </TabsList>
             <TabsContent value="picking" className="mt-0">
               {renderTable('picking')}
             </TabsContent>
             <TabsContent value="put_away" className="mt-0">
               {renderTable('put_away')}
+            </TabsContent>
+            <TabsContent value="replenishment" className="mt-0">
+              {renderTable('replenishment')}
             </TabsContent>
           </Tabs>
         </DialogBody>
