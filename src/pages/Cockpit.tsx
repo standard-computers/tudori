@@ -67,7 +67,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown, RefreshCw, ListTodo } from 'lucide-react';
+import { ArrowLeft, Gauge, MapPin, Package, ShoppingCart, Truck, Users, TrendingUp, Lock, Grid3X3, Box, Plus, Pencil, Trash2, Boxes, Search, Loader2, PanelLeftClose, PanelLeft, Wand2, Split, Package2, X, MoveRight, Eye, Maximize2, Minimize2, ClipboardList, ArrowUpDown, RefreshCw, ListTodo, AlertTriangle } from 'lucide-react';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from '@/lib/toast';
@@ -258,6 +258,7 @@ const [areaFormData, setAreaFormData] = useState({
   // Receive delivery state
   const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [isNoInventoryAccountOpen, setIsNoInventoryAccountOpen] = useState(false);
 
   // Inventory state
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -1237,6 +1238,20 @@ const [areaFormData, setAreaFormData] = useState({
     } else {
       setOutboundOrderItems([]);
     }
+  };
+
+  // Check if the selected location has an active inventory account
+  const checkLocationHasInventoryAccount = async (): Promise<boolean> => {
+    if (!selectedLocationId) return false;
+    const { data } = await supabase
+      .from('accounts' as any)
+      .select('id')
+      .eq('location_id', selectedLocationId)
+      .eq('type', 'inventory')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    return !!(data as any)?.id;
   };
 
   // Fetch work orders (tasks) for the selected location
@@ -2244,7 +2259,11 @@ const [areaFormData, setAreaFormData] = useState({
                                         size="sm" 
                                         variant="ghost"
                                         className="h-8 w-8 p-0"
-                                        onClick={() => handlePreviewReceiveTasks(delivery)}
+                                        onClick={async () => {
+                                          const hasAccount = await checkLocationHasInventoryAccount();
+                                          if (!hasAccount) { setIsNoInventoryAccountOpen(true); return; }
+                                          handlePreviewReceiveTasks(delivery);
+                                        }}
                                         disabled={isCreatingReceiveTasks || isLoadingReceivePreview || (isInternalTransfer && !delivery.is_fulfilled)}
                                       >
                                         {(isCreatingReceiveTasks || isLoadingReceivePreview) ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListTodo className="w-4 h-4" />}
@@ -2256,7 +2275,9 @@ const [areaFormData, setAreaFormData] = useState({
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => {
+                                  onClick={async () => {
+                                    const hasAccount = await checkLocationHasInventoryAccount();
+                                    if (!hasAccount) { setIsNoInventoryAccountOpen(true); return; }
                                     setSelectedDelivery(delivery);
                                     setIsReceiveDialogOpen(true);
                                   }}
@@ -3542,6 +3563,24 @@ const [areaFormData, setAreaFormData] = useState({
           }}
         />
       )}
+
+      {/* No Inventory Account Dialog */}
+      <Dialog open={isNoInventoryAccountOpen} onOpenChange={setIsNoInventoryAccountOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Cannot Receive Goods
+            </DialogTitle>
+            <DialogDescription>
+              Inventory account required for location to receive
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsNoInventoryAccountOpen(false)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Inventory Detail Dialog */}
       {selectedLocationId && (
