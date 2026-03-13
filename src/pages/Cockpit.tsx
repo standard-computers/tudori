@@ -2038,15 +2038,19 @@ const [areaFormData, setAreaFormData] = useState({
     );
   }
 
+  const locationAllowsProduction = areas.some(a => a.is_production_enabled);
+
   const sidebarItems: { id: SidebarTab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: 'deliveries', label: 'Inbound Shipments', icon: Truck, count: pendingDeliveriesCount },
     { id: 'orders', label: 'Orders to Fulfill', icon: ShoppingCart, count: outboundOrders.length },
     { id: 'work_orders', label: 'Work Orders', icon: ClipboardList, count: workOrders.length },
+    ...(locationAllowsProduction ? [{ id: 'production' as SidebarTab, label: 'Production', icon: TrendingUp, count: productionOrders.length }] : []),
     { id: 'inventory', label: 'Inventory', icon: Boxes, count: inventory.length },
     { id: 'areas', label: 'Areas', icon: Grid3X3, count: areas.length },
     { id: 'bins', label: 'Bins', icon: Box, count: bins.length },
     { id: 'users', label: 'Users', icon: Users },
   ];
+
 
   // Location Dashboard with Sidebar
   return (
