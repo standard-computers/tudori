@@ -186,7 +186,7 @@ const Accounting = () => {
         supabase
           .from('ledger_transactions')
           .select('id, ledger_id, amount')
-          .eq('company_id', companyId),
+          .eq('company_id', companyId) as any,
       ]);
 
       // Build ledger balance map
