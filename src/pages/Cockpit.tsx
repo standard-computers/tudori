@@ -192,7 +192,7 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'areas' | 'bins' | 'users' | 'inventory';
+type SidebarTab = 'deliveries' | 'orders' | 'work_orders' | 'production' | 'areas' | 'bins' | 'users' | 'inventory';
 
 const Cockpit = () => {
   const navigate = useNavigate();
