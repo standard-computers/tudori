@@ -319,24 +319,24 @@ const Accounting = () => {
           <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
             <div className="flex items-center gap-2">
               {kpi.ledgerBalance >= 0 ? (
-                <TrendingUp className="w-5 h-5 text-emerald-500" />
+                <TrendingUp className="w-5 h-5 text-chart-2" />
               ) : (
                 <TrendingDown className="w-5 h-5 text-destructive" />
               )}
               <span className="text-sm font-medium text-foreground">Overall Ledger Position</span>
             </div>
             <span
-              className={`text-lg font-bold ml-auto ${kpi.ledgerBalance >= 0 ? 'text-emerald-600' : 'text-destructive'}`}
+              className={`text-lg font-bold ml-auto ${kpi.ledgerBalance >= 0 ? 'text-chart-2' : 'text-destructive'}`}
             >
               {fmt(kpi.ledgerBalance)}
             </span>
             <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground border-l border-border pl-4">
               <span className="flex items-center gap-1">
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-chart-2" />
                 In: {fmt(kpi.grValue)}
               </span>
               <span className="flex items-center gap-1">
-                <ArrowUpRight className="w-3.5 h-3.5 rotate-90 text-orange-500" />
+                <ArrowUpRight className="w-3.5 h-3.5 rotate-90 text-chart-4" />
                 Out: {fmt(kpi.giValue)}
               </span>
             </div>
