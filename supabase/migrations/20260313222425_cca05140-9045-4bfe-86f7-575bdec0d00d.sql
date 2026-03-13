@@ -1,0 +1,1 @@
+ALTER TABLE public.bins ADD COLUMN IF NOT EXISTS replenishment_sequence integer DEFAULT NULL;
