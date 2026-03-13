@@ -1164,6 +1164,16 @@ const Planning = () => {
                       />
                     </TableHead>
                     <SortableTableHead
+                      label="ID"
+                      sortKey="productCode"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['productCode'] || ''}
+                      onFilter={(value) => setShortfallsFilter('productCode', value)}
+                      className="w-24"
+                    />
+                    <SortableTableHead
                       label="Product"
                       sortKey="productName"
                       currentSortKey={shortfallsSortConfig.key}
