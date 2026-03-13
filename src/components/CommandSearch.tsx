@@ -65,7 +65,7 @@ export function CommandSearch() {
       label: app.name,
       sublabel: app.description,
       path: app.path!,
-      icon: <app.icon className="w-4 h-4" />,
+      icon: <app.icon className={`w-4 h-4 ${app.color}`} />,
     }));
 
   // Search database when query changes
