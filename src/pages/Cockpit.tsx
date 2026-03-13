@@ -752,6 +752,7 @@ const [areaFormData, setAreaFormData] = useState({
     fetchInventory();
     fetchOutboundOrders();
     fetchWorkOrders();
+    fetchProductionOrders();
   }, [selectedLocationId]);
 
   useEffect(() => {
@@ -769,11 +770,13 @@ const [areaFormData, setAreaFormData] = useState({
       fetchInventory();
       fetchOutboundOrders();
       fetchWorkOrders();
+      fetchProductionOrders();
     } else {
       setPendingDeliveriesCount(0);
       setInventory([]);
       setOutboundOrders([]);
       setWorkOrders([]);
+      setProductionOrders([]);
     }
   }, [selectedLocationId]);
 
