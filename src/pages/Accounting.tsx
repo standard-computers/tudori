@@ -129,6 +129,17 @@ const Accounting = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const acctSort = useTableSort<RecentAccount>(accounts, 'account_id');
+  const ledgerSort = useTableSort<RecentLedger>(ledgers, 'ledger_id');
+  const grSort = useTableSort<RecentGR>(receipts, 'created_at', 'desc');
+  const giSort = useTableSort<RecentGI>(issues, 'created_at', 'desc');
+
+  const makeFilterHandler = (sort: ReturnType<typeof useTableSort>) =>
+    (key: string, config: ColumnFilterConfig | null) => {
+      if (config) sort.setFilter(key, config);
+      else sort.clearFilter(key);
+    };
+
   useEffect(() => {
     if (user) {
       supabase
