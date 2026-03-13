@@ -2259,7 +2259,11 @@ const [areaFormData, setAreaFormData] = useState({
                                         size="sm" 
                                         variant="ghost"
                                         className="h-8 w-8 p-0"
-                                        onClick={() => handlePreviewReceiveTasks(delivery)}
+                                        onClick={async () => {
+                                          const hasAccount = await checkLocationHasInventoryAccount();
+                                          if (!hasAccount) { setIsNoInventoryAccountOpen(true); return; }
+                                          handlePreviewReceiveTasks(delivery);
+                                        }}
                                         disabled={isCreatingReceiveTasks || isLoadingReceivePreview || (isInternalTransfer && !delivery.is_fulfilled)}
                                       >
                                         {(isCreatingReceiveTasks || isLoadingReceivePreview) ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListTodo className="w-4 h-4" />}
@@ -2271,7 +2275,9 @@ const [areaFormData, setAreaFormData] = useState({
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => {
+                                  onClick={async () => {
+                                    const hasAccount = await checkLocationHasInventoryAccount();
+                                    if (!hasAccount) { setIsNoInventoryAccountOpen(true); return; }
                                     setSelectedDelivery(delivery);
                                     setIsReceiveDialogOpen(true);
                                   }}
