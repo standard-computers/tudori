@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import jsPDF from "jspdf";
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
@@ -60,7 +60,9 @@ import {
   ChevronDown,
   FileSpreadsheet,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
@@ -306,6 +308,8 @@ const SalesOrders = () => {
   const [isEditingTaxRates, setIsEditingTaxRates] = useState(false);
   const [editTaxRates, setEditTaxRates] = useState<SelectedTaxRate[]>([]);
   const [locationInventory, setLocationInventory] = useState<InventoryRecord[]>([]);
+  const [isValidationPopoverOpen, setIsValidationPopoverOpen] = useState(false);
+  const hasAutoOpenedValidation = useRef(false);
 
   // Column visibility for table
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
@@ -579,6 +583,53 @@ const SalesOrders = () => {
   const hasStockIssue = useMemo(() => {
     return Object.values(itemAvailability).some((a) => !a.sufficient);
   }, [itemAvailability]);
+
+  // Validation for SO creation - compute errors (blocking) and warnings
+  const soValidation = useMemo(() => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!formData.customer_id) {
+      errors.push("Customer is required");
+    }
+
+    if (orderItems.length === 0) {
+      errors.push("At least one item is required");
+    } else {
+      if (orderItems.some((item) => !item.product_id)) {
+        errors.push("All items must have a product selected");
+      }
+      if (orderItems.some((item) => item.quantity <= 0)) {
+        errors.push("All items must have a quantity greater than 0");
+      }
+    }
+
+    if (ledgers.length === 0) {
+      errors.push("No ledger exists — create a ledger first");
+    }
+
+    if (hasStockIssue && formData.location_id) {
+      warnings.push("Some items have insufficient stock at the selected ship-from location");
+    }
+
+    if (!formData.location_id) {
+      warnings.push("No Ship From location selected — order will be general (no inventory deduction)");
+    }
+
+    return { errors, warnings };
+  }, [formData, orderItems, ledgers, hasStockIssue]);
+
+  // Auto-open validation popover when stock issues are detected (once per dialog open)
+  useEffect(() => {
+    if (!isCreateDialogOpen) {
+      hasAutoOpenedValidation.current = false;
+      return;
+    }
+    if (hasStockIssue && !hasAutoOpenedValidation.current) {
+      hasAutoOpenedValidation.current = true;
+      setIsValidationPopoverOpen(true);
+    }
+  }, [hasStockIssue, isCreateDialogOpen]);
 
   const handleDownloadTemplate = () => {
     const templateData = [
@@ -1399,6 +1450,66 @@ const SalesOrders = () => {
           >
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
+
+          {/* Validation Alert Button */}
+          {(soValidation.errors.length > 0 || soValidation.warnings.length > 0) && (
+            <Popover open={isValidationPopoverOpen} onOpenChange={setIsValidationPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`absolute right-[5.5rem] top-4 rounded-sm ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10 flex items-center justify-center ${
+                    soValidation.errors.length > 0 ? "text-destructive opacity-100" : "text-yellow-500 opacity-90"
+                  }`}
+                >
+                  <AlertTriangle className="h-5 w-5" />
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+                      soValidation.errors.length > 0 ? "bg-destructive" : "bg-yellow-500"
+                    }`}
+                  >
+                    {soValidation.errors.length > 0 ? soValidation.errors.length : soValidation.warnings.length}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4 space-y-3" align="end">
+                <h4 className="font-medium text-sm">Validation Issues</h4>
+
+                {soValidation.errors.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-destructive text-xs font-medium">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Blocking Issues ({soValidation.errors.length})
+                    </div>
+                    <ul className="space-y-1.5 text-sm">
+                      {soValidation.errors.map((error, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-destructive">
+                          <span className="text-destructive mt-0.5">•</span>
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {soValidation.warnings.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-xs font-medium">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Warnings ({soValidation.warnings.length})
+                    </div>
+                    <ul className="space-y-1.5 text-sm">
+                      {soValidation.warnings.map((warning, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
+                          <span className="mt-0.5">•</span>
+                          {warning}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
           <DialogHeader>
             <DialogTitle>Create Sales Order</DialogTitle>
             <DialogDescription>Create a new sales order for a customer</DialogDescription>
