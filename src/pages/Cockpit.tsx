@@ -3564,6 +3564,24 @@ const [areaFormData, setAreaFormData] = useState({
         />
       )}
 
+      {/* No Inventory Account Dialog */}
+      <Dialog open={isNoInventoryAccountOpen} onOpenChange={setIsNoInventoryAccountOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Cannot Receive Goods
+            </DialogTitle>
+            <DialogDescription>
+              Inventory account required for location to receive
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsNoInventoryAccountOpen(false)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Inventory Detail Dialog */}
       {selectedLocationId && (
         <InventoryDetailDialog
