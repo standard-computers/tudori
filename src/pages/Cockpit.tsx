@@ -1269,7 +1269,23 @@ const [areaFormData, setAreaFormData] = useState({
     })));
   };
 
-  // Check if an order has outstanding (todo or in_progress) work orders
+  // Fetch production orders for the selected location
+  const fetchProductionOrders = async () => {
+    if (!selectedLocationId || !companyId) return;
+    const { data, error } = await supabase
+      .from('production_orders')
+      .select('id, order_number, status, quantity, created_at, product:products(name, product_id), bom:bill_of_materials(name, bom_id)')
+      .eq('company_id', companyId)
+      .eq('location_id', selectedLocationId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Failed to fetch production orders:', error);
+      return;
+    }
+    setProductionOrders((data || []) as ProductionOrder[]);
+  };
+
+
   const checkOutstandingWorkOrders = async (sourceType: string, sourceId: string): Promise<number> => {
     if (!companyId) return 0;
     const { count } = await supabase
