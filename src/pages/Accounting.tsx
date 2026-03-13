@@ -371,26 +371,35 @@ const Accounting = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">ID</TableHead>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
+                    <SortableTableHead label="ID" sortKey="account_id" filterKey="account_id"
+                      currentSortKey={acctSort.sortConfig.key} currentSortDirection={acctSort.sortConfig.direction}
+                      onSort={acctSort.handleSort} filterConfig={acctSort.getFilterConfig('account_id')}
+                      onFilterConfig={makeFilterHandler(acctSort)} className="text-xs" />
+                    <SortableTableHead label="Name" sortKey="name" filterKey="name"
+                      currentSortKey={acctSort.sortConfig.key} currentSortDirection={acctSort.sortConfig.direction}
+                      onSort={acctSort.handleSort} filterConfig={acctSort.getFilterConfig('name')}
+                      onFilterConfig={makeFilterHandler(acctSort)} className="text-xs" />
+                    <SortableTableHead label="Type" sortKey="type" filterKey="type"
+                      currentSortKey={acctSort.sortConfig.key} currentSortDirection={acctSort.sortConfig.direction}
+                      onSort={acctSort.handleSort} filterConfig={acctSort.getFilterConfig('type')}
+                      onFilterConfig={makeFilterHandler(acctSort)} className="text-xs" />
+                    <SortableTableHead label="Status" sortKey="is_active" filterKey="is_active"
+                      currentSortKey={acctSort.sortConfig.key} currentSortDirection={acctSort.sortConfig.direction}
+                      onSort={acctSort.handleSort} filterConfig={acctSort.getFilterConfig('is_active')}
+                      onFilterConfig={makeFilterHandler(acctSort)} className="text-xs" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accounts.length === 0 ? (
+                  {acctSort.sortedAndFilteredData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground text-sm py-6">
                         No accounts found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    accounts.map((a) => (
-                      <TableRow
-                        key={a.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/accounts/${a.id}`)}
-                      >
+                    acctSort.sortedAndFilteredData.map((a) => (
+                      <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/accounts/${a.id}`)}>
                         <TableCell className="font-mono text-xs">{a.account_id}</TableCell>
                         <TableCell className="text-sm font-medium truncate max-w-[140px]">{a.name}</TableCell>
                         <TableCell className="text-xs capitalize">{a.type}</TableCell>
@@ -418,26 +427,35 @@ const Accounting = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">ID</TableHead>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs text-right">Transactions</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
+                    <SortableTableHead label="ID" sortKey="ledger_id" filterKey="ledger_id"
+                      currentSortKey={ledgerSort.sortConfig.key} currentSortDirection={ledgerSort.sortConfig.direction}
+                      onSort={ledgerSort.handleSort} filterConfig={ledgerSort.getFilterConfig('ledger_id')}
+                      onFilterConfig={makeFilterHandler(ledgerSort)} className="text-xs" />
+                    <SortableTableHead label="Name" sortKey="name" filterKey="name"
+                      currentSortKey={ledgerSort.sortConfig.key} currentSortDirection={ledgerSort.sortConfig.direction}
+                      onSort={ledgerSort.handleSort} filterConfig={ledgerSort.getFilterConfig('name')}
+                      onFilterConfig={makeFilterHandler(ledgerSort)} className="text-xs" />
+                    <SortableTableHead label="Transactions" sortKey="transaction_count" filterKey="transaction_count"
+                      currentSortKey={ledgerSort.sortConfig.key} currentSortDirection={ledgerSort.sortConfig.direction}
+                      onSort={ledgerSort.handleSort} filterConfig={ledgerSort.getFilterConfig('transaction_count')}
+                      onFilterConfig={makeFilterHandler(ledgerSort)} className="text-xs text-right" />
+                    <SortableTableHead label="Status" sortKey="is_active" filterKey="is_active"
+                      currentSortKey={ledgerSort.sortConfig.key} currentSortDirection={ledgerSort.sortConfig.direction}
+                      onSort={ledgerSort.handleSort} filterConfig={ledgerSort.getFilterConfig('is_active')}
+                      onFilterConfig={makeFilterHandler(ledgerSort)} className="text-xs" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ledgers.length === 0 ? (
+                  {ledgerSort.sortedAndFilteredData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground text-sm py-6">
                         No ledgers found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    ledgers.map((l) => (
-                      <TableRow
-                        key={l.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate('/ledgers')}
-                      >
+                    ledgerSort.sortedAndFilteredData.map((l) => (
+                      <TableRow key={l.id} className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate('/ledgers')}>
                         <TableCell className="font-mono text-xs">{l.ledger_id}</TableCell>
                         <TableCell className="text-sm font-medium truncate max-w-[140px]">{l.name}</TableCell>
                         <TableCell className="text-xs text-right">{l.transaction_count.toLocaleString()}</TableCell>
@@ -468,36 +486,46 @@ const Accounting = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Receipt #</TableHead>
-                    <TableHead className="text-xs">Location</TableHead>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
+                    <SortableTableHead label="Receipt #" sortKey="receipt_number" filterKey="receipt_number"
+                      currentSortKey={grSort.sortConfig.key} currentSortDirection={grSort.sortConfig.direction}
+                      onSort={grSort.handleSort} filterConfig={grSort.getFilterConfig('receipt_number')}
+                      onFilterConfig={makeFilterHandler(grSort)} className="text-xs" />
+                    <SortableTableHead label="Location" sortKey="location.name" filterKey="location.name"
+                      currentSortKey={grSort.sortConfig.key} currentSortDirection={grSort.sortConfig.direction}
+                      onSort={grSort.handleSort} filterConfig={grSort.getFilterConfig('location.name')}
+                      onFilterConfig={makeFilterHandler(grSort)} className="text-xs" />
+                    <SortableTableHead label="Date" sortKey="created_at" filterKey="created_at"
+                      currentSortKey={grSort.sortConfig.key} currentSortDirection={grSort.sortConfig.direction}
+                      onSort={grSort.handleSort} filterConfig={grSort.getFilterConfig('created_at')}
+                      onFilterConfig={makeFilterHandler(grSort)} className="text-xs" />
+                    <SortableTableHead label="Status" sortKey="status" filterKey="status"
+                      currentSortKey={grSort.sortConfig.key} currentSortDirection={grSort.sortConfig.direction}
+                      onSort={grSort.handleSort} filterConfig={grSort.getFilterConfig('status')}
+                      onFilterConfig={makeFilterHandler(grSort)} className="text-xs" />
+                    <SortableTableHead label="Amount" sortKey="total_amount" filterKey="total_amount"
+                      currentSortKey={grSort.sortConfig.key} currentSortDirection={grSort.sortConfig.direction}
+                      onSort={grSort.handleSort} filterConfig={grSort.getFilterConfig('total_amount')}
+                      onFilterConfig={makeFilterHandler(grSort)} className="text-xs text-right" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {receipts.length === 0 ? (
+                  {grSort.sortedAndFilteredData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground text-sm py-6">
                         No goods receipts found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    receipts.map((r) => (
-                      <TableRow
-                        key={r.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate('/goods-receipts')}
-                      >
+                    grSort.sortedAndFilteredData.map((r) => (
+                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate('/goods-receipts')}>
                         <TableCell className="font-mono text-xs">{r.receipt_number}</TableCell>
                         <TableCell className="text-xs truncate max-w-[100px]">
                           {(r.location as any)?.name ?? '—'}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
                         <TableCell>
-                          <Badge variant={statusColor(r.status)} className="text-xs">
-                            {r.status}
-                          </Badge>
+                          <Badge variant={statusColor(r.status)} className="text-xs">{r.status}</Badge>
                         </TableCell>
                         <TableCell className="text-xs text-right font-medium">{fmt(r.total_amount || 0)}</TableCell>
                       </TableRow>
@@ -519,36 +547,46 @@ const Accounting = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Issue #</TableHead>
-                    <TableHead className="text-xs">Location</TableHead>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
+                    <SortableTableHead label="Issue #" sortKey="issue_number" filterKey="issue_number"
+                      currentSortKey={giSort.sortConfig.key} currentSortDirection={giSort.sortConfig.direction}
+                      onSort={giSort.handleSort} filterConfig={giSort.getFilterConfig('issue_number')}
+                      onFilterConfig={makeFilterHandler(giSort)} className="text-xs" />
+                    <SortableTableHead label="Location" sortKey="location.name" filterKey="location.name"
+                      currentSortKey={giSort.sortConfig.key} currentSortDirection={giSort.sortConfig.direction}
+                      onSort={giSort.handleSort} filterConfig={giSort.getFilterConfig('location.name')}
+                      onFilterConfig={makeFilterHandler(giSort)} className="text-xs" />
+                    <SortableTableHead label="Date" sortKey="created_at" filterKey="created_at"
+                      currentSortKey={giSort.sortConfig.key} currentSortDirection={giSort.sortConfig.direction}
+                      onSort={giSort.handleSort} filterConfig={giSort.getFilterConfig('created_at')}
+                      onFilterConfig={makeFilterHandler(giSort)} className="text-xs" />
+                    <SortableTableHead label="Status" sortKey="status" filterKey="status"
+                      currentSortKey={giSort.sortConfig.key} currentSortDirection={giSort.sortConfig.direction}
+                      onSort={giSort.handleSort} filterConfig={giSort.getFilterConfig('status')}
+                      onFilterConfig={makeFilterHandler(giSort)} className="text-xs" />
+                    <SortableTableHead label="Amount" sortKey="total_amount" filterKey="total_amount"
+                      currentSortKey={giSort.sortConfig.key} currentSortDirection={giSort.sortConfig.direction}
+                      onSort={giSort.handleSort} filterConfig={giSort.getFilterConfig('total_amount')}
+                      onFilterConfig={makeFilterHandler(giSort)} className="text-xs text-right" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {issues.length === 0 ? (
+                  {giSort.sortedAndFilteredData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground text-sm py-6">
                         No goods issues found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    issues.map((g) => (
-                      <TableRow
-                        key={g.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate('/goods-issues')}
-                      >
+                    giSort.sortedAndFilteredData.map((g) => (
+                      <TableRow key={g.id} className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate('/goods-issues')}>
                         <TableCell className="font-mono text-xs">{g.issue_number}</TableCell>
                         <TableCell className="text-xs truncate max-w-[100px]">
                           {(g.location as any)?.name ?? '—'}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{fmtDate(g.created_at)}</TableCell>
                         <TableCell>
-                          <Badge variant={statusColor(g.status)} className="text-xs">
-                            {g.status}
-                          </Badge>
+                          <Badge variant={statusColor(g.status)} className="text-xs">{g.status}</Badge>
                         </TableCell>
                         <TableCell className="text-xs text-right font-medium">{fmt(g.total_amount || 0)}</TableCell>
                       </TableRow>
