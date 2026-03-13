@@ -1240,6 +1240,20 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
+  // Check if the selected location has an active inventory account
+  const checkLocationHasInventoryAccount = async (): Promise<boolean> => {
+    if (!selectedLocationId) return false;
+    const { data } = await supabase
+      .from('accounts' as any)
+      .select('id')
+      .eq('location_id', selectedLocationId)
+      .eq('type', 'inventory')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    return !!(data as any)?.id;
+  };
+
   // Fetch work orders (tasks) for the selected location
   const fetchWorkOrders = async () => {
     if (!selectedLocationId || !companyId) return;
