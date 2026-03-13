@@ -676,12 +676,8 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{item.productName}</div>
-                    <div className="text-sm text-muted-foreground">{item.productCode}</div>
-                  </div>
-                </TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground">{item.productCode}</TableCell>
+                <TableCell className="font-medium">{item.productName}</TableCell>
                 <TableCell>
                   {item.vendorName || <span className="text-muted-foreground">-</span>}
                 </TableCell>
