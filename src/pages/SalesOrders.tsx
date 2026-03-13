@@ -1450,6 +1450,66 @@ const SalesOrders = () => {
           >
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
+
+          {/* Validation Alert Button */}
+          {(soValidation.errors.length > 0 || soValidation.warnings.length > 0) && (
+            <Popover open={isValidationPopoverOpen} onOpenChange={setIsValidationPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`absolute right-[5.5rem] top-4 rounded-sm ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10 flex items-center justify-center ${
+                    soValidation.errors.length > 0 ? "text-destructive opacity-100" : "text-yellow-500 opacity-90"
+                  }`}
+                >
+                  <AlertTriangle className="h-5 w-5" />
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+                      soValidation.errors.length > 0 ? "bg-destructive" : "bg-yellow-500"
+                    }`}
+                  >
+                    {soValidation.errors.length > 0 ? soValidation.errors.length : soValidation.warnings.length}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4 space-y-3" align="end">
+                <h4 className="font-medium text-sm">Validation Issues</h4>
+
+                {soValidation.errors.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-destructive text-xs font-medium">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Blocking Issues ({soValidation.errors.length})
+                    </div>
+                    <ul className="space-y-1.5 text-sm">
+                      {soValidation.errors.map((error, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-destructive">
+                          <span className="text-destructive mt-0.5">•</span>
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {soValidation.warnings.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-xs font-medium">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Warnings ({soValidation.warnings.length})
+                    </div>
+                    <ul className="space-y-1.5 text-sm">
+                      {soValidation.warnings.map((warning, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-yellow-600 dark:text-yellow-500">
+                          <span className="mt-0.5">•</span>
+                          {warning}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
           <DialogHeader>
             <DialogTitle>Create Sales Order</DialogTitle>
             <DialogDescription>Create a new sales order for a customer</DialogDescription>
