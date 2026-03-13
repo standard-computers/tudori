@@ -584,6 +584,53 @@ const SalesOrders = () => {
     return Object.values(itemAvailability).some((a) => !a.sufficient);
   }, [itemAvailability]);
 
+  // Validation for SO creation - compute errors (blocking) and warnings
+  const soValidation = useMemo(() => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (!formData.customer_id) {
+      errors.push("Customer is required");
+    }
+
+    if (orderItems.length === 0) {
+      errors.push("At least one item is required");
+    } else {
+      if (orderItems.some((item) => !item.product_id)) {
+        errors.push("All items must have a product selected");
+      }
+      if (orderItems.some((item) => item.quantity <= 0)) {
+        errors.push("All items must have a quantity greater than 0");
+      }
+    }
+
+    if (ledgers.length === 0) {
+      errors.push("No ledger exists — create a ledger first");
+    }
+
+    if (hasStockIssue && formData.location_id) {
+      warnings.push("Some items have insufficient stock at the selected ship-from location");
+    }
+
+    if (!formData.location_id) {
+      warnings.push("No Ship From location selected — order will be general (no inventory deduction)");
+    }
+
+    return { errors, warnings };
+  }, [formData, orderItems, ledgers, hasStockIssue]);
+
+  // Auto-open validation popover when stock issues are detected (once per dialog open)
+  useEffect(() => {
+    if (!isCreateDialogOpen) {
+      hasAutoOpenedValidation.current = false;
+      return;
+    }
+    if (hasStockIssue && !hasAutoOpenedValidation.current) {
+      hasAutoOpenedValidation.current = true;
+      setIsValidationPopoverOpen(true);
+    }
+  }, [hasStockIssue, isCreateDialogOpen]);
+
   const handleDownloadTemplate = () => {
     const templateData = [
       { 'Customer': '', 'Ship From Location': '', 'Bill To Location': '', 'Notes': '' },
