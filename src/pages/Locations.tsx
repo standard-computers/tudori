@@ -483,6 +483,8 @@ const Locations = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextLocationId, setNextLocationId] = useState("0001");
   const [activeTab, setActiveTab] = useState("general");
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapLoading, setMapLoading] = useState(false);
 
   // Users state
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
