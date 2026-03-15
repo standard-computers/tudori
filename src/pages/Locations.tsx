@@ -483,6 +483,8 @@ const Locations = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextLocationId, setNextLocationId] = useState("0001");
   const [activeTab, setActiveTab] = useState("general");
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapLoading, setMapLoading] = useState(false);
 
   // Users state
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
@@ -669,6 +671,8 @@ const Locations = () => {
   useTransactionAction('new', handleOpenDialog);
 
   const handleView = async (location: Location) => {
+    setMapCoords(null);
+    setMapLoading(true);
     setFormData({
       location_id: location.location_id,
       name: location.name,
@@ -691,6 +695,23 @@ const Locations = () => {
     setActiveTab("general");
     await fetchLocationUsers(location.id);
     setIsDialogOpen(true);
+
+    // Geocode address via Nominatim
+    const addressQuery = [location.address_line1, location.city, location.state, location.postal_code, location.country].filter(Boolean).join(', ');
+    if (addressQuery) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`, {
+          headers: { 'Accept-Language': 'en', 'User-Agent': 'OperandApp/1.0' }
+        });
+        const data = await res.json();
+        if (data && data[0]) {
+          setMapCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+        }
+      } catch {
+        // silently fail
+      }
+    }
+    setMapLoading(false);
   };
 
   const handleEdit = async (location: Location) => {
@@ -1604,37 +1625,37 @@ const Locations = () => {
                               <MapPin className="w-3 h-3" />
                               Location Map
                             </p>
-                            {(() => {
-                              const addressQuery = [formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', ');
-                              return addressQuery ? (
-                                <>
-                                  <div className="rounded-lg overflow-hidden border border-border h-44 bg-muted">
-                                    <iframe
-                                      title="Location Map"
-                                      className="w-full h-full"
-                                      src={`https://maps.google.com/maps?q=${encodeURIComponent(addressQuery)}&output=embed&z=15`}
-                                      style={{ border: 0 }}
-                                      loading="lazy"
-                                      referrerPolicy="no-referrer-when-downgrade"
-                                      allowFullScreen
-                                    />
-                                  </div>
-                                  <a
-                                    href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(addressQuery)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline flex items-center gap-1 mt-2"
-                                  >
-                                    <MapPin className="w-3 h-3" />
-                                    Open in OpenStreetMap
-                                  </a>
-                                </>
-                              ) : (
-                                <div className="rounded-lg border border-border h-44 bg-muted flex items-center justify-center text-muted-foreground text-xs">
-                                  No address available
+                            <div className="rounded-lg overflow-hidden border border-border h-44 bg-muted">
+                              {mapLoading ? (
+                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs gap-2">
+                                  <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                                  Loading map…
                                 </div>
-                              );
-                            })()}
+                              ) : mapCoords ? (
+                                <iframe
+                                  title="Location Map"
+                                  className="w-full h-full"
+                                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoords.lon - 0.01},${mapCoords.lat - 0.008},${mapCoords.lon + 0.01},${mapCoords.lat + 0.008}&layer=mapnik&marker=${mapCoords.lat},${mapCoords.lon}`}
+                                  style={{ border: 0 }}
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+                                  Address not found on map
+                                </div>
+                              )}
+                            </div>
+                            {mapCoords && (
+                              <a
+                                href={`https://www.openstreetmap.org/?mlat=${mapCoords.lat}&mlon=${mapCoords.lon}#map=15/${mapCoords.lat}/${mapCoords.lon}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline flex items-center gap-1 mt-2"
+                              >
+                                <MapPin className="w-3 h-3" />
+                                Open in OpenStreetMap
+                              </a>
+                            )}
                           </div>
 
                           {/* History */}
