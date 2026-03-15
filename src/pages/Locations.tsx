@@ -96,6 +96,7 @@ interface CompanyUser {
   user_id: string;
   first_name: string;
   last_name: string;
+  profile_id: string | null;
 }
 
 interface LocationUser {
