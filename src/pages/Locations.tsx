@@ -671,6 +671,8 @@ const Locations = () => {
   useTransactionAction('new', handleOpenDialog);
 
   const handleView = async (location: Location) => {
+    setMapCoords(null);
+    setMapLoading(true);
     setFormData({
       location_id: location.location_id,
       name: location.name,
@@ -693,6 +695,23 @@ const Locations = () => {
     setActiveTab("general");
     await fetchLocationUsers(location.id);
     setIsDialogOpen(true);
+
+    // Geocode address via Nominatim
+    const addressQuery = [location.address_line1, location.city, location.state, location.postal_code, location.country].filter(Boolean).join(', ');
+    if (addressQuery) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`, {
+          headers: { 'Accept-Language': 'en', 'User-Agent': 'OperandApp/1.0' }
+        });
+        const data = await res.json();
+        if (data && data[0]) {
+          setMapCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+        }
+      } catch {
+        // silently fail
+      }
+    }
+    setMapLoading(false);
   };
 
   const handleEdit = async (location: Location) => {
