@@ -1629,6 +1629,9 @@ const Products = () => {
           hazardous: formData.hazardous,
           serialized: formData.serialized,
           is_pos_available: formData.is_pos_available,
+          allow_modifications: formData.allow_modifications,
+          restrict_modifications: formData.restrict_modifications,
+          restricted_products: formData.restricted_products,
         } as any)
         .eq("id", editingId);
 
@@ -1671,6 +1674,9 @@ const Products = () => {
           hazardous: formData.hazardous,
           serialized: formData.serialized,
           is_pos_available: formData.is_pos_available,
+          allow_modifications: formData.allow_modifications,
+          restrict_modifications: formData.restrict_modifications,
+          restricted_products: formData.restricted_products,
         } as any)
         .select("id")
         .single();

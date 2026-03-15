@@ -3890,6 +3890,7 @@ export type Database = {
       }
       products: {
         Row: {
+          allow_modifications: boolean
           category: string | null
           company_id: string
           created_at: string
@@ -3911,6 +3912,8 @@ export type Database = {
           name: string
           price: number | null
           product_id: string
+          restrict_modifications: boolean
+          restricted_products: Json
           serialized: boolean
           sku: string | null
           status: string
@@ -3926,6 +3929,7 @@ export type Database = {
           width_uom: string | null
         }
         Insert: {
+          allow_modifications?: boolean
           category?: string | null
           company_id: string
           created_at?: string
@@ -3947,6 +3951,8 @@ export type Database = {
           name: string
           price?: number | null
           product_id: string
+          restrict_modifications?: boolean
+          restricted_products?: Json
           serialized?: boolean
           sku?: string | null
           status?: string
@@ -3962,6 +3968,7 @@ export type Database = {
           width_uom?: string | null
         }
         Update: {
+          allow_modifications?: boolean
           category?: string | null
           company_id?: string
           created_at?: string
@@ -3983,6 +3990,8 @@ export type Database = {
           name?: string
           price?: number | null
           product_id?: string
+          restrict_modifications?: boolean
+          restricted_products?: Json
           serialized?: boolean
           sku?: string | null
           status?: string
