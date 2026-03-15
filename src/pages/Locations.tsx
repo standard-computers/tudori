@@ -1604,45 +1604,37 @@ const Locations = () => {
                               <MapPin className="w-3 h-3" />
                               Location Map
                             </p>
-                            <div className="rounded-lg overflow-hidden border border-border h-44 bg-muted">
-                              {(formData.address_line1 || formData.city) ? (
-                                <iframe
-                                  title="Location Map"
-                                  className="w-full h-full"
-                                  src={`https://www.openstreetmap.org/export/embed.html?bbox=-180,-85,180,85&layer=mapnik&marker=${encodeURIComponent([formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', '))}`}
-                                  style={{ border: 0 }}
-                                  loading="lazy"
-                                  referrerPolicy="no-referrer-when-downgrade"
-                                  // Use a geocode-based iframe via Nominatim search embed
-                                  srcDoc={undefined}
-                                />
+                            {(() => {
+                              const addressQuery = [formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', ');
+                              return addressQuery ? (
+                                <>
+                                  <div className="rounded-lg overflow-hidden border border-border h-44 bg-muted">
+                                    <iframe
+                                      title="Location Map"
+                                      className="w-full h-full"
+                                      src={`https://maps.google.com/maps?q=${encodeURIComponent(addressQuery)}&output=embed&z=15`}
+                                      style={{ border: 0 }}
+                                      loading="lazy"
+                                      referrerPolicy="no-referrer-when-downgrade"
+                                      allowFullScreen
+                                    />
+                                  </div>
+                                  <a
+                                    href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(addressQuery)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:underline flex items-center gap-1 mt-2"
+                                  >
+                                    <MapPin className="w-3 h-3" />
+                                    Open in OpenStreetMap
+                                  </a>
+                                </>
                               ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+                                <div className="rounded-lg border border-border h-44 bg-muted flex items-center justify-center text-muted-foreground text-xs">
                                   No address available
                                 </div>
-                              )}
-                              {/* Geocoded map via Nominatim */}
-                              {(formData.address_line1 || formData.city) && (() => {
-                                const query = [formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', ');
-                                return null; // handled below
-                              })()}
-                            </div>
-                            {/* Replace above with proper geocode embed */}
-                          </div>
-
-                          {/* Geocode map proper embed */}
-                          <div className="px-3 pb-2">
-                            {(formData.address_line1 || formData.city) && (
-                              <a
-                                href={`https://www.openstreetmap.org/search?query=${encodeURIComponent([formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', '))}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
-                              >
-                                <MapPin className="w-3 h-3" />
-                                Open in OpenStreetMap
-                              </a>
-                            )}
+                              );
+                            })()}
                           </div>
 
                           {/* History */}
