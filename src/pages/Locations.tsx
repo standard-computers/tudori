@@ -1490,69 +1490,106 @@ const Locations = () => {
                           <TabsContent value="users" className="mt-4">
                             <div className="space-y-4">
                               <p className="text-sm text-muted-foreground">
-                                Select users who can access this location in the Cockpit. Only selected users will be able
-                                to view this location.
+                                Add users who can access this location in the Cockpit.
                               </p>
-                              {companyUsers.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                  <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                  <p>No users found in your company.</p>
-                                </div>
-                              ) : (
-                                <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
-                                  {companyUsers.map((companyUser) => {
-                                    const isSelected = selectedUserIds.includes(companyUser.user_id);
+
+                              {/* Search combobox — hidden in view mode */}
+                              {!isViewMode && (
+                                <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      className="w-full justify-start gap-2 font-normal"
+                                    >
+                                      <Search className="w-4 h-4 text-muted-foreground" />
+                                      <span className="text-muted-foreground">Search users to add…</span>
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[70]" align="start">
+                                    <Command>
+                                      <CommandInput placeholder="Type a name…" />
+                                      <CommandList>
+                                        <CommandEmpty>No users found.</CommandEmpty>
+                                        <CommandGroup>
+                                          {companyUsers
+                                            .filter((u) => !selectedUserIds.includes(u.user_id))
+                                            .map((u) => (
+                                              <CommandItem
+                                                key={u.user_id}
+                                                value={`${u.first_name} ${u.last_name} ${u.id}`}
+                                                onSelect={() => {
+                                                  handleUserToggle(u.user_id, true);
+                                                  setUserSearchOpen(false);
+                                                }}
+                                              >
+                                                <span className="font-medium">{u.first_name} {u.last_name}</span>
+                                                <span className="ml-2 text-xs text-muted-foreground font-mono">{u.id}</span>
+                                              </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+
+                              {/* Added users list */}
+                              {selectedUserIds.length > 0 ? (
+                                <div className="border rounded-lg divide-y">
+                                  {selectedUserIds.map((userId) => {
+                                    const u = companyUsers.find((c) => c.user_id === userId);
+                                    if (!u) return null;
                                     return (
-                                      <div
-                                        key={companyUser.user_id}
-                                        className="flex items-center gap-3 p-3 hover:bg-muted/50"
-                                      >
-                                        <Checkbox
-                                          id={`user-${companyUser.user_id}`}
-                                          checked={isSelected}
-                                          onCheckedChange={(checked) =>
-                                            handleUserToggle(companyUser.user_id, checked as boolean)
-                                          }
+                                      <div key={userId} className="flex items-center gap-3 px-3 py-2">
+                                        <div className="flex-1 min-w-0">
+                                          <span className="font-medium text-sm">{u.first_name} {u.last_name}</span>
+                                          <span className="ml-2 text-xs text-muted-foreground font-mono">{u.id}</span>
+                                        </div>
+                                        <Select
+                                          value={userRoles[userId] || 'member'}
+                                          onValueChange={(value) => handleUserRoleChange(userId, value)}
                                           disabled={isViewMode}
-                                        />
-                                        <label htmlFor={`user-${companyUser.user_id}`} className="flex-1 cursor-pointer">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium">
-                                              {companyUser.first_name} {companyUser.last_name}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground font-mono">
-                                              ({companyUser.id})
-                                            </span>
-                                          </div>
-                                        </label>
-                                        {isSelected && (
-                                          <Select
-                                            value={userRoles[companyUser.user_id] || 'member'}
-                                            onValueChange={(value) => handleUserRoleChange(companyUser.user_id, value)}
-                                            disabled={isViewMode}
+                                        >
+                                          <SelectTrigger className="w-28 h-7 text-xs shrink-0">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="z-[70]">
+                                            <SelectItem value="member">Member</SelectItem>
+                                            <SelectItem value="admin">Admin</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {!isViewMode && (
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                            onClick={() => handleUserToggle(userId, false)}
                                           >
-                                            <SelectTrigger className="w-28 h-8 text-xs">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="member">Member</SelectItem>
-                                              <SelectItem value="admin">Admin</SelectItem>
-                                            </SelectContent>
-                                          </Select>
+                                            <X className="w-3.5 h-3.5" />
+                                          </Button>
                                         )}
                                       </div>
                                     );
                                   })}
                                 </div>
+                              ) : (
+                                <div className="text-center py-6 text-muted-foreground border rounded-lg border-dashed">
+                                  <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                                  <p className="text-sm">No users added yet</p>
+                                </div>
                               )}
+
                               {selectedUserIds.length === 0 && (
                                 <p className="text-sm text-warning flex items-center gap-1">
                                   <AlertCircle className="w-3 h-3" />
-                                  No users selected. This location won't be visible in Cockpit to anyone.
+                                  No users added. This location won't be visible in Cockpit to anyone.
                                 </p>
                               )}
                             </div>
                           </TabsContent>
+
 
                           <TabsContent value="controls" className="mt-4">
                             <div className="space-y-4">
