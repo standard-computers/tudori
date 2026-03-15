@@ -96,6 +96,7 @@ interface CompanyUser {
   user_id: string;
   first_name: string;
   last_name: string;
+  profile_id: string | null;
 }
 
 interface LocationUser {
@@ -610,7 +611,7 @@ const Locations = () => {
   const fetchCompanyUsers = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, user_id, first_name, last_name")
+      .select("id, user_id, first_name, last_name, profile_id")
       .eq("company_id", companyId!);
 
     if (!error && data) {
@@ -1515,16 +1516,16 @@ const Locations = () => {
                                           {companyUsers
                                             .filter((u) => !selectedUserIds.includes(u.user_id))
                                             .map((u) => (
-                                              <CommandItem
+                                               <CommandItem
                                                 key={u.user_id}
-                                                value={`${u.first_name} ${u.last_name} ${u.id}`}
+                                                value={`${u.first_name} ${u.last_name} ${u.profile_id}`}
                                                 onSelect={() => {
                                                   handleUserToggle(u.user_id, true);
                                                   setUserSearchOpen(false);
                                                 }}
                                               >
                                                 <span className="font-medium">{u.first_name} {u.last_name}</span>
-                                                <span className="ml-2 text-xs text-muted-foreground font-mono">{u.id}</span>
+                                                {u.profile_id && <span className="ml-2 text-xs text-muted-foreground font-mono">{u.profile_id}</span>}
                                               </CommandItem>
                                             ))}
                                         </CommandGroup>
@@ -1544,7 +1545,7 @@ const Locations = () => {
                                       <div key={userId} className="flex items-center gap-3 px-3 py-2">
                                         <div className="flex-1 min-w-0">
                                           <span className="font-medium text-sm">{u.first_name} {u.last_name}</span>
-                                          <span className="ml-2 text-xs text-muted-foreground font-mono">{u.id}</span>
+                                          {u.profile_id && <span className="ml-2 text-xs text-muted-foreground font-mono">{u.profile_id}</span>}
                                         </div>
                                         <Select
                                           value={userRoles[userId] || 'member'}
