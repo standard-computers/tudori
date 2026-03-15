@@ -1278,11 +1278,31 @@ const Products = () => {
     setIsEditing(true);
     setEditingId(product.id);
     setActiveTab("general");
+    const existingRestrictions: { product_id: string }[] = (product as any).restricted_products || [];
     await Promise.all([
       fetchProductUoms(product.id),
       fetchProductComponents(product.id),
       fetchAvailableComponents(product.id),
       fetchSafetyStocks(product.id),
+      // Pre-fetch UoMs for all already-restricted products
+      ...(existingRestrictions.length > 0
+        ? [
+            (async () => {
+              const uniqueIds = [...new Set(existingRestrictions.map((r) => r.product_id))];
+              const { data: uomData } = await supabase
+                .from("product_uoms")
+                .select("id, product_id, name, abbreviation, conversion_factor, lower_uom")
+                .in("product_id", uniqueIds);
+              const cache: Record<string, { id: string; name: string; abbreviation: string | null; conversion_factor: number }[]> = {};
+              for (const pid of uniqueIds) {
+                const recs = (uomData || []).filter((u: any) => u.product_id === pid);
+                const prod = products.find((p) => p.id === pid);
+                cache[pid] = deriveAllUoms(recs, prod?.unit || "");
+              }
+              setRestrictionUomsCache((prev) => ({ ...prev, ...cache }));
+            })(),
+          ]
+        : []),
     ]);
     setIsDialogOpen(true);
   };
@@ -3006,8 +3026,7 @@ const Products = () => {
                                                 className="w-20 h-8 text-sm"
                                                 placeholder="Qty"
                                               />
-                                              {entryUoms.length > 0 && (
-                                                <Select
+                                               <Select
                                                   value={entry.uom_id || "base"}
                                                   onValueChange={(val) => {
                                                     const updated = [...formData.restricted_products];
@@ -3027,10 +3046,6 @@ const Products = () => {
                                                     ))}
                                                   </SelectContent>
                                                 </Select>
-                                              )}
-                                              {entryUoms.length === 0 && p.unit && (
-                                                <span className="text-xs text-muted-foreground w-28 text-center">{p.unit}</span>
-                                              )}
                                               <button
                                                 type="button"
                                                 onClick={() =>
