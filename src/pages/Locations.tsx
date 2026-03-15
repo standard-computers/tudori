@@ -1618,7 +1618,7 @@ const Locations = () => {
 
                       {/* Right sidebar — only in view mode */}
                       {isViewMode && (
-                        <div className="w-72 shrink-0 border-l border-border flex flex-col overflow-y-auto">
+                        <div className="w-[338px] shrink-0 border-l border-border flex flex-col overflow-y-auto">
                           {/* Map */}
                           <div className="p-3 border-b border-border">
                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
