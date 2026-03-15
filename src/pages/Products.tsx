@@ -1774,7 +1774,7 @@ const Products = () => {
 
     toast.success(isEditing ? "Product updated" : "Product created");
     setIsDialogOpen(false);
-    fetchProducts();
+    await fetchProducts();
     fetchNextProductId();
   };
 
