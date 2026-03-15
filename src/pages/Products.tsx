@@ -1636,7 +1636,8 @@ const Products = () => {
         .eq("id", editingId);
 
       if (error) {
-        toast.error("Failed to update product");
+        console.error("Failed to update product:", error);
+        toast.error(`Failed to update product: ${error.message}`);
         return;
       }
     } else {
@@ -1774,7 +1775,7 @@ const Products = () => {
 
     toast.success(isEditing ? "Product updated" : "Product created");
     setIsDialogOpen(false);
-    fetchProducts();
+    await fetchProducts();
     fetchNextProductId();
   };
 
@@ -2988,25 +2989,27 @@ const Products = () => {
                                         }))}
                                       value=""
                                       onValueChange={async (val) => {
-                                        if (val && !formData.restricted_products.some((r) => r.product_id === val)) {
-                                          // Fetch UoMs for this product if not cached
-                                          if (!restrictionUomsCache[val]) {
-                                            const { data: uomData } = await supabase
-                                              .from("product_uoms")
-                                              .select("id, name, abbreviation, conversion_factor, lower_uom")
-                                              .eq("product_id", val);
-                                            const selectedProduct = products.find((p) => p.id === val);
-                                            const derived = deriveAllUoms(uomData || [], selectedProduct?.unit || "");
-                                            setRestrictionUomsCache((prev) => ({ ...prev, [val]: derived }));
-                                          }
-                                          setFormData({
-                                            ...formData,
+                                        if (!val) return;
+                                        // Fetch UoMs for this product if not cached
+                                        if (!restrictionUomsCache[val]) {
+                                          const { data: uomData } = await supabase
+                                            .from("product_uoms")
+                                            .select("id, name, abbreviation, conversion_factor, lower_uom")
+                                            .eq("product_id", val);
+                                          const selectedProduct = products.find((p) => p.id === val);
+                                          const derived = deriveAllUoms(uomData || [], selectedProduct?.unit || "");
+                                          setRestrictionUomsCache((prev) => ({ ...prev, [val]: derived }));
+                                        }
+                                        setFormData((prev) => {
+                                          if (prev.restricted_products.some((r) => r.product_id === val)) return prev;
+                                          return {
+                                            ...prev,
                                             restricted_products: [
-                                              ...formData.restricted_products,
+                                              ...prev.restricted_products,
                                               { product_id: val, quantity: "1", uom_id: "" },
                                             ],
-                                          });
-                                        }
+                                          };
+                                        });
                                       }}
                                       placeholder="Search and add a product..."
                                       emptyMessage="No products found."
