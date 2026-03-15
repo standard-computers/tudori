@@ -486,6 +486,7 @@ const Locations = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
+  const [userSearchOpen, setUserSearchOpen] = useState(false);
 
   // Users state
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
