@@ -666,6 +666,8 @@ const Products = () => {
     uom_id: "",
   });
   const [newComponentUoms, setNewComponentUoms] = useState<{ id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>([]);
+  // UoMs cache keyed by product id for restriction entries
+  const [restrictionUomsCache, setRestrictionUomsCache] = useState<Record<string, { id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>>({});
 
   // Derive all available UoMs including sub-units from lower_uom references
   const deriveAllUoms = (
