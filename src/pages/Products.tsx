@@ -1993,7 +1993,7 @@ const Products = () => {
                     <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
                       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                         <TabsList
-                          className={`grid w-full ${formData.category === "Finished Goods" ? "grid-cols-6" : "grid-cols-5"}`}
+                          className={`grid w-full ${formData.category === "Finished Goods" ? "grid-cols-7" : "grid-cols-6"}`}
                         >
                           <TabsTrigger value="general">General</TabsTrigger>
                           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
@@ -2002,6 +2002,7 @@ const Products = () => {
                             <TabsTrigger value="components">Components</TabsTrigger>
                           )}
                           <TabsTrigger value="safety-stock">Safety Stock</TabsTrigger>
+                          <TabsTrigger value="modifications">Modifications</TabsTrigger>
                           <TabsTrigger value="controls">Controls</TabsTrigger>
                         </TabsList>
 
