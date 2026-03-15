@@ -1336,7 +1336,7 @@ const Locations = () => {
                             </TabsTrigger>
                           </TabsList>
 
-                          <TabsContent value="general" className="space-y-4 mt-4">
+                          <TabsContent value="general" className="space-y-4 mt-4 overflow-y-auto max-h-[55vh]">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="location_id">Location ID</Label>
