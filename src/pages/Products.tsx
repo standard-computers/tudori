@@ -744,7 +744,7 @@ const Products = () => {
     is_pos_available: true,
     allow_modifications: false,
     restrict_modifications: false,
-    restricted_product_ids: [] as string[],
+    restricted_products: [] as { product_id: string; quantity: string; uom_id: string }[],
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
