@@ -1208,7 +1208,7 @@ const Products = () => {
       is_pos_available: true,
       allow_modifications: false,
       restrict_modifications: false,
-      restricted_product_ids: [],
+      restricted_products: [],
     });
     setImageFile(null);
     setImagePreview(null);
