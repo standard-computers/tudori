@@ -1545,7 +1545,7 @@ const Locations = () => {
                                       <div key={userId} className="flex items-center gap-3 px-3 py-2">
                                         <div className="flex-1 min-w-0">
                                           <span className="font-medium text-sm">{u.first_name} {u.last_name}</span>
-                                          <span className="ml-2 text-xs text-muted-foreground font-mono">{u.id}</span>
+                                          {u.profile_id && <span className="ml-2 text-xs text-muted-foreground font-mono">{u.profile_id}</span>}
                                         </div>
                                         <Select
                                           value={userRoles[userId] || 'member'}
