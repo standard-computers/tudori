@@ -1267,6 +1267,9 @@ const Products = () => {
       hazardous: (product as any).hazardous || false,
       serialized: (product as any).serialized || false,
       is_pos_available: (product as any).is_pos_available !== false,
+      allow_modifications: (product as any).allow_modifications || false,
+      restrict_modifications: (product as any).restrict_modifications || false,
+      restricted_product_ids: (product as any).restricted_product_ids || [],
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
