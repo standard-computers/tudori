@@ -68,7 +68,7 @@ export function AppLoadQueryDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <DialogBody className="space-y-3">
+          <DialogBody className="space-y-3 overflow-y-auto max-h-[60vh]">
             {fields.map((field) => (
               <div key={field.key} className="space-y-1">
                 <Label htmlFor={`query-${field.key}`} className="text-xs">
