@@ -666,6 +666,8 @@ const Products = () => {
     uom_id: "",
   });
   const [newComponentUoms, setNewComponentUoms] = useState<{ id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>([]);
+  // UoMs cache keyed by product id for restriction entries
+  const [restrictionUomsCache, setRestrictionUomsCache] = useState<Record<string, { id: string; name: string; abbreviation: string | null; conversion_factor: number }[]>>({});
 
   // Derive all available UoMs including sub-units from lower_uom references
   const deriveAllUoms = (
@@ -744,7 +746,7 @@ const Products = () => {
     is_pos_available: true,
     allow_modifications: false,
     restrict_modifications: false,
-    restricted_product_ids: [] as string[],
+    restricted_products: [] as { product_id: string; quantity: string; uom_id: string }[],
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -1208,7 +1210,7 @@ const Products = () => {
       is_pos_available: true,
       allow_modifications: false,
       restrict_modifications: false,
-      restricted_product_ids: [],
+      restricted_products: [],
     });
     setImageFile(null);
     setImagePreview(null);
@@ -1269,7 +1271,7 @@ const Products = () => {
       is_pos_available: (product as any).is_pos_available !== false,
       allow_modifications: (product as any).allow_modifications || false,
       restrict_modifications: (product as any).restrict_modifications || false,
-      restricted_product_ids: (product as any).restricted_product_ids || [],
+      restricted_products: (product as any).restricted_products || [],
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
@@ -2917,7 +2919,7 @@ const Products = () => {
                                     ...formData,
                                     allow_modifications: checked,
                                     restrict_modifications: checked ? formData.restrict_modifications : false,
-                                    restricted_product_ids: checked ? formData.restricted_product_ids : [],
+                                    restricted_products: checked ? formData.restricted_products : [],
                                   })
                                 }
                               />
@@ -2941,7 +2943,7 @@ const Products = () => {
                                       setFormData({
                                         ...formData,
                                         restrict_modifications: checked,
-                                        restricted_product_ids: checked ? formData.restricted_product_ids : [],
+                                        restricted_products: checked ? formData.restricted_products : [],
                                       })
                                     }
                                   />
@@ -2952,46 +2954,98 @@ const Products = () => {
                                     <Label className="text-sm font-medium">Restricted to Products</Label>
                                     <SearchableSelect
                                       options={products
-                                        .filter((p) => !formData.restricted_product_ids.includes(p.id))
+                                        .filter((p) => !formData.restricted_products.some((r) => r.product_id === p.id))
                                         .map((p) => ({
                                           value: p.id,
                                           label: p.name,
                                           sublabel: p.product_id,
                                         }))}
                                       value=""
-                                      onValueChange={(val) => {
-                                        if (val && !formData.restricted_product_ids.includes(val)) {
+                                      onValueChange={async (val) => {
+                                        if (val && !formData.restricted_products.some((r) => r.product_id === val)) {
+                                          // Fetch UoMs for this product if not cached
+                                          if (!restrictionUomsCache[val]) {
+                                            const { data: uomData } = await supabase
+                                              .from("product_uoms")
+                                              .select("id, name, abbreviation, conversion_factor, lower_uom")
+                                              .eq("product_id", val);
+                                            const selectedProduct = products.find((p) => p.id === val);
+                                            const derived = deriveAllUoms(uomData || [], selectedProduct?.unit || "");
+                                            setRestrictionUomsCache((prev) => ({ ...prev, [val]: derived }));
+                                          }
                                           setFormData({
                                             ...formData,
-                                            restricted_product_ids: [...formData.restricted_product_ids, val],
+                                            restricted_products: [
+                                              ...formData.restricted_products,
+                                              { product_id: val, quantity: "1", uom_id: "" },
+                                            ],
                                           });
                                         }
                                       }}
                                       placeholder="Search and add a product..."
                                       emptyMessage="No products found."
                                     />
-                                    {formData.restricted_product_ids.length > 0 && (
-                                      <div className="flex flex-wrap gap-2 mt-2">
-                                        {formData.restricted_product_ids.map((pid) => {
-                                          const p = products.find((x) => x.id === pid);
+                                    {formData.restricted_products.length > 0 && (
+                                      <div className="space-y-2 mt-2">
+                                        {formData.restricted_products.map((entry, idx) => {
+                                          const p = products.find((x) => x.id === entry.product_id);
+                                          const entryUoms = restrictionUomsCache[entry.product_id] || [];
                                           return p ? (
-                                            <Badge key={pid} variant="secondary" className="flex items-center gap-1">
-                                              {p.name}
+                                            <div key={entry.product_id} className="flex items-center gap-2 border rounded-md p-2">
+                                              <span className="flex-1 text-sm font-medium truncate">{p.name}</span>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={entry.quantity}
+                                                onChange={(e) => {
+                                                  const updated = [...formData.restricted_products];
+                                                  updated[idx] = { ...updated[idx], quantity: e.target.value };
+                                                  setFormData({ ...formData, restricted_products: updated });
+                                                }}
+                                                className="w-20 h-8 text-sm"
+                                                placeholder="Qty"
+                                              />
+                                              {entryUoms.length > 0 && (
+                                                <Select
+                                                  value={entry.uom_id || "base"}
+                                                  onValueChange={(val) => {
+                                                    const updated = [...formData.restricted_products];
+                                                    updated[idx] = { ...updated[idx], uom_id: val === "base" ? "" : val };
+                                                    setFormData({ ...formData, restricted_products: updated });
+                                                  }}
+                                                >
+                                                  <SelectTrigger className="w-28 h-8 text-sm">
+                                                    <SelectValue placeholder={p.unit || "Unit"} />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="base">{p.unit || "Base"}</SelectItem>
+                                                    {entryUoms.map((u) => (
+                                                      <SelectItem key={u.id} value={u.id}>
+                                                        {u.abbreviation || u.name}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              )}
+                                              {entryUoms.length === 0 && p.unit && (
+                                                <span className="text-xs text-muted-foreground w-28 text-center">{p.unit}</span>
+                                              )}
                                               <button
                                                 type="button"
                                                 onClick={() =>
                                                   setFormData({
                                                     ...formData,
-                                                    restricted_product_ids: formData.restricted_product_ids.filter(
-                                                      (id) => id !== pid,
+                                                    restricted_products: formData.restricted_products.filter(
+                                                      (r) => r.product_id !== entry.product_id,
                                                     ),
                                                   })
                                                 }
-                                                className="ml-1 hover:text-destructive"
+                                                className="text-muted-foreground hover:text-destructive"
                                               >
-                                                <X className="w-3 h-3" />
+                                                <X className="w-4 h-4" />
                                               </button>
-                                            </Badge>
+                                            </div>
                                           ) : null;
                                         })}
                                       </div>
@@ -3004,6 +3058,7 @@ const Products = () => {
                         </TabsContent>
 
                         <TabsContent value="controls" className="space-y-4 mt-4">
+
                           <div className="bg-muted/50 rounded-lg p-4 mb-4">
                             <p className="text-sm text-muted-foreground">
                               Configure lead times and inventory controls for this product.
