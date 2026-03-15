@@ -1636,7 +1636,8 @@ const Products = () => {
         .eq("id", editingId);
 
       if (error) {
-        toast.error("Failed to update product");
+        console.error("Failed to update product:", error);
+        toast.error(`Failed to update product: ${error.message}`);
         return;
       }
     } else {
