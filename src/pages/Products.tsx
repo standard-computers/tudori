@@ -2892,14 +2892,13 @@ const Products = () => {
                           </TabsContent>
                         )}
 
-                        <TabsContent value="controls" className="space-y-4 mt-4">
+                        <TabsContent value="modifications" className="space-y-4 mt-4">
                           <div className="bg-muted/50 rounded-lg p-4 mb-4">
                             <p className="text-sm text-muted-foreground">
-                              Configure lead times and inventory controls for this product.
+                              Control whether this product can be modified after creation, and optionally restrict modifications to specific products.
                             </p>
                           </div>
 
-                          {/* Allow Modifications */}
                           <div className="border rounded-lg p-4 space-y-4">
                             <div className="flex items-center justify-between">
                               <div className="space-y-0.5">
@@ -3001,6 +3000,14 @@ const Products = () => {
                                 )}
                               </div>
                             )}
+                          </div>
+                        </TabsContent>
+
+                        <TabsContent value="controls" className="space-y-4 mt-4">
+                          <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-muted-foreground">
+                              Configure lead times and inventory controls for this product.
+                            </p>
                           </div>
 
                           {/* Lead Times */}
