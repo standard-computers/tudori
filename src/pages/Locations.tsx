@@ -68,8 +68,15 @@ import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog"
 const LOCATION_QUERY_FIELDS: QueryField[] = [
   { key: "location_id", label: "Location ID", placeholder: "Search by ID..." },
   { key: "name", label: "Name", placeholder: "Search by name..." },
+  { key: "type", label: "Type", placeholder: "e.g. Warehouse, Store..." },
+  { key: "address_line1", label: "Address Line 1", placeholder: "Search by address..." },
+  { key: "address_line2", label: "Address Line 2", placeholder: "Search by address line 2..." },
   { key: "city", label: "City", placeholder: "Search by city..." },
   { key: "state", label: "State", placeholder: "Search by state..." },
+  { key: "postal_code", label: "Postal Code", placeholder: "Search by postal code..." },
+  { key: "country", label: "Country", placeholder: "Search by country..." },
+  { key: "status", label: "Status", placeholder: "e.g. active, inactive..." },
+  { key: "payment_terms", label: "Payment Terms", placeholder: "e.g. 30...", type: "number" },
 ];
 
 interface Location {
