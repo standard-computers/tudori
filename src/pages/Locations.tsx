@@ -1281,345 +1281,404 @@ const Locations = () => {
                       </div>
                     )}
 
-                    <div className="flex-1 overflow-y-auto px-6 pb-6">
-                      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                        <TabsList className={`grid w-full ${isViewMode && isHistoryEnabled('location') ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                          <TabsTrigger value="general">General</TabsTrigger>
-                          <TabsTrigger value="users">
-                            <Users className="w-4 h-4 mr-2" />
-                            Users ({selectedUserIds.length})
-                          </TabsTrigger>
-                          <TabsTrigger value="controls">
-                            <Settings2 className="w-4 h-4 mr-2" />
-                            Controls
-                          </TabsTrigger>
-                          {isViewMode && isHistoryEnabled('location') && (
-                            <TabsTrigger value="history">History</TabsTrigger>
-                          )}
-                        </TabsList>
+                    {/* Two-column layout in view mode; single column otherwise */}
+                    <div className={`flex-1 overflow-hidden ${isViewMode ? "flex" : ""}`}>
+                      {/* Main tabbed content */}
+                      <div className={`${isViewMode ? "flex-1 overflow-y-auto" : "overflow-y-auto"} px-6 pb-6`}>
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="general">General</TabsTrigger>
+                            <TabsTrigger value="users">
+                              <Users className="w-4 h-4 mr-2" />
+                              Users ({selectedUserIds.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="controls">
+                              <Settings2 className="w-4 h-4 mr-2" />
+                              Controls
+                            </TabsTrigger>
+                          </TabsList>
 
-                        <TabsContent value="general" className="space-y-4 mt-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="location_id">Location ID</Label>
-                              <Input
-                                id="location_id"
-                                value={formData.location_id}
-                                onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
-                                disabled={isEditing || isViewMode}
-                                className={`${isEditing || isViewMode ? "bg-muted" : ""} ${!isEditing && !isViewMode && locations.some((l) => l.location_id === formData.location_id) ? "border-destructive border-2" : ""}`}
-                                required
-                              />
-                              {!isEditing &&
-                                !isViewMode &&
-                                locations.some((l) => l.location_id === formData.location_id) && (
-                                  <p className="text-sm text-destructive flex items-center gap-1">
-                                    <AlertCircle className="w-3 h-3" />
-                                    This ID is already in use
-                                  </p>
-                                )}
-                              {!isEditing &&
-                                !isViewMode &&
-                                !locations.some((l) => l.location_id === formData.location_id) &&
-                                formData.location_id && (
-                                  <p className="text-sm text-amber-600 flex items-center gap-1">
-                                    <AlertCircle className="w-3 h-3" />
-                                    ID cannot be changed after creation
-                                  </p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="type">Type</Label>
-                              <Select
-                                value={formData.type}
-                                onValueChange={(value) => setFormData({ ...formData, type: value })}
-                                disabled={isViewMode}
-                              >
-                                <SelectTrigger className={isViewMode ? "bg-muted" : ""}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {LOCATION_TYPES.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {type}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="name">Location Name</Label>
-                            <Input
-                              id="name"
-                              value={formData.name}
-                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                              placeholder="Main Warehouse"
-                              disabled={isViewMode}
-                              className={isViewMode ? "bg-muted" : ""}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="address_line1">Address Line 1</Label>
-                            <Input
-                              id="address_line1"
-                              value={formData.address_line1}
-                              onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                              placeholder="123 Main Street"
-                              disabled={isViewMode}
-                              className={isViewMode ? "bg-muted" : ""}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="address_line2">Address Line 2</Label>
-                            <Input
-                              id="address_line2"
-                              value={formData.address_line2}
-                              onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                              placeholder="Suite 100"
-                              disabled={isViewMode}
-                              className={isViewMode ? "bg-muted" : ""}
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="city">City</Label>
-                              <Input
-                                id="city"
-                                value={formData.city}
-                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                disabled={isViewMode}
-                                className={isViewMode ? "bg-muted" : ""}
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="state">State</Label>
-                              <Input
-                                id="state"
-                                value={formData.state}
-                                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                                disabled={isViewMode}
-                                className={isViewMode ? "bg-muted" : ""}
-                                required
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="postal_code">Postal Code</Label>
-                              <Input
-                                id="postal_code"
-                                value={formData.postal_code}
-                                onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                                disabled={isViewMode}
-                                className={isViewMode ? "bg-muted" : ""}
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="country">Country</Label>
-                              <Input
-                                id="country"
-                                value={formData.country}
-                                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                                disabled={isViewMode}
-                                className={isViewMode ? "bg-muted" : ""}
-                                required
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="payment_terms">Payment Terms (days)</Label>
-                              <Input
-                                id="payment_terms"
-                                type="number"
-                                min="0"
-                                value={formData.payment_terms}
-                                onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                                disabled={isViewMode}
-                                className={isViewMode ? "bg-muted" : ""}
-                                placeholder="30"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="status">Status</Label>
-                              <Select
-                                value={formData.status}
-                                onValueChange={(value) => setFormData({ ...formData, status: value })}
-                                disabled={isViewMode}
-                              >
-                                <SelectTrigger className={isViewMode ? "bg-muted" : ""}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Active">Active</SelectItem>
-                                  <SelectItem value="Inactive">Inactive</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="users" className="mt-4">
-                          <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                              Select users who can access this location in the Cockpit. Only selected users will be able
-                              to view this location.
-                            </p>
-                            {companyUsers.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">
-                                <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                <p>No users found in your company.</p>
+                          <TabsContent value="general" className="space-y-4 mt-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="location_id">Location ID</Label>
+                                <Input
+                                  id="location_id"
+                                  value={formData.location_id}
+                                  onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+                                  disabled={isEditing || isViewMode}
+                                  className={`${isEditing || isViewMode ? "bg-muted" : ""} ${!isEditing && !isViewMode && locations.some((l) => l.location_id === formData.location_id) ? "border-destructive border-2" : ""}`}
+                                  required
+                                />
+                                {!isEditing &&
+                                  !isViewMode &&
+                                  locations.some((l) => l.location_id === formData.location_id) && (
+                                    <p className="text-sm text-destructive flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" />
+                                      This ID is already in use
+                                    </p>
+                                  )}
+                                {!isEditing &&
+                                  !isViewMode &&
+                                  !locations.some((l) => l.location_id === formData.location_id) &&
+                                  formData.location_id && (
+                                    <p className="text-sm text-warning flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" />
+                                      ID cannot be changed after creation
+                                    </p>
+                                  )}
                               </div>
-                            ) : (
-                              <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
-                                {companyUsers.map((companyUser) => {
-                                  const isSelected = selectedUserIds.includes(companyUser.user_id);
-                                  return (
-                                    <div
-                                      key={companyUser.user_id}
-                                      className="flex items-center gap-3 p-3 hover:bg-muted/50"
-                                    >
-                                      <Checkbox
-                                        id={`user-${companyUser.user_id}`}
-                                        checked={isSelected}
-                                        onCheckedChange={(checked) =>
-                                          handleUserToggle(companyUser.user_id, checked as boolean)
-                                        }
-                                        disabled={isViewMode}
-                                      />
-                                      <label htmlFor={`user-${companyUser.user_id}`} className="flex-1 cursor-pointer">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium">
-                                            {companyUser.first_name} {companyUser.last_name}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground font-mono">
-                                            ({companyUser.id})
-                                          </span>
-                                        </div>
-                                      </label>
-                                      {isSelected && (
-                                        <Select
-                                          value={userRoles[companyUser.user_id] || 'member'}
-                                          onValueChange={(value) => handleUserRoleChange(companyUser.user_id, value)}
-                                          disabled={isViewMode}
-                                        >
-                                          <SelectTrigger className="w-28 h-8 text-xs">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="member">Member</SelectItem>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {selectedUserIds.length === 0 && (
-                              <p className="text-sm text-amber-600 flex items-center gap-1">
-                                <AlertCircle className="w-3 h-3" />
-                                No users selected. This location won't be visible in Cockpit to anyone.
-                              </p>
-                            )}
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="controls" className="mt-4">
-                          <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                              Configure how this location behaves in the system.
-                            </p>
-                            <div className="border rounded-lg p-4 space-y-4">
-                              <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                  <Label htmlFor="is_internal_vendor" className="font-medium">
-                                    Internal Vendor
-                                  </Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    Allow this location to appear as a vendor source in purchase requisitions.
-                                  </p>
-                                </div>
-                                <Switch
-                                  id="is_internal_vendor"
-                                  checked={formData.is_internal_vendor}
-                                  onCheckedChange={(checked) =>
-                                    setFormData({ ...formData, is_internal_vendor: checked })
-                                  }
+                              <div className="space-y-2">
+                                <Label htmlFor="type">Type</Label>
+                                <Select
+                                  value={formData.type}
+                                  onValueChange={(value) => setFormData({ ...formData, type: value })}
                                   disabled={isViewMode}
+                                >
+                                  <SelectTrigger className={isViewMode ? "bg-muted" : ""}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {LOCATION_TYPES.map((type) => (
+                                      <SelectItem key={type} value={type}>
+                                        {type}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="name">Location Name</Label>
+                              <Input
+                                id="name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="Main Warehouse"
+                                disabled={isViewMode}
+                                className={isViewMode ? "bg-muted" : ""}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="address_line1">Address Line 1</Label>
+                              <Input
+                                id="address_line1"
+                                value={formData.address_line1}
+                                onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                                placeholder="123 Main Street"
+                                disabled={isViewMode}
+                                className={isViewMode ? "bg-muted" : ""}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="address_line2">Address Line 2</Label>
+                              <Input
+                                id="address_line2"
+                                value={formData.address_line2}
+                                onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                                placeholder="Suite 100"
+                                disabled={isViewMode}
+                                className={isViewMode ? "bg-muted" : ""}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="city">City</Label>
+                                <Input
+                                  id="city"
+                                  value={formData.city}
+                                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                  disabled={isViewMode}
+                                  className={isViewMode ? "bg-muted" : ""}
+                                  required
                                 />
                               </div>
-                              <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                  <Label htmlFor="is_pos_enabled" className="font-medium">
-                                    POS Enabled
-                                  </Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    Enable point-of-sale functionality for this location.
-                                  </p>
-                                </div>
-                                <Switch
-                                  id="is_pos_enabled"
-                                  checked={formData.is_pos_enabled}
-                                  onCheckedChange={(checked) => setFormData({ ...formData, is_pos_enabled: checked })}
+                              <div className="space-y-2">
+                                <Label htmlFor="state">State</Label>
+                                <Input
+                                  id="state"
+                                  value={formData.state}
+                                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                                   disabled={isViewMode}
-                                />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                  <Label htmlFor="is_production_enabled" className="font-medium">
-                                    Production
-                                  </Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    Allow this location to process production orders.
-                                  </p>
-                                </div>
-                                <Switch
-                                  id="is_production_enabled"
-                                  checked={formData.is_production_enabled}
-                                  onCheckedChange={(checked) =>
-                                    setFormData({ ...formData, is_production_enabled: checked })
-                                  }
-                                  disabled={isViewMode}
+                                  className={isViewMode ? "bg-muted" : ""}
+                                  required
                                 />
                               </div>
                             </div>
-                          </div>
-                        </TabsContent>
-
-                        {isViewMode && isHistoryEnabled('location') && editingId && (
-                          <TabsContent value="history">
-                            <AuditHistoryTab
-                              tableName="locations"
-                              recordId={editingId}
-                              fieldLabels={{
-                                name: "Name",
-                                type: "Type",
-                                address_line1: "Address",
-                                address_line2: "Address Line 2",
-                                city: "City",
-                                state: "State",
-                                postal_code: "Postal Code",
-                                country: "Country",
-                                status: "Status",
-                                payment_terms: "Payment Terms",
-                                is_internal_vendor: "Internal Vendor",
-                                is_pos_enabled: "POS Enabled",
-                                is_production_enabled: "Production",
-                                user_added: "User Added",
-                                user_removed: "User Removed",
-                                user_role_changed: "User Role Changed",
-                              }}
-                            />
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="postal_code">Postal Code</Label>
+                                <Input
+                                  id="postal_code"
+                                  value={formData.postal_code}
+                                  onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                                  disabled={isViewMode}
+                                  className={isViewMode ? "bg-muted" : ""}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="country">Country</Label>
+                                <Input
+                                  id="country"
+                                  value={formData.country}
+                                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                  disabled={isViewMode}
+                                  className={isViewMode ? "bg-muted" : ""}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="payment_terms">Payment Terms (days)</Label>
+                                <Input
+                                  id="payment_terms"
+                                  type="number"
+                                  min="0"
+                                  value={formData.payment_terms}
+                                  onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
+                                  disabled={isViewMode}
+                                  className={isViewMode ? "bg-muted" : ""}
+                                  placeholder="30"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select
+                                  value={formData.status}
+                                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                                  disabled={isViewMode}
+                                >
+                                  <SelectTrigger className={isViewMode ? "bg-muted" : ""}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Active">Active</SelectItem>
+                                    <SelectItem value="Inactive">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
                           </TabsContent>
-                        )}
-                      </Tabs>
+
+                          <TabsContent value="users" className="mt-4">
+                            <div className="space-y-4">
+                              <p className="text-sm text-muted-foreground">
+                                Select users who can access this location in the Cockpit. Only selected users will be able
+                                to view this location.
+                              </p>
+                              {companyUsers.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                  <p>No users found in your company.</p>
+                                </div>
+                              ) : (
+                                <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                                  {companyUsers.map((companyUser) => {
+                                    const isSelected = selectedUserIds.includes(companyUser.user_id);
+                                    return (
+                                      <div
+                                        key={companyUser.user_id}
+                                        className="flex items-center gap-3 p-3 hover:bg-muted/50"
+                                      >
+                                        <Checkbox
+                                          id={`user-${companyUser.user_id}`}
+                                          checked={isSelected}
+                                          onCheckedChange={(checked) =>
+                                            handleUserToggle(companyUser.user_id, checked as boolean)
+                                          }
+                                          disabled={isViewMode}
+                                        />
+                                        <label htmlFor={`user-${companyUser.user_id}`} className="flex-1 cursor-pointer">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium">
+                                              {companyUser.first_name} {companyUser.last_name}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                              ({companyUser.id})
+                                            </span>
+                                          </div>
+                                        </label>
+                                        {isSelected && (
+                                          <Select
+                                            value={userRoles[companyUser.user_id] || 'member'}
+                                            onValueChange={(value) => handleUserRoleChange(companyUser.user_id, value)}
+                                            disabled={isViewMode}
+                                          >
+                                            <SelectTrigger className="w-28 h-8 text-xs">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="member">Member</SelectItem>
+                                              <SelectItem value="admin">Admin</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {selectedUserIds.length === 0 && (
+                                <p className="text-sm text-warning flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  No users selected. This location won't be visible in Cockpit to anyone.
+                                </p>
+                              )}
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="controls" className="mt-4">
+                            <div className="space-y-4">
+                              <p className="text-sm text-muted-foreground">
+                                Configure how this location behaves in the system.
+                              </p>
+                              <div className="border rounded-lg p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5">
+                                    <Label htmlFor="is_internal_vendor" className="font-medium">
+                                      Internal Vendor
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                      Allow this location to appear as a vendor source in purchase requisitions.
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    id="is_internal_vendor"
+                                    checked={formData.is_internal_vendor}
+                                    onCheckedChange={(checked) =>
+                                      setFormData({ ...formData, is_internal_vendor: checked })
+                                    }
+                                    disabled={isViewMode}
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5">
+                                    <Label htmlFor="is_pos_enabled" className="font-medium">
+                                      POS Enabled
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                      Enable point-of-sale functionality for this location.
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    id="is_pos_enabled"
+                                    checked={formData.is_pos_enabled}
+                                    onCheckedChange={(checked) => setFormData({ ...formData, is_pos_enabled: checked })}
+                                    disabled={isViewMode}
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5">
+                                    <Label htmlFor="is_production_enabled" className="font-medium">
+                                      Production
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                      Allow this location to process production orders.
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    id="is_production_enabled"
+                                    checked={formData.is_production_enabled}
+                                    onCheckedChange={(checked) =>
+                                      setFormData({ ...formData, is_production_enabled: checked })
+                                    }
+                                    disabled={isViewMode}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+                      </div>
+
+                      {/* Right sidebar — only in view mode */}
+                      {isViewMode && (
+                        <div className="w-72 shrink-0 border-l border-border flex flex-col overflow-y-auto">
+                          {/* Map */}
+                          <div className="p-3 border-b border-border">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              Location Map
+                            </p>
+                            <div className="rounded-lg overflow-hidden border border-border h-44 bg-muted">
+                              {(formData.address_line1 || formData.city) ? (
+                                <iframe
+                                  title="Location Map"
+                                  className="w-full h-full"
+                                  src={`https://www.openstreetmap.org/export/embed.html?bbox=-180,-85,180,85&layer=mapnik&marker=${encodeURIComponent([formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', '))}`}
+                                  style={{ border: 0 }}
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer-when-downgrade"
+                                  // Use a geocode-based iframe via Nominatim search embed
+                                  srcDoc={undefined}
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+                                  No address available
+                                </div>
+                              )}
+                              {/* Geocoded map via Nominatim */}
+                              {(formData.address_line1 || formData.city) && (() => {
+                                const query = [formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', ');
+                                return null; // handled below
+                              })()}
+                            </div>
+                            {/* Replace above with proper geocode embed */}
+                          </div>
+
+                          {/* Geocode map proper embed */}
+                          <div className="px-3 pb-2">
+                            {(formData.address_line1 || formData.city) && (
+                              <a
+                                href={`https://www.openstreetmap.org/search?query=${encodeURIComponent([formData.address_line1, formData.city, formData.state, formData.postal_code, formData.country].filter(Boolean).join(', '))}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+                              >
+                                <MapPin className="w-3 h-3" />
+                                Open in OpenStreetMap
+                              </a>
+                            )}
+                          </div>
+
+                          {/* History */}
+                          {isHistoryEnabled('location') && editingId && (
+                            <div className="flex-1 flex flex-col min-h-0 border-t border-border">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 pt-3 pb-2">
+                                Change History
+                              </p>
+                              <div className="flex-1 overflow-y-auto px-3 pb-3">
+                                <AuditHistoryTab
+                                  tableName="locations"
+                                  recordId={editingId}
+                                  fieldLabels={{
+                                    name: "Name",
+                                    type: "Type",
+                                    address_line1: "Address",
+                                    address_line2: "Address Line 2",
+                                    city: "City",
+                                    state: "State",
+                                    postal_code: "Postal Code",
+                                    country: "Country",
+                                    status: "Status",
+                                    payment_terms: "Payment Terms",
+                                    is_internal_vendor: "Internal Vendor",
+                                    is_pos_enabled: "POS Enabled",
+                                    is_production_enabled: "Production",
+                                    user_added: "User Added",
+                                    user_removed: "User Removed",
+                                    user_role_changed: "User Role Changed",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {!isViewMode && (
