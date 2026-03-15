@@ -611,7 +611,7 @@ const Locations = () => {
   const fetchCompanyUsers = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, user_id, first_name, last_name")
+      .select("id, user_id, first_name, last_name, profile_id")
       .eq("company_id", companyId!);
 
     if (!error && data) {
