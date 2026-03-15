@@ -2898,6 +2898,110 @@ const Products = () => {
                             </p>
                           </div>
 
+                          {/* Allow Modifications */}
+                          <div className="border rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label htmlFor="allow_modifications" className="text-base">
+                                  Allow Modifications
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Allow this product to be modified after creation
+                                </p>
+                              </div>
+                              <Switch
+                                id="allow_modifications"
+                                checked={formData.allow_modifications}
+                                onCheckedChange={(checked) =>
+                                  setFormData({
+                                    ...formData,
+                                    allow_modifications: checked,
+                                    restrict_modifications: checked ? formData.restrict_modifications : false,
+                                    restricted_product_ids: checked ? formData.restricted_product_ids : [],
+                                  })
+                                }
+                              />
+                            </div>
+
+                            {formData.allow_modifications && (
+                              <div className="space-y-4 border-t pt-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-0.5">
+                                    <Label htmlFor="restrict_modifications" className="text-base">
+                                      Restrict Products
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                      Limit modifications to specific products only
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    id="restrict_modifications"
+                                    checked={formData.restrict_modifications}
+                                    onCheckedChange={(checked) =>
+                                      setFormData({
+                                        ...formData,
+                                        restrict_modifications: checked,
+                                        restricted_product_ids: checked ? formData.restricted_product_ids : [],
+                                      })
+                                    }
+                                  />
+                                </div>
+
+                                {formData.restrict_modifications && (
+                                  <div className="space-y-3 border-t pt-3">
+                                    <Label className="text-sm font-medium">Restricted to Products</Label>
+                                    <SearchableSelect
+                                      options={products
+                                        .filter((p) => !formData.restricted_product_ids.includes(p.id))
+                                        .map((p) => ({
+                                          value: p.id,
+                                          label: p.name,
+                                          sublabel: p.product_id,
+                                        }))}
+                                      value=""
+                                      onValueChange={(val) => {
+                                        if (val && !formData.restricted_product_ids.includes(val)) {
+                                          setFormData({
+                                            ...formData,
+                                            restricted_product_ids: [...formData.restricted_product_ids, val],
+                                          });
+                                        }
+                                      }}
+                                      placeholder="Search and add a product..."
+                                      emptyMessage="No products found."
+                                    />
+                                    {formData.restricted_product_ids.length > 0 && (
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        {formData.restricted_product_ids.map((pid) => {
+                                          const p = products.find((x) => x.id === pid);
+                                          return p ? (
+                                            <Badge key={pid} variant="secondary" className="flex items-center gap-1">
+                                              {p.name}
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setFormData({
+                                                    ...formData,
+                                                    restricted_product_ids: formData.restricted_product_ids.filter(
+                                                      (id) => id !== pid,
+                                                    ),
+                                                  })
+                                                }
+                                                className="ml-1 hover:text-destructive"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </button>
+                                            </Badge>
+                                          ) : null;
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
                           {/* Lead Times */}
                           <div className="border rounded-lg p-4 space-y-4">
                             <h4 className="font-medium text-sm">Lead Times (days)</h4>
