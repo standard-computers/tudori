@@ -68,8 +68,15 @@ import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog"
 const LOCATION_QUERY_FIELDS: QueryField[] = [
   { key: "location_id", label: "Location ID", placeholder: "Search by ID..." },
   { key: "name", label: "Name", placeholder: "Search by name..." },
+  { key: "type", label: "Type", placeholder: "e.g. Warehouse, Store..." },
+  { key: "address_line1", label: "Address Line 1", placeholder: "Search by address..." },
+  { key: "address_line2", label: "Address Line 2", placeholder: "Search by address line 2..." },
   { key: "city", label: "City", placeholder: "Search by city..." },
   { key: "state", label: "State", placeholder: "Search by state..." },
+  { key: "postal_code", label: "Postal Code", placeholder: "Search by postal code..." },
+  { key: "country", label: "Country", placeholder: "Search by country..." },
+  { key: "status", label: "Status", placeholder: "e.g. active, inactive..." },
+  { key: "payment_terms", label: "Payment Terms", placeholder: "e.g. 30...", type: "number" },
 ];
 
 interface Location {
@@ -552,8 +559,15 @@ const Locations = () => {
 
     if (filters?.location_id) query = query.ilike("location_id", `%${filters.location_id}%`);
     if (filters?.name) query = query.ilike("name", `%${filters.name}%`);
+    if (filters?.type) query = query.ilike("type", `%${filters.type}%`);
+    if (filters?.address_line1) query = query.ilike("address_line1", `%${filters.address_line1}%`);
+    if (filters?.address_line2) query = query.ilike("address_line2", `%${filters.address_line2}%`);
     if (filters?.city) query = query.ilike("city", `%${filters.city}%`);
     if (filters?.state) query = query.ilike("state", `%${filters.state}%`);
+    if (filters?.postal_code) query = query.ilike("postal_code", `%${filters.postal_code}%`);
+    if (filters?.country) query = query.ilike("country", `%${filters.country}%`);
+    if (filters?.status) query = query.ilike("status", `%${filters.status}%`);
+    if (filters?.payment_terms) query = query.eq("payment_terms", parseInt(filters.payment_terms, 10));
 
     const { data, error } = await query.order("location_id");
 
