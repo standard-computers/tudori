@@ -3026,8 +3026,7 @@ const Products = () => {
                                                 className="w-20 h-8 text-sm"
                                                 placeholder="Qty"
                                               />
-                                              {entryUoms.length > 0 && (
-                                                <Select
+                                               <Select
                                                   value={entry.uom_id || "base"}
                                                   onValueChange={(val) => {
                                                     const updated = [...formData.restricted_products];
@@ -3047,10 +3046,6 @@ const Products = () => {
                                                     ))}
                                                   </SelectContent>
                                                 </Select>
-                                              )}
-                                              {entryUoms.length === 0 && p.unit && (
-                                                <span className="text-xs text-muted-foreground w-28 text-center">{p.unit}</span>
-                                              )}
                                               <button
                                                 type="button"
                                                 onClick={() =>
