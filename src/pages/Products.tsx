@@ -1993,7 +1993,7 @@ const Products = () => {
                     <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
                       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                         <TabsList
-                          className={`grid w-full ${formData.category === "Finished Goods" ? "grid-cols-6" : "grid-cols-5"}`}
+                          className={`grid w-full ${formData.category === "Finished Goods" ? "grid-cols-7" : "grid-cols-6"}`}
                         >
                           <TabsTrigger value="general">General</TabsTrigger>
                           <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
@@ -2002,6 +2002,7 @@ const Products = () => {
                             <TabsTrigger value="components">Components</TabsTrigger>
                           )}
                           <TabsTrigger value="safety-stock">Safety Stock</TabsTrigger>
+                          <TabsTrigger value="modifications">Modifications</TabsTrigger>
                           <TabsTrigger value="controls">Controls</TabsTrigger>
                         </TabsList>
 
@@ -2891,14 +2892,13 @@ const Products = () => {
                           </TabsContent>
                         )}
 
-                        <TabsContent value="controls" className="space-y-4 mt-4">
+                        <TabsContent value="modifications" className="space-y-4 mt-4">
                           <div className="bg-muted/50 rounded-lg p-4 mb-4">
                             <p className="text-sm text-muted-foreground">
-                              Configure lead times and inventory controls for this product.
+                              Control whether this product can be modified after creation, and optionally restrict modifications to specific products.
                             </p>
                           </div>
 
-                          {/* Allow Modifications */}
                           <div className="border rounded-lg p-4 space-y-4">
                             <div className="flex items-center justify-between">
                               <div className="space-y-0.5">
@@ -3000,6 +3000,14 @@ const Products = () => {
                                 )}
                               </div>
                             )}
+                          </div>
+                        </TabsContent>
+
+                        <TabsContent value="controls" className="space-y-4 mt-4">
+                          <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-muted-foreground">
+                              Configure lead times and inventory controls for this product.
+                            </p>
                           </div>
 
                           {/* Lead Times */}
