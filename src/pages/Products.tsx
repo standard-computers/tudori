@@ -1269,7 +1269,7 @@ const Products = () => {
       is_pos_available: (product as any).is_pos_available !== false,
       allow_modifications: (product as any).allow_modifications || false,
       restrict_modifications: (product as any).restrict_modifications || false,
-      restricted_product_ids: (product as any).restricted_product_ids || [],
+      restricted_products: (product as any).restricted_products || [],
     });
     setImagePreview(product.image_url || null);
     setImageFile(null);
