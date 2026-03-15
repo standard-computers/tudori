@@ -1516,16 +1516,16 @@ const Locations = () => {
                                           {companyUsers
                                             .filter((u) => !selectedUserIds.includes(u.user_id))
                                             .map((u) => (
-                                              <CommandItem
+                                               <CommandItem
                                                 key={u.user_id}
-                                                value={`${u.first_name} ${u.last_name} ${u.id}`}
+                                                value={`${u.first_name} ${u.last_name} ${u.profile_id}`}
                                                 onSelect={() => {
                                                   handleUserToggle(u.user_id, true);
                                                   setUserSearchOpen(false);
                                                 }}
                                               >
                                                 <span className="font-medium">{u.first_name} {u.last_name}</span>
-                                                <span className="ml-2 text-xs text-muted-foreground font-mono">{u.id}</span>
+                                                {u.profile_id && <span className="ml-2 text-xs text-muted-foreground font-mono">{u.profile_id}</span>}
                                               </CommandItem>
                                             ))}
                                         </CommandGroup>
