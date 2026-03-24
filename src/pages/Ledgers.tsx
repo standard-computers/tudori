@@ -598,6 +598,19 @@ const Ledgers = () => {
     exportToExcel(exportData, 'ledgers.xlsx', 'Ledgers');
   };
 
+  const handleExportTransactions = () => {
+    if (!viewingLedger || ledgerTransactions.length === 0) return;
+    const exportData = ledgerTransactions.map(tx => ({
+      'Date': format(parseISO(tx.transaction_date), 'MMM d, yyyy'),
+      'Time': format(new Date(tx.created_at), 'h:mm a'),
+      'Type': getTransactionTypeLabel(tx.transaction_type),
+      'Reference': tx.reference_number || '',
+      'Description': tx.description || '',
+      'Amount': tx.amount,
+    }));
+    exportToExcel(exportData, `transactions_${viewingLedger.ledger_id}.xlsx`, 'Transactions');
+  };
+
   const handleImportLedgers = async (file: File) => {
     if (!companyId) return;
     try {
