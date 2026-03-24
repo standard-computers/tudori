@@ -45,7 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, MoreHorizontal, Trash2, Pencil, Eye, Loader2, TrendingDown, TrendingUp, Scale, Wand2, Maximize2, Minimize2, ExternalLink, Download } from 'lucide-react';
 import { AutoMakeLedgersDialog } from '@/components/ledgers/AutoMakeLedgersDialog';
 import {
   AlertDialog,
@@ -598,6 +598,19 @@ const Ledgers = () => {
     exportToExcel(exportData, 'ledgers.xlsx', 'Ledgers');
   };
 
+  const handleExportTransactions = () => {
+    if (!viewingLedger || ledgerTransactions.length === 0) return;
+    const exportData = ledgerTransactions.map(tx => ({
+      'Date': format(parseISO(tx.transaction_date), 'MMM d, yyyy'),
+      'Time': format(new Date(tx.created_at), 'h:mm a'),
+      'Type': getTransactionTypeLabel(tx.transaction_type),
+      'Reference': tx.reference_number || '',
+      'Description': tx.description || '',
+      'Amount': tx.amount,
+    }));
+    exportToExcel(exportData, `transactions_${viewingLedger.ledger_id}.xlsx`, 'Transactions');
+  };
+
   const handleImportLedgers = async (file: File) => {
     if (!companyId) return;
     try {
@@ -933,14 +946,27 @@ const Ledgers = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <button
-            type="button"
-            onClick={() => setIsViewMaximized(prev => !prev)}
-            className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-          >
-            {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            <span className="sr-only">{isViewMaximized ? 'Minimize' : 'Maximize'}</span>
-          </button>
+          <div className="absolute right-12 top-4 flex items-center gap-1 z-10">
+            {ledgerTransactions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleExportTransactions}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                title="Export transactions to Excel"
+              >
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Export</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsViewMaximized(prev => !prev)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <span className="sr-only">{isViewMaximized ? 'Minimize' : 'Maximize'}</span>
+            </button>
+          </div>
 
           <div className={isViewMaximized ? "mt-4 flex-1 overflow-y-auto" : "mt-4 max-h-[400px] overflow-y-auto"}>
             {loadingTransactions ? (
