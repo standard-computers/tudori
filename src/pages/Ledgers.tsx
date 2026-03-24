@@ -946,7 +946,7 @@ const Ledgers = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="absolute right-12 top-4 flex items-center gap-1 z-10">
+          <div className="absolute right-16 top-4 flex items-center gap-1 z-10">
             {ledgerTransactions.length > 0 && (
               <button
                 type="button"
