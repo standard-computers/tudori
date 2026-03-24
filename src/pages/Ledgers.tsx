@@ -946,14 +946,27 @@ const Ledgers = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <button
-            type="button"
-            onClick={() => setIsViewMaximized(prev => !prev)}
-            className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-          >
-            {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            <span className="sr-only">{isViewMaximized ? 'Minimize' : 'Maximize'}</span>
-          </button>
+          <div className="absolute right-12 top-4 flex items-center gap-1 z-10">
+            {ledgerTransactions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleExportTransactions}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                title="Export transactions to Excel"
+              >
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Export</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsViewMaximized(prev => !prev)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <span className="sr-only">{isViewMaximized ? 'Minimize' : 'Maximize'}</span>
+            </button>
+          </div>
 
           <div className={isViewMaximized ? "mt-4 flex-1 overflow-y-auto" : "mt-4 max-h-[400px] overflow-y-auto"}>
             {loadingTransactions ? (
