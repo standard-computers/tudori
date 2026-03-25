@@ -830,6 +830,158 @@ const Requisitions = () => {
     setIsViewDialogOpen(true);
   };
 
+  const handleOpenEditDialog = async (requisition: Requisition) => {
+    setEditingRequisition(requisition);
+    setEditFormData({
+      status: requisition.status,
+      location_id: requisition.location_id || '',
+      vendor_id: requisition.vendor_id || '',
+      notes: requisition.notes || '',
+    });
+
+    // Fetch items
+    const { data: items } = await supabase
+      .from('requisition_items')
+      .select('*, product:products(name, product_id, price)')
+      .eq('requisition_id', requisition.id);
+
+    setEditItems(items || []);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRequisition) return;
+    setIsSavingEdit(true);
+
+    try {
+      // Recalculate total from items
+      const newTotal = editItems.reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
+
+      const { error } = await supabase
+        .from('requisitions')
+        .update({
+          status: editFormData.status,
+          location_id: editFormData.location_id || null,
+          vendor_id: editFormData.vendor_id || null,
+          notes: editFormData.notes || null,
+          total_amount: newTotal,
+        })
+        .eq('id', editingRequisition.id);
+
+      if (error) throw error;
+
+      // Update items: delete removed, upsert existing
+      // Delete all existing items and re-insert (simplest approach)
+      const { error: deleteErr } = await supabase
+        .from('requisition_items')
+        .delete()
+        .eq('requisition_id', editingRequisition.id);
+
+      if (deleteErr) throw deleteErr;
+
+      if (editItems.length > 0) {
+        const { error: insertErr } = await supabase
+          .from('requisition_items')
+          .insert(editItems.map(item => ({
+            requisition_id: editingRequisition.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          })));
+        if (insertErr) throw insertErr;
+      }
+
+      // Log to audit trail manually if history tracking is enabled
+      if (isHistoryEnabled('requisitions')) {
+        const oldValues: Record<string, unknown> = {
+          status: editingRequisition.status,
+          location_id: editingRequisition.location_id,
+          vendor_id: editingRequisition.vendor_id,
+          notes: editingRequisition.notes,
+          total_amount: editingRequisition.total_amount,
+        };
+        const newValues: Record<string, unknown> = {
+          status: editFormData.status,
+          location_id: editFormData.location_id || null,
+          vendor_id: editFormData.vendor_id || null,
+          notes: editFormData.notes || null,
+          total_amount: newTotal,
+        };
+        const changedFields = Object.keys(newValues).filter(
+          key => oldValues[key] !== newValues[key]
+        );
+
+        if (changedFields.length > 0) {
+          await supabase.from('audit_log').insert({
+            table_name: 'requisitions',
+            record_id: editingRequisition.id,
+            action: 'UPDATE',
+            old_value: oldValues as any,
+            new_value: newValues as any,
+            changed_fields: changedFields,
+            user_id: user?.id || null,
+            company_id: companyId!,
+          });
+        }
+      }
+
+      toast.success('Requisition updated');
+      setIsEditDialogOpen(false);
+      setEditingRequisition(null);
+      await fetchRequisitions();
+
+      // Refresh view dialog if it was open for the same requisition
+      if (viewRequisition?.id === editingRequisition.id) {
+        setViewRequisition(prev => prev ? {
+          ...prev,
+          status: editFormData.status,
+          location_id: editFormData.location_id || null,
+          vendor_id: editFormData.vendor_id || null,
+          notes: editFormData.notes || null,
+          total_amount: newTotal,
+        } : null);
+      }
+    } catch (error: any) {
+      console.error('Error saving requisition edit:', error);
+      toast.error(error.message || 'Failed to save changes');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const updateEditItemQuantity = (index: number, quantity: number) => {
+    setEditItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], quantity };
+      return updated;
+    });
+  };
+
+  const updateEditItemPrice = (index: number, price: number) => {
+    setEditItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], unit_price: price };
+      return updated;
+    });
+  };
+
+  const removeEditItem = (index: number) => {
+    setEditItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addEditItem = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    if (editItems.some(i => i.product_id === productId)) return;
+    setEditItems(prev => [...prev, {
+      id: '',
+      product_id: product.id,
+      quantity: 1,
+      unit_price: product.price || 0,
+      product: { name: product.name, product_id: product.product_id, price: product.price },
+    }]);
+  };
+
   const handleDeleteRequisition = async (id: string) => {
     // Check if a PO exists for this requisition
     const { data: linkedPO } = await supabase
