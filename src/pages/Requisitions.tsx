@@ -2472,6 +2472,10 @@ function RequisitionsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEditRequisition(req)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onConvertToPO(req)}
                           disabled={req.status === 'ordered' || req.status === 'completed'}
