@@ -72,6 +72,7 @@ interface ProcessControlSettings {
   contest_time_punch_days: number;
   show_product_images: boolean;
   allow_mass_deletion: boolean;
+  allow_requisition_editing: boolean;
 }
 
 interface ImportExportSettings {
@@ -139,6 +140,7 @@ const Configuration = () => {
     contest_time_punch_days: 7,
     show_product_images: false,
     allow_mass_deletion: false,
+    allow_requisition_editing: true,
   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -307,6 +309,7 @@ const Configuration = () => {
           contest_time_punch_days: (val.contest_time_punch_days as number) ?? 7,
           show_product_images: (val.show_product_images as boolean) ?? false,
           allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
+          allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
         });
       }
     } catch (error) {
@@ -537,6 +540,7 @@ const Configuration = () => {
         contest_time_punch_days: processControls.contest_time_punch_days,
         show_product_images: processControls.show_product_images,
         allow_mass_deletion: processControls.allow_mass_deletion,
+        allow_requisition_editing: processControls.allow_requisition_editing,
       };
 
       if (existing) {
@@ -917,6 +921,29 @@ const Configuration = () => {
                                 checked={processControls.show_product_images}
                                 onCheckedChange={(checked) => 
                                   setProcessControls(prev => ({ ...prev, show_product_images: checked }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {docType.value === 'requisition' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Editing Settings</h4>
+                              <p className="text-xs text-muted-foreground">Control editing capabilities for requisitions</p>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Allow Requisition Editing</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Allow users to edit requisitions that are not linked to a Purchase Order
+                                </p>
+                              </div>
+                              <Switch
+                                checked={processControls.allow_requisition_editing}
+                                onCheckedChange={(checked) =>
+                                  setProcessControls(prev => ({ ...prev, allow_requisition_editing: checked }))
                                 }
                               />
                             </div>

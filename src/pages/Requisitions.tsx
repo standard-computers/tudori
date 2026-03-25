@@ -10,6 +10,7 @@ import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useExcel } from '@/hooks/use-excel';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useChangeHistorySettings } from '@/hooks/use-change-history-settings';
+import { useProcessControls } from '@/hooks/use-process-controls';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -227,6 +228,9 @@ const Requisitions = () => {
 
   // Change history settings
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
+
+  // Process controls (e.g. allow_requisition_editing)
+  const { controls: processControls } = useProcessControls(companyId);
 
   // Nested detail dialog states
   const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
@@ -1470,6 +1474,7 @@ const Requisitions = () => {
             onSelectionChange={setSelectedIds}
             onLocationClick={(locationId) => openLocationDetail(locationId, 'Location')}
             onVendorClick={openVendorDetail}
+            allowEditing={processControls.allow_requisition_editing}
           />
         )}
       </main>
@@ -1750,7 +1755,7 @@ const Requisitions = () => {
           </div>
           <DialogFooter className="px-6 py-4 border-t shrink-0">
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
-            {viewRequisition && !viewLinkedPO && (
+            {viewRequisition && !viewLinkedPO && processControls.allow_requisition_editing && (
               <Button
                 onClick={() => {
                   setIsViewDialogOpen(false);
@@ -2227,6 +2232,7 @@ function RequisitionsTable({
   onSelectionChange,
   onLocationClick,
   onVendorClick,
+  allowEditing,
 }: {
   requisitions: Requisition[];
   onViewRequisition: (requisition: Requisition) => void;
@@ -2237,6 +2243,7 @@ function RequisitionsTable({
   onSelectionChange: (ids: Set<string>) => void;
   onLocationClick: (locationId: string | null) => void;
   onVendorClick: (vendorId: string | null) => void;
+  allowEditing: boolean;
 }) {
   const {
     sortConfig,
@@ -2472,10 +2479,12 @@ function RequisitionsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEditRequisition(req)}>
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
+                        {allowEditing && (
+                          <DropdownMenuItem onClick={() => onEditRequisition(req)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() => onConvertToPO(req)}
                           disabled={req.status === 'ordered' || req.status === 'completed'}
