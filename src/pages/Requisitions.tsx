@@ -228,6 +228,9 @@ const Requisitions = () => {
   // Change history settings
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
 
+  // Process controls (e.g. allow_requisition_editing)
+  const { controls: processControls } = useProcessControls(companyId);
+
   // Nested detail dialog states
   const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
   const [isLocationDetailOpen, setIsLocationDetailOpen] = useState(false);
