@@ -2479,7 +2479,7 @@ function RequisitionsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {allowEditing && !req.purchase_orders?.length && (
+                        {allowEditing && (
                           <DropdownMenuItem onClick={() => onEditRequisition(req)}>
                             <Pencil className="w-4 h-4 mr-2" />
                             Edit
