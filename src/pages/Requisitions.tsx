@@ -496,6 +496,8 @@ const Requisitions = () => {
   useEffect(() => {
     if (isDialogOpen) {
       setTransaction('req/new');
+    } else if (isEditDialogOpen) {
+      setTransaction('req/edit');
     } else if (isViewDialogOpen) {
       setTransaction('req/view');
     } else if (isRunDialogOpen) {
@@ -505,7 +507,7 @@ const Requisitions = () => {
     } else {
       setTransaction('req');
     }
-  }, [isDialogOpen, isViewDialogOpen, isRunDialogOpen, isPOViewDialogOpen, setTransaction]);
+  }, [isDialogOpen, isEditDialogOpen, isViewDialogOpen, isRunDialogOpen, isPOViewDialogOpen, setTransaction]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
