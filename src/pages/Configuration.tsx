@@ -927,6 +927,29 @@ const Configuration = () => {
                           </div>
                         )}
 
+                        {docType.value === 'requisition' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Editing Settings</h4>
+                              <p className="text-xs text-muted-foreground">Control editing capabilities for requisitions</p>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Allow Requisition Editing</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Allow users to edit requisitions that are not linked to a Purchase Order
+                                </p>
+                              </div>
+                              <Switch
+                                checked={processControls.allow_requisition_editing}
+                                onCheckedChange={(checked) =>
+                                  setProcessControls(prev => ({ ...prev, allow_requisition_editing: checked }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {docType.value === 'purchase_order' && (
                           <div className="space-y-4 pt-4 border-t">
                             <div>
