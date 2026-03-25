@@ -9,6 +9,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useExcel } from '@/hooks/use-excel';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useChangeHistorySettings } from '@/hooks/use-change-history-settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -52,7 +53,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2, ChevronDown, Pencil } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
