@@ -213,6 +213,21 @@ const Requisitions = () => {
   const [viewPO, setViewPO] = useState<PurchaseOrder | null>(null);
   const [viewPOItems, setViewPOItems] = useState<PurchaseOrderItem[]>([]);
   
+  // Edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    status: '',
+    location_id: '',
+    vendor_id: '',
+    notes: '',
+  });
+  const [editItems, setEditItems] = useState<RequisitionItem[]>([]);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Change history settings
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
+
   // Nested detail dialog states
   const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
   const [isLocationDetailOpen, setIsLocationDetailOpen] = useState(false);
