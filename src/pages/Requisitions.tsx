@@ -10,6 +10,7 @@ import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useExcel } from '@/hooks/use-excel';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useChangeHistorySettings } from '@/hooks/use-change-history-settings';
+import { useProcessControls } from '@/hooks/use-process-controls';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
