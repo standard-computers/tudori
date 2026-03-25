@@ -309,6 +309,7 @@ const Configuration = () => {
           contest_time_punch_days: (val.contest_time_punch_days as number) ?? 7,
           show_product_images: (val.show_product_images as boolean) ?? false,
           allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
+          allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
         });
       }
     } catch (error) {
