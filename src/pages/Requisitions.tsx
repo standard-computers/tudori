@@ -2219,6 +2219,7 @@ const Requisitions = () => {
 function RequisitionsTable({
   requisitions,
   onViewRequisition,
+  onEditRequisition,
   onConvertToPO,
   onDeleteRequisition,
   selectedIds,
@@ -2228,6 +2229,7 @@ function RequisitionsTable({
 }: {
   requisitions: Requisition[];
   onViewRequisition: (requisition: Requisition) => void;
+  onEditRequisition: (requisition: Requisition) => void;
   onConvertToPO: (requisition: Requisition) => void;
   onDeleteRequisition: (id: string) => void;
   selectedIds: Set<string>;
