@@ -72,6 +72,7 @@ interface ProcessControlSettings {
   contest_time_punch_days: number;
   show_product_images: boolean;
   allow_mass_deletion: boolean;
+  allow_requisition_editing: boolean;
 }
 
 interface ImportExportSettings {
