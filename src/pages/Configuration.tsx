@@ -1189,6 +1189,28 @@ const Configuration = () => {
                     />
                   </div>
                   )}
+
+                  {/* Allow Requisition Editing */}
+                  {(!searchQuery || 'allow requisition editing'.includes(searchQuery.toLowerCase())) && (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="space-y-1">
+                      <Label className="font-medium text-base">Allow Requisition Editing</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, users can edit requisitions that are not linked to a Purchase Order.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        When disabled, requisitions cannot be edited after creation.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={processControls.allow_requisition_editing}
+                      onCheckedChange={(checked) => 
+                        setProcessControls(prev => ({ ...prev, allow_requisition_editing: checked }))
+                      }
+                      className="ml-4"
+                    />
+                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
