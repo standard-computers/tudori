@@ -1764,6 +1764,163 @@ const Requisitions = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if (!open) setIsEditDialogOpen(false); }}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <DialogHeader>
+            <DialogTitle>Edit Requisition {editingRequisition?.requisition_id}</DialogTitle>
+            <DialogDescription>Update requisition details and line items</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5">
+            {/* Header fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={editFormData.status} onValueChange={(v) => setEditFormData(p => ({ ...p, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="ordered">Ordered</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Destination Location</Label>
+                <SearchableSelect
+                  options={locationOptions}
+                  value={editFormData.location_id}
+                  onValueChange={(v) => setEditFormData(p => ({ ...p, location_id: v }))}
+                  placeholder="Select location"
+                  allowClear
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Vendor / Source</Label>
+                <SearchableSelect
+                  options={vendorOptions}
+                  value={editFormData.vendor_id}
+                  onValueChange={(v) => setEditFormData(p => ({ ...p, vendor_id: v }))}
+                  placeholder="All vendors"
+                  allowClear
+                  clearLabel="All Vendors"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData(p => ({ ...p, notes: e.target.value }))}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Line items */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Line Items</Label>
+                <div className="w-64">
+                  <SearchableSelect
+                    options={products
+                      .filter(p => !editItems.some(i => i.product_id === p.id))
+                      .map(p => ({ value: p.id, label: p.name, sublabel: p.product_id }))}
+                    value=""
+                    onValueChange={(v) => { if (v) addEditItem(v); }}
+                    placeholder="Add product..."
+                    allowClear={false}
+                  />
+                </div>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item ID</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="w-28">Qty</TableHead>
+                      <TableHead className="w-32">Unit Price</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {editItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-4">No items</TableCell>
+                      </TableRow>
+                    )}
+                    {editItems.map((item, idx) => (
+                      <TableRow key={item.id || idx}>
+                        <TableCell className="font-mono text-xs">{item.product?.product_id || '-'}</TableCell>
+                        <TableCell>{item.product?.name || 'Unknown'}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateEditItemQuantity(idx, parseFloat(e.target.value) || 1)}
+                            className="h-8 w-20"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price ?? ''}
+                            onChange={(e) => updateEditItemPrice(idx, parseFloat(e.target.value) || 0)}
+                            className="h-8 w-24"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          ${((item.unit_price || 0) * item.quantity).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeEditItem(idx)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {editItems.length > 0 && (
+                  <div className="px-4 py-2 border-t bg-muted/30 flex justify-between text-sm font-medium">
+                    <span>Total</span>
+                    <span className="font-mono">
+                      ${editItems.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSavingEdit}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+              {isSavingEdit ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* PO View Dialog (shown after converting requisition to PO) */}
       <Dialog open={isPOViewDialogOpen} onOpenChange={setIsPOViewDialogOpen}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[85vh]'}`}>
