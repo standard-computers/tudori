@@ -1747,6 +1747,20 @@ const Requisitions = () => {
               </Tabs>
             )}
           </div>
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+            {viewRequisition && !viewLinkedPO && (
+              <Button
+                onClick={() => {
+                  setIsViewDialogOpen(false);
+                  handleOpenEditDialog(viewRequisition);
+                }}
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
