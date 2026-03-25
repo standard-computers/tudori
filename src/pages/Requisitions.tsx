@@ -1474,6 +1474,7 @@ const Requisitions = () => {
             onSelectionChange={setSelectedIds}
             onLocationClick={(locationId) => openLocationDetail(locationId, 'Location')}
             onVendorClick={openVendorDetail}
+            allowEditing={processControls.allow_requisition_editing}
           />
         )}
       </main>
