@@ -1462,7 +1462,8 @@ const Requisitions = () => {
         ) : (
           <RequisitionsTable 
             requisitions={requisitions} 
-            onViewRequisition={handleViewRequisition} 
+            onViewRequisition={handleViewRequisition}
+            onEditRequisition={handleOpenEditDialog}
             onConvertToPO={handleConvertToPO}
             onDeleteRequisition={handleDeleteRequisition}
             selectedIds={selectedIds}
