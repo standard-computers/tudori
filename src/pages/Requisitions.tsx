@@ -1754,7 +1754,7 @@ const Requisitions = () => {
           </div>
           <DialogFooter className="px-6 py-4 border-t shrink-0">
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
-            {viewRequisition && !viewLinkedPO && (
+            {viewRequisition && !viewLinkedPO && processControls.allow_requisition_editing && (
               <Button
                 onClick={() => {
                   setIsViewDialogOpen(false);
