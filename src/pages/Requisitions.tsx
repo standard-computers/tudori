@@ -9,6 +9,7 @@ import { useTableSort } from '@/hooks/use-table-sort';
 import { useVendorSources } from '@/hooks/use-vendor-sources';
 import { useExcel } from '@/hooks/use-excel';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
+import { useChangeHistorySettings } from '@/hooks/use-change-history-settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
@@ -52,7 +53,7 @@ import {
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
-import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Play, Trash2, Eye, Loader2, MoreHorizontal, ShoppingCart, Check, X, History, Search, Maximize2, Minimize2, ChevronDown, Pencil } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
@@ -212,6 +213,21 @@ const Requisitions = () => {
   const [viewPO, setViewPO] = useState<PurchaseOrder | null>(null);
   const [viewPOItems, setViewPOItems] = useState<PurchaseOrderItem[]>([]);
   
+  // Edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    status: '',
+    location_id: '',
+    vendor_id: '',
+    notes: '',
+  });
+  const [editItems, setEditItems] = useState<RequisitionItem[]>([]);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Change history settings
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
+
   // Nested detail dialog states
   const [isVendorDetailOpen, setIsVendorDetailOpen] = useState(false);
   const [isLocationDetailOpen, setIsLocationDetailOpen] = useState(false);
@@ -480,6 +496,8 @@ const Requisitions = () => {
   useEffect(() => {
     if (isDialogOpen) {
       setTransaction('req/new');
+    } else if (isEditDialogOpen) {
+      setTransaction('req/edit');
     } else if (isViewDialogOpen) {
       setTransaction('req/view');
     } else if (isRunDialogOpen) {
@@ -489,7 +507,7 @@ const Requisitions = () => {
     } else {
       setTransaction('req');
     }
-  }, [isDialogOpen, isViewDialogOpen, isRunDialogOpen, isPOViewDialogOpen, setTransaction]);
+  }, [isDialogOpen, isEditDialogOpen, isViewDialogOpen, isRunDialogOpen, isPOViewDialogOpen, setTransaction]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -810,6 +828,158 @@ const Requisitions = () => {
     
     setViewLinkedPO(linkedPO);
     setIsViewDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = async (requisition: Requisition) => {
+    setEditingRequisition(requisition);
+    setEditFormData({
+      status: requisition.status,
+      location_id: requisition.location_id || '',
+      vendor_id: requisition.vendor_id || '',
+      notes: requisition.notes || '',
+    });
+
+    // Fetch items
+    const { data: items } = await supabase
+      .from('requisition_items')
+      .select('*, product:products(name, product_id, price)')
+      .eq('requisition_id', requisition.id);
+
+    setEditItems(items || []);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRequisition) return;
+    setIsSavingEdit(true);
+
+    try {
+      // Recalculate total from items
+      const newTotal = editItems.reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
+
+      const { error } = await supabase
+        .from('requisitions')
+        .update({
+          status: editFormData.status,
+          location_id: editFormData.location_id || null,
+          vendor_id: editFormData.vendor_id || null,
+          notes: editFormData.notes || null,
+          total_amount: newTotal,
+        })
+        .eq('id', editingRequisition.id);
+
+      if (error) throw error;
+
+      // Update items: delete removed, upsert existing
+      // Delete all existing items and re-insert (simplest approach)
+      const { error: deleteErr } = await supabase
+        .from('requisition_items')
+        .delete()
+        .eq('requisition_id', editingRequisition.id);
+
+      if (deleteErr) throw deleteErr;
+
+      if (editItems.length > 0) {
+        const { error: insertErr } = await supabase
+          .from('requisition_items')
+          .insert(editItems.map(item => ({
+            requisition_id: editingRequisition.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          })));
+        if (insertErr) throw insertErr;
+      }
+
+      // Log to audit trail manually if history tracking is enabled
+      if (isHistoryEnabled('requisitions')) {
+        const oldValues: Record<string, unknown> = {
+          status: editingRequisition.status,
+          location_id: editingRequisition.location_id,
+          vendor_id: editingRequisition.vendor_id,
+          notes: editingRequisition.notes,
+          total_amount: editingRequisition.total_amount,
+        };
+        const newValues: Record<string, unknown> = {
+          status: editFormData.status,
+          location_id: editFormData.location_id || null,
+          vendor_id: editFormData.vendor_id || null,
+          notes: editFormData.notes || null,
+          total_amount: newTotal,
+        };
+        const changedFields = Object.keys(newValues).filter(
+          key => oldValues[key] !== newValues[key]
+        );
+
+        if (changedFields.length > 0) {
+          await supabase.from('audit_log').insert({
+            table_name: 'requisitions',
+            record_id: editingRequisition.id,
+            action: 'UPDATE',
+            old_value: oldValues as any,
+            new_value: newValues as any,
+            changed_fields: changedFields,
+            user_id: user?.id || null,
+            company_id: companyId!,
+          });
+        }
+      }
+
+      toast.success('Requisition updated');
+      setIsEditDialogOpen(false);
+      setEditingRequisition(null);
+      await fetchRequisitions();
+
+      // Refresh view dialog if it was open for the same requisition
+      if (viewRequisition?.id === editingRequisition.id) {
+        setViewRequisition(prev => prev ? {
+          ...prev,
+          status: editFormData.status,
+          location_id: editFormData.location_id || null,
+          vendor_id: editFormData.vendor_id || null,
+          notes: editFormData.notes || null,
+          total_amount: newTotal,
+        } : null);
+      }
+    } catch (error: any) {
+      console.error('Error saving requisition edit:', error);
+      toast.error(error.message || 'Failed to save changes');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const updateEditItemQuantity = (index: number, quantity: number) => {
+    setEditItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], quantity };
+      return updated;
+    });
+  };
+
+  const updateEditItemPrice = (index: number, price: number) => {
+    setEditItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], unit_price: price };
+      return updated;
+    });
+  };
+
+  const removeEditItem = (index: number) => {
+    setEditItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addEditItem = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    if (editItems.some(i => i.product_id === productId)) return;
+    setEditItems(prev => [...prev, {
+      id: '',
+      product_id: product.id,
+      quantity: 1,
+      unit_price: product.price || 0,
+      product: { name: product.name, product_id: product.product_id, price: product.price },
+    }]);
   };
 
   const handleDeleteRequisition = async (id: string) => {
@@ -1292,7 +1462,8 @@ const Requisitions = () => {
         ) : (
           <RequisitionsTable 
             requisitions={requisitions} 
-            onViewRequisition={handleViewRequisition} 
+            onViewRequisition={handleViewRequisition}
+            onEditRequisition={handleOpenEditDialog}
             onConvertToPO={handleConvertToPO}
             onDeleteRequisition={handleDeleteRequisition}
             selectedIds={selectedIds}
@@ -1577,6 +1748,177 @@ const Requisitions = () => {
               </Tabs>
             )}
           </div>
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+            {viewRequisition && !viewLinkedPO && (
+              <Button
+                onClick={() => {
+                  setIsViewDialogOpen(false);
+                  handleOpenEditDialog(viewRequisition);
+                }}
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => { if (!open) setIsEditDialogOpen(false); }}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <DialogHeader>
+            <DialogTitle>Edit Requisition {editingRequisition?.requisition_id}</DialogTitle>
+            <DialogDescription>Update requisition details and line items</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5">
+            {/* Header fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={editFormData.status} onValueChange={(v) => setEditFormData(p => ({ ...p, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="ordered">Ordered</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Destination Location</Label>
+                <SearchableSelect
+                  options={locationOptions}
+                  value={editFormData.location_id}
+                  onValueChange={(v) => setEditFormData(p => ({ ...p, location_id: v }))}
+                  placeholder="Select location"
+                  allowClear
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Vendor / Source</Label>
+                <SearchableSelect
+                  options={vendorOptions}
+                  value={editFormData.vendor_id}
+                  onValueChange={(v) => setEditFormData(p => ({ ...p, vendor_id: v }))}
+                  placeholder="All vendors"
+                  allowClear
+                  clearLabel="All Vendors"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData(p => ({ ...p, notes: e.target.value }))}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Line items */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Line Items</Label>
+                <div className="w-64">
+                  <SearchableSelect
+                    options={products
+                      .filter(p => !editItems.some(i => i.product_id === p.id))
+                      .map(p => ({ value: p.id, label: p.name, sublabel: p.product_id }))}
+                    value=""
+                    onValueChange={(v) => { if (v) addEditItem(v); }}
+                    placeholder="Add product..."
+                    allowClear={false}
+                  />
+                </div>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item ID</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="w-28">Qty</TableHead>
+                      <TableHead className="w-32">Unit Price</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {editItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-4">No items</TableCell>
+                      </TableRow>
+                    )}
+                    {editItems.map((item, idx) => (
+                      <TableRow key={item.id || idx}>
+                        <TableCell className="font-mono text-xs">{item.product?.product_id || '-'}</TableCell>
+                        <TableCell>{item.product?.name || 'Unknown'}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateEditItemQuantity(idx, parseFloat(e.target.value) || 1)}
+                            className="h-8 w-20"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price ?? ''}
+                            onChange={(e) => updateEditItemPrice(idx, parseFloat(e.target.value) || 0)}
+                            className="h-8 w-24"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          ${((item.unit_price || 0) * item.quantity).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeEditItem(idx)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {editItems.length > 0 && (
+                  <div className="px-4 py-2 border-t bg-muted/30 flex justify-between text-sm font-medium">
+                    <span>Total</span>
+                    <span className="font-mono">
+                      ${editItems.reduce((s, i) => s + (i.unit_price || 0) * i.quantity, 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSavingEdit}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+              {isSavingEdit ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : 'Save Changes'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1878,6 +2220,7 @@ const Requisitions = () => {
 function RequisitionsTable({
   requisitions,
   onViewRequisition,
+  onEditRequisition,
   onConvertToPO,
   onDeleteRequisition,
   selectedIds,
@@ -1887,6 +2230,7 @@ function RequisitionsTable({
 }: {
   requisitions: Requisition[];
   onViewRequisition: (requisition: Requisition) => void;
+  onEditRequisition: (requisition: Requisition) => void;
   onConvertToPO: (requisition: Requisition) => void;
   onDeleteRequisition: (id: string) => void;
   selectedIds: Set<string>;
@@ -2128,6 +2472,10 @@ function RequisitionsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEditRequisition(req)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onConvertToPO(req)}
                           disabled={req.status === 'ordered' || req.status === 'completed'}
