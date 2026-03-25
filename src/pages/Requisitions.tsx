@@ -2232,6 +2232,7 @@ function RequisitionsTable({
   onSelectionChange,
   onLocationClick,
   onVendorClick,
+  allowEditing,
 }: {
   requisitions: Requisition[];
   onViewRequisition: (requisition: Requisition) => void;
@@ -2242,6 +2243,7 @@ function RequisitionsTable({
   onSelectionChange: (ids: Set<string>) => void;
   onLocationClick: (locationId: string | null) => void;
   onVendorClick: (vendorId: string | null) => void;
+  allowEditing: boolean;
 }) {
   const {
     sortConfig,
