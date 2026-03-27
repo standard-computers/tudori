@@ -636,6 +636,24 @@ const Rates = () => {
                     {isColumnVisible("description") && (
                       <TableCell className="text-muted-foreground">{rate.description || "-"}</TableCell>
                     )}
+                    {isColumnVisible("address_street") && (
+                      <TableCell className="text-muted-foreground">{rate.address_street || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_city") && (
+                      <TableCell className="text-muted-foreground">{rate.address_city || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_county") && (
+                      <TableCell className="text-muted-foreground">{rate.address_county || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_state") && (
+                      <TableCell className="text-muted-foreground">{rate.address_state || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_postal_code") && (
+                      <TableCell className="text-muted-foreground">{rate.address_postal_code || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_country") && (
+                      <TableCell className="text-muted-foreground">{rate.address_country || "-"}</TableCell>
+                    )}
                     {isColumnVisible("status") && (
                       <TableCell>
                         <Badge className={rate.is_active ? "bg-green-500 text-white" : "bg-slate-500 text-white"}>
