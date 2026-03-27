@@ -47,6 +47,12 @@ const RATE_COLUMNS: ColumnDefinition[] = [
   { key: "type", label: "Type", defaultVisible: true },
   { key: "rate", label: "Rate/Amount", defaultVisible: true },
   { key: "description", label: "Description", defaultVisible: true },
+  { key: "address_street", label: "Street", defaultVisible: false },
+  { key: "address_city", label: "City", defaultVisible: false },
+  { key: "address_county", label: "County", defaultVisible: false },
+  { key: "address_state", label: "State", defaultVisible: false },
+  { key: "address_postal_code", label: "Postal Code", defaultVisible: false },
+  { key: "address_country", label: "Country", defaultVisible: false },
   { key: "status", label: "Status", defaultVisible: true },
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
