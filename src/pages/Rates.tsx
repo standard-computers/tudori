@@ -758,6 +758,53 @@ const Rates = () => {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <p className="text-xs text-muted-foreground">Address values are optional and dictate tax use</p>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-border">
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground w-28">Street</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_street} onChange={(e) => setFormData({ ...formData, address_street: e.target.value })} placeholder="Street address" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">City</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_city} onChange={(e) => setFormData({ ...formData, address_city: e.target.value })} placeholder="City" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">County</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_county} onChange={(e) => setFormData({ ...formData, address_county: e.target.value })} placeholder="County" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">State</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_state} onChange={(e) => setFormData({ ...formData, address_state: e.target.value })} placeholder="State/Province" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">Postal Code</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_postal_code} onChange={(e) => setFormData({ ...formData, address_postal_code: e.target.value })} placeholder="Postal/ZIP code" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">Country</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_country} onChange={(e) => setFormData({ ...formData, address_country: e.target.value })} placeholder="Country" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="is_default">Default Rate</Label>
