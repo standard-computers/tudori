@@ -573,6 +573,24 @@ const Rates = () => {
                   {isColumnVisible("description") && (
                     <SortableTableHead label="Description" sortKey="description" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('description')} onFilterConfig={handleFilterConfig} filterKey="description" />
                   )}
+                  {isColumnVisible("address_street") && (
+                    <SortableTableHead label="Street" sortKey="address_street" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_street')} onFilterConfig={handleFilterConfig} filterKey="address_street" />
+                  )}
+                  {isColumnVisible("address_city") && (
+                    <SortableTableHead label="City" sortKey="address_city" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_city')} onFilterConfig={handleFilterConfig} filterKey="address_city" />
+                  )}
+                  {isColumnVisible("address_county") && (
+                    <SortableTableHead label="County" sortKey="address_county" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_county')} onFilterConfig={handleFilterConfig} filterKey="address_county" />
+                  )}
+                  {isColumnVisible("address_state") && (
+                    <SortableTableHead label="State" sortKey="address_state" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_state')} onFilterConfig={handleFilterConfig} filterKey="address_state" />
+                  )}
+                  {isColumnVisible("address_postal_code") && (
+                    <SortableTableHead label="Postal Code" sortKey="address_postal_code" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_postal_code')} onFilterConfig={handleFilterConfig} filterKey="address_postal_code" />
+                  )}
+                  {isColumnVisible("address_country") && (
+                    <SortableTableHead label="Country" sortKey="address_country" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_country')} onFilterConfig={handleFilterConfig} filterKey="address_country" />
+                  )}
                   {isColumnVisible("status") && (
                     <SortableTableHead label="Status" sortKey="is_active" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('is_active')} onFilterConfig={handleFilterConfig} filterKey="is_active" />
                   )}
