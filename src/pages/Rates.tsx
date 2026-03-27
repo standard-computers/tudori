@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
-import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign } from "lucide-react";
+import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign, Wand2 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -90,6 +90,10 @@ const Rates = () => {
   const [importProcessedRows, setImportProcessedRows] = useState(0);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [importIsComplete, setImportIsComplete] = useState(false);
+
+  // AI lookup state
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Ctrl+S to save
   useSaveShortcut(() => {
@@ -289,6 +293,39 @@ const Rates = () => {
     }
 
     fetchTaxRates();
+  };
+
+  const handleAiLookup = async () => {
+    if (!aiQuery.trim()) {
+      toast.error('Please enter a search query');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('lookup-tax-rate', {
+        body: { query: aiQuery.trim() },
+      });
+      if (error) throw error;
+      if (data?.rate) {
+        const r = data.rate;
+        setFormData(prev => ({
+          ...prev,
+          name: r.name || prev.name,
+          rate_type: r.rate_type === 'flat' ? 'flat' : 'percent',
+          rate: r.rate?.toString() || prev.rate,
+          description: r.description || prev.description,
+        }));
+        toast.success('Rate information filled');
+        setAiQuery('');
+      } else {
+        toast.error('No results found');
+      }
+    } catch (err: any) {
+      console.error('AI lookup error:', err);
+      toast.error(err.message || 'Failed to look up rate');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleExport = async () => {
@@ -561,6 +598,28 @@ const Rates = () => {
               {editingRate ? "Update the rate details" : "Create a new rate for orders"}
             </DialogDescription>
           </DialogHeader>
+
+          {!editingRate && (
+            <div className="flex items-center gap-2 px-6">
+              <Input
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                placeholder="e.g., Ohio state sales tax"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAiLookup(); } }}
+                disabled={aiLoading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleAiLookup}
+                disabled={aiLoading || !aiQuery.trim()}
+                title="Look up tax rate"
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              </Button>
+            </div>
+          )}
 
           <DialogBody>
             <div className="space-y-2">
