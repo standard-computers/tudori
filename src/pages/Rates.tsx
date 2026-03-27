@@ -3,6 +3,8 @@ import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-short
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { useTableSort, ColumnFilterConfig } from "@/hooks/use-table-sort";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -73,6 +75,19 @@ const Rates = () => {
     "rates",
     RATE_COLUMNS,
   );
+
+  const {
+    sortConfig,
+    handleSort,
+    setFilter,
+    getFilterConfig,
+    sortedAndFilteredData,
+  } = useTableSort<TaxRate>(taxRates, 'name', 'asc');
+
+  const handleFilterConfig = (key: string, config: ColumnFilterConfig | null) => {
+    if (config) setFilter(key, config);
+    else setFilter(key, '');
+  };
 
   const { exportToExcel, readExcel } = useExcel();
 
@@ -500,17 +515,29 @@ const Rates = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {isColumnVisible("rate_id") && <TableHead>Rate ID</TableHead>}
-                  {isColumnVisible("name") && <TableHead>Name</TableHead>}
-                  {isColumnVisible("type") && <TableHead>Type</TableHead>}
-                  {isColumnVisible("rate") && <TableHead className="text-right">Rate/Amount</TableHead>}
-                  {isColumnVisible("description") && <TableHead>Description</TableHead>}
-                  {isColumnVisible("status") && <TableHead>Status</TableHead>}
+                  {isColumnVisible("rate_id") && (
+                    <SortableTableHead label="Rate ID" sortKey="rate_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('rate_id')} onFilterConfig={handleFilterConfig} filterKey="rate_id" />
+                  )}
+                  {isColumnVisible("name") && (
+                    <SortableTableHead label="Name" sortKey="name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('name')} onFilterConfig={handleFilterConfig} filterKey="name" />
+                  )}
+                  {isColumnVisible("type") && (
+                    <SortableTableHead label="Type" sortKey="rate_type" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('rate_type')} onFilterConfig={handleFilterConfig} filterKey="rate_type" />
+                  )}
+                  {isColumnVisible("rate") && (
+                    <SortableTableHead label="Rate/Amount" sortKey="rate" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('rate')} onFilterConfig={handleFilterConfig} filterKey="rate" className="text-right" />
+                  )}
+                  {isColumnVisible("description") && (
+                    <SortableTableHead label="Description" sortKey="description" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('description')} onFilterConfig={handleFilterConfig} filterKey="description" />
+                  )}
+                  {isColumnVisible("status") && (
+                    <SortableTableHead label="Status" sortKey="is_active" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('is_active')} onFilterConfig={handleFilterConfig} filterKey="is_active" />
+                  )}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {taxRates.map((rate) => (
+                {sortedAndFilteredData.map((rate) => (
                   <TableRow key={rate.id}>
                     {isColumnVisible("rate_id") && (
                       <TableCell className="font-mono text-muted-foreground">{rate.rate_id}</TableCell>
