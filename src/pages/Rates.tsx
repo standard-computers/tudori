@@ -432,6 +432,12 @@ const Rates = () => {
       { header: 'Description', key: 'description', width: 30 },
       { header: 'Default (Yes/No)', key: 'is_default', width: 15 },
       { header: 'Active (Yes/No)', key: 'is_active', width: 15 },
+      { header: 'Street', key: 'address_street', width: 20 },
+      { header: 'City', key: 'address_city', width: 15 },
+      { header: 'County', key: 'address_county', width: 15 },
+      { header: 'State', key: 'address_state', width: 12 },
+      { header: 'Postal Code', key: 'address_postal_code', width: 12 },
+      { header: 'Country', key: 'address_country', width: 12 },
     ]);
     toast.success('Template downloaded');
   };
