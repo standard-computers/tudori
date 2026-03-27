@@ -60,6 +60,12 @@ interface TaxRate {
   is_default: boolean;
   is_active: boolean;
   created_at: string;
+  address_street: string | null;
+  address_city: string | null;
+  address_county: string | null;
+  address_state: string | null;
+  address_postal_code: string | null;
+  address_country: string | null;
 }
 
 const Rates = () => {
