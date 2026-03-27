@@ -295,6 +295,39 @@ const Rates = () => {
     fetchTaxRates();
   };
 
+  const handleAiLookup = async () => {
+    if (!aiQuery.trim()) {
+      toast.error('Please enter a search query');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('lookup-tax-rate', {
+        body: { query: aiQuery.trim() },
+      });
+      if (error) throw error;
+      if (data?.rate) {
+        const r = data.rate;
+        setFormData(prev => ({
+          ...prev,
+          name: r.name || prev.name,
+          rate_type: r.rate_type === 'flat' ? 'flat' : 'percent',
+          rate: r.rate?.toString() || prev.rate,
+          description: r.description || prev.description,
+        }));
+        toast.success('Rate information filled');
+        setAiQuery('');
+      } else {
+        toast.error('No results found');
+      }
+    } catch (err: any) {
+      console.error('AI lookup error:', err);
+      toast.error(err.message || 'Failed to look up rate');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleExport = async () => {
     if (taxRates.length === 0) {
       toast.info('No tax rates to export');
