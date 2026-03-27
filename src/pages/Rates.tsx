@@ -203,6 +203,12 @@ const Rates = () => {
       description: "",
       is_default: false,
       is_active: true,
+      address_street: "",
+      address_city: "",
+      address_county: "",
+      address_state: "",
+      address_postal_code: "",
+      address_country: "",
     });
     setIsDialogOpen(true);
   };
