@@ -91,6 +91,10 @@ const Rates = () => {
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [importIsComplete, setImportIsComplete] = useState(false);
 
+  // AI lookup state
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+
   // Ctrl+S to save
   useSaveShortcut(() => {
     if (isDialogOpen && !isSubmitting) {
