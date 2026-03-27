@@ -490,6 +490,12 @@ const Rates = () => {
             description: (row['Description'] || row['description'] || '').toString().trim() || null,
             is_default: isDefault,
             is_active: isActive,
+            address_street: (row['Street'] || row['address_street'] || '').toString().trim() || null,
+            address_city: (row['City'] || row['address_city'] || '').toString().trim() || null,
+            address_county: (row['County'] || row['address_county'] || '').toString().trim() || null,
+            address_state: (row['State'] || row['address_state'] || '').toString().trim() || null,
+            address_postal_code: (row['Postal Code'] || row['address_postal_code'] || '').toString().trim() || null,
+            address_country: (row['Country'] || row['address_country'] || '').toString().trim() || null,
           });
 
           if (error) throw error;
