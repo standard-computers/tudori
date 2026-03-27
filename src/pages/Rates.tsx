@@ -227,6 +227,12 @@ const Rates = () => {
       description: rate.description || "",
       is_default: rate.is_default,
       is_active: rate.is_active,
+      address_street: rate.address_street || "",
+      address_city: rate.address_city || "",
+      address_county: rate.address_county || "",
+      address_state: rate.address_state || "",
+      address_postal_code: rate.address_postal_code || "",
+      address_country: rate.address_country || "",
     });
     setIsDialogOpen(true);
   };
