@@ -76,6 +76,19 @@ const Rates = () => {
     RATE_COLUMNS,
   );
 
+  const {
+    sortConfig,
+    handleSort,
+    setFilter,
+    getFilterConfig,
+    sortedAndFilteredData,
+  } = useTableSort<TaxRate>(taxRates, 'name', 'asc');
+
+  const handleFilterConfig = (key: string, config: ColumnFilterConfig | null) => {
+    if (config) setFilter(key, config);
+    else setFilter(key, '');
+  };
+
   const { exportToExcel, readExcel } = useExcel();
 
   // Import/Export settings
