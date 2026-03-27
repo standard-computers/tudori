@@ -4743,6 +4743,12 @@ export type Database = {
       }
       tax_rates: {
         Row: {
+          address_city: string | null
+          address_country: string | null
+          address_county: string | null
+          address_postal_code: string | null
+          address_state: string | null
+          address_street: string | null
           company_id: string
           created_at: string
           description: string | null
@@ -4756,6 +4762,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address_city?: string | null
+          address_country?: string | null
+          address_county?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
           company_id: string
           created_at?: string
           description?: string | null
@@ -4769,6 +4781,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address_city?: string | null
+          address_country?: string | null
+          address_county?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
           company_id?: string
           created_at?: string
           description?: string | null

@@ -60,6 +60,12 @@ interface TaxRate {
   is_default: boolean;
   is_active: boolean;
   created_at: string;
+  address_street: string | null;
+  address_city: string | null;
+  address_county: string | null;
+  address_state: string | null;
+  address_postal_code: string | null;
+  address_country: string | null;
 }
 
 const Rates = () => {
@@ -126,6 +132,12 @@ const Rates = () => {
     description: "",
     is_default: false,
     is_active: true,
+    address_street: "",
+    address_city: "",
+    address_county: "",
+    address_state: "",
+    address_postal_code: "",
+    address_country: "",
   });
 
   // Set transaction based on dialog state
@@ -191,6 +203,12 @@ const Rates = () => {
       description: "",
       is_default: false,
       is_active: true,
+      address_street: "",
+      address_city: "",
+      address_county: "",
+      address_state: "",
+      address_postal_code: "",
+      address_country: "",
     });
     setIsDialogOpen(true);
   };
@@ -209,6 +227,12 @@ const Rates = () => {
       description: rate.description || "",
       is_default: rate.is_default,
       is_active: rate.is_active,
+      address_street: rate.address_street || "",
+      address_city: rate.address_city || "",
+      address_county: rate.address_county || "",
+      address_state: rate.address_state || "",
+      address_postal_code: rate.address_postal_code || "",
+      address_country: rate.address_country || "",
     });
     setIsDialogOpen(true);
   };
@@ -253,6 +277,12 @@ const Rates = () => {
             description: formData.description.trim() || null,
             is_default: formData.is_default,
             is_active: formData.is_active,
+            address_street: formData.address_street.trim() || null,
+            address_city: formData.address_city.trim() || null,
+            address_county: formData.address_county.trim() || null,
+            address_state: formData.address_state.trim() || null,
+            address_postal_code: formData.address_postal_code.trim() || null,
+            address_country: formData.address_country.trim() || null,
           })
           .eq("id", editingRate.id);
 
@@ -269,6 +299,12 @@ const Rates = () => {
           description: formData.description.trim() || null,
           is_default: formData.is_default,
           is_active: formData.is_active,
+          address_street: formData.address_street.trim() || null,
+          address_city: formData.address_city.trim() || null,
+          address_county: formData.address_county.trim() || null,
+          address_state: formData.address_state.trim() || null,
+          address_postal_code: formData.address_postal_code.trim() || null,
+          address_country: formData.address_country.trim() || null,
         });
 
         if (error) throw error;
@@ -720,6 +756,53 @@ const Rates = () => {
                 placeholder="Optional description..."
                 rows={2}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <p className="text-xs text-muted-foreground">Address values are optional and dictate tax use</p>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-border">
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground w-28">Street</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_street} onChange={(e) => setFormData({ ...formData, address_street: e.target.value })} placeholder="Street address" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">City</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_city} onChange={(e) => setFormData({ ...formData, address_city: e.target.value })} placeholder="City" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">County</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_county} onChange={(e) => setFormData({ ...formData, address_county: e.target.value })} placeholder="County" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">State</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_state} onChange={(e) => setFormData({ ...formData, address_state: e.target.value })} placeholder="State/Province" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">Postal Code</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_postal_code} onChange={(e) => setFormData({ ...formData, address_postal_code: e.target.value })} placeholder="Postal/ZIP code" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">Country</td>
+                      <td className="px-3 py-1">
+                        <Input value={formData.address_country} onChange={(e) => setFormData({ ...formData, address_country: e.target.value })} placeholder="Country" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="flex items-center justify-between">
