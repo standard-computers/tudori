@@ -685,151 +685,163 @@ const Rates = () => {
             </div>
           )}
 
-          <DialogBody>
-            <div className="space-y-2">
-              <Label htmlFor="rate_id">Rate ID</Label>
-              <Input
-                id="rate_id"
-                value={formData.rate_id}
-                onChange={(e) => setFormData({ ...formData, rate_id: e.target.value })}
-                placeholder="Auto-generated"
-                readOnly={!!editingRate}
-                className={editingRate ? 'bg-muted' : ''}
-              />
+          <Tabs defaultValue="general" className="flex flex-col flex-1 min-h-0">
+            <div className="px-6 pt-2">
+              <TabsList>
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="address">Address</TabsTrigger>
+              </TabsList>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Standard Tax, VAT, Shipping Fee"
-              />
-            </div>
+            <TabsContent value="general" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rate_id">Rate ID</Label>
+                  <Input
+                    id="rate_id"
+                    value={formData.rate_id}
+                    onChange={(e) => setFormData({ ...formData, rate_id: e.target.value })}
+                    placeholder="Auto-generated"
+                    readOnly={!!editingRate}
+                    className={editingRate ? 'bg-muted' : ''}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="rate_type">Rate Type *</Label>
-              <Select
-                value={formData.rate_type}
-                onValueChange={(value: "percent" | "flat") => setFormData({ ...formData, rate_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="percent">
-                    <div className="flex items-center gap-2">
-                      <Percent className="w-4 h-4" />
-                      Percentage
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="flat">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
-                      Flat Amount
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g., Standard Tax, VAT, Shipping Fee"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="rate">{formData.rate_type === "percent" ? "Rate (%) *" : "Amount ($) *"}</Label>
-              <Input
-                id="rate"
-                type="number"
-                step="0.01"
-                min="0"
-                max={formData.rate_type === "percent" ? "100" : undefined}
-                value={formData.rate}
-                onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                placeholder={formData.rate_type === "percent" ? "e.g., 10" : "e.g., 25.00"}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rate_type">Rate Type *</Label>
+                  <Select
+                    value={formData.rate_type}
+                    onValueChange={(value: "percent" | "flat") => setFormData({ ...formData, rate_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">
+                        <div className="flex items-center gap-2">
+                          <Percent className="w-4 h-4" />
+                          Percentage
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="flat">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4" />
+                          Flat Amount
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description..."
-                rows={2}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rate">{formData.rate_type === "percent" ? "Rate (%) *" : "Amount ($) *"}</Label>
+                  <Input
+                    id="rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={formData.rate_type === "percent" ? "100" : undefined}
+                    value={formData.rate}
+                    onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                    placeholder={formData.rate_type === "percent" ? "e.g., 10" : "e.g., 25.00"}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label>Address</Label>
-              <p className="text-xs text-muted-foreground">Address values are optional and dictate tax use</p>
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody className="divide-y divide-border">
-                    <tr>
-                      <td className="px-3 py-2 text-muted-foreground w-28">Street</td>
-                      <td className="px-3 py-1">
-                        <Input value={formData.address_street} onChange={(e) => setFormData({ ...formData, address_street: e.target.value })} placeholder="Street address" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 text-muted-foreground">City</td>
-                      <td className="px-3 py-1">
-                        <Input value={formData.address_city} onChange={(e) => setFormData({ ...formData, address_city: e.target.value })} placeholder="City" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 text-muted-foreground">County</td>
-                      <td className="px-3 py-1">
-                        <Input value={formData.address_county} onChange={(e) => setFormData({ ...formData, address_county: e.target.value })} placeholder="County" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 text-muted-foreground">State</td>
-                      <td className="px-3 py-1">
-                        <Input value={formData.address_state} onChange={(e) => setFormData({ ...formData, address_state: e.target.value })} placeholder="State/Province" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 text-muted-foreground">Postal Code</td>
-                      <td className="px-3 py-1">
-                        <Input value={formData.address_postal_code} onChange={(e) => setFormData({ ...formData, address_postal_code: e.target.value })} placeholder="Postal/ZIP code" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-2 text-muted-foreground">Country</td>
-                      <td className="px-3 py-1">
-                        <Input value={formData.address_country} onChange={(e) => setFormData({ ...formData, address_country: e.target.value })} placeholder="Country" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Optional description..."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is_default">Default Rate</Label>
+                    <p className="text-sm text-muted-foreground">Use as default for new orders</p>
+                  </div>
+                  <Switch
+                    id="is_default"
+                    checked={formData.is_default}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is_active">Active</Label>
+                    <p className="text-sm text-muted-foreground">Available for use in orders</p>
+                  </div>
+                  <Switch
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                  />
+                </div>
               </div>
-            </div>
+            </TabsContent>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="is_default">Default Rate</Label>
-                <p className="text-sm text-muted-foreground">Use as default for new orders</p>
+            <TabsContent value="address" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
+                <p className="text-sm text-muted-foreground">Address values are optional and dictate tax use</p>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-sm">
+                    <tbody className="divide-y divide-border">
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground w-28">Street</td>
+                        <td className="px-3 py-1">
+                          <Input value={formData.address_street} onChange={(e) => setFormData({ ...formData, address_street: e.target.value })} placeholder="Street address" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">City</td>
+                        <td className="px-3 py-1">
+                          <Input value={formData.address_city} onChange={(e) => setFormData({ ...formData, address_city: e.target.value })} placeholder="City" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">County</td>
+                        <td className="px-3 py-1">
+                          <Input value={formData.address_county} onChange={(e) => setFormData({ ...formData, address_county: e.target.value })} placeholder="County" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">State</td>
+                        <td className="px-3 py-1">
+                          <Input value={formData.address_state} onChange={(e) => setFormData({ ...formData, address_state: e.target.value })} placeholder="State/Province" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">Postal Code</td>
+                        <td className="px-3 py-1">
+                          <Input value={formData.address_postal_code} onChange={(e) => setFormData({ ...formData, address_postal_code: e.target.value })} placeholder="Postal/ZIP code" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">Country</td>
+                        <td className="px-3 py-1">
+                          <Input value={formData.address_country} onChange={(e) => setFormData({ ...formData, address_country: e.target.value })} placeholder="Country" className="border-0 shadow-none h-8 px-0 focus-visible:ring-0" />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <Switch
-                id="is_default"
-                checked={formData.is_default}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="is_active">Active</Label>
-                <p className="text-sm text-muted-foreground">Available for use in orders</p>
-              </div>
-              <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-            </div>
-          </DialogBody>
+            </TabsContent>
+          </Tabs>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
