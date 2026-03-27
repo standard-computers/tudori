@@ -277,6 +277,12 @@ const Rates = () => {
             description: formData.description.trim() || null,
             is_default: formData.is_default,
             is_active: formData.is_active,
+            address_street: formData.address_street.trim() || null,
+            address_city: formData.address_city.trim() || null,
+            address_county: formData.address_county.trim() || null,
+            address_state: formData.address_state.trim() || null,
+            address_postal_code: formData.address_postal_code.trim() || null,
+            address_country: formData.address_country.trim() || null,
           })
           .eq("id", editingRate.id);
 
@@ -293,6 +299,12 @@ const Rates = () => {
           description: formData.description.trim() || null,
           is_default: formData.is_default,
           is_active: formData.is_active,
+          address_street: formData.address_street.trim() || null,
+          address_city: formData.address_city.trim() || null,
+          address_county: formData.address_county.trim() || null,
+          address_state: formData.address_state.trim() || null,
+          address_postal_code: formData.address_postal_code.trim() || null,
+          address_country: formData.address_country.trim() || null,
         });
 
         if (error) throw error;
