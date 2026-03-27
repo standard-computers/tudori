@@ -432,6 +432,9 @@ const Rates = () => {
               <ImportExportButtons
                 importEnabled={isImportEnabled("tax_rate")}
                 exportEnabled={isExportEnabled("tax_rate")}
+                onImport={handleImport}
+                onExport={handleExport}
+                onDownloadTemplate={handleDownloadTemplate}
                 entityName="Tax Rates"
               />
               <Button onClick={handleAddClick} variant="default" size="icon" className="relative">
