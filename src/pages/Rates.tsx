@@ -673,6 +673,15 @@ const Rates = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ImportProgressDialog
+        open={importProgressOpen}
+        onOpenChange={setImportProgressOpen}
+        title="Importing Tax Rates"
+        totalRows={importTotalRows}
+        processedRows={importProcessedRows}
+        results={importResults}
+        isComplete={importIsComplete}
+      />
     </div>
   );
 };
