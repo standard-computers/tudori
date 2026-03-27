@@ -599,6 +599,28 @@ const Rates = () => {
             </DialogDescription>
           </DialogHeader>
 
+          {!editingRate && (
+            <div className="flex items-center gap-2 px-6">
+              <Input
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                placeholder="e.g., Ohio state sales tax"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAiLookup(); } }}
+                disabled={aiLoading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleAiLookup}
+                disabled={aiLoading || !aiQuery.trim()}
+                title="Look up tax rate"
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              </Button>
+            </div>
+          )}
+
           <DialogBody>
             <div className="space-y-2">
               <Label htmlFor="rate_id">Rate ID</Label>
