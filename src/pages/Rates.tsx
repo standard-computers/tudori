@@ -291,6 +291,111 @@ const Rates = () => {
     fetchTaxRates();
   };
 
+  const handleExport = async () => {
+    if (taxRates.length === 0) {
+      toast.info('No tax rates to export');
+      return;
+    }
+    const data = taxRates.map(r => ({
+      rate_id: r.rate_id,
+      name: r.name,
+      rate_type: r.rate_type,
+      rate: r.rate,
+      description: r.description || '',
+      is_default: r.is_default ? 'Yes' : 'No',
+      is_active: r.is_active ? 'Yes' : 'No',
+    }));
+    await exportToExcel(data, 'tax_rates.xlsx', 'Tax Rates', [
+      { header: 'Rate ID', key: 'rate_id', width: 15 },
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Type', key: 'rate_type', width: 12 },
+      { header: 'Rate/Amount', key: 'rate', width: 15 },
+      { header: 'Description', key: 'description', width: 30 },
+      { header: 'Default', key: 'is_default', width: 10 },
+      { header: 'Active', key: 'is_active', width: 10 },
+    ]);
+    toast.success('Tax rates exported');
+  };
+
+  const handleDownloadTemplate = async () => {
+    await exportToExcel([], 'tax_rates_template.xlsx', 'Tax Rates', [
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Type (percent/flat)', key: 'rate_type', width: 20 },
+      { header: 'Rate/Amount', key: 'rate', width: 15 },
+      { header: 'Description', key: 'description', width: 30 },
+      { header: 'Default (Yes/No)', key: 'is_default', width: 15 },
+      { header: 'Active (Yes/No)', key: 'is_active', width: 15 },
+    ]);
+    toast.success('Template downloaded');
+  };
+
+  const handleImport = async (file: File) => {
+    if (!companyId) return;
+    try {
+      const rows = await readExcel(file);
+      if (rows.length === 0) {
+        toast.error('No data found in file');
+        return;
+      }
+
+      setImportTotalRows(rows.length);
+      setImportProcessedRows(0);
+      setImportResults([]);
+      setImportIsComplete(false);
+      setImportProgressOpen(true);
+
+      const results: ImportResult[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          const name = (row['Name'] || '').toString().trim();
+          if (!name) throw new Error('Name is required');
+
+          const rateType = (row['Type (percent/flat)'] || row['Type'] || row['rate_type'] || 'percent').toString().trim().toLowerCase();
+          if (rateType !== 'percent' && rateType !== 'flat') throw new Error('Type must be "percent" or "flat"');
+
+          const rateVal = parseFloat(row['Rate/Amount'] || row['rate'] || '0');
+          if (isNaN(rateVal) || rateVal < 0) throw new Error('Invalid rate value');
+          if (rateType === 'percent' && rateVal > 100) throw new Error('Percentage cannot exceed 100');
+
+          const isDefault = (row['Default (Yes/No)'] || row['Default'] || row['is_default'] || 'No').toString().trim().toLowerCase() === 'yes';
+          const isActive = (row['Active (Yes/No)'] || row['Active'] || row['is_active'] || 'Yes').toString().trim().toLowerCase() !== 'no';
+
+          const { data: nextId } = await supabase.rpc('get_next_rate_id', { p_company_id: companyId });
+
+          if (isDefault) {
+            await supabase.from('tax_rates').update({ is_default: false }).eq('company_id', companyId).eq('is_default', true);
+          }
+
+          const { error } = await supabase.from('tax_rates').insert({
+            company_id: companyId,
+            rate_id: nextId || '',
+            name,
+            rate_type: rateType,
+            rate: rateVal,
+            description: (row['Description'] || row['description'] || '').toString().trim() || null,
+            is_default: isDefault,
+            is_active: isActive,
+          });
+
+          if (error) throw error;
+          results.push({ row: i + 2, status: 'success', message: `Created "${name}"` });
+        } catch (err: any) {
+          results.push({ row: i + 2, status: 'error', message: err.message || 'Unknown error' });
+        }
+
+        setImportProcessedRows(i + 1);
+        setImportResults([...results]);
+      }
+
+      setImportIsComplete(true);
+      fetchTaxRates();
+    } catch (err: any) {
+      toast.error('Failed to read file: ' + (err.message || ''));
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
