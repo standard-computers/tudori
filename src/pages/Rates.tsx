@@ -399,6 +399,12 @@ const Rates = () => {
       description: r.description || '',
       is_default: r.is_default ? 'Yes' : 'No',
       is_active: r.is_active ? 'Yes' : 'No',
+      address_street: r.address_street || '',
+      address_city: r.address_city || '',
+      address_county: r.address_county || '',
+      address_state: r.address_state || '',
+      address_postal_code: r.address_postal_code || '',
+      address_country: r.address_country || '',
     }));
     await exportToExcel(data, 'tax_rates.xlsx', 'Tax Rates', [
       { header: 'Rate ID', key: 'rate_id', width: 15 },
@@ -408,6 +414,12 @@ const Rates = () => {
       { header: 'Description', key: 'description', width: 30 },
       { header: 'Default', key: 'is_default', width: 10 },
       { header: 'Active', key: 'is_active', width: 10 },
+      { header: 'Street', key: 'address_street', width: 20 },
+      { header: 'City', key: 'address_city', width: 15 },
+      { header: 'County', key: 'address_county', width: 15 },
+      { header: 'State', key: 'address_state', width: 12 },
+      { header: 'Postal Code', key: 'address_postal_code', width: 12 },
+      { header: 'Country', key: 'address_country', width: 12 },
     ]);
     toast.success('Tax rates exported');
   };
@@ -420,6 +432,12 @@ const Rates = () => {
       { header: 'Description', key: 'description', width: 30 },
       { header: 'Default (Yes/No)', key: 'is_default', width: 15 },
       { header: 'Active (Yes/No)', key: 'is_active', width: 15 },
+      { header: 'Street', key: 'address_street', width: 20 },
+      { header: 'City', key: 'address_city', width: 15 },
+      { header: 'County', key: 'address_county', width: 15 },
+      { header: 'State', key: 'address_state', width: 12 },
+      { header: 'Postal Code', key: 'address_postal_code', width: 12 },
+      { header: 'Country', key: 'address_country', width: 12 },
     ]);
     toast.success('Template downloaded');
   };
@@ -472,6 +490,12 @@ const Rates = () => {
             description: (row['Description'] || row['description'] || '').toString().trim() || null,
             is_default: isDefault,
             is_active: isActive,
+            address_street: (row['Street'] || row['address_street'] || '').toString().trim() || null,
+            address_city: (row['City'] || row['address_city'] || '').toString().trim() || null,
+            address_county: (row['County'] || row['address_county'] || '').toString().trim() || null,
+            address_state: (row['State'] || row['address_state'] || '').toString().trim() || null,
+            address_postal_code: (row['Postal Code'] || row['address_postal_code'] || '').toString().trim() || null,
+            address_country: (row['Country'] || row['address_country'] || '').toString().trim() || null,
           });
 
           if (error) throw error;
