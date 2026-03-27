@@ -3,6 +3,8 @@ import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-short
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { useTableSort, ColumnFilterConfig } from "@/hooks/use-table-sort";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
