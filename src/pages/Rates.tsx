@@ -39,6 +39,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign, Wand2 } from "lucide-react";
 import { toast } from '@/lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const RATE_COLUMNS: ColumnDefinition[] = [
   { key: "rate_id", label: "Rate ID", defaultVisible: true },
