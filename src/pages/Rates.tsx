@@ -74,6 +74,8 @@ const Rates = () => {
     RATE_COLUMNS,
   );
 
+  const { exportToExcel, readExcel } = useExcel();
+
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
 
@@ -81,6 +83,13 @@ const Rates = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingRate, setEditingRate] = useState<TaxRate | null>(null);
+
+  // Import progress
+  const [importProgressOpen, setImportProgressOpen] = useState(false);
+  const [importTotalRows, setImportTotalRows] = useState(0);
+  const [importProcessedRows, setImportProcessedRows] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importIsComplete, setImportIsComplete] = useState(false);
 
   // Ctrl+S to save
   useSaveShortcut(() => {
