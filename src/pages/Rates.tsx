@@ -47,6 +47,12 @@ const RATE_COLUMNS: ColumnDefinition[] = [
   { key: "type", label: "Type", defaultVisible: true },
   { key: "rate", label: "Rate/Amount", defaultVisible: true },
   { key: "description", label: "Description", defaultVisible: true },
+  { key: "address_street", label: "Street", defaultVisible: false },
+  { key: "address_city", label: "City", defaultVisible: false },
+  { key: "address_county", label: "County", defaultVisible: false },
+  { key: "address_state", label: "State", defaultVisible: false },
+  { key: "address_postal_code", label: "Postal Code", defaultVisible: false },
+  { key: "address_country", label: "Country", defaultVisible: false },
   { key: "status", label: "Status", defaultVisible: true },
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
@@ -567,6 +573,24 @@ const Rates = () => {
                   {isColumnVisible("description") && (
                     <SortableTableHead label="Description" sortKey="description" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('description')} onFilterConfig={handleFilterConfig} filterKey="description" />
                   )}
+                  {isColumnVisible("address_street") && (
+                    <SortableTableHead label="Street" sortKey="address_street" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_street')} onFilterConfig={handleFilterConfig} filterKey="address_street" />
+                  )}
+                  {isColumnVisible("address_city") && (
+                    <SortableTableHead label="City" sortKey="address_city" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_city')} onFilterConfig={handleFilterConfig} filterKey="address_city" />
+                  )}
+                  {isColumnVisible("address_county") && (
+                    <SortableTableHead label="County" sortKey="address_county" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_county')} onFilterConfig={handleFilterConfig} filterKey="address_county" />
+                  )}
+                  {isColumnVisible("address_state") && (
+                    <SortableTableHead label="State" sortKey="address_state" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_state')} onFilterConfig={handleFilterConfig} filterKey="address_state" />
+                  )}
+                  {isColumnVisible("address_postal_code") && (
+                    <SortableTableHead label="Postal Code" sortKey="address_postal_code" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_postal_code')} onFilterConfig={handleFilterConfig} filterKey="address_postal_code" />
+                  )}
+                  {isColumnVisible("address_country") && (
+                    <SortableTableHead label="Country" sortKey="address_country" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('address_country')} onFilterConfig={handleFilterConfig} filterKey="address_country" />
+                  )}
                   {isColumnVisible("status") && (
                     <SortableTableHead label="Status" sortKey="is_active" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig('is_active')} onFilterConfig={handleFilterConfig} filterKey="is_active" />
                   )}
@@ -611,6 +635,24 @@ const Rates = () => {
                     )}
                     {isColumnVisible("description") && (
                       <TableCell className="text-muted-foreground">{rate.description || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_street") && (
+                      <TableCell className="text-muted-foreground">{rate.address_street || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_city") && (
+                      <TableCell className="text-muted-foreground">{rate.address_city || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_county") && (
+                      <TableCell className="text-muted-foreground">{rate.address_county || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_state") && (
+                      <TableCell className="text-muted-foreground">{rate.address_state || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_postal_code") && (
+                      <TableCell className="text-muted-foreground">{rate.address_postal_code || "-"}</TableCell>
+                    )}
+                    {isColumnVisible("address_country") && (
+                      <TableCell className="text-muted-foreground">{rate.address_country || "-"}</TableCell>
                     )}
                     {isColumnVisible("status") && (
                       <TableCell>
