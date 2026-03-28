@@ -11,7 +11,8 @@ interface ProcessControls {
   contest_time_punch_days: number;
   show_product_images: boolean;
   allow_mass_deletion: boolean;
-  allow_requisition_editing: boolean;
+   allow_requisition_editing: boolean;
+   auto_allocate_rates: boolean;
 }
 
 const DEFAULTS: ProcessControls = {
@@ -25,6 +26,7 @@ const DEFAULTS: ProcessControls = {
   show_product_images: false,
   allow_mass_deletion: false,
   allow_requisition_editing: true,
+  auto_allocate_rates: false,
 };
 
 export function useProcessControls(companyId: string | null) {
