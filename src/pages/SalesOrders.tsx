@@ -438,7 +438,7 @@ const SalesOrders = () => {
   const fetchLocations = async () => {
     const { data } = await supabase
       .from("locations")
-      .select("id, name, location_id")
+      .select("id, name, location_id, address_line1, city, state, postal_code, country")
       .eq("company_id", companyId)
       .order("name");
     setLocations(data || []);
@@ -447,7 +447,7 @@ const SalesOrders = () => {
   const fetchCustomers = async () => {
     const { data } = await supabase
       .from("customers")
-      .select("id, name, customer_id")
+      .select("id, name, customer_id, address_line1, city, state, postal_code, country")
       .eq("company_id", companyId)
       .order("name");
     setCustomers(data || []);
