@@ -72,7 +72,8 @@ interface ProcessControlSettings {
   contest_time_punch_days: number;
   show_product_images: boolean;
   allow_mass_deletion: boolean;
-  allow_requisition_editing: boolean;
+   allow_requisition_editing: boolean;
+   auto_allocate_rates: boolean;
 }
 
 interface ImportExportSettings {
@@ -140,8 +141,9 @@ const Configuration = () => {
     contest_time_punch_days: 7,
     show_product_images: false,
     allow_mass_deletion: false,
-    allow_requisition_editing: true,
-  });
+     allow_requisition_editing: true,
+     auto_allocate_rates: false,
+   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -309,8 +311,9 @@ const Configuration = () => {
           contest_time_punch_days: (val.contest_time_punch_days as number) ?? 7,
           show_product_images: (val.show_product_images as boolean) ?? false,
           allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
-          allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
-        });
+           allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
+           auto_allocate_rates: (val.auto_allocate_rates as boolean) ?? false,
+         });
       }
     } catch (error) {
       console.error('Error fetching process controls:', error);
@@ -540,8 +543,9 @@ const Configuration = () => {
         contest_time_punch_days: processControls.contest_time_punch_days,
         show_product_images: processControls.show_product_images,
         allow_mass_deletion: processControls.allow_mass_deletion,
-        allow_requisition_editing: processControls.allow_requisition_editing,
-      };
+         allow_requisition_editing: processControls.allow_requisition_editing,
+         auto_allocate_rates: processControls.auto_allocate_rates,
+       };
 
       if (existing) {
         await supabase
@@ -1210,10 +1214,29 @@ const Configuration = () => {
                       className="ml-4"
                     />
                   </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                   )}
+
+                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                     <div className="space-y-1">
+                       <Label className="font-medium text-base">Auto-allocate Rates</Label>
+                       <p className="text-sm text-muted-foreground">
+                         When enabled, tax rates are automatically allocated based on address matching.
+                       </p>
+                       <p className="text-xs text-muted-foreground mt-2">
+                         When disabled, rates must be manually assigned.
+                       </p>
+                     </div>
+                     <Switch
+                       checked={processControls.auto_allocate_rates}
+                       onCheckedChange={(checked) => 
+                         setProcessControls(prev => ({ ...prev, auto_allocate_rates: checked }))
+                       }
+                       className="ml-4"
+                     />
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
 
           </TabsContent>
         </Tabs>
