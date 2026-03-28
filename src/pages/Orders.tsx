@@ -1470,6 +1470,51 @@ const Orders = () => {
 
   const availableTaxRates = taxRates.filter((r) => !selectedTaxRates.find((sr) => sr.tax_rate_id === r.id));
 
+  const handleAutoAllocateRates = () => {
+    // Gather addresses from ship-to and bill-to locations
+    const shipToLoc = locations.find((l) => l.id === formData.location_id);
+    const billToLoc = locations.find((l) => l.id === formData.bill_to_location_id);
+    const addresses = [shipToLoc, billToLoc].filter(Boolean) as Location[];
+
+    if (addresses.length === 0) {
+      toast.error("Please select a Ship To or Bill To location first");
+      return;
+    }
+
+    const matchingRates = taxRates.filter((rate) => {
+      // Rate must have at least one address field set
+      const hasAddress = rate.address_state || rate.address_city || rate.address_postal_code || rate.address_country || rate.address_county || rate.address_street;
+      if (!hasAddress) return false;
+
+      return addresses.some((addr) => {
+        let match = true;
+        if (rate.address_country && match) match = addr.country?.toLowerCase() === rate.address_country.toLowerCase();
+        if (rate.address_state && match) match = addr.state?.toLowerCase() === rate.address_state.toLowerCase();
+        if (rate.address_city && match) match = addr.city?.toLowerCase() === rate.address_city.toLowerCase();
+        if (rate.address_postal_code && match) match = addr.postal_code?.toLowerCase() === rate.address_postal_code.toLowerCase();
+        if (rate.address_street && match) match = addr.address_line1?.toLowerCase() === rate.address_street.toLowerCase();
+        return match;
+      });
+    });
+
+    if (matchingRates.length === 0) {
+      toast.info("No matching tax rates found for the selected locations");
+      return;
+    }
+
+    const newSelected = matchingRates
+      .filter((r) => !selectedTaxRates.find((sr) => sr.tax_rate_id === r.id))
+      .map((r) => ({ tax_rate_id: r.id, name: r.name, rate: r.rate, rate_type: r.rate_type || "percent" }));
+
+    if (newSelected.length === 0) {
+      toast.info("All matching rates are already applied");
+      return;
+    }
+
+    setSelectedTaxRates([...selectedTaxRates, ...newSelected]);
+    toast.success(`Added ${newSelected.length} matching tax rate(s)`);
+  };
+
   const handleCreateOrder = async () => {
     if (!formData.vendor_id) {
       toast.error("Please select a vendor");
