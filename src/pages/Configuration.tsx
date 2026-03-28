@@ -1214,10 +1214,29 @@ const Configuration = () => {
                       className="ml-4"
                     />
                   </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                   )}
+
+                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                     <div className="space-y-1">
+                       <Label className="font-medium text-base">Auto-allocate Rates</Label>
+                       <p className="text-sm text-muted-foreground">
+                         When enabled, tax rates are automatically allocated based on address matching.
+                       </p>
+                       <p className="text-xs text-muted-foreground mt-2">
+                         When disabled, rates must be manually assigned.
+                       </p>
+                     </div>
+                     <Switch
+                       checked={processControls.auto_allocate_rates}
+                       onCheckedChange={(checked) => 
+                         setProcessControls(prev => ({ ...prev, auto_allocate_rates: checked }))
+                       }
+                       className="ml-4"
+                     />
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
 
           </TabsContent>
         </Tabs>
