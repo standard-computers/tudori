@@ -1776,20 +1776,27 @@ const SalesOrders = () => {
               <TabsContent value="rates" className="space-y-4 mt-4">
                 <div className="flex items-center justify-between">
                   <Label>Tax Rates</Label>
-                  {availableTaxRates.length > 0 && (
-                    <Select onValueChange={addTaxRate}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Add tax rate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTaxRates.map((rate) => (
-                          <SelectItem key={rate.id} value={rate.id}>
-                            {rate.name} ({rate.rate_type === "flat" ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {processControls.auto_allocate_rates && (
+                      <Button type="button" variant="outline" size="icon" onClick={handleAutoAllocateRates} title="Auto-allocate Rates">
+                        <Wand2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {availableTaxRates.length > 0 && (
+                      <Select onValueChange={addTaxRate}>
+                        <SelectTrigger className="w-48">
+                          <SelectValue placeholder="Add tax rate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTaxRates.map((rate) => (
+                            <SelectItem key={rate.id} value={rate.id}>
+                              {rate.name} ({rate.rate_type === "flat" ? `$${rate.rate.toFixed(2)}` : `${rate.rate}%`})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 </div>
 
                 {selectedTaxRates.length === 0 ? (
