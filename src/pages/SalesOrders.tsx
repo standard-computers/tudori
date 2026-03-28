@@ -908,6 +908,53 @@ const SalesOrders = () => {
 
   const availableTaxRates = taxRates.filter((r) => !selectedTaxRates.find((sr) => sr.tax_rate_id === r.id));
 
+  const handleAutoAllocateRates = () => {
+    // Gather addresses from bill-to location, ship-from location, and customer
+    const billToLoc = locations.find((l) => l.id === formData.bill_to_location_id);
+    const shipFromLoc = formData.location_id ? locations.find((l) => l.id === parseVendorValue(formData.location_id)?.id) : null;
+    const customer = customers.find((c) => c.id === formData.customer_id);
+
+    type AddressSource = { address_line1?: string; city?: string; state?: string; postal_code?: string; country?: string };
+    const addresses: AddressSource[] = [billToLoc, shipFromLoc, customer].filter(Boolean) as AddressSource[];
+
+    if (addresses.length === 0) {
+      toast.error("Please select a customer, location, or Bill To location first");
+      return;
+    }
+
+    const matchingRates = taxRates.filter((rate) => {
+      const hasAddress = rate.address_state || rate.address_city || rate.address_postal_code || rate.address_country || rate.address_county || rate.address_street;
+      if (!hasAddress) return false;
+
+      return addresses.some((addr) => {
+        let match = true;
+        if (rate.address_country && match) match = addr.country?.toLowerCase() === rate.address_country.toLowerCase();
+        if (rate.address_state && match) match = addr.state?.toLowerCase() === rate.address_state.toLowerCase();
+        if (rate.address_city && match) match = addr.city?.toLowerCase() === rate.address_city.toLowerCase();
+        if (rate.address_postal_code && match) match = addr.postal_code?.toLowerCase() === rate.address_postal_code.toLowerCase();
+        if (rate.address_street && match) match = addr.address_line1?.toLowerCase() === rate.address_street.toLowerCase();
+        return match;
+      });
+    });
+
+    if (matchingRates.length === 0) {
+      toast.info("No matching tax rates found for the selected parties");
+      return;
+    }
+
+    const newSelected = matchingRates
+      .filter((r) => !selectedTaxRates.find((sr) => sr.tax_rate_id === r.id))
+      .map((r) => ({ tax_rate_id: r.id, name: r.name, rate: r.rate, rate_type: r.rate_type || "percent" }));
+
+    if (newSelected.length === 0) {
+      toast.info("All matching rates are already applied");
+      return;
+    }
+
+    setSelectedTaxRates([...selectedTaxRates, ...newSelected]);
+    toast.success(`Added ${newSelected.length} matching tax rate(s)`);
+  };
+
   const handleCreateOrder = async () => {
     if (!formData.customer_id) {
       toast.error("Please select a customer");
