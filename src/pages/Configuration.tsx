@@ -141,8 +141,9 @@ const Configuration = () => {
     contest_time_punch_days: 7,
     show_product_images: false,
     allow_mass_deletion: false,
-    allow_requisition_editing: true,
-  });
+     allow_requisition_editing: true,
+     auto_allocate_rates: false,
+   });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
   const [searchQuery, setSearchQuery] = useState('');
