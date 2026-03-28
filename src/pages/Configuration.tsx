@@ -543,8 +543,9 @@ const Configuration = () => {
         contest_time_punch_days: processControls.contest_time_punch_days,
         show_product_images: processControls.show_product_images,
         allow_mass_deletion: processControls.allow_mass_deletion,
-        allow_requisition_editing: processControls.allow_requisition_editing,
-      };
+         allow_requisition_editing: processControls.allow_requisition_editing,
+         auto_allocate_rates: processControls.auto_allocate_rates,
+       };
 
       if (existing) {
         await supabase
