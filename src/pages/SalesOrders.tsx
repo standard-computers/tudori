@@ -61,11 +61,13 @@ import {
   FileSpreadsheet,
   FileText,
   AlertTriangle,
+  Wand2,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { useProcessControls } from "@/hooks/use-process-controls";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
 
 const SALES_ORDER_QUERY_FIELDS: QueryField[] = [

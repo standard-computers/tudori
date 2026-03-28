@@ -60,6 +60,7 @@ import {
   Package,
   AlertTriangle,
   Search,
+  Wand2,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,6 +68,7 @@ import { toast } from '@/lib/toast';
 import { DeliveryItemsDialog } from "@/components/DeliveryItemsDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
+import { useProcessControls } from "@/hooks/use-process-controls";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
 import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
