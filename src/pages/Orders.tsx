@@ -681,7 +681,7 @@ const Orders = () => {
   const fetchTaxRates = async () => {
     const { data } = await supabase
       .from("tax_rates")
-      .select("id, name, rate, rate_type, is_default")
+      .select("id, name, rate, rate_type, is_default, address_street, address_city, address_county, address_state, address_postal_code, address_country")
       .eq("company_id", companyId)
       .eq("is_active", true)
       .order("name");
