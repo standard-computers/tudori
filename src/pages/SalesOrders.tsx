@@ -161,12 +161,22 @@ interface Location {
   id: string;
   name: string;
   location_id: string;
+  address_line1?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
 }
 
 interface Customer {
   id: string;
   name: string;
   customer_id: string;
+  address_line1?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
 }
 
 interface Ledger {
