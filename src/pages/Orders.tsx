@@ -357,6 +357,7 @@ const Orders = () => {
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
+  const { controls: processControls } = useProcessControls(companyId);
   const [showQueryDialog, setShowQueryDialog] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);

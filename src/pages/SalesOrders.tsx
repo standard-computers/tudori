@@ -249,6 +249,7 @@ const SalesOrders = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [company, setCompany] = useState<any>(null);
   const { reduceAppLoad, loading: reduceAppLoadLoading } = useReduceAppLoad();
+  const { controls: processControls } = useProcessControls(companyId);
   const [showQueryDialog, setShowQueryDialog] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
 
