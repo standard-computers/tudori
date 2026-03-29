@@ -5449,6 +5449,7 @@ export type Database = {
       }
     }
     Functions: {
+      company_has_roles: { Args: { p_company_id: string }; Returns: boolean }
       create_company_and_profile: {
         Args: {
           p_address_line1: string
