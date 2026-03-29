@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from "react";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { COUNTRY_OPTIONS } from "@/config/countries";
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
@@ -1275,10 +1277,11 @@ const Vendors = () => {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="country">Country</Label>
-                            <Input
-                              id="country"
+                            <SearchableSelect
+                              options={COUNTRY_OPTIONS}
                               value={formData.country}
-                              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                              onValueChange={(val) => setFormData({ ...formData, country: val })}
+                              placeholder="Select country..."
                             />
                           </div>
                         </div>
