@@ -1464,7 +1464,7 @@ const Locations = () => {
                               <div className="space-y-2">
                                 <Label htmlFor="country">Country</Label>
                                 <SearchableSelect
-                                  options={countryOptions}
+                                  options={COUNTRY_OPTIONS}
                                   value={formData.country}
                                   onValueChange={(val) => setFormData({ ...formData, country: val })}
                                   placeholder="Select country..."
