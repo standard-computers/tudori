@@ -1118,10 +1118,11 @@ const Customers = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="country">Country</Label>
-                        <Input
-                          id="country"
+                        <SearchableSelect
+                          options={COUNTRY_OPTIONS}
                           value={formData.country}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                          onValueChange={(val) => setFormData({ ...formData, country: val })}
+                          placeholder="Select country..."
                         />
                       </div>
                     </div>
