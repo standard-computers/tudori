@@ -445,7 +445,7 @@ const Locations = () => {
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const { exportToExcel, readExcel } = useExcel();
 
-  const countryOptions = useMemo(() => COUNTRIES.map(c => ({ value: c, label: c })), []);
+  
 
   // Import progress state
   const [importProgressOpen, setImportProgressOpen] = useState(false);
