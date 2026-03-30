@@ -975,6 +975,15 @@ export default function Agreements() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                onCheckedChange={(checked) => {
+                  if (checked) setSelectedIds(new Set(filtered.map(a => a.id)));
+                  else setSelectedIds(new Set());
+                }}
+              />
+            </TableHead>
             <SortableTableHead label="ID" sortKey="agreement_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Name" sortKey="name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
@@ -987,11 +996,17 @@ export default function Agreements() {
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
+            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
             <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={selectedIds.has(a.id)}
+                  onCheckedChange={(checked) => handleRowSelect(a.id, !!checked, (window.event as any)?.shiftKey ?? false)}
+                />
+              </TableCell>
               <TableCell className="font-mono text-xs">{a.agreement_id}</TableCell>
               <TableCell className="font-medium">{a.name}</TableCell>
               <TableCell>
