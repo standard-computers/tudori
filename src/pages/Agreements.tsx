@@ -504,6 +504,121 @@ export default function Agreements() {
     }
   };
 
+  // ── Bulk Check ─────────────────────────────────────────────────────────────
+
+  const handleBulkCheck = async () => {
+    if (!companyId || selectedIds.size === 0) return;
+    setBulkChecking(true);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const docs: PendingDocument[] = [];
+      const selectedAgreements = agreements.filter(a => selectedIds.has(a.id));
+      let lastRateIds = new Set<string>();
+
+      for (const agr of selectedAgreements) {
+        const [{ data: accs }, { data: items }, { data: agrRatesData }] = await Promise.all([
+          supabase.from("agreement_accounts")
+            .select("id, account_id, account:accounts(id, account_id, name, type)")
+            .eq("agreement_id", agr.id),
+          supabase.from("agreement_items")
+            .select("id, product_id, quantity, unit_price, notes, cadence, cadence_day, product:products(name, product_id)")
+            .eq("agreement_id", agr.id),
+          supabase.from("agreement_rates" as any).select("rate_id").eq("agreement_id", agr.id),
+        ]);
+
+        const agrAccounts = (accs || []).map((a: any) => ({ ...a, account: a.account })) as AgreementAccount[];
+        const agrItems = (items || []).map((i: any) => ({ ...i, product: i.product })) as AgreementItem[];
+        const rateIds = (agrRatesData || []).map((r: any) => r.rate_id);
+        for (const rid of rateIds) lastRateIds.add(rid);
+
+        if (agrAccounts.length === 0 || agrItems.length === 0) continue;
+
+        const startDate = agr.start_date ? new Date(agr.start_date) : new Date(today);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = agr.end_date ? new Date(Math.min(new Date(agr.end_date).getTime(), today.getTime())) : new Date(today);
+        endDate.setHours(0, 0, 0, 0);
+
+        const productIds = agrItems.map(i => i.product_id);
+
+        const [{ data: allSOs }, { data: allPOs }] = await Promise.all([
+          supabase.from("sales_order_items")
+            .select("sales_order_id, product_id, sales_orders!inner(order_date, created_at, company_id)")
+            .eq("sales_orders.company_id", companyId)
+            .in("product_id", productIds.length > 0 ? productIds : ["none"]),
+          supabase.from("purchase_order_items")
+            .select("purchase_order_id, product_id, purchase_orders!inner(order_date, created_at, company_id)")
+            .eq("purchase_orders.company_id", companyId)
+            .in("product_id", productIds.length > 0 ? productIds : ["none"]),
+        ]);
+
+        const soDateProducts: Record<string, Set<string>> = {};
+        for (const row of (allSOs || []) as any[]) {
+          const date = (row.sales_orders?.order_date || row.sales_orders?.created_at || "").slice(0, 10);
+          if (!soDateProducts[date]) soDateProducts[date] = new Set();
+          soDateProducts[date].add(row.product_id);
+        }
+        const poDateProducts: Record<string, Set<string>> = {};
+        for (const row of (allPOs || []) as any[]) {
+          const date = (row.purchase_orders?.order_date || row.purchase_orders?.created_at || "").slice(0, 10);
+          if (!poDateProducts[date]) poDateProducts[date] = new Set();
+          poDateProducts[date].add(row.product_id);
+        }
+
+        for (const la of agrAccounts) {
+          const acc = la.account;
+          const isCustomer = acc.type?.toLowerCase() === "customer";
+          const lookup = isCustomer ? soDateProducts : poDateProducts;
+
+          for (const item of agrItems) {
+            const dueDates = getDueDates(item, startDate, endDate);
+            for (const dateStr of dueDates) {
+              const covered = lookup[dateStr]?.has(item.product_id);
+              if (!covered) {
+                const existing = docs.find(
+                  d => d.periodDate === dateStr && d.accountId === acc.id && d.type === (isCustomer ? "sales_order" : "purchase_order")
+                );
+                if (existing) {
+                  if (!existing.items.find(i => i.productId === item.product_id)) {
+                    existing.items.push({
+                      productId: item.product_id,
+                      productName: item.product?.name ?? item.product_id,
+                      quantity: item.quantity,
+                      unitPrice: item.unit_price,
+                    });
+                  }
+                } else {
+                  docs.push({
+                    type: isCustomer ? "sales_order" : "purchase_order",
+                    accountId: acc.id,
+                    accountName: acc.name,
+                    accountType: acc.type,
+                    items: [{
+                      productId: item.product_id,
+                      productName: item.product?.name ?? item.product_id,
+                      quantity: item.quantity,
+                      unitPrice: item.unit_price,
+                    }],
+                    reason: `Missing ${isCustomer ? "sales order" : "purchase order"} for ${dateStr} (${agr.name})`,
+                    periodDate: dateStr,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      setLinkedRateIds(lastRateIds);
+      docs.sort((a, b) => a.periodDate.localeCompare(b.periodDate));
+      setPendingDocs(docs);
+      setSelectedAgreement(selectedAgreements[0]);
+      setCheckDialogOpen(true);
+    } finally {
+      setBulkChecking(false);
+    }
+  };
+
   const handleExecute = async () => {
     if (!companyId) return;
     setExecuting(true);
