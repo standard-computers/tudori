@@ -193,6 +193,12 @@ export default function Agreements() {
 
   const { sortConfig, handleSort, sortedAndFilteredData } = useTableSort<Agreement>(agreements, "created_at", "desc");
 
+  // ── Multi-select ──────────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const orderedIds = useMemo(() => sortedAndFilteredData.map(a => a.id), [sortedAndFilteredData]);
+  const { handleRowSelect } = useShiftSelect(orderedIds, selectedIds, setSelectedIds);
+  const [bulkChecking, setBulkChecking] = useState(false);
+
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchAgreements = useCallback(async () => {
