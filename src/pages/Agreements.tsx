@@ -1413,9 +1413,9 @@ export default function Agreements() {
       <Dialog open={checkDialogOpen} onOpenChange={setCheckDialogOpen}>
         <DialogContent className="max-w-2xl" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-primary" />
-              Agreement Check — {selectedAgreement?.name}
+              Agreement Check {selectedIds.size > 1 ? `— ${selectedIds.size} Agreements` : `— ${selectedAgreement?.name}`}
             </DialogTitle>
           </DialogHeader>
           <DialogBody>
