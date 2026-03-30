@@ -26,6 +26,7 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
 import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent, CheckCircle2, XCircle, ChevronLeft } from "lucide-react";
+import { useShiftSelect } from "@/hooks/use-shift-select";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
