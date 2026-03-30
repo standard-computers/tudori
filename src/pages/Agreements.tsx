@@ -948,10 +948,23 @@ export default function Agreements() {
               <h1 className="text-xl font-semibold">Agreements</h1>
               <Badge variant="secondary">{agreements.length}</Badge>
             </div>
-            <Button onClick={openCreate} size="icon" className="relative">
-              <Plus className="h-4 w-4" />
-              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-            </Button>
+            <div className="flex items-center gap-1">
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleBulkCheck}
+                  disabled={bulkChecking}
+                  title={`Check ${selectedIds.size} agreement${selectedIds.size !== 1 ? "s" : ""}`}
+                >
+                  {bulkChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                </Button>
+              )}
+              <Button onClick={openCreate} size="icon" className="relative">
+                <Plus className="h-4 w-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
