@@ -26,6 +26,7 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { toast } from "@/lib/toast";
 import { Plus, Handshake, Trash2, Search, X, ClipboardCheck, ShoppingCart, FileText, Loader2, Percent, CheckCircle2, XCircle, ChevronLeft } from "lucide-react";
+import { useShiftSelect } from "@/hooks/use-shift-select";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
@@ -191,6 +192,12 @@ export default function Agreements() {
   const [progressDone, setProgressDone] = useState(false);
 
   const { sortConfig, handleSort, sortedAndFilteredData } = useTableSort<Agreement>(agreements, "created_at", "desc");
+
+  // ── Multi-select ──────────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const orderedIds = useMemo(() => sortedAndFilteredData.map(a => a.id), [sortedAndFilteredData]);
+  const { handleRowSelect } = useShiftSelect(orderedIds, selectedIds, setSelectedIds);
+  const [bulkChecking, setBulkChecking] = useState(false);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -494,6 +501,121 @@ export default function Agreements() {
       setCheckDialogOpen(true);
     } finally {
       setChecking(false);
+    }
+  };
+
+  // ── Bulk Check ─────────────────────────────────────────────────────────────
+
+  const handleBulkCheck = async () => {
+    if (!companyId || selectedIds.size === 0) return;
+    setBulkChecking(true);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const docs: PendingDocument[] = [];
+      const selectedAgreements = agreements.filter(a => selectedIds.has(a.id));
+      let lastRateIds = new Set<string>();
+
+      for (const agr of selectedAgreements) {
+        const [{ data: accs }, { data: items }, { data: agrRatesData }] = await Promise.all([
+          supabase.from("agreement_accounts")
+            .select("id, account_id, account:accounts(id, account_id, name, type)")
+            .eq("agreement_id", agr.id),
+          supabase.from("agreement_items")
+            .select("id, product_id, quantity, unit_price, notes, cadence, cadence_day, product:products(name, product_id)")
+            .eq("agreement_id", agr.id),
+          supabase.from("agreement_rates" as any).select("rate_id").eq("agreement_id", agr.id),
+        ]);
+
+        const agrAccounts = (accs || []).map((a: any) => ({ ...a, account: a.account })) as AgreementAccount[];
+        const agrItems = (items || []).map((i: any) => ({ ...i, product: i.product })) as AgreementItem[];
+        const rateIds = (agrRatesData || []).map((r: any) => r.rate_id);
+        for (const rid of rateIds) lastRateIds.add(rid);
+
+        if (agrAccounts.length === 0 || agrItems.length === 0) continue;
+
+        const startDate = agr.start_date ? new Date(agr.start_date) : new Date(today);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = agr.end_date ? new Date(Math.min(new Date(agr.end_date).getTime(), today.getTime())) : new Date(today);
+        endDate.setHours(0, 0, 0, 0);
+
+        const productIds = agrItems.map(i => i.product_id);
+
+        const [{ data: allSOs }, { data: allPOs }] = await Promise.all([
+          supabase.from("sales_order_items")
+            .select("sales_order_id, product_id, sales_orders!inner(order_date, created_at, company_id)")
+            .eq("sales_orders.company_id", companyId)
+            .in("product_id", productIds.length > 0 ? productIds : ["none"]),
+          supabase.from("purchase_order_items")
+            .select("purchase_order_id, product_id, purchase_orders!inner(order_date, created_at, company_id)")
+            .eq("purchase_orders.company_id", companyId)
+            .in("product_id", productIds.length > 0 ? productIds : ["none"]),
+        ]);
+
+        const soDateProducts: Record<string, Set<string>> = {};
+        for (const row of (allSOs || []) as any[]) {
+          const date = (row.sales_orders?.order_date || row.sales_orders?.created_at || "").slice(0, 10);
+          if (!soDateProducts[date]) soDateProducts[date] = new Set();
+          soDateProducts[date].add(row.product_id);
+        }
+        const poDateProducts: Record<string, Set<string>> = {};
+        for (const row of (allPOs || []) as any[]) {
+          const date = (row.purchase_orders?.order_date || row.purchase_orders?.created_at || "").slice(0, 10);
+          if (!poDateProducts[date]) poDateProducts[date] = new Set();
+          poDateProducts[date].add(row.product_id);
+        }
+
+        for (const la of agrAccounts) {
+          const acc = la.account;
+          const isCustomer = acc.type?.toLowerCase() === "customer";
+          const lookup = isCustomer ? soDateProducts : poDateProducts;
+
+          for (const item of agrItems) {
+            const dueDates = getDueDates(item, startDate, endDate);
+            for (const dateStr of dueDates) {
+              const covered = lookup[dateStr]?.has(item.product_id);
+              if (!covered) {
+                const existing = docs.find(
+                  d => d.periodDate === dateStr && d.accountId === acc.id && d.type === (isCustomer ? "sales_order" : "purchase_order")
+                );
+                if (existing) {
+                  if (!existing.items.find(i => i.productId === item.product_id)) {
+                    existing.items.push({
+                      productId: item.product_id,
+                      productName: item.product?.name ?? item.product_id,
+                      quantity: item.quantity,
+                      unitPrice: item.unit_price,
+                    });
+                  }
+                } else {
+                  docs.push({
+                    type: isCustomer ? "sales_order" : "purchase_order",
+                    accountId: acc.id,
+                    accountName: acc.name,
+                    accountType: acc.type,
+                    items: [{
+                      productId: item.product_id,
+                      productName: item.product?.name ?? item.product_id,
+                      quantity: item.quantity,
+                      unitPrice: item.unit_price,
+                    }],
+                    reason: `Missing ${isCustomer ? "sales order" : "purchase order"} for ${dateStr} (${agr.name})`,
+                    periodDate: dateStr,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      setLinkedRateIds(lastRateIds);
+      docs.sort((a, b) => a.periodDate.localeCompare(b.periodDate));
+      setPendingDocs(docs);
+      setSelectedAgreement(selectedAgreements[0]);
+      setCheckDialogOpen(true);
+    } finally {
+      setBulkChecking(false);
     }
   };
 
@@ -826,10 +948,23 @@ export default function Agreements() {
               <h1 className="text-xl font-semibold">Agreements</h1>
               <Badge variant="secondary">{agreements.length}</Badge>
             </div>
-            <Button onClick={openCreate} size="icon" className="relative">
-              <Plus className="h-4 w-4" />
-              <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-            </Button>
+            <div className="flex items-center gap-1">
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleBulkCheck}
+                  disabled={bulkChecking}
+                  title={`Check ${selectedIds.size} agreement${selectedIds.size !== 1 ? "s" : ""}`}
+                >
+                  {bulkChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                </Button>
+              )}
+              <Button onClick={openCreate} size="icon" className="relative">
+                <Plus className="h-4 w-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -840,6 +975,15 @@ export default function Agreements() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                onCheckedChange={(checked) => {
+                  if (checked) setSelectedIds(new Set(filtered.map(a => a.id)));
+                  else setSelectedIds(new Set());
+                }}
+              />
+            </TableHead>
             <SortableTableHead label="ID" sortKey="agreement_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Name" sortKey="name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
@@ -852,11 +996,17 @@ export default function Agreements() {
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
+            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
             <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={selectedIds.has(a.id)}
+                  onCheckedChange={(checked) => handleRowSelect(a.id, !!checked, (window.event as any)?.shiftKey ?? false)}
+                />
+              </TableCell>
               <TableCell className="font-mono text-xs">{a.agreement_id}</TableCell>
               <TableCell className="font-medium">{a.name}</TableCell>
               <TableCell>
@@ -1263,9 +1413,9 @@ export default function Agreements() {
       <Dialog open={checkDialogOpen} onOpenChange={setCheckDialogOpen}>
         <DialogContent className="max-w-2xl" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-primary" />
-              Agreement Check — {selectedAgreement?.name}
+              Agreement Check {selectedIds.size > 1 ? `— ${selectedIds.size} Agreements` : `— ${selectedAgreement?.name}`}
             </DialogTitle>
           </DialogHeader>
           <DialogBody>
