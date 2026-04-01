@@ -1032,6 +1032,12 @@ export default function Agreements() {
               <TableCell className="text-sm text-muted-foreground">{a.vendor_source ? getVendorDisplayName(a.vendor_source) : "-"}</TableCell>
               <TableCell className="text-right font-mono">{a.account_count ?? 0}</TableCell>
               <TableCell className="text-right font-mono">{a.item_count ?? 0}</TableCell>
+              <TableCell className="text-sm capitalize">{a.unique_cadence || "-"}</TableCell>
+              <TableCell className="text-sm">{a.unique_cadence && a.unique_cadence_day ? (() => {
+                const opts = getCadenceDayOptions(a.unique_cadence!);
+                const match = opts.find(o => o.value === a.unique_cadence_day);
+                return match ? match.label : a.unique_cadence_day;
+              })() : "-"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
