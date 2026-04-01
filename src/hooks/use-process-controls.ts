@@ -13,6 +13,7 @@ interface ProcessControls {
   allow_mass_deletion: boolean;
    allow_requisition_editing: boolean;
    auto_allocate_rates: boolean;
+   allow_agreement_pricing_edits: boolean;
 }
 
 const DEFAULTS: ProcessControls = {
@@ -27,6 +28,7 @@ const DEFAULTS: ProcessControls = {
   allow_mass_deletion: false,
   allow_requisition_editing: true,
   auto_allocate_rates: false,
+  allow_agreement_pricing_edits: false,
 };
 
 export function useProcessControls(companyId: string | null) {
@@ -62,6 +64,7 @@ export function useProcessControls(companyId: string | null) {
             allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
              allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
              auto_allocate_rates: (val.auto_allocate_rates as boolean) ?? false,
+             allow_agreement_pricing_edits: (val.allow_agreement_pricing_edits as boolean) ?? false,
            });
         }
       } catch (error) {

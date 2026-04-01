@@ -74,6 +74,7 @@ interface ProcessControlSettings {
   allow_mass_deletion: boolean;
    allow_requisition_editing: boolean;
    auto_allocate_rates: boolean;
+   allow_agreement_pricing_edits: boolean;
 }
 
 interface ImportExportSettings {
@@ -143,6 +144,7 @@ const Configuration = () => {
     allow_mass_deletion: false,
      allow_requisition_editing: true,
      auto_allocate_rates: false,
+     allow_agreement_pricing_edits: false,
    });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -313,6 +315,7 @@ const Configuration = () => {
           allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
            allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
            auto_allocate_rates: (val.auto_allocate_rates as boolean) ?? false,
+           allow_agreement_pricing_edits: (val.allow_agreement_pricing_edits as boolean) ?? false,
          });
       }
     } catch (error) {
@@ -1230,6 +1233,25 @@ const Configuration = () => {
                        checked={processControls.auto_allocate_rates}
                        onCheckedChange={(checked) => 
                          setProcessControls(prev => ({ ...prev, auto_allocate_rates: checked }))
+                       }
+                       className="ml-4"
+                     />
+                   </div>
+
+                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                     <div className="space-y-1">
+                       <Label className="font-medium text-base">Allow Agreement Pricing Edits</Label>
+                       <p className="text-sm text-muted-foreground">
+                         When enabled, line item prices can be edited in the agreement check window before executing.
+                       </p>
+                       <p className="text-xs text-muted-foreground mt-2">
+                         When disabled, prices are locked to the agreement item values.
+                       </p>
+                     </div>
+                     <Switch
+                       checked={processControls.allow_agreement_pricing_edits}
+                       onCheckedChange={(checked) => 
+                         setProcessControls(prev => ({ ...prev, allow_agreement_pricing_edits: checked }))
                        }
                        className="ml-4"
                      />
