@@ -74,6 +74,7 @@ interface ProcessControlSettings {
   allow_mass_deletion: boolean;
    allow_requisition_editing: boolean;
    auto_allocate_rates: boolean;
+   allow_agreement_pricing_edits: boolean;
 }
 
 interface ImportExportSettings {
