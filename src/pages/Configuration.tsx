@@ -1234,6 +1234,25 @@ const Configuration = () => {
                        className="ml-4"
                      />
                    </div>
+
+                   <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                     <div className="space-y-1">
+                       <Label className="font-medium text-base">Allow Agreement Pricing Edits</Label>
+                       <p className="text-sm text-muted-foreground">
+                         When enabled, line item prices can be edited in the agreement check window before executing.
+                       </p>
+                       <p className="text-xs text-muted-foreground mt-2">
+                         When disabled, prices are locked to the agreement item values.
+                       </p>
+                     </div>
+                     <Switch
+                       checked={processControls.allow_agreement_pricing_edits}
+                       onCheckedChange={(checked) => 
+                         setProcessControls(prev => ({ ...prev, allow_agreement_pricing_edits: checked }))
+                       }
+                       className="ml-4"
+                     />
+                   </div>
                  </div>
                </CardContent>
              </Card>
