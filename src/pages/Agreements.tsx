@@ -44,6 +44,8 @@ interface Agreement {
   created_at: string;
   account_count?: number;
   item_count?: number;
+  unique_cadence?: string | null;
+  unique_cadence_day?: string | null;
 }
 
 interface Account {
@@ -206,16 +208,25 @@ export default function Agreements() {
     setLoading(true);
     const { data, error } = await supabase
       .from("agreements")
-      .select("*, agreement_accounts(count), agreement_items(count)")
+      .select("*, agreement_accounts(count), agreement_items(count, cadence, cadence_day)")
       .eq("company_id", companyId)
       .order("created_at", { ascending: false });
     if (error) { toast.error("Failed to load agreements"); setLoading(false); return; }
     setAgreements(
-      (data || []).map((a: any) => ({
-        ...a,
-        account_count: a.agreement_accounts?.[0]?.count ?? 0,
-        item_count: a.agreement_items?.[0]?.count ?? 0,
-      }))
+      (data || []).map((a: any) => {
+        const items = a.agreement_items || [];
+        const countRow = items.find((i: any) => i.count !== undefined);
+        const itemCount = countRow?.count ?? items.length;
+        const cadences = [...new Set(items.map((i: any) => i.cadence).filter(Boolean))];
+        const cadenceDays = [...new Set(items.map((i: any) => i.cadence_day).filter(Boolean))];
+        return {
+          ...a,
+          account_count: a.agreement_accounts?.[0]?.count ?? 0,
+          item_count: itemCount,
+          unique_cadence: cadences.length === 1 ? (cadences[0] as string) : null,
+          unique_cadence_day: cadenceDays.length === 1 ? (cadenceDays[0] as string) : null,
+        };
+      })
     );
     setLoading(false);
   }, [companyId]);
@@ -992,13 +1003,15 @@ export default function Agreements() {
             <SortableTableHead label="Vendor / Source" sortKey="vendor_source" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Accounts" sortKey="account_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
             <SortableTableHead label="Items" sortKey="item_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
+            <SortableTableHead label="Cadence" sortKey="unique_cadence" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+            <SortableTableHead label="Day" sortKey="unique_cadence_day" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+            <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
+            <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
             <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -1019,6 +1032,12 @@ export default function Agreements() {
               <TableCell className="text-sm text-muted-foreground">{a.vendor_source ? getVendorDisplayName(a.vendor_source) : "-"}</TableCell>
               <TableCell className="text-right font-mono">{a.account_count ?? 0}</TableCell>
               <TableCell className="text-right font-mono">{a.item_count ?? 0}</TableCell>
+              <TableCell className="text-sm capitalize">{a.unique_cadence || "-"}</TableCell>
+              <TableCell className="text-sm">{a.unique_cadence && a.unique_cadence_day ? (() => {
+                const opts = getCadenceDayOptions(a.unique_cadence!);
+                const match = opts.find(o => o.value === a.unique_cadence_day);
+                return match ? match.label : a.unique_cadence_day;
+              })() : "-"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
