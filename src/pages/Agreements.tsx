@@ -44,6 +44,8 @@ interface Agreement {
   created_at: string;
   account_count?: number;
   item_count?: number;
+  unique_cadence?: string | null;
+  unique_cadence_day?: string | null;
 }
 
 interface Account {
