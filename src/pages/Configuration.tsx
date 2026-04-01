@@ -548,6 +548,7 @@ const Configuration = () => {
         allow_mass_deletion: processControls.allow_mass_deletion,
          allow_requisition_editing: processControls.allow_requisition_editing,
          auto_allocate_rates: processControls.auto_allocate_rates,
+         allow_agreement_pricing_edits: processControls.allow_agreement_pricing_edits,
        };
 
       if (existing) {
