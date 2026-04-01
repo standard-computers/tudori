@@ -28,6 +28,7 @@ const DEFAULTS: ProcessControls = {
   allow_mass_deletion: false,
   allow_requisition_editing: true,
   auto_allocate_rates: false,
+  allow_agreement_pricing_edits: false,
 };
 
 export function useProcessControls(companyId: string | null) {
