@@ -1479,7 +1479,30 @@ export default function Agreements() {
                           <tr key={ii} className={ii < doc.items.length - 1 ? "border-b border-border" : ""}>
                             <td className="px-4 py-2">{item.productName}</td>
                             <td className="px-4 py-2 text-right font-mono">{item.quantity}</td>
-                            <td className="px-4 py-2 text-right font-mono">${Number(item.unitPrice).toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {processControls.allow_agreement_pricing_edits ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  className="w-24 ml-auto text-right h-7 text-xs font-mono"
+                                  value={item.unitPrice}
+                                  onChange={(e) => {
+                                    const newPrice = parseFloat(e.target.value) || 0;
+                                    setPendingDocs(prev => prev.map((d, di) =>
+                                      di === idx ? {
+                                        ...d,
+                                        items: d.items.map((it, iti) =>
+                                          iti === ii ? { ...it, unitPrice: newPrice } : it
+                                        ),
+                                      } : d
+                                    ));
+                                  }}
+                                />
+                              ) : (
+                                `$${Number(item.unitPrice).toFixed(2)}`
+                              )}
+                            </td>
                             <td className="px-4 py-2 text-right font-mono font-medium">${(item.quantity * item.unitPrice).toFixed(2)}</td>
                           </tr>
                         ))}
