@@ -1003,6 +1003,8 @@ export default function Agreements() {
             <SortableTableHead label="Vendor / Source" sortKey="vendor_source" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
             <SortableTableHead label="Accounts" sortKey="account_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
             <SortableTableHead label="Items" sortKey="item_count" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} className="text-right" />
+            <SortableTableHead label="Cadence" sortKey="unique_cadence" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
+            <SortableTableHead label="Day" sortKey="unique_cadence_day" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
           </TableRow>
         </TableHeader>
         <TableBody>
