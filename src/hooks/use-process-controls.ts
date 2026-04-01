@@ -64,6 +64,7 @@ export function useProcessControls(companyId: string | null) {
             allow_mass_deletion: (val.allow_mass_deletion as boolean) ?? false,
              allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
              auto_allocate_rates: (val.auto_allocate_rates as boolean) ?? false,
+             allow_agreement_pricing_edits: (val.allow_agreement_pricing_edits as boolean) ?? false,
            });
         }
       } catch (error) {
