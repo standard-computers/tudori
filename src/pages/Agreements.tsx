@@ -140,6 +140,7 @@ export default function Agreements() {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const { vendorOptions, parseVendorValue, getVendorDisplayName } = useVendorSources(companyId, { includeAllLocations: true });
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
+  const { controls: processControls } = useProcessControls(companyId);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
