@@ -31,6 +31,7 @@ import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { Kbd } from "@/components/ui/kbd";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useVendorSources } from "@/hooks/use-vendor-sources";
+import { useProcessControls } from "@/hooks/use-process-controls";
 
 interface Agreement {
   id: string;
