@@ -1009,9 +1009,9 @@ export default function Agreements() {
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+            <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
+            <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No agreements found</TableCell></TableRow>
           ) : filtered.map(a => (
             <TableRow key={a.id} className="cursor-pointer" onClick={() => openEdit(a)}>
               <TableCell onClick={(e) => e.stopPropagation()}>
