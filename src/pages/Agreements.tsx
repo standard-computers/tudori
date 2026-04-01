@@ -208,21 +208,19 @@ export default function Agreements() {
     setLoading(true);
     const { data, error } = await supabase
       .from("agreements")
-      .select("*, agreement_accounts(count), agreement_items(count, cadence, cadence_day)")
+      .select("*, agreement_accounts(count), agreement_items(cadence, cadence_day)")
       .eq("company_id", companyId)
       .order("created_at", { ascending: false });
     if (error) { toast.error("Failed to load agreements"); setLoading(false); return; }
     setAgreements(
       (data || []).map((a: any) => {
-        const items = a.agreement_items || [];
-        const countRow = items.find((i: any) => i.count !== undefined);
-        const itemCount = countRow?.count ?? items.length;
+        const items: any[] = a.agreement_items || [];
         const cadences = [...new Set(items.map((i: any) => i.cadence).filter(Boolean))];
         const cadenceDays = [...new Set(items.map((i: any) => i.cadence_day).filter(Boolean))];
         return {
           ...a,
           account_count: a.agreement_accounts?.[0]?.count ?? 0,
-          item_count: itemCount,
+          item_count: items.length,
           unique_cadence: cadences.length === 1 ? (cadences[0] as string) : null,
           unique_cadence_day: cadenceDays.length === 1 ? (cadenceDays[0] as string) : null,
         };
