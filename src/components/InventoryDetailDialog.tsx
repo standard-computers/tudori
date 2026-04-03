@@ -113,8 +113,42 @@ export const InventoryDetailDialog = ({
       setSelectedBinId('');
       setSelectedPUId('');
       fetchBins();
+      checkLocationAdmin();
     }
   }, [open, item, locationId]);
+
+  const checkLocationAdmin = async () => {
+    if (!user || !locationId) {
+      setIsLocationAdmin(false);
+      return;
+    }
+    // Check location_users for admin role
+    const { data: luData } = await supabase
+      .from('location_users')
+      .select('role')
+      .eq('location_id', locationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (luData?.role === 'admin') {
+      setIsLocationAdmin(true);
+      return;
+    }
+
+    // Check company-level admin/owner role
+    if (item?.product?.company_id) {
+      const { data: urData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('company_id', item.product.company_id)
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin']);
+
+      setIsLocationAdmin(!!(urData && urData.length > 0));
+    } else {
+      setIsLocationAdmin(false);
+    }
+  };
 
   const fetchBins = async () => {
     // First get areas for this location
