@@ -1464,6 +1464,14 @@ export default function Agreements() {
                       <span className="text-sm">{doc.accountName}</span>
                       <Badge variant="secondary" className="ml-auto capitalize text-xs">{doc.accountType}</Badge>
                       <span className="text-xs text-muted-foreground font-mono">{doc.periodDate}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-1 text-muted-foreground hover:text-destructive"
+                        onClick={() => setPendingDocs(prev => prev.filter((_, i) => i !== idx))}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                     <table className="w-full text-sm">
                       <thead>
