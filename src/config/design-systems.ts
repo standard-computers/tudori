@@ -331,7 +331,8 @@ export const applyDesignSystem = (designSystemId: string, theme: 'light' | 'dark
   const ds = designSystemId === 'custom' && customHsl
     ? buildCustomDesignSystem(customHsl.h, customHsl.s, customHsl.l)
     : getDesignSystem(designSystemId);
-  const variables = ds.variables[theme];
+  const variables = ds?.variables?.[theme];
+  if (!variables) return;
   
   Object.entries(variables).forEach(([key, value]) => {
     document.documentElement.style.setProperty(key, value);
