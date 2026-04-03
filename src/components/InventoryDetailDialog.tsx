@@ -81,7 +81,9 @@ export const InventoryDetailDialog = ({
   item,
   locationId,
   onUpdated,
-}: InventoryDetailDialogProps) => {
+  const { user } = useAuth();
+  const [isLocationAdmin, setIsLocationAdmin] = useState(false);
+  const [isWritingOff, setIsWritingOff] = useState(false);
   const [isPutAwayMode, setIsPutAwayMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [isChangePUMode, setIsChangePUMode] = useState(false);
