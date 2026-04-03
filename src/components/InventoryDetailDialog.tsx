@@ -724,8 +724,71 @@ export const InventoryDetailDialog = ({
       setIsDeleting(false);
     }
   };
+  const handleWriteOff = async () => {
+    if (!item || !item.product?.company_id) {
+      toast.error('Missing product or company information');
+      return;
+    }
 
-  const handleAssignPU = async () => {
+    setIsWritingOff(true);
+    try {
+      const companyId = item.product.company_id;
+
+      // Get next goods issue number
+      const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', {
+        p_company_id: companyId,
+      });
+
+      if (!issueNumber) throw new Error('Failed to generate issue number');
+
+      // Create the goods issue
+      const { data: gi, error: giError } = await supabase
+        .from('goods_issues' as any)
+        .insert({
+          company_id: companyId,
+          issue_number: issueNumber,
+          location_id: locationId,
+          status: 'draft',
+          notes: `Write-off for ${item.product.name}`,
+          issue_date: new Date().toISOString().split('T')[0],
+        })
+        .select('id')
+        .single();
+
+      if (giError || !gi) throw giError || new Error('Failed to create goods issue');
+
+      // Add the item
+      const { error: itemError } = await supabase
+        .from('goods_issue_items' as any)
+        .insert({
+          goods_issue_id: (gi as any).id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          bin_id: item.bin_id || null,
+          pu_id: item.pu_id || null,
+          notes: 'Write-off',
+        });
+
+      if (itemError) throw itemError;
+
+      // Post the goods issue to deduct inventory
+      const result = await postGoodsIssue((gi as any).id, locationId);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to post write-off');
+      }
+
+      toast.success(`Written off ${item.quantity} units of ${item.product.name} (${issueNumber})`);
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Write-off error:', error);
+      toast.error('Failed to write off inventory');
+    } finally {
+      setIsWritingOff(false);
+    }
+  };
+
+
     if (!item || !item.product?.company_id) {
       toast.error('Missing product or company information');
       return;
