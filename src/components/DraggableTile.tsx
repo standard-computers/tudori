@@ -84,9 +84,13 @@ export const DraggableTile = ({
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
     >
-      <Icon className={`w-8 h-8 ${color} mb-4`} />
-      <h3 className="font-display font-semibold text-foreground mb-1">{name}</h3>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      <div className="flex items-center justify-between w-full gap-3">
+        <div className="flex flex-col min-w-0">
+          <h3 className="font-display font-semibold text-foreground mb-1 text-left">{name}</h3>
+          <p className="text-sm text-muted-foreground text-left">{description}</p>
+        </div>
+        <Icon className={`w-8 h-8 ${color} shrink-0`} />
+      </div>
     </motion.div>
   );
 };
