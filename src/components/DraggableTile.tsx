@@ -87,8 +87,8 @@ export const DraggableTile = ({
       <div className="flex items-center w-full gap-3">
         <Icon className={`w-8 h-8 ${color} shrink-0`} />
         <div className="flex flex-col min-w-0">
-          <h3 className="font-display font-semibold text-foreground mb-1 text-left">{name}</h3>
-          <p className="text-sm text-muted-foreground text-left">{description}</p>
+          <h3 className="font-display font-semibold text-foreground mb-1 text-left truncate">{name}</h3>
+          <p className="text-sm text-muted-foreground text-left truncate">{description}</p>
         </div>
       </div>
     </motion.div>
