@@ -122,30 +122,35 @@ export const InventoryDetailDialog = ({
       setIsLocationAdmin(false);
       return;
     }
-    // Check location_users for admin role
-    const { data: luData } = await supabase
-      .from('location_users')
-      .select('role')
-      .eq('location_id', locationId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (luData?.role === 'admin') {
-      setIsLocationAdmin(true);
-      return;
-    }
-
-    // Check company-level admin/owner role
-    if (item?.product?.company_id) {
-      const { data: urData } = await supabase
-        .from('user_roles')
+    try {
+      // Check location_users for admin role
+      const { data: luData } = await supabase
+        .from('location_users')
         .select('role')
-        .eq('company_id', item.product.company_id)
+        .eq('location_id', locationId)
         .eq('user_id', user.id)
-        .in('role', ['owner', 'admin']);
+        .maybeSingle();
 
-      setIsLocationAdmin(!!(urData && urData.length > 0));
-    } else {
+      if (luData?.role === 'admin') {
+        setIsLocationAdmin(true);
+        return;
+      }
+
+      // Check company-level admin/owner role
+      if (item?.product?.company_id) {
+        const { data: urData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('company_id', item.product.company_id)
+          .eq('user_id', user.id);
+
+        const isAdmin = !!(urData && urData.some((r: any) => r.role === 'owner' || r.role === 'admin'));
+        setIsLocationAdmin(isAdmin);
+      } else {
+        setIsLocationAdmin(false);
+      }
+    } catch (error) {
+      console.error('Failed to check location admin:', error);
       setIsLocationAdmin(false);
     }
   };
