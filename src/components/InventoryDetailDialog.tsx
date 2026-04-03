@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { postGoodsIssue } from '@/lib/inventory-posting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace, Printer } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace, Printer, FileX } from 'lucide-react';
 import { printInventoryLabels } from '@/lib/print-label';
 import { toast } from '@/lib/toast';
 import {
@@ -80,6 +82,9 @@ export const InventoryDetailDialog = ({
   locationId,
   onUpdated,
 }: InventoryDetailDialogProps) => {
+  const { user } = useAuth();
+  const [isLocationAdmin, setIsLocationAdmin] = useState(false);
+  const [isWritingOff, setIsWritingOff] = useState(false);
   const [isPutAwayMode, setIsPutAwayMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [isChangePUMode, setIsChangePUMode] = useState(false);
@@ -108,8 +113,42 @@ export const InventoryDetailDialog = ({
       setSelectedBinId('');
       setSelectedPUId('');
       fetchBins();
+      checkLocationAdmin();
     }
   }, [open, item, locationId]);
+
+  const checkLocationAdmin = async () => {
+    if (!user || !locationId) {
+      setIsLocationAdmin(false);
+      return;
+    }
+    // Check location_users for admin role
+    const { data: luData } = await supabase
+      .from('location_users')
+      .select('role')
+      .eq('location_id', locationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (luData?.role === 'admin') {
+      setIsLocationAdmin(true);
+      return;
+    }
+
+    // Check company-level admin/owner role
+    if (item?.product?.company_id) {
+      const { data: urData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('company_id', item.product.company_id)
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin']);
+
+      setIsLocationAdmin(!!(urData && urData.length > 0));
+    } else {
+      setIsLocationAdmin(false);
+    }
+  };
 
   const fetchBins = async () => {
     // First get areas for this location
@@ -685,6 +724,69 @@ export const InventoryDetailDialog = ({
       setIsDeleting(false);
     }
   };
+  const handleWriteOff = async () => {
+    if (!item || !item.product?.company_id) {
+      toast.error('Missing product or company information');
+      return;
+    }
+
+    setIsWritingOff(true);
+    try {
+      const companyId = item.product.company_id;
+
+      // Get next goods issue number
+      const { data: issueNumber } = await supabase.rpc('get_next_goods_issue_number', {
+        p_company_id: companyId,
+      });
+
+      if (!issueNumber) throw new Error('Failed to generate issue number');
+
+      // Create the goods issue
+      const { data: gi, error: giError } = await supabase
+        .from('goods_issues' as any)
+        .insert({
+          company_id: companyId,
+          issue_number: issueNumber,
+          location_id: locationId,
+          status: 'draft',
+          notes: `Write-off for ${item.product.name}`,
+          issue_date: new Date().toISOString().split('T')[0],
+        })
+        .select('id')
+        .single();
+
+      if (giError || !gi) throw giError || new Error('Failed to create goods issue');
+
+      // Add the item
+      const { error: itemError } = await supabase
+        .from('goods_issue_items' as any)
+        .insert({
+          goods_issue_id: (gi as any).id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          bin_id: item.bin_id || null,
+          pu_id: item.pu_id || null,
+          notes: 'Write-off',
+        });
+
+      if (itemError) throw itemError;
+
+      // Post the goods issue to deduct inventory
+      const result = await postGoodsIssue((gi as any).id, locationId);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to post write-off');
+      }
+
+      toast.success(`Written off ${item.quantity} units of ${item.product.name} (${issueNumber})`);
+      onUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Write-off error:', error);
+      toast.error('Failed to write off inventory');
+    } finally {
+      setIsWritingOff(false);
+    }
+  };
 
   const handleAssignPU = async () => {
     if (!item || !item.product?.company_id) {
@@ -1063,6 +1165,30 @@ export const InventoryDetailDialog = ({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              {isLocationAdmin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="secondary" size="sm" disabled={isWritingOff}>
+                      <FileX className="w-4 h-4 mr-2" />
+                      Write Off
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Write Off Inventory</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will create a Goods Issue to write off {item.quantity} units of {item.product?.name}. The inventory will be deducted and a ledger transaction recorded. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleWriteOff} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {isWritingOff ? 'Writing Off...' : 'Write Off'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
               <Button
                 variant="outline"
                 size="sm"
