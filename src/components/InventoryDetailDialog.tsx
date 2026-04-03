@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace, Printer } from 'lucide-react';
+import { Package, MapPin, Boxes, ArrowRight, Trash2, Tag, Split, Wand2, Loader2, MoveRight, Replace, Printer, FileX } from 'lucide-react';
 import { printInventoryLabels } from '@/lib/print-label';
 import { toast } from '@/lib/toast';
 import {
