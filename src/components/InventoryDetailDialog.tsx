@@ -1173,7 +1173,7 @@ export const InventoryDetailDialog = ({
                       Write Off
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="z-[70]">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Write Off Inventory</AlertDialogTitle>
                       <AlertDialogDescription>
