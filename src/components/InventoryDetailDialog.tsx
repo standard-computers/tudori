@@ -1165,6 +1165,30 @@ export const InventoryDetailDialog = ({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              {isLocationAdmin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="secondary" size="sm" disabled={isWritingOff}>
+                      <FileX className="w-4 h-4 mr-2" />
+                      Write Off
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Write Off Inventory</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will create a Goods Issue to write off {item.quantity} units of {item.product?.name}. The inventory will be deducted and a ledger transaction recorded. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleWriteOff} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {isWritingOff ? 'Writing Off...' : 'Write Off'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
               <Button
                 variant="outline"
                 size="sm"
