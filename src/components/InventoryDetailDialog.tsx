@@ -788,7 +788,7 @@ export const InventoryDetailDialog = ({
     }
   };
 
-
+  const handleAssignPU = async () => {
     if (!item || !item.product?.company_id) {
       toast.error('Missing product or company information');
       return;
