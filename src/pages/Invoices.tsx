@@ -904,6 +904,7 @@ const Invoices = () => {
         </DialogContent>
       </Dialog>
 
+      <ImportProgressDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         title="Importing Invoices"
