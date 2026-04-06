@@ -689,6 +689,14 @@ const Invoices = () => {
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[90vh]'}`}>
           <button
             type="button"
+            onClick={() => setIsAddAttachmentOpen(true)}
+            className="absolute right-16 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+            title="Attach file"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsMaximized(!isMaximized)}
             className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
           >
