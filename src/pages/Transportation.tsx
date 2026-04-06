@@ -152,8 +152,21 @@ const Transportation = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [trucks, setTrucks] = useState<TruckRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [importProgress, setImportProgress] = useState<{ open: boolean; total: number; current: number; imported: number; failed: number }>({ open: false, total: 0, current: 0, imported: 0, failed: 0 });
+
+  // Truck dialog state
+  const [isTruckDialogOpen, setIsTruckDialogOpen] = useState(false);
+  const [editingTruck, setEditingTruck] = useState<TruckRecord | null>(null);
+  const [truckForm, setTruckForm] = useState({
+    truck_id: '',
+    carrier_id: '',
+    source_location_id: '',
+    destination_location_id: '',
+    notes: '',
+    is_active: true,
+  });
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
