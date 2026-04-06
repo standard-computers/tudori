@@ -184,6 +184,33 @@ const Ledgers = () => {
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
 
+  // Flatten transactions for sorting/filtering
+  const flatTransactions = useMemo(() => ledgerTransactions.map(tx => ({
+    ...tx,
+    _date: format(parseISO(tx.transaction_date), 'MMM d, yyyy'),
+    _time: format(new Date(tx.created_at), 'h:mm a'),
+    _type: getTransactionTypeLabel(tx.transaction_type),
+    _reference: tx.reference_number || '',
+    _description: tx.description || '',
+    _amount: tx.amount,
+  })), [ledgerTransactions]);
+
+  const {
+    sortConfig: txSortConfig,
+    handleSort: handleTxSort,
+    sortedAndFilteredData: sortedTransactions,
+    getFilterConfig: getTxFilterConfig,
+    setFilter: setTxFilter,
+  } = useTableSort(flatTransactions);
+
+  const handleTxFilterConfig = (key: string, config: ColumnFilterConfig | null) => {
+    if (config === null) {
+      setTxFilter(key, '');
+    } else {
+      setTxFilter(key, config);
+    }
+  };
+
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
