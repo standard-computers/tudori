@@ -156,7 +156,26 @@ const Invoices = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
 
-  const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
+  // Flatten nested fields for sorting/filtering
+  const flatInvoices = useMemo(() => invoices.map(inv => ({
+    ...inv,
+    _accountName: inv.account?.name || '',
+    _payToId: inv.purchase_order?.vendor?.vendor_id || inv.sales_order?.customer?.customer_id || '',
+    _payToName: inv.purchase_order?.vendor?.name || inv.sales_order?.customer?.name || '',
+    _locationName: inv.purchase_order?.location?.name || inv.sales_order?.location?.name || '',
+    _locationId: inv.purchase_order?.location?.location_id || inv.sales_order?.location?.location_id || '',
+    _reference: inv.purchase_order?.po_number ? `PO: ${inv.purchase_order.po_number}` : inv.sales_order?.so_number ? `SO: ${inv.sales_order.so_number}` : '',
+  })), [invoices]);
+
+  const { sortConfig, sortedAndFilteredData, handleSort, filterConfigs, getFilterConfig, setFilter } = useTableSort(flatInvoices);
+
+  const handleFilterConfig = (key: string, config: import('@/hooks/use-table-sort').ColumnFilterConfig | null) => {
+    if (config) {
+      setFilter(key, config);
+    } else {
+      setFilter(key, '');
+    }
+  };
 
   useEffect(() => {
     if (isCreateDialogOpen) {
