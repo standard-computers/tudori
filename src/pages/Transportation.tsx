@@ -314,6 +314,7 @@ const Transportation = () => {
       fetchProducts();
       fetchVendors();
       fetchAssignments();
+      fetchTrucks();
     }
   }, [companyId]);
 
