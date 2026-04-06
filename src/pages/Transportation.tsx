@@ -1966,6 +1966,100 @@ const Transportation = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Truck Dialog */}
+      <Dialog open={isTruckDialogOpen} onOpenChange={setIsTruckDialogOpen}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{editingTruck ? 'Edit Truck' : 'New Truck'}</DialogTitle>
+            <DialogDescription>
+              {editingTruck ? 'Update truck details' : 'Add a new truck'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 px-6">
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="truck_id">Truck ID *</Label>
+                <Input
+                  id="truck_id"
+                  value={truckForm.truck_id}
+                  onChange={(e) => setTruckForm({ ...truckForm, truck_id: e.target.value })}
+                  disabled={!!editingTruck}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Carrier *</Label>
+                <SearchableSelect
+                  options={carriers.map((c) => ({ value: c.id, label: `${c.carrier_id} - ${c.name}` }))}
+                  value={truckForm.carrier_id}
+                  onValueChange={(value) => setTruckForm({ ...truckForm, carrier_id: value })}
+                  placeholder="Select carrier"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Source Location</Label>
+                <SearchableSelect
+                  options={[{ value: '', label: '— None —' }, ...locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))]}
+                  value={truckForm.source_location_id}
+                  onValueChange={(value) => setTruckForm({ ...truckForm, source_location_id: value })}
+                  placeholder="Select source location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Destination Location</Label>
+                <SearchableSelect
+                  options={[{ value: '', label: '— None —' }, ...locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))]}
+                  value={truckForm.destination_location_id}
+                  onValueChange={(value) => setTruckForm({ ...truckForm, destination_location_id: value })}
+                  placeholder="Select destination location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="truck_notes">Notes</Label>
+                <Input
+                  id="truck_notes"
+                  value={truckForm.notes}
+                  onChange={(e) => setTruckForm({ ...truckForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="truck_is_active"
+                  checked={truckForm.is_active}
+                  onCheckedChange={(checked) =>
+                    setTruckForm({ ...truckForm, is_active: checked as boolean })
+                  }
+                />
+                <Label htmlFor="truck_is_active">Active</Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0">
+            <Button
+              onClick={handleSaveTruck}
+              disabled={!truckForm.truck_id || !truckForm.carrier_id}
+            >
+              {editingTruck ? 'Update' : 'Create'}
+              <Kbd>⌘S</Kbd>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Import Progress Dialog */}
       <Dialog open={importProgress.open}>
         <DialogContent draggable={false} className="max-w-md">
