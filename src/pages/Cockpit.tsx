@@ -1268,13 +1268,13 @@ const [areaFormData, setAreaFormData] = useState({
     if (od.sales_order_id) {
       const { data } = await supabase
         .from('sales_order_items' as any)
-        .select('id, product_id, quantity, product:products(name, product_id)')
+        .select('id, product_id, quantity, product:products(name, product_id, unit)')
         .eq('sales_order_id', od.sales_order_id);
       setViewingOrderDetailItems((data as any) || []);
     } else if (od.purchase_order_id) {
       const { data } = await supabase
         .from('purchase_order_items' as any)
-        .select('id, product_id, quantity, product:products(name, product_id)')
+        .select('id, product_id, quantity, product:products(name, product_id, unit)')
         .eq('purchase_order_id', od.purchase_order_id);
       setViewingOrderDetailItems((data as any) || []);
     } else {
