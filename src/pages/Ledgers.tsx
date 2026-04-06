@@ -156,6 +156,17 @@ const Ledgers = () => {
   const [isAdjustingOff, setIsAdjustingOff] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [docIdConfigs, setDocIdConfigs] = useState<DocIdConfig[]>([]);
+
+  // Add adjustment dialog state
+  const [isAddAdjustmentOpen, setIsAddAdjustmentOpen] = useState(false);
+  const [isSubmittingAdjustment, setIsSubmittingAdjustment] = useState(false);
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    transaction_type: 'adjustment',
+    amount: '',
+    description: '',
+    reference_number: '',
+    transaction_date: new Date().toISOString().split('T')[0],
+  });
   
   // Maximize states
   const [isCreateMaximized, setIsCreateMaximized] = useMaximizedState();
