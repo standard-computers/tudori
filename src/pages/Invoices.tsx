@@ -660,7 +660,7 @@ const Invoices = () => {
                               Mark as Paid
                             </DropdownMenuItem>
                           )}
-                          {invoice.status !== 'cancelled' && (
+                          {invoice.status !== 'cancelled' && invoice.status !== 'paid' && (
                             <DropdownMenuItem onClick={() => handleStatusChange(invoice, 'cancelled')}>
                               Cancel
                             </DropdownMenuItem>
