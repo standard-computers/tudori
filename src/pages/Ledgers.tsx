@@ -1010,30 +1010,30 @@ const Ledgers = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <SortableTableHead label="Date" sortKey="_date" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_date')} onFilterConfig={handleTxFilterConfig} filterKey="_date" />
+                    <SortableTableHead label="Time" sortKey="_time" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_time')} onFilterConfig={handleTxFilterConfig} filterKey="_time" />
+                    <SortableTableHead label="Type" sortKey="_type" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_type')} onFilterConfig={handleTxFilterConfig} filterKey="_type" />
+                    <SortableTableHead label="Reference" sortKey="_reference" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_reference')} onFilterConfig={handleTxFilterConfig} filterKey="_reference" />
+                    <SortableTableHead label="Description" sortKey="_description" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_description')} onFilterConfig={handleTxFilterConfig} filterKey="_description" />
+                    <SortableTableHead label="Amount" sortKey="_amount" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_amount')} onFilterConfig={handleTxFilterConfig} filterKey="_amount" className="text-right" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ledgerTransactions.map((tx) => (
+                  {sortedTransactions.map((tx) => (
                     <TableRow 
                       key={tx.id} 
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => setViewingTransaction(tx)}
                     >
                       <TableCell className="whitespace-nowrap">
-                        {format(parseISO(tx.transaction_date), 'MMM d, yyyy')}
+                        {tx._date}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {format(new Date(tx.created_at), 'h:mm a')}
+                        {tx._time}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {getTransactionTypeLabel(tx.transaction_type)}
+                          {tx._type}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
