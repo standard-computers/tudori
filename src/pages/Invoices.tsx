@@ -273,6 +273,8 @@ const Invoices = () => {
 
   const handleViewClick = async (invoice: Invoice) => {
     setViewingInvoice(invoice);
+    setViewNotes(invoice.notes || '');
+    setIsEditingNotes(false);
     
     const { data: items } = await supabase
       .from('invoice_items' as any)
