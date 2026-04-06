@@ -1042,6 +1042,26 @@ const Ledgers = () => {
           </DialogHeader>
 
           <div className="absolute right-16 top-4 flex items-center gap-3 z-10">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdjustmentForm({
+                    transaction_type: 'adjustment',
+                    amount: '',
+                    description: '',
+                    reference_number: '',
+                    transaction_date: new Date().toISOString().split('T')[0],
+                  });
+                  setIsAddAdjustmentOpen(true);
+                }}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                title="Add transaction"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">Add transaction</span>
+              </button>
+            )}
             {ledgerTransactions.length > 0 && (
               <button
                 type="button"
