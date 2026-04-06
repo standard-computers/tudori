@@ -46,6 +46,7 @@ import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface InvoiceAttachment {
   id: string;
@@ -824,7 +825,63 @@ const Invoices = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="attachments" className="px-6 pb-4">
+              <TabsContent value="notes" className="px-6 pb-4">
+                <div className="pt-4">
+                  {isEditingNotes ? (
+                    <div className="space-y-3">
+                      <Textarea
+                        value={viewNotes}
+                        onChange={(e) => setViewNotes(e.target.value)}
+                        placeholder="Add notes..."
+                        rows={6}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => { setViewNotes(viewingInvoice?.notes || ''); setIsEditingNotes(false); }}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" disabled={notesSaving} onClick={async () => {
+                          if (!viewingInvoice) return;
+                          setNotesSaving(true);
+                          try {
+                            const { error } = await (supabase.from('invoices' as any) as any)
+                              .update({ notes: viewNotes.trim() || null })
+                              .eq('id', viewingInvoice.id);
+                            if (error) throw error;
+                            setViewingInvoice({ ...viewingInvoice, notes: viewNotes.trim() || null });
+                            setIsEditingNotes(false);
+                            toast.success('Notes saved');
+                            fetchInvoices();
+                          } catch (err: any) {
+                            toast.error(err.message || 'Failed to save notes');
+                          } finally {
+                            setNotesSaving(false);
+                          }
+                        }}>
+                          {notesSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : viewNotes ? (
+                    <div className="space-y-3">
+                      <p className="whitespace-pre-wrap text-sm">{viewNotes}</p>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditingNotes(true)}>
+                        Modify
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 space-y-3">
+                      <p className="text-muted-foreground">No notes for this invoice.</p>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditingNotes(true)}>
+                        <StickyNote className="h-4 w-4 mr-1" />
+                        Add Note
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+
                 <div className="pt-4 space-y-2">
                   {viewAttachments.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
