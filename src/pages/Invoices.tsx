@@ -857,7 +857,53 @@ const Invoices = () => {
         </DialogContent>
       </Dialog>
 
-      <ImportProgressDialog
+      {/* Add Attachment Dialog */}
+      <Dialog open={isAddAttachmentOpen} onOpenChange={setIsAddAttachmentOpen}>
+        <DialogContent className="max-w-md z-[60]">
+          <DialogHeader>
+            <DialogTitle>Add Attachment</DialogTitle>
+            <DialogDescription>Upload a file and give it a name.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Name</Label>
+              <Input
+                value={attachmentName}
+                onChange={(e) => setAttachmentName(e.target.value)}
+                placeholder="e.g. Signed copy"
+              />
+            </div>
+            <div>
+              <Label>File</Label>
+              <div className="mt-1">
+                <label className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 hover:bg-muted/50 transition-colors">
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm truncate">{attachmentFile ? attachmentFile.name : 'Choose file...'}</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        setAttachmentFile(f);
+                        if (!attachmentName) setAttachmentName(f.name.replace(/\.[^.]+$/, ''));
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddAttachmentOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddAttachment} disabled={!attachmentFile || !attachmentName.trim() || attachmentUploading}>
+              {attachmentUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         title="Importing Invoices"
