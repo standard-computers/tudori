@@ -156,7 +156,26 @@ const Invoices = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
 
-  const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
+  // Flatten nested fields for sorting/filtering
+  const flatInvoices = useMemo(() => invoices.map(inv => ({
+    ...inv,
+    _accountName: inv.account?.name || '',
+    _payToId: inv.purchase_order?.vendor?.vendor_id || inv.sales_order?.customer?.customer_id || '',
+    _payToName: inv.purchase_order?.vendor?.name || inv.sales_order?.customer?.name || '',
+    _locationName: inv.purchase_order?.location?.name || inv.sales_order?.location?.name || '',
+    _locationId: inv.purchase_order?.location?.location_id || inv.sales_order?.location?.location_id || '',
+    _reference: inv.purchase_order?.po_number ? `PO: ${inv.purchase_order.po_number}` : inv.sales_order?.so_number ? `SO: ${inv.sales_order.so_number}` : '',
+  })), [invoices]);
+
+  const { sortConfig, sortedAndFilteredData, handleSort, filterConfigs, getFilterConfig, setFilter } = useTableSort(flatInvoices);
+
+  const handleFilterConfig = (key: string, config: import('@/hooks/use-table-sort').ColumnFilterConfig | null) => {
+    if (config) {
+      setFilter(key, config);
+    } else {
+      setFilter(key, '');
+    }
+  };
 
   useEffect(() => {
     if (isCreateDialogOpen) {
@@ -560,21 +579,79 @@ const Invoices = () => {
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterable={false}
+                  filterConfig={getFilterConfig('invoice_number')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="invoice_number"
                 />
-                <TableHead>Account</TableHead>
-                <TableHead>Pay To ID</TableHead>
-                <TableHead>Pay To Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Location ID</TableHead>
-                <TableHead>Reference</TableHead>
+                <SortableTableHead
+                  label="Account"
+                  sortKey="_accountName"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterConfig={getFilterConfig('_accountName')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="_accountName"
+                />
+                <SortableTableHead
+                  label="Pay To ID"
+                  sortKey="_payToId"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterConfig={getFilterConfig('_payToId')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="_payToId"
+                />
+                <SortableTableHead
+                  label="Pay To Name"
+                  sortKey="_payToName"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterConfig={getFilterConfig('_payToName')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="_payToName"
+                />
+                <SortableTableHead
+                  label="Location"
+                  sortKey="_locationName"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterConfig={getFilterConfig('_locationName')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="_locationName"
+                />
+                <SortableTableHead
+                  label="Location ID"
+                  sortKey="_locationId"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterConfig={getFilterConfig('_locationId')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="_locationId"
+                />
+                <SortableTableHead
+                  label="Reference"
+                  sortKey="_reference"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterConfig={getFilterConfig('_reference')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="_reference"
+                />
                 <SortableTableHead
                   label="Date"
                   sortKey="invoice_date"
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterable={false}
+                  filterConfig={getFilterConfig('invoice_date')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="invoice_date"
                 />
                 <SortableTableHead
                   label="Amount"
@@ -582,7 +659,9 @@ const Invoices = () => {
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterable={false}
+                  filterConfig={getFilterConfig('amount')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="amount"
                 />
                 <SortableTableHead
                   label="Status"
@@ -590,7 +669,9 @@ const Invoices = () => {
                   currentSortKey={sortConfig.key}
                   currentSortDirection={sortConfig.direction}
                   onSort={handleSort}
-                  filterable={false}
+                  filterConfig={getFilterConfig('status')}
+                  onFilterConfig={handleFilterConfig}
+                  filterKey="status"
                 />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
