@@ -195,6 +195,17 @@ const Ledgers = () => {
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
 
+  const getTransactionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      purchase_order: 'Purchase Order',
+      invoice: 'Invoice',
+      sales_order: 'Sales Order',
+      payment: 'Payment',
+      adjustment: 'Adjustment',
+    };
+    return labels[type] || type;
+  };
+
   // Flatten transactions for sorting/filtering
   const flatTransactions = useMemo(() => ledgerTransactions.map(tx => {
     let dateStr = '';
