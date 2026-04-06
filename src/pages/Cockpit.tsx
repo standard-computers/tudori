@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/card';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -280,6 +281,14 @@ const [areaFormData, setAreaFormData] = useState({
   const [fulfillQuantities, setFulfillQuantities] = useState<Record<string, number>>({});
   const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
+
+  // View delivery / order detail dialogs
+  const [viewingOutboundDelivery, setViewingOutboundDelivery] = useState<OutboundOrder | null>(null);
+  const [viewingOutboundDeliveryItems, setViewingOutboundDeliveryItems] = useState<OutboundOrderItem[]>([]);
+  const [isViewDeliveryDetailOpen, setIsViewDeliveryDetailOpen] = useState(false);
+  const [viewingOrderDetail, setViewingOrderDetail] = useState<OutboundOrder | null>(null);
+  const [viewingOrderDetailItems, setViewingOrderDetailItems] = useState<OutboundOrderItem[]>([]);
+  const [isViewOrderDetailOpen, setIsViewOrderDetailOpen] = useState(false);
 
   // Multi-select fulfillment state
   const [selectedFulfillOrderIds, setSelectedFulfillOrderIds] = useState<Set<string>>(new Set());
@@ -1237,6 +1246,39 @@ const [areaFormData, setAreaFormData] = useState({
       setOutboundOrderItems((data as any) || []);
     } else {
       setOutboundOrderItems([]);
+    }
+  };
+
+  // View delivery detail
+  const handleViewDeliveryDetail = async (od: OutboundOrder) => {
+    setViewingOutboundDelivery(od);
+    setIsViewDeliveryDetailOpen(true);
+    // Fetch outbound delivery items
+    const { data } = await supabase
+      .from('outbound_delivery_items' as any)
+      .select('id, product_id, quantity, product:products(name, product_id)')
+      .eq('outbound_delivery_id', od.id);
+    setViewingOutboundDeliveryItems((data as any) || []);
+  };
+
+  // View order detail
+  const handleViewOrderDetail = async (od: OutboundOrder) => {
+    setViewingOrderDetail(od);
+    setIsViewOrderDetailOpen(true);
+    if (od.sales_order_id) {
+      const { data } = await supabase
+        .from('sales_order_items' as any)
+        .select('id, product_id, quantity, product:products(name, product_id)')
+        .eq('sales_order_id', od.sales_order_id);
+      setViewingOrderDetailItems((data as any) || []);
+    } else if (od.purchase_order_id) {
+      const { data } = await supabase
+        .from('purchase_order_items' as any)
+        .select('id, product_id, quantity, product:products(name, product_id)')
+        .eq('purchase_order_id', od.purchase_order_id);
+      setViewingOrderDetailItems((data as any) || []);
+    } else {
+      setViewingOrderDetailItems([]);
     }
   };
 
@@ -2379,9 +2421,23 @@ const [areaFormData, setAreaFormData] = useState({
                                 {isTransfer ? 'Transfer' : 'Sales'}
                               </Badge>
                             </TableCell>
-                            <TableCell className="font-mono">{od.delivery_number}</TableCell>
                             <TableCell className="font-mono">
-                              {od.sales_order?.so_number || od.purchase_order?.po_number || '—'}
+                              <button
+                                className="text-primary underline underline-offset-2 hover:opacity-80 cursor-pointer bg-transparent border-none p-0"
+                                onClick={() => handleViewDeliveryDetail(od)}
+                              >
+                                {od.delivery_number}
+                              </button>
+                            </TableCell>
+                            <TableCell className="font-mono">
+                              {(od.sales_order?.so_number || od.purchase_order?.po_number) ? (
+                                <button
+                                  className="text-primary underline underline-offset-2 hover:opacity-80 cursor-pointer bg-transparent border-none p-0"
+                                  onClick={() => handleViewOrderDetail(od)}
+                                >
+                                  {od.sales_order?.so_number || od.purchase_order?.po_number}
+                                </button>
+                              ) : '—'}
                             </TableCell>
                             <TableCell>{od.customer?.name || od.to_location?.name || '—'}</TableCell>
                             <TableCell>
@@ -4006,6 +4062,137 @@ const [areaFormData, setAreaFormData] = useState({
         locationId={selectedLocationId}
         locationName={selectedLocation?.name || ''}
       />
+
+      {/* View Delivery Detail Dialog */}
+      <Dialog open={isViewDeliveryDetailOpen} onOpenChange={setIsViewDeliveryDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Delivery {viewingOutboundDelivery?.delivery_number}</DialogTitle>
+            <DialogDescription>Outbound delivery details and line items</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {viewingOutboundDelivery && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Status</span>
+                    <div><Badge variant="outline" className={statusColors[viewingOutboundDelivery.status] || ''}>{viewingOutboundDelivery.status}</Badge></div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Type</span>
+                    <div>{viewingOutboundDelivery.purchase_order_id ? 'Transfer' : 'Sales'}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ship To</span>
+                    <div>{viewingOutboundDelivery.customer?.name || viewingOutboundDelivery.to_location?.name || '—'}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Expected Date</span>
+                    <div>{viewingOutboundDelivery.expected_date || '—'}</div>
+                  </div>
+                  {viewingOutboundDelivery.notes && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Notes</span>
+                      <div>{viewingOutboundDelivery.notes}</div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Line Items</h4>
+                  {viewingOutboundDeliveryItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No items</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Product ID</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewingOutboundDeliveryItems.map(item => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.product?.name || '—'}</TableCell>
+                            <TableCell className="font-mono text-xs">{item.product?.product_id || '—'}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Order Detail Dialog */}
+      <Dialog open={isViewOrderDetailOpen} onOpenChange={setIsViewOrderDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {viewingOrderDetail?.sales_order ? `Sales Order ${viewingOrderDetail.sales_order.so_number}` : 
+               viewingOrderDetail?.purchase_order ? `Purchase Order ${viewingOrderDetail.purchase_order.po_number}` : 'Order'}
+            </DialogTitle>
+            <DialogDescription>Order details and line items</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {viewingOrderDetail && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Type</span>
+                    <div>{viewingOrderDetail.purchase_order_id ? 'Internal Transfer' : 'Sales Order'}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ship To</span>
+                    <div>{viewingOrderDetail.customer?.name || viewingOrderDetail.to_location?.name || '—'}</div>
+                  </div>
+                  {viewingOrderDetail.sales_order && (
+                    <div>
+                      <span className="text-muted-foreground">Total Amount</span>
+                      <div>${viewingOrderDetail.sales_order.total_amount?.toFixed(2) || '0.00'}</div>
+                    </div>
+                  )}
+                  {viewingOrderDetail.purchase_order && (
+                    <div>
+                      <span className="text-muted-foreground">Total Amount</span>
+                      <div>${viewingOrderDetail.purchase_order.total_amount?.toFixed(2) || '0.00'}</div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Line Items</h4>
+                  {viewingOrderDetailItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No items</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Product ID</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewingOrderDetailItems.map(item => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.product?.name || '—'}</TableCell>
+                            <TableCell className="font-mono text-xs">{item.product?.product_id || '—'}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
