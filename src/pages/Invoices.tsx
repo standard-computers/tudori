@@ -816,7 +816,7 @@ const Invoices = () => {
                             </TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
                             <TableCell className="text-right font-mono">${(item.unit_price || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-mono">${(item.total_price || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-mono">${((item.total_price != null && item.total_price !== 0) ? item.total_price : (item.quantity * (item.unit_price || 0))).toFixed(2)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
