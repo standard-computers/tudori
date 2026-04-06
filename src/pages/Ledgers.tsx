@@ -1288,6 +1288,99 @@ const Ledgers = () => {
         results={importResults}
         isComplete={isImportComplete}
       />
+
+      {/* Add Transaction Dialog */}
+      <Dialog open={isAddAdjustmentOpen} onOpenChange={setIsAddAdjustmentOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Add Transaction</DialogTitle>
+            <DialogDescription>
+              Add a new transaction to {viewingLedger?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="adj_type">Type</Label>
+              <Select
+                value={adjustmentForm.transaction_type}
+                onValueChange={(v) => setAdjustmentForm(prev => ({ ...prev, transaction_type: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="adjustment">Adjustment</SelectItem>
+                  <SelectItem value="payment">Payment</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="purchase_order">Purchase Order</SelectItem>
+                  <SelectItem value="sales_order">Sales Order</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_amount">Amount *</Label>
+              <Input
+                id="adj_amount"
+                type="number"
+                step="0.01"
+                value={adjustmentForm.amount}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, amount: e.target.value }))}
+                placeholder="e.g. 100.00 or -50.00"
+              />
+              <p className="text-xs text-muted-foreground">Use negative values for debits</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_date">Date</Label>
+              <Input
+                id="adj_date"
+                type="date"
+                value={adjustmentForm.transaction_date}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, transaction_date: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_ref">Reference Number</Label>
+              <Input
+                id="adj_ref"
+                value={adjustmentForm.reference_number}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, reference_number: e.target.value }))}
+                placeholder="Optional reference"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_desc">Description</Label>
+              <Textarea
+                id="adj_desc"
+                value={adjustmentForm.description}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Optional description"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleAddAdjustment}
+              disabled={isSubmittingAdjustment || !adjustmentForm.amount}
+            >
+              {isSubmittingAdjustment ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Transaction'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
