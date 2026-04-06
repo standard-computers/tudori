@@ -38,7 +38,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
-import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2, Paperclip, X, Upload } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2, Paperclip, X, Upload, StickyNote } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format, parseISO } from 'date-fns';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
@@ -142,6 +142,9 @@ const Invoices = () => {
   const [attachmentName, setAttachmentName] = useState('');
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [viewNotes, setViewNotes] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
 
   // Import/Export
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -712,6 +715,7 @@ const Invoices = () => {
               <TabsList className="mx-6">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="items">Line Items</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="attachments">Attachments ({viewAttachments.length})</TabsTrigger>
               </TabsList>
 
