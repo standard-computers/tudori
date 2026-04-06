@@ -2421,9 +2421,23 @@ const [areaFormData, setAreaFormData] = useState({
                                 {isTransfer ? 'Transfer' : 'Sales'}
                               </Badge>
                             </TableCell>
-                            <TableCell className="font-mono">{od.delivery_number}</TableCell>
                             <TableCell className="font-mono">
-                              {od.sales_order?.so_number || od.purchase_order?.po_number || '—'}
+                              <button
+                                className="text-primary underline underline-offset-2 hover:opacity-80 cursor-pointer bg-transparent border-none p-0"
+                                onClick={() => handleViewDeliveryDetail(od)}
+                              >
+                                {od.delivery_number}
+                              </button>
+                            </TableCell>
+                            <TableCell className="font-mono">
+                              {(od.sales_order?.so_number || od.purchase_order?.po_number) ? (
+                                <button
+                                  className="text-primary underline underline-offset-2 hover:opacity-80 cursor-pointer bg-transparent border-none p-0"
+                                  onClick={() => handleViewOrderDetail(od)}
+                                >
+                                  {od.sales_order?.so_number || od.purchase_order?.po_number}
+                                </button>
+                              ) : '—'}
                             </TableCell>
                             <TableCell>{od.customer?.name || od.to_location?.name || '—'}</TableCell>
                             <TableCell>
