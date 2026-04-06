@@ -38,13 +38,26 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
-import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2, Paperclip, X, Upload } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format, parseISO } from 'date-fns';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
+import { Input } from '@/components/ui/input';
+
+interface InvoiceAttachment {
+  id: string;
+  invoice_id: string;
+  company_id: string;
+  name: string;
+  file_path: string;
+  file_size: number | null;
+  content_type: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
 
 interface Invoice {
   id: string;
@@ -124,6 +137,11 @@ const Invoices = () => {
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+  const [viewAttachments, setViewAttachments] = useState<InvoiceAttachment[]>([]);
+  const [isAddAttachmentOpen, setIsAddAttachmentOpen] = useState(false);
+  const [attachmentName, setAttachmentName] = useState('');
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
 
   // Import/Export
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -259,7 +277,63 @@ const Invoices = () => {
       .eq('invoice_id', invoice.id);
     
     setViewItems((items as any) || []);
+    await fetchAttachments(invoice.id);
     setIsViewDialogOpen(true);
+  };
+
+  const fetchAttachments = async (invoiceId: string) => {
+    const { data } = await supabase
+      .from('invoice_attachments' as any)
+      .select('*')
+      .eq('invoice_id', invoiceId)
+      .order('created_at', { ascending: false });
+    setViewAttachments((data as any) || []);
+  };
+
+  const handleAddAttachment = async () => {
+    if (!attachmentFile || !attachmentName.trim() || !viewingInvoice || !companyId) return;
+    setAttachmentUploading(true);
+    try {
+      const ext = attachmentFile.name.split('.').pop() || 'bin';
+      const filePath = `${companyId}/${viewingInvoice.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('invoice-attachments')
+        .upload(filePath, attachmentFile);
+      if (uploadError) throw uploadError;
+
+      const { error: insertError } = await (supabase.from('invoice_attachments' as any) as any).insert({
+        invoice_id: viewingInvoice.id,
+        company_id: companyId,
+        name: attachmentName.trim(),
+        file_path: filePath,
+        file_size: attachmentFile.size,
+        content_type: attachmentFile.type,
+        uploaded_by: user?.id,
+      });
+      if (insertError) throw insertError;
+
+      toast.success('Attachment added');
+      setAttachmentName('');
+      setAttachmentFile(null);
+      setIsAddAttachmentOpen(false);
+      await fetchAttachments(viewingInvoice.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload attachment');
+    } finally {
+      setAttachmentUploading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (att: InvoiceAttachment) => {
+    try {
+      await supabase.storage.from('invoice-attachments').remove([att.file_path]);
+      await (supabase.from('invoice_attachments' as any) as any).delete().eq('id', att.id);
+      toast.success('Attachment deleted');
+      if (viewingInvoice) await fetchAttachments(viewingInvoice.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete attachment');
+    }
   };
 
   const handleDelete = async (invoice: Invoice) => {
