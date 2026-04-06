@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,6 +61,8 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from '@/lib/toast';
 import { format, parseISO } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
+import { useTableSort, ColumnFilterConfig } from '@/hooks/use-table-sort';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
@@ -181,6 +183,33 @@ const Ledgers = () => {
   const [isImportComplete, setIsImportComplete] = useState(false);
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
+
+  // Flatten transactions for sorting/filtering
+  const flatTransactions = useMemo(() => ledgerTransactions.map(tx => ({
+    ...tx,
+    _date: format(parseISO(tx.transaction_date), 'MMM d, yyyy'),
+    _time: format(new Date(tx.created_at), 'h:mm a'),
+    _type: getTransactionTypeLabel(tx.transaction_type),
+    _reference: tx.reference_number || '',
+    _description: tx.description || '',
+    _amount: tx.amount,
+  })), [ledgerTransactions]);
+
+  const {
+    sortConfig: txSortConfig,
+    handleSort: handleTxSort,
+    sortedAndFilteredData: sortedTransactions,
+    getFilterConfig: getTxFilterConfig,
+    setFilter: setTxFilter,
+  } = useTableSort(flatTransactions);
+
+  const handleTxFilterConfig = (key: string, config: ColumnFilterConfig | null) => {
+    if (config === null) {
+      setTxFilter(key, '');
+    } else {
+      setTxFilter(key, config);
+    }
+  };
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -981,30 +1010,30 @@ const Ledgers = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <SortableTableHead label="Date" sortKey="_date" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_date')} onFilterConfig={handleTxFilterConfig} filterKey="_date" />
+                    <SortableTableHead label="Time" sortKey="_time" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_time')} onFilterConfig={handleTxFilterConfig} filterKey="_time" />
+                    <SortableTableHead label="Type" sortKey="_type" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_type')} onFilterConfig={handleTxFilterConfig} filterKey="_type" />
+                    <SortableTableHead label="Reference" sortKey="_reference" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_reference')} onFilterConfig={handleTxFilterConfig} filterKey="_reference" />
+                    <SortableTableHead label="Description" sortKey="_description" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_description')} onFilterConfig={handleTxFilterConfig} filterKey="_description" />
+                    <SortableTableHead label="Amount" sortKey="_amount" currentSortKey={txSortConfig.key} currentSortDirection={txSortConfig.direction} onSort={handleTxSort} filterConfig={getTxFilterConfig('_amount')} onFilterConfig={handleTxFilterConfig} filterKey="_amount" className="text-right" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ledgerTransactions.map((tx) => (
+                  {sortedTransactions.map((tx) => (
                     <TableRow 
                       key={tx.id} 
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => setViewingTransaction(tx)}
                     >
                       <TableCell className="whitespace-nowrap">
-                        {format(parseISO(tx.transaction_date), 'MMM d, yyyy')}
+                        {tx._date}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {format(new Date(tx.created_at), 'h:mm a')}
+                        {tx._time}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {getTransactionTypeLabel(tx.transaction_type)}
+                          {tx._type}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
