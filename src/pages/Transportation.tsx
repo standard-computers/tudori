@@ -1464,6 +1464,82 @@ const Transportation = () => {
               </TableBody>
             </Table>
           </TabsContent>
+
+          <TabsContent value="trucks" className="mt-0">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <SortableTableHead
+                    label="Truck ID"
+                    sortKey="truck_id"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['truck_id'] || ''}
+                    onFilter={(value) => setTruckFilter('truck_id', value)}
+                  />
+                  <SortableTableHead
+                    label="Carrier"
+                    sortKey="carrier.name"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['carrier.name'] || ''}
+                    onFilter={(value) => setTruckFilter('carrier.name', value)}
+                  />
+                  <SortableTableHead
+                    label="Source Location"
+                    sortKey="source_location.name"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['source_location.name'] || ''}
+                    onFilter={(value) => setTruckFilter('source_location.name', value)}
+                  />
+                  <SortableTableHead
+                    label="Destination Location"
+                    sortKey="destination_location.name"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['destination_location.name'] || ''}
+                    onFilter={(value) => setTruckFilter('destination_location.name', value)}
+                  />
+                  <TableHead>Active</TableHead>
+                  <TableHead className="w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTrucks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No trucks found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedTrucks.map((truck) => (
+                    <TableRow key={truck.id}>
+                      <TableCell className="font-mono">{truck.truck_id}</TableCell>
+                      <TableCell>{truck.carrier?.name || '—'}</TableCell>
+                      <TableCell>{truck.source_location ? `${truck.source_location.location_id} - ${truck.source_location.name}` : '—'}</TableCell>
+                      <TableCell>{truck.destination_location ? `${truck.destination_location.location_id} - ${truck.destination_location.name}` : '—'}</TableCell>
+                      <TableCell>{truck.is_active ? 'Yes' : 'No'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEditTruckDialog(truck)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTruck(truck)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TabsContent>
         </div>
 
         {/* Carrier Dialog */}
