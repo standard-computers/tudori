@@ -156,6 +156,17 @@ const Ledgers = () => {
   const [isAdjustingOff, setIsAdjustingOff] = useState(false);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [docIdConfigs, setDocIdConfigs] = useState<DocIdConfig[]>([]);
+
+  // Add adjustment dialog state
+  const [isAddAdjustmentOpen, setIsAddAdjustmentOpen] = useState(false);
+  const [isSubmittingAdjustment, setIsSubmittingAdjustment] = useState(false);
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    transaction_type: 'adjustment',
+    amount: '',
+    description: '',
+    reference_number: '',
+    transaction_date: new Date().toISOString().split('T')[0],
+  });
   
   // Maximize states
   const [isCreateMaximized, setIsCreateMaximized] = useMaximizedState();
@@ -606,6 +617,61 @@ const Ledgers = () => {
     }
   };
 
+  const handleAddAdjustment = async () => {
+    if (!viewingLedger || !adjustmentForm.amount) {
+      toast.error('Please enter an amount');
+      return;
+    }
+
+    const amount = parseFloat(adjustmentForm.amount);
+    if (isNaN(amount) || amount === 0) {
+      toast.error('Please enter a valid non-zero amount');
+      return;
+    }
+
+    setIsSubmittingAdjustment(true);
+    try {
+      const { error } = await supabase
+        .from('ledger_transactions' as any)
+        .insert({
+          ledger_id: viewingLedger.id,
+          transaction_type: adjustmentForm.transaction_type,
+          amount,
+          description: adjustmentForm.description || null,
+          reference_number: adjustmentForm.reference_number || null,
+          transaction_date: adjustmentForm.transaction_date || new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      toast.success('Transaction added');
+      setIsAddAdjustmentOpen(false);
+      setAdjustmentForm({
+        transaction_type: 'adjustment',
+        amount: '',
+        description: '',
+        reference_number: '',
+        transaction_date: new Date().toISOString().split('T')[0],
+      });
+
+      // Refresh
+      await fetchLedgerTransactions(viewingLedger.id);
+      await fetchLedgers(companyId!);
+
+      const { data: updatedTxs } = await supabase
+        .from('ledger_transactions' as any)
+        .select('amount')
+        .eq('ledger_id', viewingLedger.id);
+      const newBalance = (updatedTxs || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+      setViewingLedger(prev => prev ? { ...prev, computed_balance: newBalance } : null);
+    } catch (error: any) {
+      console.error('Error adding transaction:', error);
+      toast.error(error.message || 'Failed to add transaction');
+    } finally {
+      setIsSubmittingAdjustment(false);
+    }
+  };
+
   // --- Import/Export handlers ---
   const handleDownloadTemplate = () => {
     exportToExcel([], 'ledgers_template.xlsx', 'Ledgers', [
@@ -976,6 +1042,26 @@ const Ledgers = () => {
           </DialogHeader>
 
           <div className="absolute right-16 top-4 flex items-center gap-3 z-10">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdjustmentForm({
+                    transaction_type: 'adjustment',
+                    amount: '',
+                    description: '',
+                    reference_number: '',
+                    transaction_date: new Date().toISOString().split('T')[0],
+                  });
+                  setIsAddAdjustmentOpen(true);
+                }}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                title="Add transaction"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">Add transaction</span>
+              </button>
+            )}
             {ledgerTransactions.length > 0 && (
               <button
                 type="button"
@@ -1202,6 +1288,99 @@ const Ledgers = () => {
         results={importResults}
         isComplete={isImportComplete}
       />
+
+      {/* Add Transaction Dialog */}
+      <Dialog open={isAddAdjustmentOpen} onOpenChange={setIsAddAdjustmentOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Add Transaction</DialogTitle>
+            <DialogDescription>
+              Add a new transaction to {viewingLedger?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="adj_type">Type</Label>
+              <Select
+                value={adjustmentForm.transaction_type}
+                onValueChange={(v) => setAdjustmentForm(prev => ({ ...prev, transaction_type: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="adjustment">Adjustment</SelectItem>
+                  <SelectItem value="payment">Payment</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="purchase_order">Purchase Order</SelectItem>
+                  <SelectItem value="sales_order">Sales Order</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_amount">Amount *</Label>
+              <Input
+                id="adj_amount"
+                type="number"
+                step="0.01"
+                value={adjustmentForm.amount}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, amount: e.target.value }))}
+                placeholder="e.g. 100.00 or -50.00"
+              />
+              <p className="text-xs text-muted-foreground">Use negative values for debits</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_date">Date</Label>
+              <Input
+                id="adj_date"
+                type="date"
+                value={adjustmentForm.transaction_date}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, transaction_date: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_ref">Reference Number</Label>
+              <Input
+                id="adj_ref"
+                value={adjustmentForm.reference_number}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, reference_number: e.target.value }))}
+                placeholder="Optional reference"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adj_desc">Description</Label>
+              <Textarea
+                id="adj_desc"
+                value={adjustmentForm.description}
+                onChange={(e) => setAdjustmentForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Optional description"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleAddAdjustment}
+              disabled={isSubmittingAdjustment || !adjustmentForm.amount}
+            >
+              {isSubmittingAdjustment ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Transaction'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
