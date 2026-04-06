@@ -1249,6 +1249,39 @@ const [areaFormData, setAreaFormData] = useState({
     }
   };
 
+  // View delivery detail
+  const handleViewDeliveryDetail = async (od: OutboundOrder) => {
+    setViewingOutboundDelivery(od);
+    setIsViewDeliveryDetailOpen(true);
+    // Fetch outbound delivery items
+    const { data } = await supabase
+      .from('outbound_delivery_items' as any)
+      .select('id, product_id, quantity, product:products(name, product_id)')
+      .eq('outbound_delivery_id', od.id);
+    setViewingOutboundDeliveryItems((data as any) || []);
+  };
+
+  // View order detail
+  const handleViewOrderDetail = async (od: OutboundOrder) => {
+    setViewingOrderDetail(od);
+    setIsViewOrderDetailOpen(true);
+    if (od.sales_order_id) {
+      const { data } = await supabase
+        .from('sales_order_items' as any)
+        .select('id, product_id, quantity, product:products(name, product_id)')
+        .eq('sales_order_id', od.sales_order_id);
+      setViewingOrderDetailItems((data as any) || []);
+    } else if (od.purchase_order_id) {
+      const { data } = await supabase
+        .from('purchase_order_items' as any)
+        .select('id, product_id, quantity, product:products(name, product_id)')
+        .eq('purchase_order_id', od.purchase_order_id);
+      setViewingOrderDetailItems((data as any) || []);
+    } else {
+      setViewingOrderDetailItems([]);
+    }
+  };
+
   // Check if the selected location has an active inventory account
   const checkLocationHasInventoryAccount = async (): Promise<boolean> => {
     if (!selectedLocationId) return false;
