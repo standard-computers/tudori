@@ -1126,6 +1126,10 @@ const Transportation = () => {
                   <Users className="h-4 w-4" />
                   Assignments
                 </TabsTrigger>
+                <TabsTrigger value="trucks" className="gap-2">
+                  <Truck className="h-4 w-4" />
+                  Trucks
+                </TabsTrigger>
               </TabsList>
             </div>
             <div className="flex items-center gap-2 pr-12">
