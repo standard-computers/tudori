@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -1307,7 +1308,7 @@ const Ledgers = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <DialogBody className="space-y-4 px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="adj_type">Type</Label>
               <Select
@@ -1370,7 +1371,7 @@ const Ledgers = () => {
                 rows={3}
               />
             </div>
-          </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button
