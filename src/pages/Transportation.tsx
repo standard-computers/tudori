@@ -785,6 +785,89 @@ const Transportation = () => {
     }
   };
 
+  // ---- Truck functions ----
+  const fetchTrucks = async () => {
+    if (!companyId) return;
+    const { data, error } = await supabase
+      .from('trucks' as any)
+      .select(`
+        *,
+        carrier:carriers(id, carrier_id, name),
+        source_location:locations!trucks_source_location_id_fkey(id, location_id, name),
+        destination_location:locations!trucks_destination_location_id_fkey(id, location_id, name)
+      `)
+      .eq('company_id', companyId)
+      .order('truck_id');
+    if (error) {
+      console.error('Failed to load trucks:', error);
+    } else {
+      setTrucks((data as any) || []);
+    }
+  };
+
+  const getNextTruckId = async (): Promise<string> => {
+    if (!companyId) return 'TRK-0001';
+    const { data, error } = await supabase.rpc('generate_truck_id' as any, { p_company_id: companyId });
+    if (error || !data) return 'TRK-0001';
+    return data as string;
+  };
+
+  const openNewTruckDialog = async () => {
+    const nextId = await getNextTruckId();
+    setTruckForm({
+      truck_id: nextId,
+      carrier_id: '',
+      source_location_id: '',
+      destination_location_id: '',
+      notes: '',
+      is_active: true,
+    });
+    setEditingTruck(null);
+    setIsTruckDialogOpen(true);
+  };
+
+  const openEditTruckDialog = (truck: TruckRecord) => {
+    setTruckForm({
+      truck_id: truck.truck_id,
+      carrier_id: truck.carrier_id,
+      source_location_id: truck.source_location_id || '',
+      destination_location_id: truck.destination_location_id || '',
+      notes: truck.notes || '',
+      is_active: truck.is_active,
+    });
+    setEditingTruck(truck);
+    setIsTruckDialogOpen(true);
+  };
+
+  const handleSaveTruck = async () => {
+    if (!companyId || !truckForm.truck_id || !truckForm.carrier_id) return;
+    const truckData: any = {
+      company_id: companyId,
+      truck_id: truckForm.truck_id,
+      carrier_id: truckForm.carrier_id,
+      source_location_id: truckForm.source_location_id || null,
+      destination_location_id: truckForm.destination_location_id || null,
+      notes: truckForm.notes || null,
+      is_active: truckForm.is_active,
+    };
+    if (editingTruck) {
+      const { error } = await supabase.from('trucks' as any).update(truckData).eq('id', editingTruck.id);
+      if (error) { toast.error(error.message); }
+      else { toast.success('Truck updated'); setIsTruckDialogOpen(false); fetchTrucks(); }
+    } else {
+      const { error } = await supabase.from('trucks' as any).insert(truckData);
+      if (error) { toast.error(error.message); }
+      else { toast.success('Truck created'); setIsTruckDialogOpen(false); fetchTrucks(); }
+    }
+  };
+
+  const handleDeleteTruck = async (truck: TruckRecord) => {
+    if (!confirm(`Delete truck "${truck.truck_id}"?`)) return;
+    const { error } = await supabase.from('trucks' as any).delete().eq('id', truck.id);
+    if (error) { toast.error(error.message); }
+    else { toast.success('Truck deleted'); fetchTrucks(); }
+  };
+
   // ---- Import/Export: Carriers ----
   const CARRIER_TEMPLATE_COLUMNS = [
     { header: "Name", key: "Name", width: 25 },
