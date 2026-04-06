@@ -533,7 +533,7 @@ const Ledgers = () => {
     }).format(amount);
   };
 
-  // getTransactionTypeLabel moved above useMemo that references it
+  
 
   const handleDeleteTransaction = async () => {
     if (!viewingTransaction || !viewingLedger) return;
