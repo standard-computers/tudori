@@ -712,6 +712,7 @@ const Invoices = () => {
               <TabsList className="mx-6">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="items">Line Items</TabsTrigger>
+                <TabsTrigger value="attachments">Attachments ({viewAttachments.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="px-6 pb-4">
@@ -813,6 +814,35 @@ const Invoices = () => {
                         ))}
                       </TableBody>
                     </Table>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="attachments" className="px-6 pb-4">
+                <div className="pt-4 space-y-2">
+                  {viewAttachments.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No attachments. Click the <Paperclip className="inline h-4 w-4" /> button to add one.
+                    </div>
+                  ) : (
+                    viewAttachments.map((att) => {
+                      const { data: urlData } = supabase.storage.from('invoice-attachments').getPublicUrl(att.file_path);
+                      return (
+                        <div key={att.id} className="flex items-center justify-between border rounded-md p-3">
+                          <div className="min-w-0 flex-1">
+                            <a href={urlData.publicUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline truncate block">
+                              {att.name}
+                            </a>
+                            <p className="text-xs text-muted-foreground">
+                              {att.content_type} • {att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB` : ''} • {format(parseISO(att.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </TabsContent>
