@@ -115,7 +115,20 @@ interface Assignment {
   destination_location?: { id: string; location_id: string; name: string } | null;
 }
 
-const Transportation = () => {
+interface TruckRecord {
+  id: string;
+  truck_id: string;
+  carrier_id: string;
+  source_location_id: string | null;
+  destination_location_id: string | null;
+  notes: string | null;
+  is_active: boolean;
+  carrier?: { id: string; carrier_id: string; name: string } | null;
+  source_location?: { id: string; location_id: string; name: string } | null;
+  destination_location?: { id: string; location_id: string; name: string } | null;
+}
+
+
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
