@@ -849,11 +849,6 @@ const Invoices = () => {
             </Tabs>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
