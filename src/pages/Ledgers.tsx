@@ -195,16 +195,33 @@ const Ledgers = () => {
 
   const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
 
+  const getTransactionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      purchase_order: 'Purchase Order',
+      invoice: 'Invoice',
+      sales_order: 'Sales Order',
+      payment: 'Payment',
+      adjustment: 'Adjustment',
+    };
+    return labels[type] || type;
+  };
+
   // Flatten transactions for sorting/filtering
-  const flatTransactions = useMemo(() => ledgerTransactions.map(tx => ({
-    ...tx,
-    _date: format(parseISO(tx.transaction_date), 'MMM d, yyyy'),
-    _time: format(new Date(tx.created_at), 'h:mm a'),
-    _type: getTransactionTypeLabel(tx.transaction_type),
-    _reference: tx.reference_number || '',
-    _description: tx.description || '',
-    _amount: tx.amount,
-  })), [ledgerTransactions]);
+  const flatTransactions = useMemo(() => ledgerTransactions.map(tx => {
+    let dateStr = '';
+    let timeStr = '';
+    try { dateStr = format(parseISO(tx.transaction_date), 'MMM d, yyyy'); } catch { dateStr = tx.transaction_date || ''; }
+    try { timeStr = format(new Date(tx.created_at), 'h:mm a'); } catch { timeStr = tx.created_at || ''; }
+    return {
+      ...tx,
+      _date: dateStr,
+      _time: timeStr,
+      _type: getTransactionTypeLabel(tx.transaction_type),
+      _reference: tx.reference_number || '',
+      _description: tx.description || '',
+      _amount: tx.amount,
+    };
+  }), [ledgerTransactions]);
 
   const {
     sortConfig: txSortConfig,
@@ -516,16 +533,7 @@ const Ledgers = () => {
     }).format(amount);
   };
 
-  const getTransactionTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      purchase_order: 'Purchase Order',
-      invoice: 'Invoice',
-      sales_order: 'Sales Order',
-      payment: 'Payment',
-      adjustment: 'Adjustment',
-    };
-    return labels[type] || type;
-  };
+  
 
   const handleDeleteTransaction = async () => {
     if (!viewingTransaction || !viewingLedger) return;
