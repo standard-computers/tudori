@@ -267,7 +267,10 @@ const Transportation = () => {
     if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.source_value && assignmentForm.destination_location_id) {
       handleSaveAssignment();
     }
-  }, isCarrierDialogOpen || isRouteDialogOpen || isAssignmentDialogOpen);
+    if (isTruckDialogOpen && truckForm.truck_id && truckForm.carrier_id) {
+      handleSaveTruck();
+    }
+  }, isCarrierDialogOpen || isRouteDialogOpen || isAssignmentDialogOpen || isTruckDialogOpen);
 
   // Set transaction code for status bar
   useEffect(() => {
