@@ -248,6 +248,14 @@ const Transportation = () => {
     sortedAndFilteredData: sortedAssignments,
   } = useTableSort<Assignment>(assignments, 'assignment_id', 'asc');
 
+  const {
+    sortConfig: truckSortConfig,
+    filters: truckFilters,
+    handleSort: handleTruckSort,
+    setFilter: setTruckFilter,
+    sortedAndFilteredData: sortedTrucks,
+  } = useTableSort<TruckRecord>(trucks, 'truck_id', 'asc');
+
   // Keyboard shortcut for save
   useSaveShortcut(() => {
     if (isCarrierDialogOpen && carrierForm.carrier_id && carrierForm.name) {
