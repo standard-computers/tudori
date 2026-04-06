@@ -1181,6 +1181,14 @@ const Transportation = () => {
                   </Button>
                 </>
               )}
+              {activeTab === 'trucks' && (
+                <>
+                  <Button onClick={openNewTruckDialog} size="icon" className="relative">
+                    <Plus className="h-4 w-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </header>
