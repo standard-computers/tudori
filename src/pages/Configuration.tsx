@@ -49,6 +49,7 @@ const DOCUMENT_TYPES = [
   { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-', icon: ShoppingCart },
   { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-', icon: FileText },
   { value: 'route', label: 'Route', prefix_placeholder: 'RTE-', icon: Truck },
+  { value: 'truck', label: 'Truck', prefix_placeholder: 'TRK-', icon: Truck },
   { value: 'sales_order', label: 'Sales Order', prefix_placeholder: 'SO-', icon: ClipboardList },
   { value: 'tax_rate', label: 'Tax Rate', prefix_placeholder: '', icon: Receipt },
   { value: 'team', label: 'Team', prefix_placeholder: 'TM-', icon: Users },

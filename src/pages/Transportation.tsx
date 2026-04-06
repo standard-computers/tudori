@@ -115,6 +115,19 @@ interface Assignment {
   destination_location?: { id: string; location_id: string; name: string } | null;
 }
 
+interface TruckRecord {
+  id: string;
+  truck_id: string;
+  carrier_id: string;
+  source_location_id: string | null;
+  destination_location_id: string | null;
+  notes: string | null;
+  is_active: boolean;
+  carrier?: { id: string; carrier_id: string; name: string } | null;
+  source_location?: { id: string; location_id: string; name: string } | null;
+  destination_location?: { id: string; location_id: string; name: string } | null;
+}
+
 const Transportation = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -128,6 +141,7 @@ const Transportation = () => {
     if (activeTab === 'carriers') openNewCarrierDialog();
     else if (activeTab === 'routes') openNewRouteDialog();
     else if (activeTab === 'assignments') openNewAssignmentDialog();
+    else if (activeTab === 'trucks') openNewTruckDialog();
   });
 
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -138,8 +152,21 @@ const Transportation = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [trucks, setTrucks] = useState<TruckRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [importProgress, setImportProgress] = useState<{ open: boolean; total: number; current: number; imported: number; failed: number }>({ open: false, total: 0, current: 0, imported: 0, failed: 0 });
+
+  // Truck dialog state
+  const [isTruckDialogOpen, setIsTruckDialogOpen] = useState(false);
+  const [editingTruck, setEditingTruck] = useState<TruckRecord | null>(null);
+  const [truckForm, setTruckForm] = useState({
+    truck_id: '',
+    carrier_id: '',
+    source_location_id: '',
+    destination_location_id: '',
+    notes: '',
+    is_active: true,
+  });
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -221,6 +248,14 @@ const Transportation = () => {
     sortedAndFilteredData: sortedAssignments,
   } = useTableSort<Assignment>(assignments, 'assignment_id', 'asc');
 
+  const {
+    sortConfig: truckSortConfig,
+    filters: truckFilters,
+    handleSort: handleTruckSort,
+    setFilter: setTruckFilter,
+    sortedAndFilteredData: sortedTrucks,
+  } = useTableSort<TruckRecord>(trucks, 'truck_id', 'asc');
+
   // Keyboard shortcut for save
   useSaveShortcut(() => {
     if (isCarrierDialogOpen && carrierForm.carrier_id && carrierForm.name) {
@@ -232,7 +267,10 @@ const Transportation = () => {
     if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.source_value && assignmentForm.destination_location_id) {
       handleSaveAssignment();
     }
-  }, isCarrierDialogOpen || isRouteDialogOpen || isAssignmentDialogOpen);
+    if (isTruckDialogOpen && truckForm.truck_id && truckForm.carrier_id) {
+      handleSaveTruck();
+    }
+  }, isCarrierDialogOpen || isRouteDialogOpen || isAssignmentDialogOpen || isTruckDialogOpen);
 
   // Set transaction code for status bar
   useEffect(() => {
@@ -242,10 +280,12 @@ const Transportation = () => {
       setTransaction(editingRoute ? 'trn/route/edit' : 'trn/route/new');
     } else if (isAssignmentDialogOpen) {
       setTransaction(editingAssignment ? 'trn/assignment/edit' : 'trn/assignment/new');
+    } else if (isTruckDialogOpen) {
+      setTransaction(editingTruck ? 'trn/truck/edit' : 'trn/truck/new');
     } else {
       setTransaction('trn');
     }
-  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, isAssignmentDialogOpen, editingAssignment, setTransaction]);
+  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, isAssignmentDialogOpen, editingAssignment, isTruckDialogOpen, editingTruck, setTransaction]);
 
   // Fetch company ID from profile
   useEffect(() => {
@@ -274,6 +314,7 @@ const Transportation = () => {
       fetchProducts();
       fetchVendors();
       fetchAssignments();
+      fetchTrucks();
     }
   }, [companyId]);
 
@@ -744,6 +785,89 @@ const Transportation = () => {
     }
   };
 
+  // ---- Truck functions ----
+  const fetchTrucks = async () => {
+    if (!companyId) return;
+    const { data, error } = await supabase
+      .from('trucks' as any)
+      .select(`
+        *,
+        carrier:carriers(id, carrier_id, name),
+        source_location:locations!trucks_source_location_id_fkey(id, location_id, name),
+        destination_location:locations!trucks_destination_location_id_fkey(id, location_id, name)
+      `)
+      .eq('company_id', companyId)
+      .order('truck_id');
+    if (error) {
+      console.error('Failed to load trucks:', error);
+    } else {
+      setTrucks((data as any) || []);
+    }
+  };
+
+  const getNextTruckId = async (): Promise<string> => {
+    if (!companyId) return 'TRK-0001';
+    const { data, error } = await supabase.rpc('generate_truck_id' as any, { p_company_id: companyId });
+    if (error || !data) return 'TRK-0001';
+    return data as string;
+  };
+
+  const openNewTruckDialog = async () => {
+    const nextId = await getNextTruckId();
+    setTruckForm({
+      truck_id: nextId,
+      carrier_id: '',
+      source_location_id: '',
+      destination_location_id: '',
+      notes: '',
+      is_active: true,
+    });
+    setEditingTruck(null);
+    setIsTruckDialogOpen(true);
+  };
+
+  const openEditTruckDialog = (truck: TruckRecord) => {
+    setTruckForm({
+      truck_id: truck.truck_id,
+      carrier_id: truck.carrier_id,
+      source_location_id: truck.source_location_id || '',
+      destination_location_id: truck.destination_location_id || '',
+      notes: truck.notes || '',
+      is_active: truck.is_active,
+    });
+    setEditingTruck(truck);
+    setIsTruckDialogOpen(true);
+  };
+
+  const handleSaveTruck = async () => {
+    if (!companyId || !truckForm.truck_id || !truckForm.carrier_id) return;
+    const truckData: any = {
+      company_id: companyId,
+      truck_id: truckForm.truck_id,
+      carrier_id: truckForm.carrier_id,
+      source_location_id: truckForm.source_location_id || null,
+      destination_location_id: truckForm.destination_location_id || null,
+      notes: truckForm.notes || null,
+      is_active: truckForm.is_active,
+    };
+    if (editingTruck) {
+      const { error } = await supabase.from('trucks' as any).update(truckData).eq('id', editingTruck.id);
+      if (error) { toast.error(error.message); }
+      else { toast.success('Truck updated'); setIsTruckDialogOpen(false); fetchTrucks(); }
+    } else {
+      const { error } = await supabase.from('trucks' as any).insert(truckData);
+      if (error) { toast.error(error.message); }
+      else { toast.success('Truck created'); setIsTruckDialogOpen(false); fetchTrucks(); }
+    }
+  };
+
+  const handleDeleteTruck = async (truck: TruckRecord) => {
+    if (!confirm(`Delete truck "${truck.truck_id}"?`)) return;
+    const { error } = await supabase.from('trucks' as any).delete().eq('id', truck.id);
+    if (error) { toast.error(error.message); }
+    else { toast.success('Truck deleted'); fetchTrucks(); }
+  };
+
   // ---- Import/Export: Carriers ----
   const CARRIER_TEMPLATE_COLUMNS = [
     { header: "Name", key: "Name", width: 25 },
@@ -1002,6 +1126,10 @@ const Transportation = () => {
                   <Users className="h-4 w-4" />
                   Assignments
                 </TabsTrigger>
+                <TabsTrigger value="trucks" className="gap-2">
+                  <Truck className="h-4 w-4" />
+                  Trucks
+                </TabsTrigger>
               </TabsList>
             </div>
             <div className="flex items-center gap-2 pr-12">
@@ -1048,6 +1176,14 @@ const Transportation = () => {
                     entityName="Assignments"
                   />
                   <Button onClick={openNewAssignmentDialog} size="icon" className="relative">
+                    <Plus className="h-4 w-4" />
+                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+                  </Button>
+                </>
+              )}
+              {activeTab === 'trucks' && (
+                <>
+                  <Button onClick={openNewTruckDialog} size="icon" className="relative">
                     <Plus className="h-4 w-4" />
                     <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
@@ -1318,6 +1454,82 @@ const Transportation = () => {
                             size="icon"
                             onClick={() => handleDeleteAssignment(assignment)}
                           >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TabsContent>
+
+          <TabsContent value="trucks" className="mt-0">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <SortableTableHead
+                    label="Truck ID"
+                    sortKey="truck_id"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['truck_id'] || ''}
+                    onFilter={(value) => setTruckFilter('truck_id', value)}
+                  />
+                  <SortableTableHead
+                    label="Carrier"
+                    sortKey="carrier.name"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['carrier.name'] || ''}
+                    onFilter={(value) => setTruckFilter('carrier.name', value)}
+                  />
+                  <SortableTableHead
+                    label="Source Location"
+                    sortKey="source_location.name"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['source_location.name'] || ''}
+                    onFilter={(value) => setTruckFilter('source_location.name', value)}
+                  />
+                  <SortableTableHead
+                    label="Destination Location"
+                    sortKey="destination_location.name"
+                    currentSortKey={truckSortConfig.key}
+                    currentSortDirection={truckSortConfig.direction}
+                    onSort={handleTruckSort}
+                    filterValue={truckFilters['destination_location.name'] || ''}
+                    onFilter={(value) => setTruckFilter('destination_location.name', value)}
+                  />
+                  <TableHead>Active</TableHead>
+                  <TableHead className="w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTrucks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No trucks found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedTrucks.map((truck) => (
+                    <TableRow key={truck.id}>
+                      <TableCell className="font-mono">{truck.truck_id}</TableCell>
+                      <TableCell>{truck.carrier?.name || '—'}</TableCell>
+                      <TableCell>{truck.source_location ? `${truck.source_location.location_id} - ${truck.source_location.name}` : '—'}</TableCell>
+                      <TableCell>{truck.destination_location ? `${truck.destination_location.location_id} - ${truck.destination_location.name}` : '—'}</TableCell>
+                      <TableCell>{truck.is_active ? 'Yes' : 'No'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEditTruckDialog(truck)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTruck(truck)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1754,6 +1966,100 @@ const Transportation = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Truck Dialog */}
+      <Dialog open={isTruckDialogOpen} onOpenChange={setIsTruckDialogOpen}>
+        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-xl max-h-[85vh]'}`}>
+          <button
+            type="button"
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+          >
+            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{editingTruck ? 'Edit Truck' : 'New Truck'}</DialogTitle>
+            <DialogDescription>
+              {editingTruck ? 'Update truck details' : 'Add a new truck'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 px-6">
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="truck_id">Truck ID *</Label>
+                <Input
+                  id="truck_id"
+                  value={truckForm.truck_id}
+                  onChange={(e) => setTruckForm({ ...truckForm, truck_id: e.target.value })}
+                  disabled={!!editingTruck}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Carrier *</Label>
+                <SearchableSelect
+                  options={carriers.map((c) => ({ value: c.id, label: `${c.carrier_id} - ${c.name}` }))}
+                  value={truckForm.carrier_id}
+                  onValueChange={(value) => setTruckForm({ ...truckForm, carrier_id: value })}
+                  placeholder="Select carrier"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Source Location</Label>
+                <SearchableSelect
+                  options={[{ value: '', label: '— None —' }, ...locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))]}
+                  value={truckForm.source_location_id}
+                  onValueChange={(value) => setTruckForm({ ...truckForm, source_location_id: value })}
+                  placeholder="Select source location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Destination Location</Label>
+                <SearchableSelect
+                  options={[{ value: '', label: '— None —' }, ...locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))]}
+                  value={truckForm.destination_location_id}
+                  onValueChange={(value) => setTruckForm({ ...truckForm, destination_location_id: value })}
+                  placeholder="Select destination location"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="truck_notes">Notes</Label>
+                <Input
+                  id="truck_notes"
+                  value={truckForm.notes}
+                  onChange={(e) => setTruckForm({ ...truckForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="truck_is_active"
+                  checked={truckForm.is_active}
+                  onCheckedChange={(checked) =>
+                    setTruckForm({ ...truckForm, is_active: checked as boolean })
+                  }
+                />
+                <Label htmlFor="truck_is_active">Active</Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0">
+            <Button
+              onClick={handleSaveTruck}
+              disabled={!truckForm.truck_id || !truckForm.carrier_id}
+            >
+              {editingTruck ? 'Update' : 'Create'}
+              <Kbd>⌘S</Kbd>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Import Progress Dialog */}
       <Dialog open={importProgress.open}>
         <DialogContent draggable={false} className="max-w-md">

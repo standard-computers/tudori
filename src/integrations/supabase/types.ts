@@ -5138,6 +5138,74 @@ export type Database = {
           },
         ]
       }
+      trucks: {
+        Row: {
+          carrier_id: string
+          company_id: string
+          created_at: string
+          destination_location_id: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          source_location_id: string | null
+          truck_id: string
+          updated_at: string
+        }
+        Insert: {
+          carrier_id: string
+          company_id: string
+          created_at?: string
+          destination_location_id?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          source_location_id?: string | null
+          truck_id: string
+          updated_at?: string
+        }
+        Update: {
+          carrier_id?: string
+          company_id?: string
+          created_at?: string
+          destination_location_id?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          source_location_id?: string | null
+          truck_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trucks_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trucks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trucks_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trucks_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string
@@ -5556,6 +5624,7 @@ export type Database = {
       }
       generate_carrier_id: { Args: { p_company_id: string }; Returns: string }
       generate_route_id: { Args: { p_company_id: string }; Returns: string }
+      generate_truck_id: { Args: { p_company_id: string }; Returns: string }
       get_auth_email: { Args: { _user_id: string }; Returns: string }
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
       get_next_agreement_id: { Args: { p_company_id: string }; Returns: string }
