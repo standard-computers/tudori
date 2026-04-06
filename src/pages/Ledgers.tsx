@@ -522,16 +522,7 @@ const Ledgers = () => {
     }).format(amount);
   };
 
-  const getTransactionTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      purchase_order: 'Purchase Order',
-      invoice: 'Invoice',
-      sales_order: 'Sales Order',
-      payment: 'Payment',
-      adjustment: 'Adjustment',
-    };
-    return labels[type] || type;
-  };
+  // getTransactionTypeLabel moved above useMemo that references it
 
   const handleDeleteTransaction = async () => {
     if (!viewingTransaction || !viewingLedger) return;
