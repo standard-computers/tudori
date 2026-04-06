@@ -282,6 +282,14 @@ const [areaFormData, setAreaFormData] = useState({
   const [isFulfillDialogOpen, setIsFulfillDialogOpen] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
 
+  // View delivery / order detail dialogs
+  const [viewingOutboundDelivery, setViewingOutboundDelivery] = useState<OutboundOrder | null>(null);
+  const [viewingOutboundDeliveryItems, setViewingOutboundDeliveryItems] = useState<OutboundOrderItem[]>([]);
+  const [isViewDeliveryDetailOpen, setIsViewDeliveryDetailOpen] = useState(false);
+  const [viewingOrderDetail, setViewingOrderDetail] = useState<OutboundOrder | null>(null);
+  const [viewingOrderDetailItems, setViewingOrderDetailItems] = useState<OutboundOrderItem[]>([]);
+  const [isViewOrderDetailOpen, setIsViewOrderDetailOpen] = useState(false);
+
   // Multi-select fulfillment state
   const [selectedFulfillOrderIds, setSelectedFulfillOrderIds] = useState<Set<string>>(new Set());
   const [isBulkFulfilling, setIsBulkFulfilling] = useState(false);
