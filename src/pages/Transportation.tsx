@@ -129,6 +129,7 @@ interface TruckRecord {
 }
 
 const Transportation = () => {
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
 
