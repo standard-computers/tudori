@@ -2524,6 +2524,57 @@ export type Database = {
           },
         ]
       }
+      invoice_attachments: {
+        Row: {
+          company_id: string
+          content_type: string | null
+          created_at: string
+          file_path: string
+          file_size: number | null
+          id: string
+          invoice_id: string
+          name: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          content_type?: string | null
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          invoice_id: string
+          name: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          content_type?: string | null
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          invoice_id?: string
+          name?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_attachments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_attachments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string

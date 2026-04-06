@@ -38,13 +38,26 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
-import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Loader2, MoreHorizontal, Trash2, Eye, Search, Maximize2, Minimize2, Paperclip, X, Upload } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format, parseISO } from 'date-fns';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
+import { Input } from '@/components/ui/input';
+
+interface InvoiceAttachment {
+  id: string;
+  invoice_id: string;
+  company_id: string;
+  name: string;
+  file_path: string;
+  file_size: number | null;
+  content_type: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
 
 interface Invoice {
   id: string;
@@ -124,6 +137,11 @@ const Invoices = () => {
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+  const [viewAttachments, setViewAttachments] = useState<InvoiceAttachment[]>([]);
+  const [isAddAttachmentOpen, setIsAddAttachmentOpen] = useState(false);
+  const [attachmentName, setAttachmentName] = useState('');
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
 
   // Import/Export
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -259,7 +277,63 @@ const Invoices = () => {
       .eq('invoice_id', invoice.id);
     
     setViewItems((items as any) || []);
+    await fetchAttachments(invoice.id);
     setIsViewDialogOpen(true);
+  };
+
+  const fetchAttachments = async (invoiceId: string) => {
+    const { data } = await supabase
+      .from('invoice_attachments' as any)
+      .select('*')
+      .eq('invoice_id', invoiceId)
+      .order('created_at', { ascending: false });
+    setViewAttachments((data as any) || []);
+  };
+
+  const handleAddAttachment = async () => {
+    if (!attachmentFile || !attachmentName.trim() || !viewingInvoice || !companyId) return;
+    setAttachmentUploading(true);
+    try {
+      const ext = attachmentFile.name.split('.').pop() || 'bin';
+      const filePath = `${companyId}/${viewingInvoice.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('invoice-attachments')
+        .upload(filePath, attachmentFile);
+      if (uploadError) throw uploadError;
+
+      const { error: insertError } = await (supabase.from('invoice_attachments' as any) as any).insert({
+        invoice_id: viewingInvoice.id,
+        company_id: companyId,
+        name: attachmentName.trim(),
+        file_path: filePath,
+        file_size: attachmentFile.size,
+        content_type: attachmentFile.type,
+        uploaded_by: user?.id,
+      });
+      if (insertError) throw insertError;
+
+      toast.success('Attachment added');
+      setAttachmentName('');
+      setAttachmentFile(null);
+      setIsAddAttachmentOpen(false);
+      await fetchAttachments(viewingInvoice.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload attachment');
+    } finally {
+      setAttachmentUploading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (att: InvoiceAttachment) => {
+    try {
+      await supabase.storage.from('invoice-attachments').remove([att.file_path]);
+      await (supabase.from('invoice_attachments' as any) as any).delete().eq('id', att.id);
+      toast.success('Attachment deleted');
+      if (viewingInvoice) await fetchAttachments(viewingInvoice.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete attachment');
+    }
   };
 
   const handleDelete = async (invoice: Invoice) => {
@@ -615,6 +689,14 @@ const Invoices = () => {
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-3xl max-h-[90vh]'}`}>
           <button
             type="button"
+            onClick={() => setIsAddAttachmentOpen(true)}
+            className="absolute right-16 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+            title="Attach file"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsMaximized(!isMaximized)}
             className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
           >
@@ -630,6 +712,7 @@ const Invoices = () => {
               <TabsList className="mx-6">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="items">Line Items</TabsTrigger>
+                <TabsTrigger value="attachments">Attachments ({viewAttachments.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="px-6 pb-4">
@@ -734,12 +817,88 @@ const Invoices = () => {
                   )}
                 </div>
               </TabsContent>
+
+              <TabsContent value="attachments" className="px-6 pb-4">
+                <div className="pt-4 space-y-2">
+                  {viewAttachments.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No attachments. Click the <Paperclip className="inline h-4 w-4" /> button to add one.
+                    </div>
+                  ) : (
+                    viewAttachments.map((att) => {
+                      const { data: urlData } = supabase.storage.from('invoice-attachments').getPublicUrl(att.file_path);
+                      return (
+                        <div key={att.id} className="flex items-center justify-between border rounded-md p-3">
+                          <div className="min-w-0 flex-1">
+                            <a href={urlData.publicUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline truncate block">
+                              {att.name}
+                            </a>
+                            <p className="text-xs text-muted-foreground">
+                              {att.content_type} • {att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB` : ''} • {format(parseISO(att.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </TabsContent>
             </Tabs>
           )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Attachment Dialog */}
+      <Dialog open={isAddAttachmentOpen} onOpenChange={setIsAddAttachmentOpen}>
+        <DialogContent className="max-w-md z-[60]">
+          <DialogHeader>
+            <DialogTitle>Add Attachment</DialogTitle>
+            <DialogDescription>Upload a file and give it a name.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Name</Label>
+              <Input
+                value={attachmentName}
+                onChange={(e) => setAttachmentName(e.target.value)}
+                placeholder="e.g. Signed copy"
+              />
+            </div>
+            <div>
+              <Label>File</Label>
+              <div className="mt-1">
+                <label className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 hover:bg-muted/50 transition-colors">
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm truncate">{attachmentFile ? attachmentFile.name : 'Choose file...'}</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        setAttachmentFile(f);
+                        if (!attachmentName) setAttachmentName(f.name.replace(/\.[^.]+$/, ''));
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddAttachmentOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddAttachment} disabled={!attachmentFile || !attachmentName.trim() || attachmentUploading}>
+              {attachmentUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add
             </Button>
           </DialogFooter>
         </DialogContent>
