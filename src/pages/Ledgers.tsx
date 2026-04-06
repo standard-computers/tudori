@@ -61,6 +61,8 @@ import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
 import { toast } from '@/lib/toast';
 import { format, parseISO } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
+import { useTableSort, ColumnFilterConfig } from '@/hooks/use-table-sort';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
