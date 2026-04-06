@@ -128,8 +128,7 @@ interface TruckRecord {
   destination_location?: { id: string; location_id: string; name: string } | null;
 }
 
-
-  const navigate = useNavigate();
+const Transportation = () => {
   const { user, loading: authLoading } = useAuth();
   const { setTransaction } = useStatusBar();
 
