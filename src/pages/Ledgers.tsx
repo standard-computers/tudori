@@ -617,6 +617,61 @@ const Ledgers = () => {
     }
   };
 
+  const handleAddAdjustment = async () => {
+    if (!viewingLedger || !adjustmentForm.amount) {
+      toast.error('Please enter an amount');
+      return;
+    }
+
+    const amount = parseFloat(adjustmentForm.amount);
+    if (isNaN(amount) || amount === 0) {
+      toast.error('Please enter a valid non-zero amount');
+      return;
+    }
+
+    setIsSubmittingAdjustment(true);
+    try {
+      const { error } = await supabase
+        .from('ledger_transactions' as any)
+        .insert({
+          ledger_id: viewingLedger.id,
+          transaction_type: adjustmentForm.transaction_type,
+          amount,
+          description: adjustmentForm.description || null,
+          reference_number: adjustmentForm.reference_number || null,
+          transaction_date: adjustmentForm.transaction_date || new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      toast.success('Transaction added');
+      setIsAddAdjustmentOpen(false);
+      setAdjustmentForm({
+        transaction_type: 'adjustment',
+        amount: '',
+        description: '',
+        reference_number: '',
+        transaction_date: new Date().toISOString().split('T')[0],
+      });
+
+      // Refresh
+      await fetchLedgerTransactions(viewingLedger.id);
+      await fetchLedgers(companyId!);
+
+      const { data: updatedTxs } = await supabase
+        .from('ledger_transactions' as any)
+        .select('amount')
+        .eq('ledger_id', viewingLedger.id);
+      const newBalance = (updatedTxs || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+      setViewingLedger(prev => prev ? { ...prev, computed_balance: newBalance } : null);
+    } catch (error: any) {
+      console.error('Error adding transaction:', error);
+      toast.error(error.message || 'Failed to add transaction');
+    } finally {
+      setIsSubmittingAdjustment(false);
+    }
+  };
+
   // --- Import/Export handlers ---
   const handleDownloadTemplate = () => {
     exportToExcel([], 'ledgers_template.xlsx', 'Ledgers', [
