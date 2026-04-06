@@ -1256,7 +1256,7 @@ const [areaFormData, setAreaFormData] = useState({
     // Fetch outbound delivery items
     const { data } = await supabase
       .from('outbound_delivery_items' as any)
-      .select('id, product_id, quantity, product:products(name, product_id)')
+      .select('id, product_id, quantity, product:products(name, product_id, unit)')
       .eq('outbound_delivery_id', od.id);
     setViewingOutboundDeliveryItems((data as any) || []);
   };
@@ -4107,6 +4107,7 @@ const [areaFormData, setAreaFormData] = useState({
                         <TableRow>
                           <TableHead>Product</TableHead>
                           <TableHead>Product ID</TableHead>
+                          <TableHead>UoM</TableHead>
                           <TableHead className="text-right">Qty</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -4115,6 +4116,7 @@ const [areaFormData, setAreaFormData] = useState({
                           <TableRow key={item.id}>
                             <TableCell>{item.product?.name || '—'}</TableCell>
                             <TableCell className="font-mono text-xs">{item.product?.product_id || '—'}</TableCell>
+                            <TableCell>{item.product?.unit || '—'}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
                           </TableRow>
                         ))}
@@ -4173,6 +4175,7 @@ const [areaFormData, setAreaFormData] = useState({
                         <TableRow>
                           <TableHead>Product</TableHead>
                           <TableHead>Product ID</TableHead>
+                          <TableHead>UoM</TableHead>
                           <TableHead className="text-right">Qty</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -4181,6 +4184,7 @@ const [areaFormData, setAreaFormData] = useState({
                           <TableRow key={item.id}>
                             <TableCell>{item.product?.name || '—'}</TableCell>
                             <TableCell className="font-mono text-xs">{item.product?.product_id || '—'}</TableCell>
+                            <TableCell>{item.product?.unit || '—'}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
                           </TableRow>
                         ))}
