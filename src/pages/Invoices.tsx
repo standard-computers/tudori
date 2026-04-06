@@ -881,7 +881,7 @@ const Invoices = () => {
                 </div>
               </TabsContent>
 
-
+              <TabsContent value="attachments" className="px-6 pb-4">
                 <div className="pt-4 space-y-2">
                   {viewAttachments.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
