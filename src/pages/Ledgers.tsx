@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
