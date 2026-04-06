@@ -280,10 +280,12 @@ const Transportation = () => {
       setTransaction(editingRoute ? 'trn/route/edit' : 'trn/route/new');
     } else if (isAssignmentDialogOpen) {
       setTransaction(editingAssignment ? 'trn/assignment/edit' : 'trn/assignment/new');
+    } else if (isTruckDialogOpen) {
+      setTransaction(editingTruck ? 'trn/truck/edit' : 'trn/truck/new');
     } else {
       setTransaction('trn');
     }
-  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, isAssignmentDialogOpen, editingAssignment, setTransaction]);
+  }, [isCarrierDialogOpen, editingCarrier, isRouteDialogOpen, editingRoute, isAssignmentDialogOpen, editingAssignment, isTruckDialogOpen, editingTruck, setTransaction]);
 
   // Fetch company ID from profile
   useEffect(() => {
