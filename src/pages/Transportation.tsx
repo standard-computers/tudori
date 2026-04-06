@@ -141,6 +141,7 @@ const Transportation = () => {
     if (activeTab === 'carriers') openNewCarrierDialog();
     else if (activeTab === 'routes') openNewRouteDialog();
     else if (activeTab === 'assignments') openNewAssignmentDialog();
+    else if (activeTab === 'trucks') openNewTruckDialog();
   });
 
   const [companyId, setCompanyId] = useState<string | null>(null);
