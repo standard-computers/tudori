@@ -762,6 +762,8 @@ const Employees = () => {
                         value={formData.first_name}
                         onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                         required
+                        autoFocus={!isEditing}
+                      />
                       />
                     </div>
                     <div className="space-y-2">
