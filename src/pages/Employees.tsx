@@ -764,7 +764,6 @@ const Employees = () => {
                         required
                         autoFocus={!isEditing}
                       />
-                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="last_name">Last Name *</Label>
