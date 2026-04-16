@@ -407,7 +407,7 @@ const Employees = () => {
       phone: "",
       job_title: "",
       department: "",
-      hire_date: "",
+      hire_date: new Date().toISOString().slice(0, 10),
       status: "active",
       notes: "",
       wage: "",
