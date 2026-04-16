@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN social_id text DEFAULT null;
