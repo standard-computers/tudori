@@ -1801,6 +1801,7 @@ export type Database = {
           department: string | null
           email: string | null
           employee_id: string
+          ethnicity: string | null
           first_name: string
           gender: string | null
           hire_date: string | null
@@ -1829,6 +1830,7 @@ export type Database = {
           department?: string | null
           email?: string | null
           employee_id: string
+          ethnicity?: string | null
           first_name: string
           gender?: string | null
           hire_date?: string | null
@@ -1857,6 +1859,7 @@ export type Database = {
           department?: string | null
           email?: string | null
           employee_id?: string
+          ethnicity?: string | null
           first_name?: string
           gender?: string | null
           hire_date?: string | null
