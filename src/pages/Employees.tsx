@@ -63,6 +63,7 @@ interface Employee {
   country: string | null;
   social_id: string | null;
   gender: string | null;
+  ethnicity: string | null;
 }
 
 interface UserProfile {
@@ -311,6 +312,7 @@ const Employees = () => {
     country: "",
     social_id: "",
     gender: "",
+    ethnicity: "",
   });
 
   useEffect(() => {
@@ -426,6 +428,7 @@ const Employees = () => {
       country: "",
       social_id: "",
       gender: "",
+      ethnicity: "",
     });
     setIsEditing(false);
     setEditingId(null);
@@ -461,6 +464,7 @@ const Employees = () => {
       country: employee.country || "",
       social_id: (employee as any).social_id || "",
       gender: (employee as any).gender || "",
+      ethnicity: (employee as any).ethnicity || "",
     });
     setIsEditing(true);
     setEditingId(employee.id);
@@ -517,6 +521,7 @@ const Employees = () => {
         country: formData.country || null,
         social_id: formData.social_id || null,
         gender: formData.gender || null,
+        ethnicity: formData.ethnicity || null,
       };
 
       let employeeId = editingId;
@@ -842,7 +847,28 @@ const Employees = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ethnicity">Race / Ethnicity</Label>
+                      <Select
+                        value={formData.ethnicity || "none"}
+                        onValueChange={(v) => setFormData({ ...formData, ethnicity: v === "none" ? "" : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select ethnicity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not specified</SelectItem>
+                          <SelectItem value="american_indian">American Indian or Alaska Native</SelectItem>
+                          <SelectItem value="asian">Asian</SelectItem>
+                          <SelectItem value="black">Black or African American</SelectItem>
+                          <SelectItem value="hispanic">Hispanic or Latino</SelectItem>
+                          <SelectItem value="native_hawaiian">Native Hawaiian or Other Pacific Islander</SelectItem>
+                          <SelectItem value="white">White</SelectItem>
+                          <SelectItem value="two_or_more">Two or More Races</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="address_line1">Address Line 1</Label>
