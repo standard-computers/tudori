@@ -407,7 +407,7 @@ const Employees = () => {
       phone: "",
       job_title: "",
       department: "",
-      hire_date: "",
+      hire_date: new Date().toISOString().slice(0, 10),
       status: "active",
       notes: "",
       wage: "",
@@ -762,6 +762,7 @@ const Employees = () => {
                         value={formData.first_name}
                         onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                         required
+                        autoFocus={!isEditing}
                       />
                     </div>
                     <div className="space-y-2">
