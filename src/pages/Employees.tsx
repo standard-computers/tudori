@@ -308,6 +308,7 @@ const Employees = () => {
     state: "",
     postal_code: "",
     country: "",
+    social_id: "",
   });
 
   useEffect(() => {
@@ -421,6 +422,7 @@ const Employees = () => {
       state: "",
       postal_code: "",
       country: "",
+      social_id: "",
     });
     setIsEditing(false);
     setEditingId(null);
@@ -454,6 +456,7 @@ const Employees = () => {
       state: employee.state || "",
       postal_code: employee.postal_code || "",
       country: employee.country || "",
+      social_id: (employee as any).social_id || "",
     });
     setIsEditing(true);
     setEditingId(employee.id);
@@ -508,6 +511,7 @@ const Employees = () => {
         state: formData.state || null,
         postal_code: formData.postal_code || null,
         country: formData.country || null,
+        social_id: formData.social_id || null,
       };
 
       let employeeId = editingId;
@@ -803,6 +807,15 @@ const Employees = () => {
                         type="date"
                         value={formData.hire_date}
                         onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="social_id">Social ID</Label>
+                      <Input
+                        id="social_id"
+                        value={formData.social_id}
+                        onChange={(e) => setFormData({ ...formData, social_id: e.target.value })}
+                        placeholder="e.g. SSN"
                       />
                     </div>
                   </div>
