@@ -62,6 +62,7 @@ interface Employee {
   postal_code: string | null;
   country: string | null;
   social_id: string | null;
+  gender: string | null;
 }
 
 interface UserProfile {
@@ -309,6 +310,7 @@ const Employees = () => {
     postal_code: "",
     country: "",
     social_id: "",
+    gender: "",
   });
 
   useEffect(() => {
@@ -423,6 +425,7 @@ const Employees = () => {
       postal_code: "",
       country: "",
       social_id: "",
+      gender: "",
     });
     setIsEditing(false);
     setEditingId(null);
@@ -457,6 +460,7 @@ const Employees = () => {
       postal_code: employee.postal_code || "",
       country: employee.country || "",
       social_id: (employee as any).social_id || "",
+      gender: (employee as any).gender || "",
     });
     setIsEditing(true);
     setEditingId(employee.id);
@@ -512,6 +516,7 @@ const Employees = () => {
         postal_code: formData.postal_code || null,
         country: formData.country || null,
         social_id: formData.social_id || null,
+        gender: formData.gender || null,
       };
 
       let employeeId = editingId;
@@ -817,6 +822,25 @@ const Employees = () => {
                         onChange={(e) => setFormData({ ...formData, social_id: e.target.value })}
                         placeholder="e.g. SSN"
                       />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="gender">Gender</Label>
+                      <Select
+                        value={formData.gender || "none"}
+                        onValueChange={(v) => setFormData({ ...formData, gender: v === "none" ? "" : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not specified</SelectItem>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">

@@ -1802,6 +1802,7 @@ export type Database = {
           email: string | null
           employee_id: string
           first_name: string
+          gender: string | null
           hire_date: string | null
           id: string
           is_hourly: boolean | null
@@ -1829,6 +1830,7 @@ export type Database = {
           email?: string | null
           employee_id: string
           first_name: string
+          gender?: string | null
           hire_date?: string | null
           id?: string
           is_hourly?: boolean | null
@@ -1856,6 +1858,7 @@ export type Database = {
           email?: string | null
           employee_id?: string
           first_name?: string
+          gender?: string | null
           hire_date?: string | null
           id?: string
           is_hourly?: boolean | null
