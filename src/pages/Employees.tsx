@@ -717,289 +717,308 @@ const Employees = () => {
               {isEditing ? "Update employee information" : "Add a new employee to your team"}
             </DialogDescription>
           </DialogHeader>
-          <DialogBody>
-            <form id="employee-form" ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employee_id">Employee ID</Label>
-                  <Input
-                    id="employee_id"
-                    value={formData.employee_id}
-                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                    disabled={isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <form id="employee-form" ref={formRef} onSubmit={handleSubmit}>
+            <Tabs defaultValue="general" className="flex flex-col flex-1 min-h-0">
+              <div className="px-6 pt-2">
+                <TabsList>
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="job">Job</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">First Name *</Label>
-                  <Input
-                    id="first_name"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Last Name *</Label>
-                  <Input
-                    id="last_name"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="job_title">Job Title</Label>
-                  <Input
-                    id="job_title"
-                    value={formData.job_title}
-                    onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Team</Label>
-                  <Select
-                    value={formData.department || "none"}
-                    onValueChange={(v) => setFormData({ ...formData, department: v === "none" ? "" : v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select team" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No team</SelectItem>
-                      {teams.map((t) => (
-                        <SelectItem key={t.id} value={t.name}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Assigning a team auto-adds employee to that team</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hire_date">Hire Date</Label>
-                  <Input
-                    id="hire_date"
-                    type="date"
-                    value={formData.hire_date}
-                    onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="address_line1">Address Line 1</Label>
-                  <Input
-                    id="address_line1"
-                    value={formData.address_line1}
-                    onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="address_line2">Address Line 2</Label>
-                  <Input
-                    id="address_line2"
-                    value={formData.address_line2}
-                    onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postal_code">Postal Code</Label>
-                  <Input
-                    id="postal_code"
-                    value={formData.postal_code}
-                    onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="wage">Wage</Label>
-                  <Input
-                    id="wage"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.wage}
-                    onChange={(e) => setFormData({ ...formData, wage: e.target.value })}
-                    placeholder="0.00"
-                  />
-                  {formData.is_hourly && formData.wage && (
+              <TabsContent value="general" className="flex-1 overflow-y-auto mt-0">
+                <div className="px-6 py-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="employee_id">Employee ID</Label>
+                      <Input
+                        id="employee_id"
+                        value={formData.employee_id}
+                        onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                        disabled={isEditing}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="first_name">First Name *</Label>
+                      <Input
+                        id="first_name"
+                        value={formData.first_name}
+                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="last_name">Last Name *</Label>
+                      <Input
+                        id="last_name"
+                        value={formData.last_name}
+                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="hire_date">Hire Date</Label>
+                      <Input
+                        id="hire_date"
+                        type="date"
+                        value={formData.hire_date}
+                        onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="address_line1">Address Line 1</Label>
+                      <Input
+                        id="address_line1"
+                        value={formData.address_line1}
+                        onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address_line2">Address Line 2</Label>
+                      <Input
+                        id="address_line2"
+                        value={formData.address_line2}
+                        onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="postal_code">Postal Code</Label>
+                      <Input
+                        id="postal_code"
+                        value={formData.postal_code}
+                        onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Input
+                        id="country"
+                        value={formData.country}
+                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user_id">Linked User</Label>
+                    <Select
+                      value={formData.user_id || "none"}
+                      onValueChange={(v) => {
+                        setFormData({ ...formData, user_id: v === "none" ? "" : v });
+                        if (v !== "none") setCreateUserAccount(false);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user to link" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No linked user</SelectItem>
+                        {users.map((u) => (
+                          <SelectItem key={u.user_id} value={u.user_id}>
+                            {u.first_name} {u.last_name} ({u.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">
-                      ≈ $
-                      {(parseFloat(formData.wage) * 40 * 52).toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      /year (40h/week)
+                      Link this employee to a user account for time clock access
                     </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-6 pt-6">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="is_hourly"
-                      checked={formData.is_hourly}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_hourly: checked })}
-                    />
-                    <Label htmlFor="is_hourly" className="cursor-pointer">
-                      Hourly
-                    </Label>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="bonus_eligible"
-                      checked={formData.bonus_eligible}
-                      onCheckedChange={(checked) => setFormData({ ...formData, bonus_eligible: checked })}
-                    />
-                    <Label htmlFor="bonus_eligible" className="cursor-pointer">
-                      Bonus
-                    </Label>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="user_id">Linked User</Label>
-                <Select
-                  value={formData.user_id || "none"}
-                  onValueChange={(v) => {
-                    setFormData({ ...formData, user_id: v === "none" ? "" : v });
-                    if (v !== "none") setCreateUserAccount(false);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select user to link" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No linked user</SelectItem>
-                    {users.map((u) => (
-                      <SelectItem key={u.user_id} value={u.user_id}>
-                        {u.first_name} {u.last_name} ({u.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Link this employee to a user account for time clock access
-                </p>
-              </div>
-              {!formData.user_id && (
-                <div className="space-y-3 rounded-md border border-border p-3">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="create_user"
-                      checked={createUserAccount}
-                      onCheckedChange={setCreateUserAccount}
-                    />
-                    <Label htmlFor="create_user" className="cursor-pointer flex items-center gap-2">
-                      <UserPlus className="h-4 w-4" />
-                      Create user account (optional)
-                    </Label>
-                  </div>
-                  {createUserAccount && (
-                    <div className="space-y-3 pl-1">
-                      {!formData.email && (
-                        <p className="text-sm text-destructive">
-                          An email address is required to create a user account. Please fill in the email field above.
-                        </p>
-                      )}
-                      <div className="space-y-2">
-                        <Label>Access Level</Label>
-                        <Select value={userRole} onValueChange={(v) => setUserRole(v as typeof userRole)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="it">IT</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="viewer">Viewer</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  {!formData.user_id && (
+                    <div className="space-y-3 rounded-md border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="create_user"
+                          checked={createUserAccount}
+                          onCheckedChange={setCreateUserAccount}
+                        />
+                        <Label htmlFor="create_user" className="cursor-pointer flex items-center gap-2">
+                          <UserPlus className="h-4 w-4" />
+                          Create user account (optional)
+                        </Label>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        An invitation will be sent to the employee's email. They can sign up to access the system.
-                      </p>
+                      {createUserAccount && (
+                        <div className="space-y-3 pl-1">
+                          {!formData.email && (
+                            <p className="text-sm text-destructive">
+                              An email address is required to create a user account. Please fill in the email field above.
+                            </p>
+                          )}
+                          <div className="space-y-2">
+                            <Label>Access Level</Label>
+                            <Select value={userRole} onValueChange={(v) => setUserRole(v as typeof userRole)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="it">IT</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="viewer">Viewer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            An invitation will be sent to the employee's email. They can sign up to access the system.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </form>
-          </DialogBody>
+              </TabsContent>
+              <TabsContent value="job" className="flex-1 overflow-y-auto mt-0">
+                <div className="px-6 py-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="job_title">Job Title</Label>
+                      <Input
+                        id="job_title"
+                        value={formData.job_title}
+                        onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Team</Label>
+                      <Select
+                        value={formData.department || "none"}
+                        onValueChange={(v) => setFormData({ ...formData, department: v === "none" ? "" : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select team" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No team</SelectItem>
+                          {teams.map((t) => (
+                            <SelectItem key={t.id} value={t.name}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Assigning a team auto-adds employee to that team</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="wage">Wage</Label>
+                      <Input
+                        id="wage"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.wage}
+                        onChange={(e) => setFormData({ ...formData, wage: e.target.value })}
+                        placeholder="0.00"
+                      />
+                      {formData.is_hourly && formData.wage && (
+                        <p className="text-xs text-muted-foreground">
+                          ≈ $
+                          {(parseFloat(formData.wage) * 40 * 52).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                          /year (40h/week)
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-6 pt-6">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="is_hourly"
+                          checked={formData.is_hourly}
+                          onCheckedChange={(checked) => setFormData({ ...formData, is_hourly: checked })}
+                        />
+                        <Label htmlFor="is_hourly" className="cursor-pointer">
+                          Hourly
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="bonus_eligible"
+                          checked={formData.bonus_eligible}
+                          onCheckedChange={(checked) => setFormData({ ...formData, bonus_eligible: checked })}
+                        />
+                        <Label htmlFor="bonus_eligible" className="cursor-pointer">
+                          Bonus
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="notes" className="flex-1 overflow-y-auto mt-0">
+                <div className="px-6 py-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows={6}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </form>
           <DialogFooter>
             {isEditing && editingId && (
               <Button
