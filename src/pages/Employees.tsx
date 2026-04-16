@@ -61,6 +61,7 @@ interface Employee {
   state: string | null;
   postal_code: string | null;
   country: string | null;
+  social_id: string | null;
 }
 
 interface UserProfile {
