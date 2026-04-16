@@ -732,7 +732,7 @@ const Employees = () => {
               {isEditing ? "Update employee information" : "Add a new employee to your team"}
             </DialogDescription>
           </DialogHeader>
-          <form id="employee-form" ref={formRef} onSubmit={handleSubmit}>
+          <form id="employee-form" ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <Tabs defaultValue="general" className="flex flex-col flex-1 min-h-0">
               <div className="px-6 pt-2">
                 <TabsList>
