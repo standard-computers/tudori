@@ -160,6 +160,7 @@ const AccountDetail = () => {
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
   const { sortConfig: paymentSortConfig, sortedAndFilteredData: sortedPayments, handleSort: handlePaymentSort } = useTableSort<Payment>(payments);
+  const { exportToExcel } = useExcel();
 
   useKeyboardShortcut('n', () => {
     if (canCreateInvoice) setIsCreateInvoiceDialogOpen(true);
