@@ -34,9 +34,10 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
 import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
 import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
-import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote, Info } from 'lucide-react';
+import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote, Info, Download } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { toast } from '@/lib/toast';
+import { useExcel } from '@/hooks/use-excel';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -159,6 +160,7 @@ const AccountDetail = () => {
 
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
   const { sortConfig: paymentSortConfig, sortedAndFilteredData: sortedPayments, handleSort: handlePaymentSort } = useTableSort<Payment>(payments);
+  const { exportToExcel } = useExcel();
 
   useKeyboardShortcut('n', () => {
     if (canCreateInvoice) setIsCreateInvoiceDialogOpen(true);
@@ -304,6 +306,80 @@ const AccountDetail = () => {
         payment.invoice?.invoice_number?.toLowerCase().includes(query)
     );
   }, [sortedPayments, paymentSearchQuery]);
+
+  const handleExportTransactions = async () => {
+    const paymentRows = payments.map(p => ({
+      date: format(parseISO(p.payment_date), 'yyyy-MM-dd'),
+      type: 'payment',
+      reference: p.payment_number,
+      description: p.invoice?.invoice_number ? `Payment for Invoice ${p.invoice.invoice_number}` : (p.notes || 'Payment'),
+      amount: p.amount,
+    }));
+    const invoiceRows = invoices.map(inv => ({
+      date: format(parseISO(inv.invoice_date), 'yyyy-MM-dd'),
+      type: 'invoice',
+      reference: inv.invoice_number,
+      description: inv.purchase_order?.po_number ? `Invoice for PO ${inv.purchase_order.po_number}` : inv.notes || 'Invoice',
+      amount: -inv.amount,
+    }));
+    const rows = [...paymentRows, ...invoiceRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (rows.length === 0) { toast.info('No transactions to export'); return; }
+    await exportToExcel(rows, `transactions-${account?.account_id || 'account'}.xlsx`, 'Transactions', [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Reference', key: 'reference', width: 18 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Amount', key: 'amount', width: 14 },
+    ]);
+  };
+
+  const handleExportInvoices = async () => {
+    const rows = filteredInvoices.map(inv => ({
+      invoice_number: inv.invoice_number,
+      date: format(parseISO(inv.invoice_date), 'yyyy-MM-dd'),
+      reference: inv.purchase_order?.po_number ? `PO: ${inv.purchase_order.po_number}` : inv.sales_order?.so_number ? `SO: ${inv.sales_order.so_number}` : '',
+      pay_to: inv.purchase_order?.vendor?.name || inv.sales_order?.customer?.name || '',
+      pay_to_id: inv.purchase_order?.vendor?.vendor_id || inv.sales_order?.customer?.customer_id || '',
+      location: inv.purchase_order?.location?.name || inv.sales_order?.location?.name || '',
+      location_id: inv.purchase_order?.location?.location_id || inv.sales_order?.location?.location_id || '',
+      amount: inv.amount,
+      ledger: inv.ledger?.name || '',
+      status: inv.status,
+      due_date: inv.due_date ? format(parseISO(inv.due_date), 'yyyy-MM-dd') : '',
+    }));
+    if (rows.length === 0) { toast.info('No invoices to export'); return; }
+    await exportToExcel(rows, `invoices-${account?.account_id || 'account'}.xlsx`, 'Invoices', [
+      { header: 'Invoice #', key: 'invoice_number', width: 18 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Reference', key: 'reference', width: 18 },
+      { header: 'Pay To', key: 'pay_to', width: 24 },
+      { header: 'Pay To ID', key: 'pay_to_id', width: 16 },
+      { header: 'Location', key: 'location', width: 22 },
+      { header: 'Location ID', key: 'location_id', width: 16 },
+      { header: 'Amount', key: 'amount', width: 14 },
+      { header: 'Ledger', key: 'ledger', width: 22 },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Due Date', key: 'due_date', width: 14 },
+    ]);
+  };
+
+  const handleExportPayments = async () => {
+    const rows = filteredPayments.map(p => ({
+      payment_number: p.payment_number,
+      date: format(parseISO(p.payment_date), 'yyyy-MM-dd'),
+      invoice: p.invoice?.invoice_number || '',
+      amount: p.amount,
+      status: p.status,
+    }));
+    if (rows.length === 0) { toast.info('No payments to export'); return; }
+    await exportToExcel(rows, `payments-${account?.account_id || 'account'}.xlsx`, 'Payments', [
+      { header: 'Payment #', key: 'payment_number', width: 18 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Invoice', key: 'invoice', width: 18 },
+      { header: 'Amount', key: 'amount', width: 14 },
+      { header: 'Status', key: 'status', width: 14 },
+    ]);
+  };
 
   const totalAmount = useMemo(() => {
     return invoices.reduce((sum, inv) => sum + inv.amount, 0);
@@ -513,12 +589,17 @@ const AccountDetail = () => {
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-lg font-semibold">Transactions</h2>
               </div>
-              <Input
-                placeholder="Search transactions..."
-                value={txSearchQuery}
-                onChange={(e) => setTxSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search transactions..."
+                  value={txSearchQuery}
+                  onChange={(e) => setTxSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button variant="outline" size="icon" onClick={handleExportTransactions} title="Export to XLSX">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <Table>
               <TableHeader>
@@ -639,12 +720,17 @@ const AccountDetail = () => {
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-lg font-semibold">Invoices</h2>
               </div>
-              <Input
-                placeholder="Search invoices..."
-                value={invoiceSearchQuery}
-                onChange={(e) => setInvoiceSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search invoices..."
+                  value={invoiceSearchQuery}
+                  onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button variant="outline" size="icon" onClick={handleExportInvoices} title="Export to XLSX">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <Table>
@@ -756,12 +842,17 @@ const AccountDetail = () => {
                 <DollarSign className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-lg font-semibold">Payments</h2>
               </div>
-              <Input
-                placeholder="Search payments..."
-                value={paymentSearchQuery}
-                onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search payments..."
+                  value={paymentSearchQuery}
+                  onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button variant="outline" size="icon" onClick={handleExportPayments} title="Export to XLSX">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <Table>
