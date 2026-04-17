@@ -307,6 +307,80 @@ const AccountDetail = () => {
     );
   }, [sortedPayments, paymentSearchQuery]);
 
+  const handleExportTransactions = async () => {
+    const paymentRows = payments.map(p => ({
+      date: format(parseISO(p.payment_date), 'yyyy-MM-dd'),
+      type: 'payment',
+      reference: p.payment_number,
+      description: p.invoice?.invoice_number ? `Payment for Invoice ${p.invoice.invoice_number}` : (p.notes || 'Payment'),
+      amount: p.amount,
+    }));
+    const invoiceRows = invoices.map(inv => ({
+      date: format(parseISO(inv.invoice_date), 'yyyy-MM-dd'),
+      type: 'invoice',
+      reference: inv.invoice_number,
+      description: inv.purchase_order?.po_number ? `Invoice for PO ${inv.purchase_order.po_number}` : inv.notes || 'Invoice',
+      amount: -inv.amount,
+    }));
+    const rows = [...paymentRows, ...invoiceRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (rows.length === 0) { toast.info('No transactions to export'); return; }
+    await exportToExcel(rows, `transactions-${account?.account_id || 'account'}.xlsx`, 'Transactions', [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Reference', key: 'reference', width: 18 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Amount', key: 'amount', width: 14 },
+    ]);
+  };
+
+  const handleExportInvoices = async () => {
+    const rows = filteredInvoices.map(inv => ({
+      invoice_number: inv.invoice_number,
+      date: format(parseISO(inv.invoice_date), 'yyyy-MM-dd'),
+      reference: inv.purchase_order?.po_number ? `PO: ${inv.purchase_order.po_number}` : inv.sales_order?.so_number ? `SO: ${inv.sales_order.so_number}` : '',
+      pay_to: inv.purchase_order?.vendor?.name || inv.sales_order?.customer?.name || '',
+      pay_to_id: inv.purchase_order?.vendor?.vendor_id || inv.sales_order?.customer?.customer_id || '',
+      location: inv.purchase_order?.location?.name || inv.sales_order?.location?.name || '',
+      location_id: inv.purchase_order?.location?.location_id || inv.sales_order?.location?.location_id || '',
+      amount: inv.amount,
+      ledger: inv.ledger?.name || '',
+      status: inv.status,
+      due_date: inv.due_date ? format(parseISO(inv.due_date), 'yyyy-MM-dd') : '',
+    }));
+    if (rows.length === 0) { toast.info('No invoices to export'); return; }
+    await exportToExcel(rows, `invoices-${account?.account_id || 'account'}.xlsx`, 'Invoices', [
+      { header: 'Invoice #', key: 'invoice_number', width: 18 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Reference', key: 'reference', width: 18 },
+      { header: 'Pay To', key: 'pay_to', width: 24 },
+      { header: 'Pay To ID', key: 'pay_to_id', width: 16 },
+      { header: 'Location', key: 'location', width: 22 },
+      { header: 'Location ID', key: 'location_id', width: 16 },
+      { header: 'Amount', key: 'amount', width: 14 },
+      { header: 'Ledger', key: 'ledger', width: 22 },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Due Date', key: 'due_date', width: 14 },
+    ]);
+  };
+
+  const handleExportPayments = async () => {
+    const rows = filteredPayments.map(p => ({
+      payment_number: p.payment_number,
+      date: format(parseISO(p.payment_date), 'yyyy-MM-dd'),
+      invoice: p.invoice?.invoice_number || '',
+      amount: p.amount,
+      status: p.status,
+    }));
+    if (rows.length === 0) { toast.info('No payments to export'); return; }
+    await exportToExcel(rows, `payments-${account?.account_id || 'account'}.xlsx`, 'Payments', [
+      { header: 'Payment #', key: 'payment_number', width: 18 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Invoice', key: 'invoice', width: 18 },
+      { header: 'Amount', key: 'amount', width: 14 },
+      { header: 'Status', key: 'status', width: 14 },
+    ]);
+  };
+
   const totalAmount = useMemo(() => {
     return invoices.reduce((sum, inv) => sum + inv.amount, 0);
   }, [invoices]);
