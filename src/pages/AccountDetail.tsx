@@ -589,12 +589,17 @@ const AccountDetail = () => {
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-lg font-semibold">Transactions</h2>
               </div>
-              <Input
-                placeholder="Search transactions..."
-                value={txSearchQuery}
-                onChange={(e) => setTxSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search transactions..."
+                  value={txSearchQuery}
+                  onChange={(e) => setTxSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button variant="outline" size="icon" onClick={handleExportTransactions} title="Export to XLSX">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <Table>
               <TableHeader>
@@ -715,12 +720,17 @@ const AccountDetail = () => {
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-lg font-semibold">Invoices</h2>
               </div>
-              <Input
-                placeholder="Search invoices..."
-                value={invoiceSearchQuery}
-                onChange={(e) => setInvoiceSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search invoices..."
+                  value={invoiceSearchQuery}
+                  onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button variant="outline" size="icon" onClick={handleExportInvoices} title="Export to XLSX">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <Table>
@@ -832,12 +842,17 @@ const AccountDetail = () => {
                 <DollarSign className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-lg font-semibold">Payments</h2>
               </div>
-              <Input
-                placeholder="Search payments..."
-                value={paymentSearchQuery}
-                onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search payments..."
+                  value={paymentSearchQuery}
+                  onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button variant="outline" size="icon" onClick={handleExportPayments} title="Export to XLSX">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <Table>
