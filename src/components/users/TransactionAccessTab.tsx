@@ -144,7 +144,7 @@ export const TransactionAccessTab = ({ userId, companyId, readOnly = false }: Tr
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
+      <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2">
         {TRANSACTION_CODES.map(tc => (
           <div
             key={tc.code}
