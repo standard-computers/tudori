@@ -78,7 +78,7 @@ interface Team {
   name: string;
 }
 
-const STATUSES = ["active", "inactive", "on_leave"];
+const STATUSES = ["active", "inactive", "on_leave", "pip", "terminated"];
 
 // Column definitions for Employees table
 const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
@@ -762,7 +762,7 @@ const Employees = () => {
                         <SelectContent>
                           {STATUSES.map((s) => (
                             <SelectItem key={s} value={s}>
-                              {s}
+                              {s === 'pip' ? 'PIP' : s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                             </SelectItem>
                           ))}
                         </SelectContent>
