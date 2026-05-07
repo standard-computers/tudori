@@ -171,7 +171,7 @@ const Ledgers = () => {
   
   // Maximize states
   const [isCreateMaximized, setIsCreateMaximized] = useMaximizedState();
-  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
+  const [isViewMaximized, setIsViewMaximized] = useState(true);
   const [isTxDetailMaximized, setIsTxDetailMaximized] = useMaximizedState();
   
   // Form state
