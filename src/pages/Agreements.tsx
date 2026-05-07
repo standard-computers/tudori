@@ -420,6 +420,10 @@ export default function Agreements() {
 
   const handleCheck = async () => {
     if (!selectedAgreement || !companyId) return;
+    if (selectedAgreement.status !== "active") {
+      toast.error("Only active agreements can be checked");
+      return;
+    }
     setChecking(true);
     try {
       const today = new Date();
