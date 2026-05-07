@@ -169,7 +169,7 @@ export const DeliveryItemsDialog = ({
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-8 px-6 text-muted-foreground">
-            No items found in this purchase order.
+            All items on this purchase order have already been included in existing deliveries.
           </div>
         ) : (
           <div className="flex-1 overflow-auto px-6">
