@@ -1807,6 +1807,14 @@ const Orders = () => {
       .eq("purchase_order_id", order.id);
 
     setViewGoodsReceipts((goodsReceipts as any) || []);
+
+    // Fetch associated deliveries
+    const { data: deliveries } = await supabase
+      .from("deliveries")
+      .select("id, delivery_id, status, expected_date, delivered_date")
+      .eq("purchase_order_id", order.id)
+      .order("expected_date", { ascending: true });
+    setViewDeliveries((deliveries as any) || []);
     setIsEditingTaxRates(false);
     setIsViewDialogOpen(true);
   };
