@@ -443,6 +443,7 @@ const Orders = () => {
   const [viewGoodsReceipts, setViewGoodsReceipts] = useState<{ receipt_number: string; id: string; status: string }[]>(
     [],
   );
+  const [viewDeliveries, setViewDeliveries] = useState<{ id: string; delivery_id: string; status: string; expected_date: string | null; delivered_date: string | null }[]>([]);
 
   // Create dialog form state
   const [formData, setFormData] = useState({
