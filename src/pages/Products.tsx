@@ -3386,6 +3386,26 @@ const Products = () => {
         title="Load Products"
         loading={queryLoading}
       />
+      <AlertDialog open={!!statusChangeTarget} onOpenChange={(o) => !o && setStatusChangeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Product Status</AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusChangeTarget && (
+                <>
+                  Change status of <strong>{statusChangeTarget.product.name}</strong> from{" "}
+                  <strong>{PRODUCT_STATUSES.find(s => s.value === statusChangeTarget.product.status)?.label}</strong> to{" "}
+                  <strong>{PRODUCT_STATUSES.find(s => s.value === statusChangeTarget.newStatus)?.label}</strong>?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusChange}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
