@@ -680,12 +680,12 @@ const HR = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableCell className="font-medium">Position</TableCell>
-                    <TableCell className="font-medium">Team</TableCell>
-                    <TableCell className="font-medium">Location(s)</TableCell>
-                    <TableCell className="font-medium">Open Date</TableCell>
-                    <TableCell className="font-medium">Wage</TableCell>
-                    <TableCell className="font-medium w-24">Status</TableCell>
+                    <SortableTableHead label="Position" sortKey="name" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['name']} onFilter={(v) => positionSort.setFilter('name', v)} />
+                    <SortableTableHead label="Team" sortKey="team_name" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['team_name']} onFilter={(v) => positionSort.setFilter('team_name', v)} />
+                    <SortableTableHead label="Location(s)" sortKey="location_names" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['location_names']} onFilter={(v) => positionSort.setFilter('location_names', v)} />
+                    <SortableTableHead label="Open Date" sortKey="open_date" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['open_date']} onFilter={(v) => positionSort.setFilter('open_date', v)} />
+                    <SortableTableHead label="Wage" sortKey="wage_value" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} />
+                    <SortableTableHead label="Status" sortKey="status" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['status']} onFilter={(v) => positionSort.setFilter('status', v)} className="w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
