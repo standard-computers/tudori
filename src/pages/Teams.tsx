@@ -444,6 +444,11 @@ const Teams = () => {
   };
 
   const handleDelete = async (id: string) => {
+    const team = teams.find(t => t.id === id);
+    if (team && (team.member_count || 0) > 0) {
+      toast.error('Cannot delete a team that has members');
+      return;
+    }
     const { error } = await supabase.from('teams').delete().eq('id', id);
     if (error) {
       toast.error('Failed to delete team');
