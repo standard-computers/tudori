@@ -2232,6 +2232,14 @@ const Requisitions = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={confirmDelete.open}
+        onOpenChange={(open) => setConfirmDelete(prev => ({ ...prev, open }))}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        onConfirm={performDelete}
+      />
     </div>
   );
 };
