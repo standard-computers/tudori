@@ -443,6 +443,7 @@ const Orders = () => {
   const [viewGoodsReceipts, setViewGoodsReceipts] = useState<{ receipt_number: string; id: string; status: string }[]>(
     [],
   );
+  const [viewDeliveries, setViewDeliveries] = useState<{ id: string; delivery_id: string; status: string; expected_date: string | null; delivered_date: string | null }[]>([]);
 
   // Create dialog form state
   const [formData, setFormData] = useState({
@@ -1806,6 +1807,14 @@ const Orders = () => {
       .eq("purchase_order_id", order.id);
 
     setViewGoodsReceipts((goodsReceipts as any) || []);
+
+    // Fetch associated deliveries
+    const { data: deliveries } = await supabase
+      .from("deliveries")
+      .select("id, delivery_id, status, expected_date, delivered_date")
+      .eq("purchase_order_id", order.id)
+      .order("expected_date", { ascending: true });
+    setViewDeliveries((deliveries as any) || []);
     setIsEditingTaxRates(false);
     setIsViewDialogOpen(true);
   };
@@ -3421,10 +3430,13 @@ const Orders = () => {
 
               {/* Tabs */}
               <Tabs defaultValue="items" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className={`grid w-full ${viewDeliveries.length > 0 ? 'grid-cols-6' : 'grid-cols-5'}`}>
                   <TabsTrigger value="items">Items</TabsTrigger>
                   <TabsTrigger value="rates">Rates</TabsTrigger>
                   <TabsTrigger value="assignment">Assignment</TabsTrigger>
+                  {viewDeliveries.length > 0 && (
+                    <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
+                  )}
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
@@ -3667,6 +3679,43 @@ const Orders = () => {
                     </div>
                   </div>
                 </TabsContent>
+
+                {viewDeliveries.length > 0 && (
+                  <TabsContent value="deliveries" className="space-y-4 mt-4">
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Delivery #</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Expected</TableHead>
+                            <TableHead>Delivered</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {viewDeliveries.map((d) => (
+                            <TableRow key={d.id}>
+                              <TableCell>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/deliveries?ref=${encodeURIComponent(d.delivery_id)}`)}
+                                  className="font-mono text-primary hover:underline"
+                                >
+                                  {d.delivery_id}
+                                </button>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={d.status === "delivered" ? "default" : "secondary"}>{d.status}</Badge>
+                              </TableCell>
+                              <TableCell className="text-sm">{d.expected_date ? new Date(d.expected_date).toLocaleDateString() : "-"}</TableCell>
+                              <TableCell className="text-sm">{d.delivered_date ? new Date(d.delivered_date).toLocaleDateString() : "-"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </TabsContent>
+                )}
 
                 <TabsContent value="notes" className="space-y-4 mt-4">
                   <div className="space-y-2">
