@@ -1020,20 +1020,14 @@ const Requisitions = () => {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this requisition?')) return;
-
-    const { error } = await supabase
-      .from('requisitions')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast.error('Failed to delete requisition');
-      return;
-    }
-
-    toast.success('Requisition deleted');
-    fetchRequisitions();
+    const req = requisitions.find(r => r.id === id);
+    setConfirmDelete({
+      open: true,
+      mode: 'single',
+      ids: [id],
+      title: 'Delete Requisition',
+      description: `Are you sure you want to delete requisition ${req?.requisition_id ?? ''}? This action cannot be undone.`,
+    });
   };
 
   const handleConvertToPO = async (requisition: Requisition) => {
