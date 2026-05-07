@@ -429,28 +429,51 @@ const HR = () => {
   const clockedInCount = activePunches.length;
   const clockedInEmployeeIds = new Set(activePunches.map(p => p.employee_id));
 
-  const filteredEmployees = employees.filter(e => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      e.first_name.toLowerCase().includes(q) ||
-      e.last_name.toLowerCase().includes(q) ||
-      e.employee_id.toLowerCase().includes(q) ||
-      (e.email?.toLowerCase().includes(q)) ||
-      (e.job_title?.toLowerCase().includes(q)) ||
-      (e.department?.toLowerCase().includes(q))
-    );
-  });
+  const employeeRows = employees
+    .filter(e => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        e.first_name.toLowerCase().includes(q) ||
+        e.last_name.toLowerCase().includes(q) ||
+        e.employee_id.toLowerCase().includes(q) ||
+        (e.email?.toLowerCase().includes(q)) ||
+        (e.job_title?.toLowerCase().includes(q)) ||
+        (e.department?.toLowerCase().includes(q))
+      );
+    })
+    .map(e => ({
+      ...e,
+      name: `${e.first_name} ${e.last_name}`,
+      team: e.department || '',
+      title: (e as any).positions?.[0]?.name || e.job_title || '',
+      contact: e.email || e.phone || '',
+      clock: clockedInEmployeeIds.has(e.id) ? 'in' : 'out',
+    }));
 
-  const filteredPositions = positions.filter(p => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      (p.team?.name?.toLowerCase().includes(q)) ||
-      p.status.toLowerCase().includes(q)
-    );
-  });
+  const employeeSort = useTableSort(employeeRows, 'employee_id', 'asc');
+
+  const positionRows = positions
+    .filter(p => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.team?.name?.toLowerCase().includes(q)) ||
+        p.status.toLowerCase().includes(q)
+      );
+    })
+    .map(p => ({
+      ...p,
+      team_name: p.team?.name || '',
+      location_names: p.position_locations?.map(pl => pl.locations?.name).filter(Boolean).join(', ') || '',
+      wage_value: p.show_wage && p.wage != null ? p.wage : null,
+    }));
+
+  const positionSort = useTableSort(positionRows, 'name', 'asc');
+
+  const filteredEmployees = employeeSort.sortedAndFilteredData;
+  const filteredPositions = positionSort.sortedAndFilteredData;
 
   if (authLoading || loading) {
     return (
