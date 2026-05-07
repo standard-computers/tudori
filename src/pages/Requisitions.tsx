@@ -426,6 +426,14 @@ const Requisitions = () => {
     }, 1500);
   };
 
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    mode: 'single' | 'bulk';
+    ids: string[];
+    title: string;
+    description: string;
+  }>({ open: false, mode: 'single', ids: [], title: '', description: '' });
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
 
@@ -443,20 +451,32 @@ const Requisitions = () => {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedIds.size} requisition(s)?`)) return;
+    setConfirmDelete({
+      open: true,
+      mode: 'bulk',
+      ids: Array.from(selectedIds),
+      title: 'Delete Requisitions',
+      description: `Are you sure you want to delete ${selectedIds.size} requisition(s)? This action cannot be undone.`,
+    });
+  };
+
+  const performDelete = async () => {
+    const ids = confirmDelete.ids;
+    setConfirmDelete(prev => ({ ...prev, open: false }));
+    if (ids.length === 0) return;
 
     const { error } = await supabase
       .from('requisitions')
       .delete()
-      .in('id', Array.from(selectedIds));
+      .in('id', ids);
 
     if (error) {
-      toast.error('Failed to delete requisitions');
+      toast.error('Failed to delete requisition(s)');
       return;
     }
 
-    toast.success(`Deleted ${selectedIds.size} requisition(s)`);
-    setSelectedIds(new Set());
+    toast.success(ids.length === 1 ? 'Requisition deleted' : `Deleted ${ids.length} requisition(s)`);
+    if (confirmDelete.mode === 'bulk') setSelectedIds(new Set());
     fetchRequisitions();
   };
 
