@@ -2515,13 +2515,15 @@ function RequisitionsTable({
                           <ShoppingCart className="w-4 h-4 mr-2" />
                           Convert to PO
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onDeleteRequisition(req.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
+                        {req.status !== 'ordered' && req.status !== 'completed' && (
+                          <DropdownMenuItem
+                            onClick={() => onDeleteRequisition(req.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
