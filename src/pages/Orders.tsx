@@ -3430,10 +3430,13 @@ const Orders = () => {
 
               {/* Tabs */}
               <Tabs defaultValue="items" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className={`grid w-full ${viewDeliveries.length > 0 ? 'grid-cols-6' : 'grid-cols-5'}`}>
                   <TabsTrigger value="items">Items</TabsTrigger>
                   <TabsTrigger value="rates">Rates</TabsTrigger>
                   <TabsTrigger value="assignment">Assignment</TabsTrigger>
+                  {viewDeliveries.length > 0 && (
+                    <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
+                  )}
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
