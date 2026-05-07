@@ -70,6 +70,16 @@ import { toast } from '@/lib/toast';
 import { useExcel } from "@/hooks/use-excel";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PRODUCT_QUERY_FIELDS: QueryField[] = [
   { key: "product_id", label: "Product ID", placeholder: "Search by product ID..." },
@@ -247,6 +257,7 @@ const ProductTable = ({
   onEdit,
   onDelete,
   onView,
+  onStatusChange,
   onFilteredDataChange,
   isColumnVisible,
   showImages,
@@ -255,6 +266,7 @@ const ProductTable = ({
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onView: (product: Product) => void;
+  onStatusChange: (product: Product, newStatus: ProductStatus) => void;
   onFilteredDataChange?: (data: Product[]) => void;
   isColumnVisible: (key: string) => boolean;
   showImages?: boolean;
@@ -612,6 +624,12 @@ const ProductTable = ({
                                 <Eye className="w-4 h-4 mr-2" />
                                 View
                               </DropdownMenuItem>
+                              {PRODUCT_STATUSES.filter(s => s.value !== product.status).map(s => (
+                                <DropdownMenuItem key={s.value} onClick={() => onStatusChange(product, s.value)}>
+                                  <Check className="w-4 h-4 mr-2" />
+                                  Set status: {s.label}
+                                </DropdownMenuItem>
+                              ))}
                               <DropdownMenuItem
                                 onClick={() => onDelete(product.id)}
                                 className="text-destructive focus:text-destructive"
@@ -1340,6 +1358,25 @@ const Products = () => {
     toast.success("Product deleted");
     fetchProducts();
     fetchNextProductId();
+  };
+
+  const [statusChangeTarget, setStatusChangeTarget] = useState<{ product: Product; newStatus: ProductStatus } | null>(null);
+
+  const requestStatusChange = (product: Product, newStatus: ProductStatus) => {
+    setStatusChangeTarget({ product, newStatus });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusChangeTarget) return;
+    const { product, newStatus } = statusChangeTarget;
+    const { error } = await supabase.from("products").update({ status: newStatus }).eq("id", product.id);
+    if (error) {
+      toast.error("Failed to update status");
+    } else {
+      toast.success(`Status updated to ${PRODUCT_STATUSES.find(s => s.value === newStatus)?.label}`);
+      fetchProducts();
+    }
+    setStatusChangeTarget(null);
   };
 
   const handleAddUom = () => {
@@ -3333,6 +3370,7 @@ const Products = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onView={handleEdit}
+            onStatusChange={requestStatusChange}
             onFilteredDataChange={handleFilteredDataChange}
             isColumnVisible={isColumnVisible}
             showImages={showProductImages}
@@ -3348,6 +3386,26 @@ const Products = () => {
         title="Load Products"
         loading={queryLoading}
       />
+      <AlertDialog open={!!statusChangeTarget} onOpenChange={(o) => !o && setStatusChangeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Product Status</AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusChangeTarget && (
+                <>
+                  Change status of <strong>{statusChangeTarget.product.name}</strong> from{" "}
+                  <strong>{PRODUCT_STATUSES.find(s => s.value === statusChangeTarget.product.status)?.label}</strong> to{" "}
+                  <strong>{PRODUCT_STATUSES.find(s => s.value === statusChangeTarget.newStatus)?.label}</strong>?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusChange}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
