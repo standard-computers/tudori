@@ -247,6 +247,7 @@ const ProductTable = ({
   onEdit,
   onDelete,
   onView,
+  onStatusChange,
   onFilteredDataChange,
   isColumnVisible,
   showImages,
@@ -255,6 +256,7 @@ const ProductTable = ({
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onView: (product: Product) => void;
+  onStatusChange: (product: Product, newStatus: ProductStatus) => void;
   onFilteredDataChange?: (data: Product[]) => void;
   isColumnVisible: (key: string) => boolean;
   showImages?: boolean;
