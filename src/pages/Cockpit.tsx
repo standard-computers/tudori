@@ -1337,6 +1337,7 @@ const [areaFormData, setAreaFormData] = useState({
       .select('id, order_number, status, quantity, created_at, product:products(name, product_id), bom:bill_of_materials(name, bom_id)')
       .eq('company_id', companyId)
       .eq('location_id', selectedLocationId)
+      .neq('status', 'completed')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('Failed to fetch production orders:', error);
