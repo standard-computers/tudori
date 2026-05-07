@@ -195,7 +195,7 @@ const HR = () => {
       .from('employees')
       .select('id, employee_id, first_name, last_name, email, phone, job_title, department, status, user_id, positions(name)')
       .eq('company_id', companyId!)
-      .order('last_name');
+      .order('employee_id', { ascending: true });
     setEmployees(data || []);
   };
 
