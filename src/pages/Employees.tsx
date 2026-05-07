@@ -78,7 +78,7 @@ interface Team {
   name: string;
 }
 
-const STATUSES = ["active", "inactive", "on_leave"];
+const STATUSES = ["active", "inactive", "on_leave", "pip", "terminated"];
 
 // Column definitions for Employees table
 const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
