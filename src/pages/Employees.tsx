@@ -762,7 +762,7 @@ const Employees = () => {
                         <SelectContent>
                           {STATUSES.map((s) => (
                             <SelectItem key={s} value={s}>
-                              {s}
+                              {s === 'pip' ? 'PIP' : s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                             </SelectItem>
                           ))}
                         </SelectContent>
