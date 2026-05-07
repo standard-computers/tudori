@@ -3360,6 +3360,7 @@ const Products = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onView={handleEdit}
+            onStatusChange={requestStatusChange}
             onFilteredDataChange={handleFilteredDataChange}
             isColumnVisible={isColumnVisible}
             showImages={showProductImages}
