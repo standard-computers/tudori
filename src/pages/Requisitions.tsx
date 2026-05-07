@@ -59,6 +59,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { AuditHistoryTab } from '@/components/AuditHistoryTab';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 interface Requisition {
   id: string;
   requisition_id: string;
