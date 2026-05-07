@@ -614,6 +614,12 @@ const ProductTable = ({
                                 <Eye className="w-4 h-4 mr-2" />
                                 View
                               </DropdownMenuItem>
+                              {PRODUCT_STATUSES.filter(s => s.value !== product.status).map(s => (
+                                <DropdownMenuItem key={s.value} onClick={() => onStatusChange(product, s.value)}>
+                                  <Check className="w-4 h-4 mr-2" />
+                                  Set status: {s.label}
+                                </DropdownMenuItem>
+                              ))}
                               <DropdownMenuItem
                                 onClick={() => onDelete(product.id)}
                                 className="text-destructive focus:text-destructive"
