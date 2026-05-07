@@ -1350,6 +1350,25 @@ const Products = () => {
     fetchNextProductId();
   };
 
+  const [statusChangeTarget, setStatusChangeTarget] = useState<{ product: Product; newStatus: ProductStatus } | null>(null);
+
+  const requestStatusChange = (product: Product, newStatus: ProductStatus) => {
+    setStatusChangeTarget({ product, newStatus });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusChangeTarget) return;
+    const { product, newStatus } = statusChangeTarget;
+    const { error } = await supabase.from("products").update({ status: newStatus }).eq("id", product.id);
+    if (error) {
+      toast.error("Failed to update status");
+    } else {
+      toast.success(`Status updated to ${PRODUCT_STATUSES.find(s => s.value === newStatus)?.label}`);
+      fetchProducts();
+    }
+    setStatusChangeTarget(null);
+  };
+
   const handleAddUom = () => {
     if (!newUom.abbreviation) {
       toast.error("Please select a UOM");
