@@ -71,34 +71,52 @@ export const DeliveryItemsDialog = ({
 
   const fetchPOItems = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('purchase_order_items')
-      .select(`
-        id,
-        product_id,
-        quantity,
-        unit_price,
-        product:products(name, product_id)
-      `)
-      .eq('purchase_order_id', purchaseOrderId);
+    const [{ data, error }, { data: existingDeliveries, error: delErr }] = await Promise.all([
+      supabase
+        .from('purchase_order_items')
+        .select(`
+          id,
+          product_id,
+          quantity,
+          unit_price,
+          product:products(name, product_id)
+        `)
+        .eq('purchase_order_id', purchaseOrderId),
+      supabase
+        .from('deliveries')
+        .select('id, status, delivery_items(product_id, quantity)')
+        .eq('purchase_order_id', purchaseOrderId),
+    ]);
 
-    if (error) {
+    if (error || delErr) {
       toast.error('Failed to load PO items');
       setLoading(false);
       return;
     }
 
-    const selections: DeliveryItemSelection[] = (data || []).map((item: POItem) => ({
-      product_id: item.product_id,
-      product_name: item.product?.name || 'Unknown',
-      product_code: item.product?.product_id || '',
-      po_quantity: item.quantity,
-      delivery_quantity: item.quantity,
-      selected: true,
-    }));
+    // Sum already-delivered/in-progress quantities per product (exclude canceled)
+    const deliveredByProduct: Record<string, number> = {};
+    for (const d of (existingDeliveries || []) as any[]) {
+      if ((d.status || '').toLowerCase() === 'canceled' || (d.status || '').toLowerCase() === 'cancelled') continue;
+      for (const di of (d.delivery_items || []) as any[]) {
+        deliveredByProduct[di.product_id] = (deliveredByProduct[di.product_id] || 0) + (di.quantity || 0);
+      }
+    }
+
+    const selections: DeliveryItemSelection[] = (data || []).map((item: POItem) => {
+      const remaining = Math.max(0, item.quantity - (deliveredByProduct[item.product_id] || 0));
+      return {
+        product_id: item.product_id,
+        product_name: item.product?.name || 'Unknown',
+        product_code: item.product?.product_id || '',
+        po_quantity: remaining,
+        delivery_quantity: remaining,
+        selected: remaining > 0,
+      };
+    }).filter(s => s.po_quantity > 0);
 
     setItems(selections);
-    setSelectAll(true);
+    setSelectAll(selections.every(s => s.selected));
     setLoading(false);
   };
 
