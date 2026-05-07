@@ -60,6 +60,8 @@ import {
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
+import { useTableSort } from '@/hooks/use-table-sort';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from '@/lib/toast';
 
 interface Employee {
@@ -193,7 +195,7 @@ const HR = () => {
       .from('employees')
       .select('id, employee_id, first_name, last_name, email, phone, job_title, department, status, user_id, positions(name)')
       .eq('company_id', companyId!)
-      .order('last_name');
+      .order('employee_id', { ascending: true });
     setEmployees(data || []);
   };
 
@@ -427,28 +429,51 @@ const HR = () => {
   const clockedInCount = activePunches.length;
   const clockedInEmployeeIds = new Set(activePunches.map(p => p.employee_id));
 
-  const filteredEmployees = employees.filter(e => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      e.first_name.toLowerCase().includes(q) ||
-      e.last_name.toLowerCase().includes(q) ||
-      e.employee_id.toLowerCase().includes(q) ||
-      (e.email?.toLowerCase().includes(q)) ||
-      (e.job_title?.toLowerCase().includes(q)) ||
-      (e.department?.toLowerCase().includes(q))
-    );
-  });
+  const employeeRows = employees
+    .filter(e => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        e.first_name.toLowerCase().includes(q) ||
+        e.last_name.toLowerCase().includes(q) ||
+        e.employee_id.toLowerCase().includes(q) ||
+        (e.email?.toLowerCase().includes(q)) ||
+        (e.job_title?.toLowerCase().includes(q)) ||
+        (e.department?.toLowerCase().includes(q))
+      );
+    })
+    .map(e => ({
+      ...e,
+      name: `${e.first_name} ${e.last_name}`,
+      team: e.department || '',
+      title: (e as any).positions?.[0]?.name || e.job_title || '',
+      contact: e.email || e.phone || '',
+      clock: clockedInEmployeeIds.has(e.id) ? 'in' : 'out',
+    }));
 
-  const filteredPositions = positions.filter(p => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      (p.team?.name?.toLowerCase().includes(q)) ||
-      p.status.toLowerCase().includes(q)
-    );
-  });
+  const employeeSort = useTableSort(employeeRows, 'employee_id', 'asc');
+
+  const positionRows = positions
+    .filter(p => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.team?.name?.toLowerCase().includes(q)) ||
+        p.status.toLowerCase().includes(q)
+      );
+    })
+    .map(p => ({
+      ...p,
+      team_name: p.team?.name || '',
+      location_names: p.position_locations?.map(pl => pl.locations?.name).filter(Boolean).join(', ') || '',
+      wage_value: p.show_wage && p.wage != null ? p.wage : null,
+    }));
+
+  const positionSort = useTableSort(positionRows, 'name', 'asc');
+
+  const filteredEmployees = employeeSort.sortedAndFilteredData;
+  const filteredPositions = positionSort.sortedAndFilteredData;
 
   if (authLoading || loading) {
     return (
@@ -580,13 +605,13 @@ const HR = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableCell className="font-medium w-24">ID</TableCell>
-                    <TableCell className="font-medium">Name</TableCell>
-                    <TableCell className="font-medium">Team</TableCell>
-                    <TableCell className="font-medium">Job Title</TableCell>
-                    <TableCell className="font-medium">Contact</TableCell>
-                    <TableCell className="font-medium w-24">Status</TableCell>
-                    <TableCell className="font-medium w-20">Clock</TableCell>
+                    <SortableTableHead label="ID" sortKey="employee_id" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['employee_id']} onFilter={(v) => employeeSort.setFilter('employee_id', v)} className="w-24" />
+                    <SortableTableHead label="Name" sortKey="name" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['name']} onFilter={(v) => employeeSort.setFilter('name', v)} />
+                    <SortableTableHead label="Team" sortKey="team" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['team']} onFilter={(v) => employeeSort.setFilter('team', v)} />
+                    <SortableTableHead label="Job Title" sortKey="title" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['title']} onFilter={(v) => employeeSort.setFilter('title', v)} />
+                    <SortableTableHead label="Contact" sortKey="contact" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['contact']} onFilter={(v) => employeeSort.setFilter('contact', v)} />
+                    <SortableTableHead label="Status" sortKey="status" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['status']} onFilter={(v) => employeeSort.setFilter('status', v)} className="w-24" />
+                    <SortableTableHead label="Clock" sortKey="clock" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['clock']} onFilter={(v) => employeeSort.setFilter('clock', v)} className="w-20" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -655,12 +680,12 @@ const HR = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableCell className="font-medium">Position</TableCell>
-                    <TableCell className="font-medium">Team</TableCell>
-                    <TableCell className="font-medium">Location(s)</TableCell>
-                    <TableCell className="font-medium">Open Date</TableCell>
-                    <TableCell className="font-medium">Wage</TableCell>
-                    <TableCell className="font-medium w-24">Status</TableCell>
+                    <SortableTableHead label="Position" sortKey="name" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['name']} onFilter={(v) => positionSort.setFilter('name', v)} />
+                    <SortableTableHead label="Team" sortKey="team_name" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['team_name']} onFilter={(v) => positionSort.setFilter('team_name', v)} />
+                    <SortableTableHead label="Location(s)" sortKey="location_names" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['location_names']} onFilter={(v) => positionSort.setFilter('location_names', v)} />
+                    <SortableTableHead label="Open Date" sortKey="open_date" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['open_date']} onFilter={(v) => positionSort.setFilter('open_date', v)} />
+                    <SortableTableHead label="Wage" sortKey="wage_value" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} />
+                    <SortableTableHead label="Status" sortKey="status" currentSortKey={positionSort.sortConfig.key} currentSortDirection={positionSort.sortConfig.direction} onSort={positionSort.handleSort} filterValue={positionSort.filters['status']} onFilter={(v) => positionSort.setFilter('status', v)} className="w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
