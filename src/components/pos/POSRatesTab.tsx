@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Percent } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Check, ChevronsUpDown, Percent, X } from 'lucide-react';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 
 interface Rate {
@@ -24,7 +33,7 @@ interface POSRatesTabProps {
 const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
   const [allRates, setAllRates] = useState<Rate[]>([]);
   const [selectedRateIds, setSelectedRateIds] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -63,33 +72,6 @@ const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
     });
   };
 
-  const filteredRates = allRates.filter(
-    (r) =>
-      r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.rate_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.description && r.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const allFilteredSelected =
-    filteredRates.length > 0 &&
-    filteredRates.every((r) => selectedRateIds.has(r.id));
-
-  const toggleAll = () => {
-    if (allFilteredSelected) {
-      setSelectedRateIds((prev) => {
-        const next = new Set(prev);
-        filteredRates.forEach((r) => next.delete(r.id));
-        return next;
-      });
-    } else {
-      setSelectedRateIds((prev) => {
-        const next = new Set(prev);
-        filteredRates.forEach((r) => next.add(r.id));
-        return next;
-      });
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -116,61 +98,93 @@ const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
     return `${Number(rate.rate).toFixed(2)}%`;
   };
 
+  const selectedRates = allRates.filter((r) => selectedRateIds.has(r.id));
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search rates..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal"
+            disabled={loading}
+          >
+            <span className="text-muted-foreground">
+              {loading
+                ? 'Loading...'
+                : `${selectedRateIds.size} of ${allRates.length} selected`}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[70]" align="start">
+          <Command>
+            <CommandInput placeholder="Search rates..." />
+            <CommandList>
+              <CommandEmpty>
+                <div className="flex flex-col items-center py-4 text-muted-foreground">
+                  <Percent className="w-6 h-6 mb-2" />
+                  <p className="text-sm">No rates found</p>
+                </div>
+              </CommandEmpty>
+              <CommandGroup>
+                {allRates.map((rate) => {
+                  const isSelected = selectedRateIds.has(rate.id);
+                  return (
+                    <CommandItem
+                      key={rate.id}
+                      value={`${rate.name} ${rate.rate_id} ${rate.description ?? ''}`}
+                      onSelect={() => toggleRate(rate.id)}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4',
+                          isSelected ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{rate.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {rate.rate_id}
+                          {rate.description ? ` · ${rate.description}` : ''}
+                        </p>
+                      </div>
+                      <span className="ml-2 text-sm font-medium shrink-0">
+                        {formatRate(rate)}
+                      </span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
-      ) : (
-        <>
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{selectedRateIds.size} of {allRates.length} selected</span>
-            <Button variant="ghost" size="sm" onClick={toggleAll}>
-              {allFilteredSelected ? 'Deselect All' : 'Select All'}
-            </Button>
-          </div>
-          <div className="max-h-80 overflow-y-auto border rounded-lg divide-y">
-            {filteredRates.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-muted-foreground">
-                <Percent className="w-8 h-8 mb-2" />
-                <p className="text-sm">No rates found</p>
-              </div>
-            ) : (
-              filteredRates.map((rate) => (
-                <label
-                  key={rate.id}
-                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50"
-                >
-                  <Checkbox
-                    checked={selectedRateIds.has(rate.id)}
-                    onCheckedChange={() => toggleRate(rate.id)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{rate.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {rate.rate_id} · {formatRate(rate)}
-                      {rate.description ? ` · ${rate.description}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-sm font-medium shrink-0">{formatRate(rate)}</span>
-                </label>
-              ))
-            )}
-          </div>
-        </>
+      {selectedRates.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedRates.map((rate) => (
+            <Badge key={rate.id} variant="secondary" className="gap-1 pr-1">
+              <span>
+                {rate.name} · {formatRate(rate)}
+              </span>
+              <button
+                type="button"
+                onClick={() => toggleRate(rate.id)}
+                className="ml-1 rounded-sm hover:bg-muted-foreground/20 p-0.5"
+                aria-label={`Remove ${rate.name}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
       )}
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || loading}>
           {saving ? 'Saving...' : 'Save'}
         </Button>
       </div>
