@@ -60,6 +60,8 @@ import {
 } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
 import { TimesheetsTab } from '@/components/employees/TimesheetsTab';
+import { useTableSort } from '@/hooks/use-table-sort';
+import { SortableTableHead } from '@/components/SortableTableHead';
 import { toast } from '@/lib/toast';
 
 interface Employee {
