@@ -528,7 +528,12 @@ export default function Agreements() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const docs: PendingDocument[] = [];
-      const selectedAgreements = agreements.filter(a => selectedIds.has(a.id));
+      const selectedAgreements = agreements.filter(a => selectedIds.has(a.id) && a.status === "active");
+      if (selectedAgreements.length === 0) {
+        toast.error("No active agreements selected");
+        setBulkChecking(false);
+        return;
+      }
       let lastRateIds = new Set<string>();
 
       for (const agr of selectedAgreements) {
