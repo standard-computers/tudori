@@ -189,7 +189,7 @@ export const DeliveryItemsDialog = ({
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Product</TableHead>
-                  <TableHead className="w-24 text-right">PO Qty</TableHead>
+                  <TableHead className="w-24 text-right">Remaining</TableHead>
                   <TableHead className="w-32 text-right">Delivery Qty</TableHead>
                 </TableRow>
               </TableHeader>
