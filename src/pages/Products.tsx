@@ -70,6 +70,16 @@ import { toast } from '@/lib/toast';
 import { useExcel } from "@/hooks/use-excel";
 import { useReduceAppLoad } from "@/hooks/use-reduce-app-load";
 import { AppLoadQueryDialog, QueryField } from "@/components/AppLoadQueryDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PRODUCT_QUERY_FIELDS: QueryField[] = [
   { key: "product_id", label: "Product ID", placeholder: "Search by product ID..." },
