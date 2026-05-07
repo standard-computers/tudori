@@ -174,9 +174,11 @@ const TeamTable = ({
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(team)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(team.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {(team.member_count || 0) === 0 && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(team.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
