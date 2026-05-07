@@ -605,13 +605,13 @@ const HR = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableCell className="font-medium w-24">ID</TableCell>
-                    <TableCell className="font-medium">Name</TableCell>
-                    <TableCell className="font-medium">Team</TableCell>
-                    <TableCell className="font-medium">Job Title</TableCell>
-                    <TableCell className="font-medium">Contact</TableCell>
-                    <TableCell className="font-medium w-24">Status</TableCell>
-                    <TableCell className="font-medium w-20">Clock</TableCell>
+                    <SortableTableHead label="ID" sortKey="employee_id" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['employee_id']} onFilter={(v) => employeeSort.setFilter('employee_id', v)} className="w-24" />
+                    <SortableTableHead label="Name" sortKey="name" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['name']} onFilter={(v) => employeeSort.setFilter('name', v)} />
+                    <SortableTableHead label="Team" sortKey="team" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['team']} onFilter={(v) => employeeSort.setFilter('team', v)} />
+                    <SortableTableHead label="Job Title" sortKey="title" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['title']} onFilter={(v) => employeeSort.setFilter('title', v)} />
+                    <SortableTableHead label="Contact" sortKey="contact" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['contact']} onFilter={(v) => employeeSort.setFilter('contact', v)} />
+                    <SortableTableHead label="Status" sortKey="status" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['status']} onFilter={(v) => employeeSort.setFilter('status', v)} className="w-24" />
+                    <SortableTableHead label="Clock" sortKey="clock" currentSortKey={employeeSort.sortConfig.key} currentSortDirection={employeeSort.sortConfig.direction} onSort={employeeSort.handleSort} filterValue={employeeSort.filters['clock']} onFilter={(v) => employeeSort.setFilter('clock', v)} className="w-20" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
