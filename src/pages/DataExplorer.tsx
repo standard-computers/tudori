@@ -610,6 +610,16 @@ export default function DataExplorer() {
           {sidebarCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
         </Button>
 
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={openExtSearch}
+          className="ml-2"
+          title="Extended search"
+        >
+          <SearchCheck className="h-5 w-5" />
+        </Button>
+
         {activeTab && (
           <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" size="icon" onClick={() => refreshTab(activeTab.id)} disabled={activeTab.isLoading}>
