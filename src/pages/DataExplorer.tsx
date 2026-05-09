@@ -133,6 +133,100 @@ export default function DataExplorer() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tableSearch, setTableSearch] = useState("");
 
+  // Extended search state
+  const [extOpen, setExtOpen] = useState(false);
+  const [extTable, setExtTable] = useState<string | null>(null);
+  const [extColumns, setExtColumns] = useState<string[]>([]);
+  const [extInputs, setExtInputs] = useState<Record<string, { from: string; to: string }>>({});
+  const [extTableFilter, setExtTableFilter] = useState("");
+  const [extLoadingCols, setExtLoadingCols] = useState(false);
+  const [extRunning, setExtRunning] = useState(false);
+
+  const openExtSearch = () => {
+    setExtTable(null);
+    setExtColumns([]);
+    setExtInputs({});
+    setExtTableFilter("");
+    setExtOpen(true);
+  };
+
+  const selectExtTable = async (table: string) => {
+    setExtTable(table);
+    setExtInputs({});
+    setExtColumns([]);
+    setExtLoadingCols(true);
+    const { data, error } = await supabase.from(table as "accounts").select("*").limit(1);
+    setExtLoadingCols(false);
+    if (error) {
+      status.error(`Failed to load columns: ${error.message}`);
+      return;
+    }
+    if (data && data.length > 0) {
+      setExtColumns(Object.keys(data[0]));
+    } else {
+      status.info("Table is empty - column metadata unavailable");
+    }
+  };
+
+  const updateExtInput = (col: string, key: "from" | "to", value: string) => {
+    setExtInputs(prev => ({
+      ...prev,
+      [col]: { from: prev[col]?.from ?? "", to: prev[col]?.to ?? "", [key]: value },
+    }));
+  };
+
+  const runExtendedSearch = async () => {
+    if (!extTable) return;
+    const hasWild = (v: string) => v.includes("*") || v.includes("%");
+    const toPattern = (v: string) => v.replace(/\*/g, "%");
+
+    setExtRunning(true);
+    let q: any = supabase.from(extTable as "accounts").select("*", { count: "exact" }).limit(500);
+
+    for (const [col, { from, to }] of Object.entries(extInputs)) {
+      const f = (from ?? "").trim();
+      const t = (to ?? "").trim();
+      if (!f && !t) continue;
+
+      if (f) {
+        if (hasWild(f)) q = q.ilike(col, toPattern(f));
+        else q = q.gte(col, f);
+      }
+      if (t) {
+        if (hasWild(t)) q = q.ilike(col, toPattern(t));
+        else q = q.lte(col, t);
+      }
+    }
+
+    const { data, error, count } = await q;
+    setExtRunning(false);
+
+    if (error) {
+      status.error(`Search failed: ${error.message}`);
+      return;
+    }
+
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const cols = rows.length > 0 ? Object.keys(rows[0]) : extColumns;
+    const newTabId = `${extTable}-search-${Date.now()}`;
+    setTabs(prev => [...prev, {
+      id: newTabId,
+      tableName: extTable,
+      data: rows,
+      columns: cols,
+      isLoading: false,
+      recordCount: count ?? rows.length,
+      searchTerm: "",
+      selectedRows: new Set(),
+      sortKey: null,
+      sortDirection: null,
+      columnFilters: {},
+    }]);
+    setActiveTabId(newTabId);
+    setExtOpen(false);
+    status.success(`Found ${rows.length} record(s) in ${extTable}`);
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
