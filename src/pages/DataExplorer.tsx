@@ -879,6 +879,112 @@ export default function DataExplorer() {
         results={deleteResults}
         isComplete={deleteComplete}
       />
+
+      {/* Extended Search Dialog */}
+      <Dialog open={extOpen} onOpenChange={setExtOpen}>
+        <DialogContent className="!w-screen !h-screen max-w-none flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SearchCheck className="h-5 w-5 text-primary" />
+              Extended Search
+              {extTable && <span className="text-muted-foreground text-sm font-normal">— {extTable}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {!extTable ? (
+              <div className="space-y-3">
+                <Label>Select a table</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter tables..."
+                    value={extTableFilter}
+                    onChange={(e) => setExtTableFilter(e.target.value)}
+                    className="pl-8"
+                    autoFocus
+                  />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {AVAILABLE_TABLES.filter(t => t.includes(extTableFilter.toLowerCase())).map((table) => (
+                    <button
+                      key={table}
+                      onClick={() => selectExtTable(table)}
+                      className="text-left px-3 py-2 text-sm rounded-md border hover:bg-accent hover:border-primary transition-colors flex items-center gap-2"
+                    >
+                      <TableIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">{table}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : extLoadingCols ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Button variant="ghost" size="sm" onClick={() => { setExtTable(null); setExtColumns([]); setExtInputs({}); }}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Change table
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Use <code className="px-1 py-0.5 bg-muted rounded">*</code> or <code className="px-1 py-0.5 bg-muted rounded">%</code> for wildcards (e.g. <code className="px-1 py-0.5 bg-muted rounded">abc*</code>, <code className="px-1 py-0.5 bg-muted rounded">*xyz</code>, <code className="px-1 py-0.5 bg-muted rounded">*foo*</code>). Plain values use range (from ≥, to ≤).
+                  </p>
+                </div>
+                {extColumns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No columns available.</p>
+                ) : (
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-1/3">Property</TableHead>
+                          <TableHead>From</TableHead>
+                          <TableHead>To</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {extColumns.map((col) => (
+                          <TableRow key={col}>
+                            <TableCell className="font-medium">{col}</TableCell>
+                            <TableCell>
+                              <Input
+                                placeholder="From or pattern (e.g. abc*)"
+                                value={extInputs[col]?.from ?? ""}
+                                onChange={(e) => updateExtInput(col, "from", e.target.value)}
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                placeholder="To or pattern (e.g. *xyz)"
+                                value={extInputs[col]?.to ?? ""}
+                                onChange={(e) => updateExtInput(col, "to", e.target.value)}
+                                className="h-8"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogBody>
+          {extTable && extColumns.length > 0 && (
+            <DialogFooter>
+              <Button onClick={runExtendedSearch} disabled={extRunning}>
+                {extRunning ? (
+                  <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Searching...</>
+                ) : (
+                  <><Search className="h-4 w-4 mr-2" /> Run Search</>
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
