@@ -882,7 +882,7 @@ export default function DataExplorer() {
 
       {/* Extended Search Dialog */}
       <Dialog open={extOpen} onOpenChange={setExtOpen}>
-        <DialogContent className="!w-screen !h-screen max-w-none flex flex-col">
+        <DialogContent className="!w-screen !h-screen !max-w-none !max-h-none flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SearchCheck className="h-5 w-5 text-primary" />
