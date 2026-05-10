@@ -157,7 +157,7 @@ export default function DataExplorer() {
     setExtLoadingCols(true);
     const { data, error } = await supabase.from(table as "accounts").select("*").limit(1);
     if (!error && data && data.length > 0) {
-      setExtColumns(Object.keys(data[0]));
+      setExtColumns(Object.keys(data[0]).filter((c) => c !== "company_id"));
       setExtLoadingCols(false);
       return;
     }
@@ -169,7 +169,7 @@ export default function DataExplorer() {
       return;
     }
     if (cols && cols.length > 0) {
-      setExtColumns(cols.map((c: { column_name: string }) => c.column_name));
+      setExtColumns(cols.map((c: { column_name: string }) => c.column_name).filter((c: string) => c !== "company_id"));
     } else {
       status.info("No columns found for this table");
     }
