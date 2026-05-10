@@ -5689,6 +5689,13 @@ export type Database = {
       get_next_so_number: { Args: { p_company_id: string }; Returns: string }
       get_next_team_id: { Args: { p_company_id: string }; Returns: string }
       get_next_vendor_id: { Args: { p_company_id: string }; Returns: string }
+      get_table_columns: {
+        Args: { p_table: string }
+        Returns: {
+          column_name: string
+          data_type: string
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

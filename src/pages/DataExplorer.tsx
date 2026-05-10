@@ -156,15 +156,22 @@ export default function DataExplorer() {
     setExtColumns([]);
     setExtLoadingCols(true);
     const { data, error } = await supabase.from(table as "accounts").select("*").limit(1);
-    setExtLoadingCols(false);
-    if (error) {
-      status.error(`Failed to load columns: ${error.message}`);
+    if (!error && data && data.length > 0) {
+      setExtColumns(Object.keys(data[0]));
+      setExtLoadingCols(false);
       return;
     }
-    if (data && data.length > 0) {
-      setExtColumns(Object.keys(data[0]));
+    // Fallback: fetch column metadata from information_schema via RPC
+    const { data: cols, error: rpcErr } = await (supabase as any).rpc("get_table_columns", { p_table: table });
+    setExtLoadingCols(false);
+    if (rpcErr) {
+      status.error(`Failed to load columns: ${rpcErr.message}`);
+      return;
+    }
+    if (cols && cols.length > 0) {
+      setExtColumns(cols.map((c: { column_name: string }) => c.column_name));
     } else {
-      status.info("Table is empty - column metadata unavailable");
+      status.info("No columns found for this table");
     }
   };
 
