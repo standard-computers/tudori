@@ -386,7 +386,7 @@ const AutoMakeBinsDialog = ({
                   <Input
                     type="number"
                     min="1"
-                    max="100"
+                    max="5000"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="Number of bins"
