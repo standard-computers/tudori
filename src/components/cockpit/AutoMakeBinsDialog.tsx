@@ -897,6 +897,19 @@ const AutoMakeBinsDialog = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <ImportProgressDialog
+      open={progressOpen}
+      onOpenChange={(o) => {
+        setProgressOpen(o);
+        if (!o && progressComplete) onOpenChange(false);
+      }}
+      title="Creating Bins"
+      totalRows={progressTotal}
+      processedRows={progressProcessed}
+      results={progressResults}
+      isComplete={progressComplete}
+    />
+    </>
   );
 };
 
