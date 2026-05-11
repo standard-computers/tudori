@@ -970,13 +970,19 @@ const Invoices = () => {
                     </div>
                   ) : (
                     viewAttachments.map((att) => {
-                      const { data: urlData } = supabase.storage.from('invoice-attachments').getPublicUrl(att.file_path);
+                      const handleOpen = async () => {
+                        const { data, error } = await supabase.storage
+                          .from('invoice-attachments')
+                          .createSignedUrl(att.file_path, 60);
+                        if (error || !data?.signedUrl) return;
+                        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                      };
                       return (
                         <div key={att.id} className="flex items-center justify-between border rounded-md p-3">
                           <div className="min-w-0 flex-1">
-                            <a href={urlData.publicUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline truncate block">
+                            <button onClick={handleOpen} className="font-medium text-primary hover:underline truncate block text-left">
                               {att.name}
-                            </a>
+                            </button>
                             <p className="text-xs text-muted-foreground">
                               {att.content_type} • {att.file_size ? `${(att.file_size / 1024).toFixed(1)} KB` : ''} • {format(parseISO(att.created_at), 'MMM d, yyyy')}
                             </p>
