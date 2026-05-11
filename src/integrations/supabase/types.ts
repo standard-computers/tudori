@@ -5635,6 +5635,16 @@ export type Database = {
       generate_route_id: { Args: { p_company_id: string }; Returns: string }
       generate_truck_id: { Args: { p_company_id: string }; Returns: string }
       get_auth_email: { Args: { _user_id: string }; Returns: string }
+      get_employee_sensitive: {
+        Args: { p_employee_id: string }
+        Returns: {
+          ethnicity: string
+          gender: string
+          id: string
+          social_id: string
+          wage: number
+        }[]
+      }
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
       get_next_agreement_id: { Args: { p_company_id: string }; Returns: string }
       get_next_bom_id: { Args: { p_company_id: string }; Returns: string }
@@ -5716,6 +5726,16 @@ export type Database = {
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
+      }
+      list_employee_sensitive: {
+        Args: { p_company_id: string }
+        Returns: {
+          ethnicity: string
+          gender: string
+          id: string
+          social_id: string
+          wage: number
+        }[]
       }
     }
     Enums: {

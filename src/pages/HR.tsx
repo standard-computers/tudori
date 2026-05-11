@@ -233,12 +233,18 @@ const HR = () => {
     setViewingPosition(position);
     setViewingPositionEmployee(null);
     if (position.employee_id) {
+      const SAFE_COLS = "id, company_id, employee_id, first_name, last_name, email, phone, job_title, department, hire_date, status, notes, created_at, updated_at, is_hourly, bonus_eligible, user_id, address_line1, address_line2, city, state, postal_code, country";
       const { data } = await supabase
         .from('employees')
-        .select('*')
+        .select(SAFE_COLS)
         .eq('id', position.employee_id)
         .maybeSingle();
-      setViewingPositionEmployee((data as Employee) || null);
+      let merged: any = data || null;
+      if (merged) {
+        const { data: sens } = await supabase.rpc("get_employee_sensitive", { p_employee_id: position.employee_id });
+        if (Array.isArray(sens) && sens[0]) merged = { ...merged, ...sens[0] };
+      }
+      setViewingPositionEmployee((merged as Employee) || null);
     }
   };
 
