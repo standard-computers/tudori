@@ -24,6 +24,7 @@ import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import ViewBinDialog from '@/components/cockpit/ViewBinDialog';
 import ViewAreaDialog from '@/components/cockpit/ViewAreaDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
+import AutoMakeAreasDialog from '@/components/cockpit/AutoMakeAreasDialog';
 import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
