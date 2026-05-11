@@ -24,6 +24,7 @@ import BinDialog, { BinDialogRef } from '@/components/cockpit/BinDialog';
 import ViewBinDialog from '@/components/cockpit/ViewBinDialog';
 import ViewAreaDialog from '@/components/cockpit/ViewAreaDialog';
 import AutoMakeBinsDialog from '@/components/cockpit/AutoMakeBinsDialog';
+import AutoMakeAreasDialog from '@/components/cockpit/AutoMakeAreasDialog';
 import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
@@ -229,6 +230,7 @@ const Cockpit = () => {
   const [isViewAreaDialogOpen, setIsViewAreaDialogOpen] = useState(false);
   const [viewingArea, setViewingArea] = useState<Area | null>(null);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
+  const [isAutoMakeAreasDialogOpen, setIsAutoMakeAreasDialogOpen] = useState(false);
   const [isBinSequenceDialogOpen, setIsBinSequenceDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
@@ -2830,18 +2832,30 @@ const [areaFormData, setAreaFormData] = useState({
                   </h2>
                   <p className="text-sm text-muted-foreground">Warehouse zones and sections</p>
                 </div>
-                <Button size="sm" onClick={() => openAreaDialog()}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Area
-                  <Kbd className="ml-2">A</Kbd>
-                </Button>
+                <div className="flex gap-2">
+                  {areas.length === 0 && (
+                    <Button size="sm" variant="secondary" onClick={() => setIsAutoMakeAreasDialogOpen(true)}>
+                      <Wand2 className="w-4 h-4 mr-1" />
+                      AutoMake
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => openAreaDialog()}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Area
+                    <Kbd className="ml-2">A</Kbd>
+                  </Button>
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
                 {areas.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Grid3X3 className="w-12 h-12 mb-3 opacity-30" />
                     <p className="font-medium">No areas defined</p>
-                    <p className="text-sm mt-1">Create areas to organize your warehouse layout</p>
+                    <p className="text-sm mt-1 mb-4">Create areas to organize your warehouse layout</p>
+                    <Button variant="secondary" onClick={() => setIsAutoMakeAreasDialogOpen(true)}>
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      AutoMake Common Areas
+                    </Button>
                   </div>
                 ) : (
                   <Table>
@@ -3534,6 +3548,16 @@ const [areaFormData, setAreaFormData] = useState({
         onOpenChange={setIsAutoMakeDialogOpen}
         areas={areas}
         companyId={companyId}
+        onCreated={fetchAreas}
+      />
+
+      {/* AutoMake Areas Dialog */}
+      <AutoMakeAreasDialog
+        open={isAutoMakeAreasDialogOpen}
+        onOpenChange={setIsAutoMakeAreasDialogOpen}
+        locationId={selectedLocationId}
+        existingAreaIds={areas.map(a => a.area_id)}
+        existingNames={areas.map(a => a.name)}
         onCreated={fetchAreas}
       />
 
