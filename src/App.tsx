@@ -54,6 +54,7 @@ import Messages from "./pages/Messages";
 import Analytics from "./pages/Analytics";
 import DataExplorer from "./pages/DataExplorer";
 import Transportation from "./pages/Transportation";
+import Assignments from "./pages/Assignments";
 import Help from "./pages/Help";
 import Go from "./pages/Go";
 import HR from "./pages/HR";
@@ -128,6 +129,7 @@ const App = () => (
                   <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
                   <Route path="/data-explorer" element={<ProtectedRoute><DataExplorer /></ProtectedRoute>} />
                   <Route path="/transportation" element={<ProtectedRoute><Transportation /></ProtectedRoute>} />
+                  <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
                   <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
                   <Route path="/go" element={<ProtectedRoute><Go /></ProtectedRoute>} />
                   <Route path="/hr" element={<ProtectedRoute><HR /></ProtectedRoute>} />

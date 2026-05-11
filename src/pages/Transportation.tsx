@@ -1122,10 +1122,6 @@ const Transportation = () => {
                   <Route className="h-4 w-4" />
                   Routes
                 </TabsTrigger>
-                <TabsTrigger value="assignments" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Assignments
-                </TabsTrigger>
                 <TabsTrigger value="trucks" className="gap-2">
                   <Truck className="h-4 w-4" />
                   Trucks
@@ -1160,22 +1156,6 @@ const Transportation = () => {
                     entityName="Routes"
                   />
                   <Button onClick={openNewRouteDialog} size="icon" className="relative">
-                    <Plus className="h-4 w-4" />
-                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-                  </Button>
-                </>
-              )}
-              {activeTab === 'assignments' && (
-                <>
-                  <ImportExportButtons
-                    importEnabled={isImportEnabled("assignment")}
-                    exportEnabled={isExportEnabled("assignment")}
-                    onImport={handleAssignmentImport}
-                    onExport={handleAssignmentExport}
-                    onDownloadTemplate={handleAssignmentDownloadTemplate}
-                    entityName="Assignments"
-                  />
-                  <Button onClick={openNewAssignmentDialog} size="icon" className="relative">
                     <Plus className="h-4 w-4" />
                     <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
                   </Button>
@@ -1376,83 +1356,6 @@ const Transportation = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteRoute(route)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TabsContent>
-
-          <TabsContent value="assignments" className="mt-0">
-
-            <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
-                <TableRow>
-                  <SortableTableHead
-                    label="Assignment ID"
-                    sortKey="assignment_id"
-                    currentSortKey={assignmentSortConfig.key}
-                    currentSortDirection={assignmentSortConfig.direction}
-                    onSort={handleAssignmentSort}
-                    filterValue={assignmentFilters['assignment_id'] || ''}
-                    onFilter={(value) => setAssignmentFilter('assignment_id', value)}
-                  />
-                  <TableHead>Product</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Destination Location</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedAssignments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No assignments configured. Create your first assignment to define vendor fulfillment.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sortedAssignments.map((assignment) => (
-                    <TableRow key={assignment.id}>
-                      <TableCell className="font-mono">{assignment.assignment_id}</TableCell>
-                      <TableCell>
-                        {assignment.product ? `${assignment.product.product_id} - ${assignment.product.name}` : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {assignment.vendor 
-                          ? `${assignment.vendor.vendor_id} - ${assignment.vendor.name}` 
-                          : assignment.source_location 
-                            ? `${assignment.source_location.location_id} - ${assignment.source_location.name}`
-                            : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {assignment.destination_location?.name || '-'}
-                      </TableCell>
-                      <TableCell>{assignment.priority}</TableCell>
-                      <TableCell>{Number(assignment.price || 0).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Checkbox checked={assignment.is_active} disabled />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditAssignmentDialog(assignment)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteAssignment(assignment)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1844,123 +1747,6 @@ const Transportation = () => {
               disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id}
             >
               {editingRoute ? 'Update' : 'Create'}
-              <Kbd>⌘S</Kbd>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Assignment Dialog */}
-      <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
-        <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-xl max-h-[85vh]'}`}>
-          <button
-            type="button"
-            onClick={() => setIsMaximized(!isMaximized)}
-            className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-          >
-            {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-          <DialogHeader className="shrink-0">
-            <DialogTitle>{editingAssignment ? 'Edit Assignment' : 'New Assignment'}</DialogTitle>
-            <DialogDescription>
-              {editingAssignment ? 'Update assignment configuration' : 'Assign a vendor to fulfill a product at a location'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto min-h-0 px-6">
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="assignment_id">Assignment ID *</Label>
-                  <Input
-                    id="assignment_id"
-                    value={assignmentForm.assignment_id}
-                    onChange={(e) => setAssignmentForm({ ...assignmentForm, assignment_id: e.target.value })}
-                    disabled={!!editingAssignment}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="assignment_priority">Priority</Label>
-                  <Input
-                    id="assignment_priority"
-                    type="number"
-                    min={1}
-                    value={assignmentForm.priority}
-                    onChange={(e) => setAssignmentForm({ ...assignmentForm, priority: parseInt(e.target.value) || 1 })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Product *</Label>
-                <SearchableSelect
-                  options={products.map((p) => ({ value: p.id, label: `${p.product_id} - ${p.name}` }))}
-                  value={assignmentForm.product_id}
-                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, product_id: value })}
-                  placeholder="Select product"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Source (Vendor / Location) *</Label>
-                <SearchableSelect
-                  options={vendorOptions}
-                  value={assignmentForm.source_value}
-                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, source_value: value })}
-                  placeholder="Select vendor or location"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Destination Location *</Label>
-                <SearchableSelect
-                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
-                  value={assignmentForm.destination_location_id}
-                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, destination_location_id: value })}
-                  placeholder="Select destination location"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="assignment_price">Price</Label>
-                <Input
-                  id="assignment_price"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={assignmentForm.price}
-                  onChange={(e) => setAssignmentForm({ ...assignmentForm, price: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="assignment_notes">Notes</Label>
-                <Input
-                  id="assignment_notes"
-                  value={assignmentForm.notes}
-                  onChange={(e) => setAssignmentForm({ ...assignmentForm, notes: e.target.value })}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="assignment_is_active"
-                  checked={assignmentForm.is_active}
-                  onCheckedChange={(checked) =>
-                    setAssignmentForm({ ...assignmentForm, is_active: checked as boolean })
-                  }
-                />
-                <Label htmlFor="assignment_is_active">Active</Label>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="shrink-0">
-            <Button
-              onClick={handleSaveAssignment}
-              disabled={!assignmentForm.assignment_id || !assignmentForm.product_id || !assignmentForm.source_value || !assignmentForm.destination_location_id}
-            >
-              {editingAssignment ? 'Update' : 'Create'}
               <Kbd>⌘S</Kbd>
             </Button>
           </DialogFooter>
