@@ -454,7 +454,7 @@ const Orders = () => {
     notes: "",
   });
   const [orderItems, setOrderItems] = useState<
-    { product_id: string; quantity: number; unit_price: number; pu_id: string | null }[]
+    { product_id: string; quantity: number; unit_price: number; uom_id: string | null }[]
   >([]);
   const [packagingUnits, setPackagingUnits] = useState<PackagingUnit[]>([]);
   const [productUoms, setProductUoms] = useState<ProductUom[]>([]);
