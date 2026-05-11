@@ -36,7 +36,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
-import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign, Wand2 } from "lucide-react";
+import { ArrowLeft, Percent, Plus, Loader2, MoreHorizontal, Trash2, Pencil, DollarSign, Wand2, Maximize2, Minimize2 } from "lucide-react";
+import { useMaximizedState } from "@/hooks/use-maximize-preference";
 import { toast } from '@/lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
