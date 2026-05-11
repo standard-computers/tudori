@@ -4140,6 +4140,7 @@ export type Database = {
           quantity: number
           total_price: number | null
           unit_price: number | null
+          uom_id: string | null
         }
         Insert: {
           created_at?: string
@@ -4150,6 +4151,7 @@ export type Database = {
           quantity?: number
           total_price?: number | null
           unit_price?: number | null
+          uom_id?: string | null
         }
         Update: {
           created_at?: string
@@ -4160,6 +4162,7 @@ export type Database = {
           quantity?: number
           total_price?: number | null
           unit_price?: number | null
+          uom_id?: string | null
         }
         Relationships: [
           {
@@ -4181,6 +4184,13 @@ export type Database = {
             columns: ["purchase_order_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]

@@ -454,7 +454,7 @@ const Orders = () => {
     notes: "",
   });
   const [orderItems, setOrderItems] = useState<
-    { product_id: string; quantity: number; unit_price: number; pu_id: string | null }[]
+    { product_id: string; quantity: number; unit_price: number; uom_id: string | null }[]
   >([]);
   const [packagingUnits, setPackagingUnits] = useState<PackagingUnit[]>([]);
   const [productUoms, setProductUoms] = useState<ProductUom[]>([]);
@@ -1261,7 +1261,7 @@ const Orders = () => {
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.unit_price || 0,
-        pu_id: item.pu_id || null,
+        uom_id: (item as any).uom_id || null,
       })),
     );
 
@@ -1286,7 +1286,7 @@ const Orders = () => {
   useTransactionAction('new', handleCreateClick);
 
   const addOrderItem = () => {
-    setOrderItems([...orderItems, { product_id: "", quantity: 1, unit_price: 0, pu_id: null }]);
+    setOrderItems([...orderItems, { product_id: "", quantity: 1, unit_price: 0, uom_id: null }]);
   };
 
   // Import components from a Bill of Materials
@@ -1337,7 +1337,7 @@ const Orders = () => {
           product_id: item.product_id,
           quantity: item.quantity * multiplier,
           unit_price: product?.price || 0,
-          pu_id: null,
+          uom_id: null,
         };
       });
 
@@ -1377,11 +1377,14 @@ const Orders = () => {
         ...newItems[index],
         product_id: value as string,
         unit_price: product?.price || 0,
-        pu_id: null, // Reset UOM when product changes
+        uom_id: null, // Reset UOM when product changes
       };
-    } else if (field === "pu_id") {
+    } else if (field === "pu_id" || field === "uom_id") {
       // 'base' represents the product's base unit (null in database)
-      const uomValue = value === "base" ? null : (value as string | null);
+      const raw = value as string | null;
+      const uomId = !raw || raw === "base"
+        ? null
+        : raw.startsWith("uom:") ? raw.substring(4) : raw;
       const product = products.find((p) => p.id === newItems[index].product_id);
       const basePrice = product?.price || 0;
       const conversionFactor = getUomConversionFactor(value as string);
@@ -1391,7 +1394,7 @@ const Orders = () => {
 
       newItems[index] = {
         ...newItems[index],
-        pu_id: uomValue,
+        uom_id: uomId,
         unit_price: unitPrice,
       };
     } else {
@@ -1642,7 +1645,7 @@ const Orders = () => {
         quantity: item.quantity,
         unit_price: item.unit_price,
         total_price: item.quantity * item.unit_price,
-        pu_id: item.pu_id || null,
+        uom_id: item.uom_id || null,
       }));
 
       const { error: itemsError } = await supabase.from("purchase_order_items").insert(itemsToInsert);
@@ -1734,7 +1737,7 @@ const Orders = () => {
         quantity: item.quantity,
         unit_price: item.unit_price,
         total_price: item.quantity * item.unit_price,
-        pu_id: item.pu_id || null,
+        uom_id: item.uom_id || null,
       }));
 
       const { error: itemsError } = await supabase.from("purchase_order_items").insert(itemsToInsert);
@@ -2833,7 +2836,7 @@ const Orders = () => {
                     product_id: item.product_id,
                     quantity: item.quantity,
                     unit_price: item.unit_price || 0,
-                    pu_id: null,
+                    uom_id: null,
                   }))
                 );
               }}
@@ -3009,8 +3012,8 @@ const Orders = () => {
                               </TableCell>
                               <TableCell className="p-2">
                                 <Select
-                                  value={item.pu_id || "base"}
-                                  onValueChange={(value) => updateOrderItem(index, "pu_id", value)}
+                                  value={item.uom_id ? `uom:${item.uom_id}` : "base"}
+                                  onValueChange={(value) => updateOrderItem(index, "uom_id", value)}
                                   disabled={!item.product_id}
                                 >
                                   <SelectTrigger className="h-10">
