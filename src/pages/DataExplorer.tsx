@@ -636,30 +636,31 @@ export default function DataExplorer() {
             {activeTab.selectedRows.size > 0 && (
               <>
                 {hasITRole && allowMassDeletion && (
-                  <>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" disabled={isDeleting}>
-                          <Zap className="h-4 w-4 mr-1" />
-                          Mass Delete ({activeTab.selectedRows.size})
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Mass Delete Records</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to mass delete {activeTab.selectedRows.size} record(s) at once? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleMassDeleteSelected(activeTab, getFilteredData(activeTab))}>
-                            Mass Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    <AlertDialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={isDeleting}>
+                        <Zap className="h-4 w-4 mr-1" />
+                        Mass Delete ({activeTab.selectedRows.size})
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Mass Delete Records</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to mass delete {activeTab.selectedRows.size} record(s) at once? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleMassDeleteSelected(activeTab, getFilteredData(activeTab))}>
+                          Mass Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                {hasITRole && (
+                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm" disabled={isDeleting}>
                         <Trash2 className="h-4 w-4 mr-1" />
@@ -680,8 +681,7 @@ export default function DataExplorer() {
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
-                    </AlertDialog>
-                  </>
+                  </AlertDialog>
                 )}
                 <Button variant="outline" size="sm" onClick={() => handleExportSelected(activeTab, getFilteredData(activeTab))}>
                   <Download className="h-4 w-4 mr-1" />
