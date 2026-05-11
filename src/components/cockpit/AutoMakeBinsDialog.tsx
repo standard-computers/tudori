@@ -365,6 +365,7 @@ const AutoMakeBinsDialog = ({
   const totalQty = parseInt(quantity) || 0;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[560px] max-h-[85vh]'}`}>
         <button
