@@ -3551,6 +3551,16 @@ const [areaFormData, setAreaFormData] = useState({
         onCreated={fetchAreas}
       />
 
+      {/* AutoMake Areas Dialog */}
+      <AutoMakeAreasDialog
+        open={isAutoMakeAreasDialogOpen}
+        onOpenChange={setIsAutoMakeAreasDialogOpen}
+        locationId={selectedLocationId}
+        existingAreaIds={areas.map(a => a.area_id)}
+        existingNames={areas.map(a => a.name)}
+        onCreated={fetchAreas}
+      />
+
       {/* Bin Sequence Dialog */}
       <BinSequenceDialog
         open={isBinSequenceDialogOpen}
