@@ -96,6 +96,11 @@ const AutoMakeBinsDialog = ({
   const [activeTab, setActiveTab] = useState('general');
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [isCreating, setIsCreating] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [progressProcessed, setProgressProcessed] = useState(0);
+  const [progressResults, setProgressResults] = useState<ImportResult[]>([]);
+  const [progressComplete, setProgressComplete] = useState(false);
 
   // General settings
   const [selectedAreaId, setSelectedAreaId] = useState('');
