@@ -629,7 +629,15 @@ const Rates = () => {
                 {sortedAndFilteredData.map((rate) => (
                   <TableRow key={rate.id}>
                     {isColumnVisible("rate_id") && (
-                      <TableCell className="font-mono text-muted-foreground">{rate.rate_id}</TableCell>
+                      <TableCell className="font-mono">
+                        <button
+                          type="button"
+                          onClick={() => { setViewingRate(rate); setIsViewDialogOpen(true); }}
+                          className="text-primary hover:underline"
+                        >
+                          {rate.rate_id}
+                        </button>
+                      </TableCell>
                     )}
                     {isColumnVisible("name") && (
                       <TableCell className="font-medium">
