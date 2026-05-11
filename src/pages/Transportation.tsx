@@ -1161,22 +1161,6 @@ const Transportation = () => {
                   </Button>
                 </>
               )}
-              {activeTab === 'assignments' && (
-                <>
-                  <ImportExportButtons
-                    importEnabled={isImportEnabled("assignment")}
-                    exportEnabled={isExportEnabled("assignment")}
-                    onImport={handleAssignmentImport}
-                    onExport={handleAssignmentExport}
-                    onDownloadTemplate={handleAssignmentDownloadTemplate}
-                    entityName="Assignments"
-                  />
-                  <Button onClick={openNewAssignmentDialog} size="icon" className="relative">
-                    <Plus className="h-4 w-4" />
-                    <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
-                  </Button>
-                </>
-              )}
               {activeTab === 'trucks' && (
                 <>
                   <Button onClick={openNewTruckDialog} size="icon" className="relative">
