@@ -54,6 +54,7 @@ import Messages from "./pages/Messages";
 import Analytics from "./pages/Analytics";
 import DataExplorer from "./pages/DataExplorer";
 import Transportation from "./pages/Transportation";
+import Assignments from "./pages/Assignments";
 import Help from "./pages/Help";
 import Go from "./pages/Go";
 import HR from "./pages/HR";
