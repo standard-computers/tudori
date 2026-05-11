@@ -1286,7 +1286,7 @@ const Orders = () => {
   useTransactionAction('new', handleCreateClick);
 
   const addOrderItem = () => {
-    setOrderItems([...orderItems, { product_id: "", quantity: 1, unit_price: 0, pu_id: null }]);
+    setOrderItems([...orderItems, { product_id: "", quantity: 1, unit_price: 0, uom_id: null }]);
   };
 
   // Import components from a Bill of Materials
