@@ -39,6 +39,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ChevronsUpDown, Check, Plus, Trash2, Loader2, Wand2, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
+import { ImportProgressDialog, type ImportResult } from '@/components/ImportProgressDialog';
 
 interface Area {
   id: string;
