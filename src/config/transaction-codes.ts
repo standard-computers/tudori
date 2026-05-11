@@ -45,6 +45,7 @@ export const TRANSACTION_CODES: TransactionCode[] = [
   { code: 'configuration', name: 'Configuration', description: 'System & company settings', path: '/configuration' },
   { code: 'data_explorer', name: 'Data Explorer', description: 'Browse database tables', path: '/data-explorer' },
   { code: 'transportation', name: 'Transportation', description: 'Carriers & logistics', path: '/transportation' },
+  { code: 'assignments', name: 'Assignments', description: 'Vendor & source assignments', path: '/assignments' },
   { code: 'developers', name: 'Developers', description: 'API keys & webhooks', path: '/developers' },
 ];
 
