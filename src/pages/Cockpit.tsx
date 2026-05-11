@@ -230,6 +230,7 @@ const Cockpit = () => {
   const [isViewAreaDialogOpen, setIsViewAreaDialogOpen] = useState(false);
   const [viewingArea, setViewingArea] = useState<Area | null>(null);
   const [isAutoMakeDialogOpen, setIsAutoMakeDialogOpen] = useState(false);
+  const [isAutoMakeAreasDialogOpen, setIsAutoMakeAreasDialogOpen] = useState(false);
   const [isBinSequenceDialogOpen, setIsBinSequenceDialogOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [editingBin, setEditingBin] = useState<Bin | null>(null);
