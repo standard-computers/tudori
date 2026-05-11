@@ -933,6 +933,120 @@ const Rates = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* View Rate Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent
+          className={isViewMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none" : "sm:max-w-[550px]"}
+        >
+          <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewDialogOpen(false);
+                if (viewingRate) handleEditClick(viewingRate);
+              }}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              title="Modify"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Modify</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsViewMaximized(!isViewMaximized)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          </div>
+          <DialogHeader>
+            <DialogTitle>View Rate</DialogTitle>
+            <DialogDescription>
+              {viewingRate?.rate_id} - {viewingRate?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingRate && (
+            <DialogBody className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Rate ID</Label>
+                  <p className="font-mono text-sm">{viewingRate.rate_id}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Status</Label>
+                  <div className="mt-1">
+                    <Badge className={viewingRate.is_active ? "bg-green-500 text-white" : "bg-slate-500 text-white"}>
+                      {viewingRate.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                    {viewingRate.is_default && <Badge variant="secondary" className="ml-2">Default</Badge>}
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-muted-foreground text-xs">Name</Label>
+                  <p className="text-sm font-medium">{viewingRate.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Type</Label>
+                  <div className="mt-1">
+                    <Badge variant="outline" className="gap-1">
+                      {viewingRate.rate_type === "flat" ? (
+                        <><DollarSign className="w-3 h-3" /> Flat</>
+                      ) : (
+                        <><Percent className="w-3 h-3" /> Percent</>
+                      )}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Rate/Amount</Label>
+                  <p className="font-mono text-sm">
+                    {viewingRate.rate_type === "flat" ? `$${Number(viewingRate.rate).toFixed(2)}` : `${viewingRate.rate}%`}
+                  </p>
+                </div>
+                {viewingRate.description && (
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground text-xs">Description</Label>
+                    <p className="text-sm">{viewingRate.description}</p>
+                  </div>
+                )}
+              </div>
+
+              {(viewingRate.address_street || viewingRate.address_city || viewingRate.address_state ||
+                viewingRate.address_county || viewingRate.address_postal_code || viewingRate.address_country) && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Address</Label>
+                  <div className="mt-1 border rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                      <tbody className="divide-y divide-border">
+                        {viewingRate.address_street && (
+                          <tr><td className="px-3 py-2 text-muted-foreground w-28">Street</td><td className="px-3 py-2">{viewingRate.address_street}</td></tr>
+                        )}
+                        {viewingRate.address_city && (
+                          <tr><td className="px-3 py-2 text-muted-foreground">City</td><td className="px-3 py-2">{viewingRate.address_city}</td></tr>
+                        )}
+                        {viewingRate.address_county && (
+                          <tr><td className="px-3 py-2 text-muted-foreground">County</td><td className="px-3 py-2">{viewingRate.address_county}</td></tr>
+                        )}
+                        {viewingRate.address_state && (
+                          <tr><td className="px-3 py-2 text-muted-foreground">State</td><td className="px-3 py-2">{viewingRate.address_state}</td></tr>
+                        )}
+                        {viewingRate.address_postal_code && (
+                          <tr><td className="px-3 py-2 text-muted-foreground">Postal Code</td><td className="px-3 py-2">{viewingRate.address_postal_code}</td></tr>
+                        )}
+                        {viewingRate.address_country && (
+                          <tr><td className="px-3 py-2 text-muted-foreground">Country</td><td className="px-3 py-2">{viewingRate.address_country}</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </DialogBody>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ImportProgressDialog
         open={importProgressOpen}
         onOpenChange={setImportProgressOpen}
