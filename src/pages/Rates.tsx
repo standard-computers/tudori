@@ -112,6 +112,9 @@ const Rates = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingRate, setEditingRate] = useState<TaxRate | null>(null);
+  const [viewingRate, setViewingRate] = useState<TaxRate | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
 
   // Import progress
   const [importProgressOpen, setImportProgressOpen] = useState(false);
