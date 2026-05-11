@@ -1261,7 +1261,7 @@ const Orders = () => {
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.unit_price || 0,
-        pu_id: item.pu_id || null,
+        uom_id: (item as any).uom_id || null,
       })),
     );
 
