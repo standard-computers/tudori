@@ -241,61 +241,88 @@ const AutoMakeBinsDialog = ({
     }
 
     const qty = parseInt(quantity) || 0;
-    if (qty < 1 || qty > 100) {
-      toast.error('Quantity must be between 1 and 100');
+    if (qty < 1 || qty > 5000) {
+      toast.error('Quantity must be between 1 and 5000');
       return;
     }
 
     setIsCreating(true);
+    setProgressOpen(true);
+    setProgressTotal(qty);
+    setProgressProcessed(0);
+    setProgressResults([]);
+    setProgressComplete(false);
+
     const start = parseInt(startingNumber) || 1;
+    const CHUNK_SIZE = 100;
+    const results: ImportResult[] = [];
+    let processed = 0;
+    const allCreatedBins: { id: string }[] = [];
 
     try {
-      const binsToCreate = [];
-      for (let i = 0; i < qty; i++) {
-        const num = start + i;
-        binsToCreate.push({
-          area_id: area.id,
-          bin_id: applyTemplate(binIdTemplate, area.area_id, num),
-          name: applyTemplate(binNameTemplate, area.area_id, num),
-          description: null,
-          capacity: null,
-          width: dimensions.width ? parseFloat(dimensions.width) : null,
-          width_uom: dimensions.width_uom,
-          length: dimensions.length ? parseFloat(dimensions.length) : null,
-          length_uom: dimensions.length_uom,
-          height: dimensions.height ? parseFloat(dimensions.height) : null,
-          height_uom: dimensions.height_uom,
-          weight_capacity: dimensions.weight_capacity ? parseFloat(dimensions.weight_capacity) : null,
-          weight_capacity_uom: dimensions.weight_capacity_uom,
-           allow_put_away: controls.allow_put_away,
-           allow_auto_put_away: controls.allow_auto_put_away,
-           allow_picking: controls.allow_picking,
-           allow_auto_picking: controls.allow_auto_picking,
-           is_production_enabled: controls.is_production_enabled,
-           is_hazardous: controls.is_hazardous,
-        });
-      }
-
-      const { data: createdBins, error: binError } = await supabase
-        .from('bins')
-        .insert(binsToCreate)
-        .select('id');
-
-      if (binError) {
-        console.error('Failed to create bins:', binError);
-        if (binError.code === '23505') {
-          toast.error('Duplicate bin ID detected. Adjust template or starting number.');
-        } else {
-          toast.error('Failed to create bins');
+      for (let chunkStart = 0; chunkStart < qty; chunkStart += CHUNK_SIZE) {
+        const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, qty);
+        const binsToCreate = [];
+        for (let i = chunkStart; i < chunkEnd; i++) {
+          const num = start + i;
+          binsToCreate.push({
+            area_id: area.id,
+            bin_id: applyTemplate(binIdTemplate, area.area_id, num),
+            name: applyTemplate(binNameTemplate, area.area_id, num),
+            description: null,
+            capacity: null,
+            width: dimensions.width ? parseFloat(dimensions.width) : null,
+            width_uom: dimensions.width_uom,
+            length: dimensions.length ? parseFloat(dimensions.length) : null,
+            length_uom: dimensions.length_uom,
+            height: dimensions.height ? parseFloat(dimensions.height) : null,
+            height_uom: dimensions.height_uom,
+            weight_capacity: dimensions.weight_capacity ? parseFloat(dimensions.weight_capacity) : null,
+            weight_capacity_uom: dimensions.weight_capacity_uom,
+            allow_put_away: controls.allow_put_away,
+            allow_auto_put_away: controls.allow_auto_put_away,
+            allow_picking: controls.allow_picking,
+            allow_auto_picking: controls.allow_auto_picking,
+            is_production_enabled: controls.is_production_enabled,
+            is_hazardous: controls.is_hazardous,
+          });
         }
-        setIsCreating(false);
-        return;
+
+        const { data: createdBins, error: binError } = await supabase
+          .from('bins')
+          .insert(binsToCreate)
+          .select('id');
+
+        if (binError) {
+          for (let i = chunkStart; i < chunkEnd; i++) {
+            results.push({
+              row: i + 1,
+              status: 'error',
+              message: binError.code === '23505'
+                ? `Duplicate bin ID (${applyTemplate(binIdTemplate, area.area_id, start + i)})`
+                : binError.message,
+            });
+          }
+        } else if (createdBins) {
+          allCreatedBins.push(...createdBins);
+          for (let i = chunkStart; i < chunkEnd; i++) {
+            results.push({
+              row: i + 1,
+              status: 'success',
+              message: `Created ${applyTemplate(binIdTemplate, area.area_id, start + i)}`,
+            });
+          }
+        }
+
+        processed = chunkEnd;
+        setProgressProcessed(processed);
+        setProgressResults([...results]);
       }
 
       // Add product restrictions if any
-      if (productRestrictions.length > 0 && createdBins && createdBins.length > 0) {
+      if (productRestrictions.length > 0 && allCreatedBins.length > 0) {
         const binProductInserts = [];
-        for (const bin of createdBins) {
+        for (const bin of allCreatedBins) {
           for (const pr of productRestrictions) {
             binProductInserts.push({
               bin_id: bin.id,
@@ -312,14 +339,17 @@ const AutoMakeBinsDialog = ({
         }
       }
 
-      toast.success(`Created ${qty} bins successfully`);
-      onOpenChange(false);
-      onCreated();
+      const successCount = results.filter((r) => r.status === 'success').length;
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} bins successfully`);
+        onCreated();
+      }
     } catch (err) {
       console.error('AutoMake error:', err);
       toast.error('An error occurred while creating bins');
     } finally {
       setIsCreating(false);
+      setProgressComplete(true);
     }
   };
 
