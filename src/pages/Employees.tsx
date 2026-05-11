@@ -376,9 +376,10 @@ const Employees = () => {
   };
 
   const fetchEmployees = async () => {
+    const SAFE_COLS = "id, company_id, employee_id, first_name, last_name, email, phone, job_title, department, hire_date, status, notes, created_at, updated_at, is_hourly, bonus_eligible, user_id, address_line1, address_line2, city, state, postal_code, country, positions(name)";
     const { data, error } = await supabase
       .from("employees")
-      .select("*, positions(name)")
+      .select(SAFE_COLS)
       .eq("company_id", companyId)
       .order("employee_id");
 
@@ -388,8 +389,18 @@ const Employees = () => {
       return;
     }
 
+    // Sensitive fields (social_id, wage, gender, ethnicity) require admin access
+    let sensitiveById: Record<string, any> = {};
+    const { data: sensitive } = await supabase.rpc("list_employee_sensitive", {
+      p_company_id: companyId,
+    });
+    if (Array.isArray(sensitive)) {
+      sensitiveById = Object.fromEntries(sensitive.map((s: any) => [s.id, s]));
+    }
+
     const mapped = (data || []).map((e: any) => ({
       ...e,
+      ...(sensitiveById[e.id] || {}),
       position_name: Array.isArray(e.positions) && e.positions.length > 0 ? e.positions[0].name : null,
     }));
     setEmployees(mapped);

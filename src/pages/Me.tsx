@@ -166,13 +166,20 @@ const Me = () => {
     }
     setCompanyId(profile.company_id);
 
-    // Get employee record linked to this user
-    const { data: emp } = await supabase
+    // Get employee record linked to this user (sensitive cols fetched separately)
+    const SAFE_COLS = "id, company_id, employee_id, first_name, last_name, email, phone, job_title, department, hire_date, status, notes, created_at, updated_at, is_hourly, bonus_eligible, user_id, address_line1, address_line2, city, state, postal_code, country";
+    const { data: empRow } = await supabase
       .from("employees")
-      .select("*")
+      .select(SAFE_COLS)
       .eq("user_id", user.id)
       .eq("company_id", profile.company_id)
       .single();
+
+    let emp: any = empRow || null;
+    if (emp) {
+      const { data: sens } = await supabase.rpc("get_employee_sensitive", { p_employee_id: emp.id });
+      if (Array.isArray(sens) && sens[0]) emp = { ...emp, ...sens[0] };
+    }
 
     if (emp) {
       setEmployee(emp as EmployeeRecord);
