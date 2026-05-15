@@ -139,6 +139,8 @@ interface PurchaseOrderItem {
   quantity: number;
   unit_price: number | null;
   total_price: number | null;
+  uom_id?: string | null;
+  uom?: { id: string; name: string; abbreviation: string | null; conversion_factor: number } | null;
   product?: {
     name: string;
     product_id: string;
@@ -1773,12 +1775,13 @@ const Orders = () => {
       .select(
         `
         *,
-        product:products(name, product_id, price, sku, description, category, unit, vendor_id)
+        product:products(name, product_id, price, sku, description, category, unit, vendor_id),
+        uom:product_uoms(id, name, abbreviation, conversion_factor)
       `,
       )
       .eq("purchase_order_id", order.id);
 
-    setViewItems(items || []);
+    setViewItems((items as any) || []);
 
     // Fetch applied tax rates
     const { data: appliedTaxRates } = await supabase
@@ -1945,7 +1948,7 @@ const Orders = () => {
   const executeStatusUpdate = async (
     id: string,
     newStatus: string,
-    deliveryItems?: { product_id: string; quantity: number }[],
+    deliveryItems?: { product_id: string; quantity: number; uom_id?: string | null }[],
     options?: { skipDeliveryCreation?: boolean },
   ) => {
     const order = orders.find((o) => o.id === id);
@@ -2005,6 +2008,7 @@ const Orders = () => {
               outbound_delivery_id: deliveryResult.id,
               product_id: item.product_id,
               quantity: item.quantity,
+              uom_id: item.uom_id || null,
             }));
             await supabase.from("outbound_delivery_items" as any).insert(itemsToInsert);
           }
@@ -2036,6 +2040,7 @@ const Orders = () => {
             delivery_id: deliveryData.id,
             product_id: item.product_id,
             quantity: item.quantity,
+            uom_id: item.uom_id || null,
           }));
 
           await supabase.from("delivery_items").insert(itemsToInsert);
@@ -2287,12 +2292,13 @@ const Orders = () => {
         try {
           const { data: poItems } = await supabase
             .from("purchase_order_items")
-            .select("product_id, quantity")
+            .select("product_id, quantity, uom_id")
             .eq("purchase_order_id", orderId);
 
           const deliveryItems = (poItems || []).map((item: any) => ({
             product_id: item.product_id,
             quantity: item.quantity,
+            uom_id: item.uom_id || null,
           }));
 
           await executeStatusUpdate(orderId, "confirmed", deliveryItems.length > 0 ? deliveryItems : undefined);
@@ -3453,6 +3459,7 @@ const Orders = () => {
                           <TableHead>Item ID</TableHead>
                           <TableHead>Product</TableHead>
                           <TableHead className="text-right">Qty</TableHead>
+                          <TableHead>UoM</TableHead>
                           <TableHead className="text-right">Unit Price</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                           <TableHead>Expected Delivery</TableHead>
@@ -3461,6 +3468,7 @@ const Orders = () => {
                       <TableBody>
                         {viewItems.map((item, index) => {
                           const viewProduct = products.find((p) => p.id === item.product_id);
+                          const uomLabel = item.uom?.abbreviation || item.uom?.name || item.product?.unit || '—';
                           return (
                             <TableRow key={item.id}>
                               <TableCell className="text-muted-foreground">{index + 1}</TableCell>
@@ -3475,6 +3483,7 @@ const Orders = () => {
                               </TableCell>
                               <TableCell>{item.product?.name || "Unknown"}</TableCell>
                               <TableCell className="text-right">{item.quantity}</TableCell>
+                              <TableCell className="text-sm">{uomLabel}</TableCell>
                               <TableCell className="text-right font-mono">
                                 ${Number(item.unit_price || 0).toFixed(2)}
                               </TableCell>

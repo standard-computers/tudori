@@ -51,6 +51,8 @@ interface ReceivedItem {
   pu_number?: string | null;
   hazardous?: boolean;
   is_batched?: boolean;
+  uom_id?: string | null;
+  uom_label?: string | null;
 }
 
 interface ReceiveDeliveryDialogProps {
@@ -230,8 +232,10 @@ export const ReceiveDeliveryDialog = ({
         quantity,
         notes,
         pu_id,
+        uom_id,
         packaging_unit:packaging_units(pu_number),
-        product:products(name, product_id, hazardous, is_batched)
+        product:products(name, product_id, hazardous, is_batched),
+        uom:product_uoms(id, name, abbreviation, conversion_factor)
       `)
       .eq('delivery_id', deliveryId);
 
@@ -252,6 +256,8 @@ export const ReceiveDeliveryDialog = ({
       pu_number: item.packaging_unit?.pu_number || null,
       hazardous: item.product?.hazardous ?? false,
       is_batched: item.product?.is_batched ?? false,
+      uom_id: item.uom_id || null,
+      uom_label: item.uom?.abbreviation || item.uom?.name || null,
     }));
 
     setItems(receivedItems);
@@ -456,8 +462,9 @@ export const ReceiveDeliveryDialog = ({
                 quantity: 1,
                 pu_id: puId,
                 bin_id: selectedBinId || null,
+                uom_id: item.uom_id || null,
                 notes: `Unit ${i + 1} of ${item.received_quantity}`,
-              });
+              } as any);
             }
           }
         } else {
@@ -503,6 +510,7 @@ export const ReceiveDeliveryDialog = ({
                   pu_id: puId,
                   bin_id: selectedBinId || null,
                   batch_id: batchId,
+                  uom_id: item.uom_id || null,
                   notes: `Batch: ${batchLine.batchNumber}`,
                 });
               }
@@ -513,6 +521,7 @@ export const ReceiveDeliveryDialog = ({
                 quantity: item.received_quantity,
                 pu_id: puId,
                 bin_id: selectedBinId || null,
+                uom_id: item.uom_id || null,
                 notes: item.received_quantity !== item.expected_quantity 
                   ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
                   : null,
@@ -669,6 +678,7 @@ export const ReceiveDeliveryDialog = ({
               <TableHeader>
                 <TableRow>
                   <TableHead>Product</TableHead>
+                  <TableHead className="w-20">UoM</TableHead>
                   <TableHead className="w-24 text-right">Expected</TableHead>
                   <TableHead className="w-32 text-right">Received</TableHead>
                 </TableRow>
@@ -686,7 +696,7 @@ export const ReceiveDeliveryDialog = ({
 
                     return Object.entries(grouped).flatMap(([puKey, group]) => [
                       <TableRow key={`pu-header-${puKey}`} className="bg-muted/50">
-                        <TableCell colSpan={3} className="py-1.5">
+                        <TableCell colSpan={4} className="py-1.5">
                           <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                             <Package className="w-3.5 h-3.5" />
                             {puKey === '__unpacked__' ? 'Unpacked Items' : group.puNumber || puKey}
@@ -703,6 +713,7 @@ export const ReceiveDeliveryDialog = ({
                               </div>
                             </div>
                           </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{item.uom_label || '—'}</TableCell>
                           <TableCell className="text-right font-medium">{item.expected_quantity}</TableCell>
                           <TableCell className="text-right">
                             <Input
@@ -734,6 +745,7 @@ export const ReceiveDeliveryDialog = ({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{item.uom_label || '—'}</TableCell>
                       <TableCell className="text-right font-medium">1</TableCell>
                       <TableCell className="text-right font-medium">1</TableCell>
                     </TableRow>
@@ -749,6 +761,7 @@ export const ReceiveDeliveryDialog = ({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{item.uom_label || '—'}</TableCell>
                       <TableCell className="text-right font-medium">{item.expected_quantity}</TableCell>
                       <TableCell className="text-right">
                         <Input
