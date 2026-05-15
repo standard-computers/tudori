@@ -1200,6 +1200,19 @@ const Deliveries = () => {
                             />
                           </div>
                           <div className="space-y-2">
+                            <Label htmlFor="truck_id">Truck</Label>
+                            <SearchableSelect
+                              options={truckOptions}
+                              value={formData.truck_id}
+                              onValueChange={(value) => setFormData({ ...formData, truck_id: value })}
+                              placeholder="Select truck (optional)..."
+                              emptyMessage="No active trucks found."
+                              allowClear
+                            />
+                          </div>
+                        </div>
+                        {isEditing && (
+                          <div className="space-y-2">
                             <Label htmlFor="status">Status</Label>
                             <Select
                               value={formData.status}
@@ -1217,24 +1230,17 @@ const Deliveries = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                        </div>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="purchase_order_id">Purchase Order</Label>
-                          <Select
+                          <SearchableSelect
+                            options={poOptions}
                             value={formData.purchase_order_id}
-                            onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select PO (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {purchaseOrders.map((po) => (
-                                <SelectItem key={po.id} value={po.id}>
-                                  {po.po_number}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={handlePOSelect}
+                            placeholder="Select PO (optional)..."
+                            emptyMessage="No purchase orders found."
+                            allowClear
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
