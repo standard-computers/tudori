@@ -696,7 +696,7 @@ export const ReceiveDeliveryDialog = ({
 
                     return Object.entries(grouped).flatMap(([puKey, group]) => [
                       <TableRow key={`pu-header-${puKey}`} className="bg-muted/50">
-                        <TableCell colSpan={3} className="py-1.5">
+                        <TableCell colSpan={4} className="py-1.5">
                           <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                             <Package className="w-3.5 h-3.5" />
                             {puKey === '__unpacked__' ? 'Unpacked Items' : group.puNumber || puKey}
