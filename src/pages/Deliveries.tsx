@@ -1021,10 +1021,12 @@ const Deliveries = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const parsedVendor = parseVendorValue(formData.vendor_id);
     const payload = {
       purchase_order_id: formData.purchase_order_id || null,
       location_id: formData.location_id || null,
-      vendor_id: formData.vendor_id || null,
+      vendor_id: parsedVendor?.type === 'vendor' ? parsedVendor.id : null,
+      source_location_id: parsedVendor?.type === 'location' ? parsedVendor.id : null,
       truck_id: formData.truck_id || null,
       status: isEditing ? formData.status : 'pending',
       expected_date: formData.expected_date || null,
