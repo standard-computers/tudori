@@ -532,10 +532,8 @@ const [areaFormData, setAreaFormData] = useState({
           .eq('id', deliverySourceId);
 
         if (delivery.purchase_order_id) {
-          await supabase
-            .from('purchase_orders')
-            .update({ status: 'delivered' })
-            .eq('id', delivery.purchase_order_id);
+          const { syncPurchaseOrderStatus } = await import('@/lib/delivery-fulfillment');
+          await syncPurchaseOrderStatus(delivery.purchase_order_id);
         }
 
         toast.success(`All receiving tasks completed for ${delivery.delivery_id}`);
@@ -1525,19 +1523,18 @@ const [areaFormData, setAreaFormData] = useState({
         }
       }
 
-      // Update the source order status
-      if (!isPartial) {
-        if (selectedOutboundOrder.sales_order_id) {
-          await supabase
-            .from('sales_orders' as any)
-            .update({ status: 'shipped' })
-            .eq('id', selectedOutboundOrder.sales_order_id);
-        } else if (selectedOutboundOrder.purchase_order_id) {
-          await supabase
-            .from('purchase_orders' as any)
-            .update({ status: 'shipped' })
-            .eq('id', selectedOutboundOrder.purchase_order_id);
-        }
+      // Update the source order status (full → shipped, partial → partial)
+      const sourceStatus = isPartial ? 'partial' : 'shipped';
+      if (selectedOutboundOrder.sales_order_id) {
+        await supabase
+          .from('sales_orders' as any)
+          .update({ status: sourceStatus })
+          .eq('id', selectedOutboundOrder.sales_order_id);
+      } else if (selectedOutboundOrder.purchase_order_id) {
+        await supabase
+          .from('purchase_orders' as any)
+          .update({ status: sourceStatus })
+          .eq('id', selectedOutboundOrder.purchase_order_id);
       }
 
       toast.success(`${isPartial ? 'Partially fulfilled' : 'Fulfilled'} – OD ${selectedOutboundOrder.delivery_number} ${isPartial ? 'partially shipped' : 'in transit'}, inventory updated.`);

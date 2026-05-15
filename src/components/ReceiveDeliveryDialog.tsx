@@ -584,19 +584,20 @@ export const ReceiveDeliveryDialog = ({
         addProgress(step, 'success', 'Finalized');
       }
 
-      // Step: Update PO if applicable
+      // Step: Sync PO status (delivered vs partial) based on aggregate received quantities
       if (purchaseOrderId) {
         step++;
-        const { error: poError } = await supabase
-          .from('purchase_orders')
-          .update({ status: 'delivered' })
-          .eq('id', purchaseOrderId);
-
-        if (poError) {
-          addProgress(step, 'error', 'Failed to update Purchase Order status');
-        } else {
-          addProgress(step, 'success', 'Purchase Order marked as delivered');
-        }
+        const { syncPurchaseOrderStatus } = await import('@/lib/delivery-fulfillment');
+        const poStatus = await syncPurchaseOrderStatus(purchaseOrderId);
+        addProgress(
+          step,
+          'success',
+          poStatus === 'delivered'
+            ? 'Purchase Order marked as delivered'
+            : poStatus === 'partial'
+            ? 'Purchase Order marked as partial (open for further deliveries)'
+            : 'Purchase Order status unchanged'
+        );
 
         const { data: poData } = await supabase
           .from('purchase_orders')
@@ -604,7 +605,8 @@ export const ReceiveDeliveryDialog = ({
           .eq('id', purchaseOrderId)
           .single();
 
-        if (poData?.requisition_id) {
+        // Only complete the requisition once the PO is fully delivered
+        if (poStatus === 'delivered' && poData?.requisition_id) {
           await supabase
             .from('requisitions')
             .update({ status: 'completed' })
