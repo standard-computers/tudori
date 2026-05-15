@@ -50,6 +50,7 @@ const Dashboard = () => {
   const [apps, setApps] = useState<AppTile[]>([]);
   const [hiddenTiles, setHiddenTiles] = useState<Set<string>>(new Set());
   const [openAppsInNewTab, setOpenAppsInNewTab] = useState(false);
+  const [appOpenMode, setAppOpenMode] = useState<'current' | 'new_tab' | 'new_window'>('current');
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   
   // Track whether profile/company check is still running
