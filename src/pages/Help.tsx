@@ -107,6 +107,8 @@ import {
    const [editingFolder, setEditingFolder] = useState<HelpFolder | null>(null);
    const [deletingFolder, setDeletingFolder] = useState<HelpFolder | null>(null);
  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
 
@@ -114,6 +116,61 @@ import {
   useSaveShortcut(() => {
     if (selectedDocument) handleSaveDocument();
   }, isEditing);
+
+  // Ctrl+E to enter edit mode for the doc in view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        if (selectedDocument && isAdmin && !isEditing) {
+          e.preventDefault();
+          setEditTitle(selectedDocument.title);
+          setEditContent(selectedDocument.content);
+          setIsEditing(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDocument, isAdmin, isEditing]);
+
+  const handleExportMarkdown = () => {
+    if (!selectedDocument) return;
+    const content = isEditing ? editContent : selectedDocument.content;
+    const title = isEditing ? editTitle : selectedDocument.title;
+    const blob = new Blob([content || ''], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(title || 'document').replace(/[^a-z0-9-_]+/gi, '_')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Exported as Markdown');
+  };
+
+  const handleUploadMarkdown = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file || !selectedDocument) return;
+    const text = await file.text();
+    if (isEditing) {
+      setEditContent(text);
+      toast.success('Markdown loaded into editor');
+    } else {
+      const { error } = await supabase
+        .from('help_documents')
+        .update({ content: text, updated_by: user!.id })
+        .eq('id', selectedDocument.id);
+      if (error) {
+        toast.error('Failed to upload markdown');
+      } else {
+        toast.success('Document replaced from Markdown');
+        setSelectedDocument({ ...selectedDocument, content: text });
+        fetchData();
+      }
+    }
+  };
 
    useEffect(() => {
      if (user) {
