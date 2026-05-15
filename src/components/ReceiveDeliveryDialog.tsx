@@ -462,8 +462,9 @@ export const ReceiveDeliveryDialog = ({
                 quantity: 1,
                 pu_id: puId,
                 bin_id: selectedBinId || null,
+                uom_id: item.uom_id || null,
                 notes: `Unit ${i + 1} of ${item.received_quantity}`,
-              });
+              } as any);
             }
           }
         } else {
