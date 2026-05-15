@@ -761,6 +761,7 @@ export const ReceiveDeliveryDialog = ({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{item.uom_label || '—'}</TableCell>
                       <TableCell className="text-right font-medium">{item.expected_quantity}</TableCell>
                       <TableCell className="text-right">
                         <Input
