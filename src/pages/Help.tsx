@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransaction } from "@/contexts/StatusBarContext";
@@ -20,6 +20,8 @@ import {
   X,
   ChevronDown,
   GripVertical,
+  Download,
+  Upload,
 } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -105,6 +107,8 @@ import {
    const [editingFolder, setEditingFolder] = useState<HelpFolder | null>(null);
    const [deletingFolder, setDeletingFolder] = useState<HelpFolder | null>(null);
  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // F1 to go back
   useKeyboardShortcut('F1', () => navigate(-1));
 
@@ -112,6 +116,61 @@ import {
   useSaveShortcut(() => {
     if (selectedDocument) handleSaveDocument();
   }, isEditing);
+
+  // Ctrl+E to enter edit mode for the doc in view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        if (selectedDocument && isAdmin && !isEditing) {
+          e.preventDefault();
+          setEditTitle(selectedDocument.title);
+          setEditContent(selectedDocument.content);
+          setIsEditing(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDocument, isAdmin, isEditing]);
+
+  const handleExportMarkdown = () => {
+    if (!selectedDocument) return;
+    const content = isEditing ? editContent : selectedDocument.content;
+    const title = isEditing ? editTitle : selectedDocument.title;
+    const blob = new Blob([content || ''], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(title || 'document').replace(/[^a-z0-9-_]+/gi, '_')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Exported as Markdown');
+  };
+
+  const handleUploadMarkdown = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file || !selectedDocument) return;
+    const text = await file.text();
+    if (isEditing) {
+      setEditContent(text);
+      toast.success('Markdown loaded into editor');
+    } else {
+      const { error } = await supabase
+        .from('help_documents')
+        .update({ content: text, updated_by: user!.id })
+        .eq('id', selectedDocument.id);
+      if (error) {
+        toast.error('Failed to upload markdown');
+      } else {
+        toast.success('Document replaced from Markdown');
+        setSelectedDocument({ ...selectedDocument, content: text });
+        fetchData();
+      }
+    }
+  };
 
    useEffect(() => {
      if (user) {
@@ -484,6 +543,13 @@ import {
  
    return (
      <div className="min-h-screen bg-background flex flex-col">
+       <input
+         ref={fileInputRef}
+         type="file"
+         accept=".md,.markdown,text/markdown,text/plain"
+         className="hidden"
+         onChange={handleUploadMarkdown}
+       />
        {/* Header */}
        <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
          <div className="flex items-center justify-between h-14 px-4">
@@ -592,39 +658,53 @@ import {
                  ) : (
                    <h2 className="text-xl font-semibold">{selectedDocument.title}</h2>
                  )}
-                 {isAdmin && (
-                   <div className="flex gap-2">
-                     {isEditing ? (
-                       <>
-                         <Button variant="outline" size="sm" onClick={cancelEdit}>
-                           <X className="h-4 w-4 mr-1" />
-                           Cancel
-                         </Button>
-                          <Button size="sm" onClick={handleSaveDocument}>
-                            <Save className="h-4 w-4 mr-1" />
-                            Save
-                            <Kbd>⌘S</Kbd>
+                  {isAdmin ? (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={handleExportMarkdown} title="Export as Markdown">
+                        <Download className="h-4 w-4 mr-1" />
+                        Export
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} title="Upload Markdown">
+                        <Upload className="h-4 w-4 mr-1" />
+                        Upload
+                      </Button>
+                      {isEditing ? (
+                        <>
+                          <Button variant="outline" size="sm" onClick={cancelEdit}>
+                            <X className="h-4 w-4 mr-1" />
+                            Cancel
                           </Button>
-                       </>
-                     ) : (
-                       <>
-                         <Button variant="outline" size="sm" onClick={startEditDocument}>
-                           <Pencil className="h-4 w-4 mr-1" />
-                           Edit
-                         </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           className="text-destructive hover:text-destructive"
-                           onClick={() => setDeleteDialogOpen(true)}
-                         >
-                           <Trash2 className="h-4 w-4 mr-1" />
-                           Delete
-                         </Button>
-                       </>
-                     )}
-                   </div>
-                 )}
+                           <Button size="sm" onClick={handleSaveDocument}>
+                             <Save className="h-4 w-4 mr-1" />
+                             Save
+                             <Kbd>⌘S</Kbd>
+                           </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="outline" size="sm" onClick={startEditDocument} className="relative">
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Edit
+                            <Kbd className="ml-1">⌘E</Kbd>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteDialogOpen(true)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={handleExportMarkdown} title="Export as Markdown">
+                      <Download className="h-4 w-4 mr-1" />
+                      Export
+                    </Button>
+                  )}
                </div>
                
                {/* Document Content */}
