@@ -133,13 +133,16 @@ const Dashboard = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from("user_preferences")
-      .select("dashboard_tile_order, hidden_tiles, open_apps_in_new_tab")
+      .select("dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, app_open_mode")
       .eq("user_id", user!.id)
       .maybeSingle();
 
     const hidden = new Set((data?.hidden_tiles as string[]) || []);
     setHiddenTiles(hidden);
     setOpenAppsInNewTab(data?.open_apps_in_new_tab || false);
+    const mode = ((data as any)?.app_open_mode as 'current' | 'new_tab' | 'new_window' | null)
+      || (data?.open_apps_in_new_tab ? 'new_tab' : 'current');
+    setAppOpenMode(mode);
 
     if (data?.dashboard_tile_order) {
       // Reorder apps based on saved preferences
