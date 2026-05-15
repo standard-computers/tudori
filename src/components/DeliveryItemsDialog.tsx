@@ -49,7 +49,7 @@ interface DeliveryItemsDialogProps {
   onOpenChange: (open: boolean) => void;
   purchaseOrderId: string;
   companyId: string;
-  onConfirm: (items: { product_id: string; quantity: number }[]) => void;
+  onConfirm: (items: { product_id: string; quantity: number; uom_id: string | null }[]) => void;
   title?: string;
   description?: string;
 }
