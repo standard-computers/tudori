@@ -2337,6 +2337,7 @@ export type Database = {
           product_id: string
           pu_id: string | null
           quantity: number
+          uom_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2352,6 +2353,7 @@ export type Database = {
           product_id: string
           pu_id?: string | null
           quantity?: number
+          uom_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2367,6 +2369,7 @@ export type Database = {
           product_id?: string
           pu_id?: string | null
           quantity?: number
+          uom_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2403,6 +2406,13 @@ export type Database = {
             columns: ["pu_id"]
             isOneToOne: false
             referencedRelation: "packaging_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]

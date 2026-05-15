@@ -149,10 +149,12 @@ interface InventoryItem {
   max_quantity: number | null;
   pu_id: string | null;
   batch_id: string | null;
+  uom_id: string | null;
   product?: { name: string; product_id: string; sku: string | null; company_id: string; hazardous?: boolean };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
   batch?: { batch_number: string; expiration_date: string | null } | null;
+  uom?: { id: string; name: string; abbreviation: string | null } | null;
   received_at?: string | null; // Date product arrived in its current bin (or was first received)
 }
 
@@ -933,10 +935,12 @@ const [areaFormData, setAreaFormData] = useState({
         max_quantity,
         pu_id,
         batch_id,
+        uom_id,
         product:products(name, product_id, sku, company_id, hazardous),
         bin:bins(bin_id, name),
         packaging_unit:packaging_units(pu_number),
-        batch:batches(batch_number, expiration_date)
+        batch:batches(batch_number, expiration_date),
+        uom:product_uoms(id, name, abbreviation)
       `)
       .eq('location_id', selectedLocationId)
       .order('quantity', { ascending: false });
@@ -3189,6 +3193,15 @@ const [areaFormData, setAreaFormData] = useState({
                           className="text-right"
                         />
                         <SortableTableHead
+                          label="UoM"
+                          sortKey="uom.abbreviation"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['uom.abbreviation']}
+                          onFilter={(value) => setInventoryFilter('uom.abbreviation', value)}
+                        />
+                        <SortableTableHead
                           label="Min"
                           sortKey="min_quantity"
                           currentSortKey={inventorySortConfig.key}
@@ -3286,6 +3299,7 @@ const [areaFormData, setAreaFormData] = useState({
                               <TableCell className="font-mono text-sm text-primary">{item.packaging_unit?.pu_number || '—'}</TableCell>
                               <TableCell className="font-mono text-sm">{item.bin?.bin_id || 'Unassigned'}</TableCell>
                               <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{item.uom?.abbreviation || item.uom?.name || 'base'}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '—'}</TableCell>
                               <TableCell className="font-mono text-sm">{item.batch?.batch_number || '—'}</TableCell>

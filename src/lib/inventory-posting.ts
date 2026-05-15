@@ -24,24 +24,25 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
       return { success: false, error: 'Cannot post receipt with no items' };
     }
 
-    // Add each item to inventory
+    // Add each item to inventory — preserve the receipt UoM (no base-unit conversion)
     for (const item of items as any[]) {
       const puId = item.pu_id || null;
       const batchId = item.batch_id || null;
-      const conversionFactor = item.uom?.conversion_factor || 1;
-      const baseQty = Math.round(item.quantity * conversionFactor);
-      
+      const uomId = item.uom_id || null;
+      const qty = Math.round(item.quantity);
+
       if (puId) {
         await supabase
           .from('inventory')
           .insert({
             location_id: locationId,
             product_id: item.product_id,
-            quantity: baseQty,
+            quantity: qty,
             bin_id: item.bin_id || null,
             pu_id: puId,
             batch_id: batchId,
-          });
+            uom_id: uomId,
+          } as any);
       } else {
         const query = supabase
           .from('inventory')
@@ -50,7 +51,13 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
           .eq('product_id', item.product_id)
           .is('bin_id', item.bin_id || null)
           .is('pu_id', null);
-        
+
+        if (uomId) {
+          query.eq('uom_id', uomId);
+        } else {
+          query.is('uom_id', null);
+        }
+
         if (batchId) {
           query.eq('batch_id', batchId);
         } else {
@@ -62,8 +69,8 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
         if (existingInventory) {
           await supabase
             .from('inventory')
-            .update({ 
-              quantity: existingInventory.quantity + baseQty,
+            .update({
+              quantity: existingInventory.quantity + qty,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingInventory.id);
@@ -73,11 +80,12 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
             .insert({
               location_id: locationId,
               product_id: item.product_id,
-              quantity: baseQty,
+              quantity: qty,
               bin_id: item.bin_id || null,
               pu_id: null,
               batch_id: batchId,
-            });
+              uom_id: uomId,
+            } as any);
         }
       }
     }
@@ -142,10 +150,10 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
       return { success: false, error: 'Cannot post issue with no items' };
     }
 
-    // Deduct each item from inventory
+    // Deduct each item from inventory — match same UoM if specified, otherwise any
     for (const item of items as any[]) {
-      const conversionFactor = item.uom?.conversion_factor || 1;
-      const baseQty = Math.round(item.quantity * conversionFactor);
+      const uomId = item.uom_id || null;
+      const qty = Math.round(item.quantity);
 
       if (item.pu_id) {
         const { data: puInventory } = await supabase
@@ -155,7 +163,7 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
           .eq('product_id', item.product_id)
           .eq('pu_id', item.pu_id)
           .maybeSingle();
-        
+
         if (puInventory) {
           await supabase.from('inventory').delete().eq('id', puInventory.id);
           await supabase
@@ -165,17 +173,21 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
         }
         continue;
       }
-      
+
       let inventoryQuery = supabase
         .from('inventory')
-        .select('id, quantity, bin_id, pu_id')
+        .select('id, quantity, bin_id, pu_id, uom_id')
         .eq('location_id', locationId)
         .eq('product_id', item.product_id);
-      
+
       if (item.bin_id) {
         inventoryQuery = inventoryQuery.eq('bin_id', item.bin_id);
       }
-      
+
+      if (uomId) {
+        inventoryQuery = inventoryQuery.eq('uom_id', uomId);
+      }
+
       const { data: inventoryRecords } = await inventoryQuery.order('quantity', { ascending: false });
 
       if (!inventoryRecords || inventoryRecords.length === 0) {
@@ -188,16 +200,16 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
       }
 
       const totalAvailable = inventoryRecords.reduce((sum, inv) => sum + inv.quantity, 0);
-      if (totalAvailable < baseQty) {
+      if (totalAvailable < qty) {
         const { data: productData } = await supabase
           .from('products')
           .select('name')
           .eq('id', item.product_id)
           .single();
-        return { success: false, error: `Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${baseQty}` };
+        return { success: false, error: `Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${qty}` };
       }
 
-      let remainingToDeduct = baseQty;
+      let remainingToDeduct = qty;
       for (const inv of inventoryRecords) {
         if (remainingToDeduct <= 0) break;
         
