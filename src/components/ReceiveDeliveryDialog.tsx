@@ -230,8 +230,10 @@ export const ReceiveDeliveryDialog = ({
         quantity,
         notes,
         pu_id,
+        uom_id,
         packaging_unit:packaging_units(pu_number),
-        product:products(name, product_id, hazardous, is_batched)
+        product:products(name, product_id, hazardous, is_batched),
+        uom:product_uoms(id, name, abbreviation, conversion_factor)
       `)
       .eq('delivery_id', deliveryId);
 
@@ -252,6 +254,8 @@ export const ReceiveDeliveryDialog = ({
       pu_number: item.packaging_unit?.pu_number || null,
       hazardous: item.product?.hazardous ?? false,
       is_batched: item.product?.is_batched ?? false,
+      uom_id: item.uom_id || null,
+      uom_label: item.uom?.abbreviation || item.uom?.name || null,
     }));
 
     setItems(receivedItems);
