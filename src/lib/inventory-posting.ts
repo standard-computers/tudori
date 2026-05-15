@@ -17,7 +17,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
     // Get items for this receipt
     const { data: items } = await supabase
       .from('goods_receipt_items' as any)
-      .select('*, product:products(name, price)')
+      .select('*, product:products(name, price), uom:product_uoms(id, conversion_factor)')
       .eq('goods_receipt_id', receiptId);
 
     if (!items || items.length === 0) {
