@@ -1897,6 +1897,7 @@ export type Database = {
           product_id: string
           pu_id: string | null
           quantity: number
+          uom_id: string | null
         }
         Insert: {
           bin_id?: string | null
@@ -1907,6 +1908,7 @@ export type Database = {
           product_id: string
           pu_id?: string | null
           quantity?: number
+          uom_id?: string | null
         }
         Update: {
           bin_id?: string | null
@@ -1917,6 +1919,7 @@ export type Database = {
           product_id?: string
           pu_id?: string | null
           quantity?: number
+          uom_id?: string | null
         }
         Relationships: [
           {
@@ -1945,6 +1948,13 @@ export type Database = {
             columns: ["pu_id"]
             isOneToOne: false
             referencedRelation: "packaging_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issue_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]
@@ -2048,6 +2058,7 @@ export type Database = {
           product_id: string
           pu_id: string | null
           quantity: number
+          uom_id: string | null
         }
         Insert: {
           batch_id?: string | null
@@ -2059,6 +2070,7 @@ export type Database = {
           product_id: string
           pu_id?: string | null
           quantity?: number
+          uom_id?: string | null
         }
         Update: {
           batch_id?: string | null
@@ -2070,6 +2082,7 @@ export type Database = {
           product_id?: string
           pu_id?: string | null
           quantity?: number
+          uom_id?: string | null
         }
         Relationships: [
           {
@@ -2105,6 +2118,13 @@ export type Database = {
             columns: ["pu_id"]
             isOneToOne: false
             referencedRelation: "packaging_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]
