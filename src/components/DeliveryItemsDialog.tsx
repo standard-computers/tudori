@@ -28,7 +28,9 @@ interface POItem {
   product_id: string;
   quantity: number;
   unit_price: number | null;
+  uom_id: string | null;
   product?: { name: string; product_id: string };
+  uom?: { abbreviation: string | null; name: string } | null;
 }
 
 interface DeliveryItemSelection {
@@ -38,6 +40,8 @@ interface DeliveryItemSelection {
   po_quantity: number;
   delivery_quantity: number;
   selected: boolean;
+  uom_id: string | null;
+  uom_label: string | null;
 }
 
 interface DeliveryItemsDialogProps {
