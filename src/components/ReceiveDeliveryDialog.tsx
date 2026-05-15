@@ -558,7 +558,9 @@ export const ReceiveDeliveryDialog = ({
         for (const item of activeItems) {
           step++;
           if (explodeDelivery) {
-            for (let i = 0; i < item.received_quantity; i++) {
+            const factor = item.conversion_factor || 1;
+            const baseUnits = Math.round(item.received_quantity * factor);
+            for (let i = 0; i < baseUnits; i++) {
               const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
               await supabase.from('inventory').insert({
                 location_id: locationId,
@@ -566,7 +568,8 @@ export const ReceiveDeliveryDialog = ({
                 quantity: 1,
                 pu_id: pu?.id || null,
                 bin_id: selectedBinId || null,
-              });
+                uom_id: null,
+              } as any);
             }
           } else {
             const puId = item.pu_id || (await createPackagingUnit(profile.company_id, item.product_id, item.received_quantity))?.id || null;
@@ -576,7 +579,8 @@ export const ReceiveDeliveryDialog = ({
               quantity: item.received_quantity,
               pu_id: puId,
               bin_id: selectedBinId || null,
-            });
+              uom_id: item.uom_id || null,
+            } as any);
           }
           addProgress(step, 'success', `Inventory updated for ${item.product_name}`);
         }
