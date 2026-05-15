@@ -310,7 +310,7 @@ const Deliveries = () => {
   }, []);
 
   // Use vendor sources hook
-  const { vendorOptions } = useVendorSources(companyId);
+  const { vendorOptions, parseVendorValue } = useVendorSources(companyId);
 
   // Location options for SearchableSelect
   const locationOptions: SearchableSelectOption[] = useMemo(() => {
