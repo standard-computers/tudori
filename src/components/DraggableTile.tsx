@@ -13,6 +13,7 @@ interface DraggableTileProps {
   path: string | null;
   index: number;
   openInNewTab?: boolean;
+  openMode?: 'current' | 'new_tab' | 'new_window';
   onCustomClick?: () => void;
 }
 
