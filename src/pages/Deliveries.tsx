@@ -616,6 +616,7 @@ const Deliveries = () => {
       purchase_order_id: '',
       location_id: '',
       vendor_id: '',
+      truck_id: '',
       status: 'pending',
       expected_date: '',
       delivered_date: '',
