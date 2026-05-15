@@ -83,7 +83,9 @@ export const DeliveryItemsDialog = ({
           product_id,
           quantity,
           unit_price,
-          product:products(name, product_id)
+          uom_id,
+          product:products(name, product_id),
+          uom:product_uoms!purchase_order_items_uom_id_fkey(name, abbreviation)
         `)
         .eq('purchase_order_id', purchaseOrderId),
       supabase
@@ -107,7 +109,7 @@ export const DeliveryItemsDialog = ({
       }
     }
 
-    const selections: DeliveryItemSelection[] = (data || []).map((item: POItem) => {
+    const selections: DeliveryItemSelection[] = (data || []).map((item: any) => {
       const remaining = Math.max(0, item.quantity - (deliveredByProduct[item.product_id] || 0));
       return {
         product_id: item.product_id,
@@ -116,6 +118,8 @@ export const DeliveryItemsDialog = ({
         po_quantity: remaining,
         delivery_quantity: remaining,
         selected: remaining > 0,
+        uom_id: item.uom_id || null,
+        uom_label: item.uom?.abbreviation || item.uom?.name || null,
       };
     }).filter(s => s.po_quantity > 0);
 
