@@ -149,10 +149,12 @@ interface InventoryItem {
   max_quantity: number | null;
   pu_id: string | null;
   batch_id: string | null;
+  uom_id: string | null;
   product?: { name: string; product_id: string; sku: string | null; company_id: string; hazardous?: boolean };
   bin?: { bin_id: string; name: string } | null;
   packaging_unit?: { pu_number: string } | null;
   batch?: { batch_number: string; expiration_date: string | null } | null;
+  uom?: { id: string; name: string; abbreviation: string | null } | null;
   received_at?: string | null; // Date product arrived in its current bin (or was first received)
 }
 
