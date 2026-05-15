@@ -20,6 +20,8 @@ import {
   X,
   ChevronDown,
   GripVertical,
+  Download,
+  Upload,
 } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import {
