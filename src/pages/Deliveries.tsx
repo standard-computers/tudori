@@ -1177,8 +1177,8 @@ const Deliveries = () => {
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="details">Details</TabsTrigger>
-                        <TabsTrigger value="items" disabled={!isEditing}>
-                          Items {isEditing && deliveryItems.length > 0 && `(${deliveryItems.length})`}
+                        <TabsTrigger value="items">
+                          Items {deliveryItems.length > 0 && `(${deliveryItems.length})`}
                         </TabsTrigger>
                         <TabsTrigger value="packing" disabled={!isEditing || deliveryItems.length === 0}>
                           Packing
