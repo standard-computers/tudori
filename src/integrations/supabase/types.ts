@@ -3283,6 +3283,7 @@ export type Database = {
           outbound_delivery_id: string
           product_id: string
           quantity: number
+          uom_id: string | null
         }
         Insert: {
           created_at?: string
@@ -3291,6 +3292,7 @@ export type Database = {
           outbound_delivery_id: string
           product_id: string
           quantity?: number
+          uom_id?: string | null
         }
         Update: {
           created_at?: string
@@ -3299,6 +3301,7 @@ export type Database = {
           outbound_delivery_id?: string
           product_id?: string
           quantity?: number
+          uom_id?: string | null
         }
         Relationships: [
           {
@@ -3313,6 +3316,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_delivery_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]
@@ -4583,6 +4593,7 @@ export type Database = {
           sales_order_id: string
           total_price: number | null
           unit_price: number | null
+          uom_id: string | null
         }
         Insert: {
           created_at?: string
@@ -4593,6 +4604,7 @@ export type Database = {
           sales_order_id: string
           total_price?: number | null
           unit_price?: number | null
+          uom_id?: string | null
         }
         Update: {
           created_at?: string
@@ -4603,6 +4615,7 @@ export type Database = {
           sales_order_id?: string
           total_price?: number | null
           unit_price?: number | null
+          uom_id?: string | null
         }
         Relationships: [
           {
@@ -4624,6 +4637,13 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]
