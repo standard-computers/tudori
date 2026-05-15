@@ -532,10 +532,8 @@ const [areaFormData, setAreaFormData] = useState({
           .eq('id', deliverySourceId);
 
         if (delivery.purchase_order_id) {
-          await supabase
-            .from('purchase_orders')
-            .update({ status: 'delivered' })
-            .eq('id', delivery.purchase_order_id);
+          const { syncPurchaseOrderStatus } = await import('@/lib/delivery-fulfillment');
+          await syncPurchaseOrderStatus(delivery.purchase_order_id);
         }
 
         toast.success(`All receiving tasks completed for ${delivery.delivery_id}`);
