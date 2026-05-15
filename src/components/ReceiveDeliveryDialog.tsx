@@ -510,6 +510,7 @@ export const ReceiveDeliveryDialog = ({
                   pu_id: puId,
                   bin_id: selectedBinId || null,
                   batch_id: batchId,
+                  uom_id: item.uom_id || null,
                   notes: `Batch: ${batchLine.batchNumber}`,
                 });
               }
@@ -520,6 +521,7 @@ export const ReceiveDeliveryDialog = ({
                 quantity: item.received_quantity,
                 pu_id: puId,
                 bin_id: selectedBinId || null,
+                uom_id: item.uom_id || null,
                 notes: item.received_quantity !== item.expected_quantity 
                   ? `Received ${item.received_quantity} of ${item.expected_quantity} expected`
                   : null,
