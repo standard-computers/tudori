@@ -1385,6 +1385,7 @@ const [areaFormData, setAreaFormData] = useState({
         product_id: item.product_id,
         quantity: fulfillQuantities[item.id] ?? item.quantity,
         originalQuantity: item.quantity,
+        uom_id: (item as any).uom_id ?? null,
         product: item.product,
       })).filter(item => item.quantity > 0);
       
