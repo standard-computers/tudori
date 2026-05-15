@@ -1053,7 +1053,8 @@ const Deliveries = () => {
         .single();
 
       if (error || !created) {
-        toast.error('Failed to create delivery');
+        console.error('Failed to create delivery', error, payload);
+        toast.error(`Failed to create delivery: ${error?.message || 'unknown error'}`);
         return;
       }
 
