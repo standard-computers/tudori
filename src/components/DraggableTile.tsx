@@ -26,6 +26,7 @@ export const DraggableTile = ({
   path, 
   index,
   openInNewTab = false,
+  openMode,
   onCustomClick,
 }: DraggableTileProps) => {
   const navigate = useNavigate();
