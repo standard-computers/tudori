@@ -894,6 +894,7 @@ const Deliveries = () => {
       purchase_order_id: delivery.purchase_order_id || '',
       location_id: delivery.location_id || '',
       vendor_id: delivery.vendor_id || '',
+      truck_id: (delivery as any).truck_id || '',
       status: delivery.status,
       expected_date: delivery.expected_date || '',
       delivered_date: delivery.delivered_date || '',
