@@ -244,6 +244,7 @@ const Deliveries = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [pageTab, setPageTab] = useState<'inbound' | 'outbound'>('inbound');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
