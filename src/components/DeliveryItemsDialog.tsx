@@ -198,6 +198,7 @@ export const DeliveryItemsDialog = ({
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Product</TableHead>
+                  <TableHead className="w-20">UoM</TableHead>
                   <TableHead className="w-24 text-right">Remaining</TableHead>
                   <TableHead className="w-32 text-right">Delivery Qty</TableHead>
                 </TableRow>
@@ -220,6 +221,9 @@ export const DeliveryItemsDialog = ({
                           {item.product_code}
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {item.uom_label || '—'}
                     </TableCell>
                     <TableCell className="text-right">{item.po_quantity}</TableCell>
                     <TableCell className="text-right">
