@@ -678,6 +678,7 @@ export const ReceiveDeliveryDialog = ({
               <TableHeader>
                 <TableRow>
                   <TableHead>Product</TableHead>
+                  <TableHead className="w-20">UoM</TableHead>
                   <TableHead className="w-24 text-right">Expected</TableHead>
                   <TableHead className="w-32 text-right">Received</TableHead>
                 </TableRow>
