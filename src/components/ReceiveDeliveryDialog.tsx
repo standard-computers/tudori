@@ -259,6 +259,7 @@ export const ReceiveDeliveryDialog = ({
       is_batched: item.product?.is_batched ?? false,
       uom_id: item.uom_id || null,
       uom_label: item.uom?.abbreviation || item.uom?.name || null,
+      conversion_factor: Number(item.uom?.conversion_factor) || 1,
     }));
 
     setItems(receivedItems);
