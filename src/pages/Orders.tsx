@@ -2008,6 +2008,7 @@ const Orders = () => {
               outbound_delivery_id: deliveryResult.id,
               product_id: item.product_id,
               quantity: item.quantity,
+              uom_id: item.uom_id || null,
             }));
             await supabase.from("outbound_delivery_items" as any).insert(itemsToInsert);
           }
