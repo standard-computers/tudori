@@ -121,6 +121,7 @@ const UserSettings = () => {
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
   const [openInNewTab, setOpenInNewTab] = useState(false);
+  const [appOpenMode, setAppOpenMode] = useState<'current' | 'new_tab' | 'new_window'>('current');
   const [maximizeWindows, setMaximizeWindows] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null, company_id: null });
   const [savingProfile, setSavingProfile] = useState(false);
