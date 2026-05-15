@@ -24,24 +24,25 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
       return { success: false, error: 'Cannot post receipt with no items' };
     }
 
-    // Add each item to inventory
+    // Add each item to inventory — preserve the receipt UoM (no base-unit conversion)
     for (const item of items as any[]) {
       const puId = item.pu_id || null;
       const batchId = item.batch_id || null;
-      const conversionFactor = item.uom?.conversion_factor || 1;
-      const baseQty = Math.round(item.quantity * conversionFactor);
-      
+      const uomId = item.uom_id || null;
+      const qty = Math.round(item.quantity);
+
       if (puId) {
         await supabase
           .from('inventory')
           .insert({
             location_id: locationId,
             product_id: item.product_id,
-            quantity: baseQty,
+            quantity: qty,
             bin_id: item.bin_id || null,
             pu_id: puId,
             batch_id: batchId,
-          });
+            uom_id: uomId,
+          } as any);
       } else {
         const query = supabase
           .from('inventory')
@@ -50,7 +51,13 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
           .eq('product_id', item.product_id)
           .is('bin_id', item.bin_id || null)
           .is('pu_id', null);
-        
+
+        if (uomId) {
+          query.eq('uom_id', uomId);
+        } else {
+          query.is('uom_id', null);
+        }
+
         if (batchId) {
           query.eq('batch_id', batchId);
         } else {
@@ -62,8 +69,8 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
         if (existingInventory) {
           await supabase
             .from('inventory')
-            .update({ 
-              quantity: existingInventory.quantity + baseQty,
+            .update({
+              quantity: existingInventory.quantity + qty,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingInventory.id);
@@ -73,11 +80,12 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
             .insert({
               location_id: locationId,
               product_id: item.product_id,
-              quantity: baseQty,
+              quantity: qty,
               bin_id: item.bin_id || null,
               pu_id: null,
               batch_id: batchId,
-            });
+              uom_id: uomId,
+            } as any);
         }
       }
     }
