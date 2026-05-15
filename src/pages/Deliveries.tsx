@@ -216,6 +216,13 @@ interface Carrier {
   carrier_id: string;
 }
 
+interface Truck {
+  id: string;
+  truck_id: string;
+  carrier_id: string;
+  carrier?: { name: string } | null;
+}
+
 const DELIVERY_STATUSES = ['pending', 'in_transit', 'delivered', 'cancelled'];
 
 const getStatusColor = (status: string) => {
@@ -237,6 +244,7 @@ const Deliveries = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [pageTab, setPageTab] = useState<'inbound' | 'outbound'>('inbound');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -321,6 +329,15 @@ const Deliveries = () => {
     }));
   }, [purchaseOrders]);
 
+  // Truck options for SearchableSelect (active only)
+  const truckOptions: SearchableSelectOption[] = useMemo(() => {
+    return trucks.map((t) => ({
+      value: t.id,
+      label: t.truck_id,
+      sublabel: t.carrier?.name || '',
+    }));
+  }, [trucks]);
+
   // Ctrl+S to save
   useSaveShortcut(() => {
     if (isDialogOpen && formRef.current) {
@@ -333,6 +350,7 @@ const Deliveries = () => {
     purchase_order_id: '',
     location_id: '',
     vendor_id: '',
+    truck_id: '',
     status: 'pending',
     expected_date: '',
     delivered_date: '',
@@ -375,6 +393,7 @@ const Deliveries = () => {
       fetchLocations();
       fetchProducts();
       fetchCarriers();
+      fetchTrucks();
     }
   }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
@@ -493,6 +512,16 @@ const Deliveries = () => {
     setCarriers(data || []);
   };
 
+  const fetchTrucks = async () => {
+    const { data } = await supabase
+      .from('trucks')
+      .select('id, truck_id, carrier_id, carrier:carriers(name)')
+      .eq('company_id', companyId!)
+      .eq('is_active', true)
+      .order('truck_id');
+    setTrucks((data || []) as unknown as Truck[]);
+  };
+
   const fetchDeliveryItems = async (deliveryId: string) => {
     const { data } = await supabase
       .from('delivery_items')
@@ -534,7 +563,11 @@ const Deliveries = () => {
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    if (!editingId) return;
+    if (!editingId) {
+      // In-memory removal during create
+      setDeliveryItems(prev => prev.filter(i => i.id !== itemId));
+      return;
+    }
 
     const { error } = await supabase
       .from('delivery_items')
@@ -551,7 +584,10 @@ const Deliveries = () => {
   };
 
   const handleUpdateItemQuantity = async (itemId: string, quantity: number) => {
-    if (!editingId) return;
+    if (!editingId) {
+      setDeliveryItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity } : i));
+      return;
+    }
 
     const { error } = await supabase
       .from('delivery_items')
@@ -567,7 +603,15 @@ const Deliveries = () => {
   };
 
   const handleUpdateItemUom = async (itemId: string, uomId: string | null) => {
-    if (!editingId) return;
+    if (!editingId) {
+      setDeliveryItems(prev => prev.map(i => {
+        if (i.id !== itemId) return i;
+        const allUoms = productUoms.filter(u => u.product_id === i.product_id);
+        const uom = uomId ? allUoms.find(u => u.id === uomId) : null;
+        return { ...i, uom_id: uomId, uom: uom ? { id: uom.id, name: uom.name, abbreviation: uom.abbreviation, conversion_factor: uom.conversion_factor } : null };
+      }));
+      return;
+    }
     const { error } = await supabase
       .from('delivery_items')
       .update({ uom_id: uomId })
@@ -577,6 +621,68 @@ const Deliveries = () => {
       return;
     }
     fetchDeliveryItems(editingId);
+  };
+
+  // Populate in-memory items from a PO during create
+  const loadItemsFromPO = async (poId: string) => {
+    if (!poId) {
+      setDeliveryItems([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('purchase_order_items')
+      .select(`
+        product_id,
+        quantity,
+        uom_id,
+        product:products(name, product_id, unit, width, length, height, weight, width_uom, length_uom, height_uom, weight_uom),
+        uom:product_uoms!purchase_order_items_uom_id_fkey(id, name, abbreviation, conversion_factor)
+      `)
+      .eq('purchase_order_id', poId);
+    if (error) {
+      toast.error('Failed to load PO items');
+      return;
+    }
+    const items: DeliveryItem[] = (data || []).map((it: any, idx: number) => ({
+      id: `new-${Date.now()}-${idx}`,
+      delivery_id: '',
+      product_id: it.product_id,
+      quantity: it.quantity,
+      pu_id: null,
+      uom_id: it.uom_id || null,
+      notes: null,
+      product: it.product || null,
+      uom: it.uom || null,
+    }));
+    setDeliveryItems(items);
+    const productIds = [...new Set(items.map(i => i.product_id).filter(Boolean))];
+    if (productIds.length > 0) fetchProductUoms(productIds);
+  };
+
+  // Auto-fill vendor/destination/expected date from selected PO during create
+  const handlePOSelect = async (poId: string) => {
+    setFormData(prev => ({ ...prev, purchase_order_id: poId }));
+    if (!poId) {
+      if (!isEditing) setDeliveryItems([]);
+      return;
+    }
+    if (!isEditing) {
+      const { data: po } = await supabase
+        .from('purchase_orders')
+        .select('vendor_id, location_id, expected_delivery_date')
+        .eq('id', poId)
+        .maybeSingle();
+      if (po) {
+        setFormData(prev => ({
+          ...prev,
+          purchase_order_id: poId,
+          vendor_id: po.vendor_id || prev.vendor_id,
+          location_id: po.location_id || prev.location_id,
+          expected_date: (po as any).expected_delivery_date || prev.expected_date,
+        }));
+      }
+      await loadItemsFromPO(poId);
+    }
   };
 
   const handleViewUpdateItemUom = async (itemId: string, uomId: string | null) => {
@@ -598,6 +704,7 @@ const Deliveries = () => {
       purchase_order_id: '',
       location_id: '',
       vendor_id: '',
+      truck_id: '',
       status: 'pending',
       expected_date: '',
       delivered_date: '',
@@ -875,6 +982,7 @@ const Deliveries = () => {
       purchase_order_id: delivery.purchase_order_id || '',
       location_id: delivery.location_id || '',
       vendor_id: delivery.vendor_id || '',
+      truck_id: (delivery as any).truck_id || '',
       status: delivery.status,
       expected_date: delivery.expected_date || '',
       delivered_date: delivery.delivered_date || '',
@@ -912,7 +1020,8 @@ const Deliveries = () => {
       purchase_order_id: formData.purchase_order_id || null,
       location_id: formData.location_id || null,
       vendor_id: formData.vendor_id || null,
-      status: formData.status,
+      truck_id: formData.truck_id || null,
+      status: isEditing ? formData.status : 'pending',
       expected_date: formData.expected_date || null,
       delivered_date: formData.delivered_date || null,
       tracking_number: formData.tracking_number || null,
@@ -933,17 +1042,36 @@ const Deliveries = () => {
 
       toast.success('Delivery updated');
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('deliveries')
         .insert({
           ...payload,
           company_id: companyId!,
           delivery_id: formData.delivery_id,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) {
+      if (error || !created) {
         toast.error('Failed to create delivery');
         return;
+      }
+
+      // Insert in-memory line items
+      const itemsToInsert = deliveryItems
+        .filter(i => i.product_id)
+        .map(i => ({
+          delivery_id: created.id,
+          product_id: i.product_id,
+          quantity: i.quantity || 1,
+          uom_id: i.uom_id || null,
+          notes: i.notes || null,
+        }));
+      if (itemsToInsert.length > 0) {
+        const { error: itemsErr } = await supabase.from('delivery_items').insert(itemsToInsert);
+        if (itemsErr) {
+          toast.error('Delivery created but failed to add items');
+        }
       }
 
       toast.success('Delivery created');
@@ -1049,8 +1177,8 @@ const Deliveries = () => {
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="details">Details</TabsTrigger>
-                        <TabsTrigger value="items" disabled={!isEditing}>
-                          Items {isEditing && deliveryItems.length > 0 && `(${deliveryItems.length})`}
+                        <TabsTrigger value="items">
+                          Items {deliveryItems.length > 0 && `(${deliveryItems.length})`}
                         </TabsTrigger>
                         <TabsTrigger value="packing" disabled={!isEditing || deliveryItems.length === 0}>
                           Packing
@@ -1072,6 +1200,19 @@ const Deliveries = () => {
                             />
                           </div>
                           <div className="space-y-2">
+                            <Label htmlFor="truck_id">Truck</Label>
+                            <SearchableSelect
+                              options={truckOptions}
+                              value={formData.truck_id}
+                              onValueChange={(value) => setFormData({ ...formData, truck_id: value })}
+                              placeholder="Select truck (optional)..."
+                              emptyMessage="No active trucks found."
+                              allowClear
+                            />
+                          </div>
+                        </div>
+                        {isEditing && (
+                          <div className="space-y-2">
                             <Label htmlFor="status">Status</Label>
                             <Select
                               value={formData.status}
@@ -1089,24 +1230,17 @@ const Deliveries = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                        </div>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="purchase_order_id">Purchase Order</Label>
-                          <Select
+                          <SearchableSelect
+                            options={poOptions}
                             value={formData.purchase_order_id}
-                            onValueChange={(value) => setFormData({ ...formData, purchase_order_id: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select PO (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {purchaseOrders.map((po) => (
-                                <SelectItem key={po.id} value={po.id}>
-                                  {po.po_number}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={handlePOSelect}
+                            placeholder="Select PO (optional)..."
+                            emptyMessage="No purchase orders found."
+                            allowClear
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">

@@ -1487,6 +1487,7 @@ export type Database = {
           source_location_id: string | null
           status: string
           tracking_number: string | null
+          truck_id: string | null
           updated_at: string
           vendor_id: string | null
         }
@@ -1506,6 +1507,7 @@ export type Database = {
           source_location_id?: string | null
           status?: string
           tracking_number?: string | null
+          truck_id?: string | null
           updated_at?: string
           vendor_id?: string | null
         }
@@ -1525,6 +1527,7 @@ export type Database = {
           source_location_id?: string | null
           status?: string
           tracking_number?: string | null
+          truck_id?: string | null
           updated_at?: string
           vendor_id?: string | null
         }
@@ -1562,6 +1565,13 @@ export type Database = {
             columns: ["source_location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_truck_id_fkey"
+            columns: ["truck_id"]
+            isOneToOne: false
+            referencedRelation: "trucks"
             referencedColumns: ["id"]
           },
           {
