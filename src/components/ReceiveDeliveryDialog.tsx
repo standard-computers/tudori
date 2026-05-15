@@ -51,6 +51,8 @@ interface ReceivedItem {
   pu_number?: string | null;
   hazardous?: boolean;
   is_batched?: boolean;
+  uom_id?: string | null;
+  uom_label?: string | null;
 }
 
 interface ReceiveDeliveryDialogProps {
