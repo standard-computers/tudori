@@ -452,7 +452,9 @@ export const ReceiveDeliveryDialog = ({
         step++;
         if (explodeDelivery) {
           for (const item of activeItems) {
-            for (let i = 0; i < item.received_quantity; i++) {
+            const factor = item.conversion_factor || 1;
+            const baseUnits = Math.round(item.received_quantity * factor);
+            for (let i = 0; i < baseUnits; i++) {
               let puId = item.pu_id;
               if (!puId) {
                 const pu = await createPackagingUnit(profile.company_id, item.product_id, 1);
@@ -464,8 +466,8 @@ export const ReceiveDeliveryDialog = ({
                 quantity: 1,
                 pu_id: puId,
                 bin_id: selectedBinId || null,
-                uom_id: item.uom_id || null,
-                notes: `Unit ${i + 1} of ${item.received_quantity}`,
+                uom_id: null,
+                notes: `Unit ${i + 1} of ${baseUnits} (exploded to base UoM)`,
               } as any);
             }
           }
