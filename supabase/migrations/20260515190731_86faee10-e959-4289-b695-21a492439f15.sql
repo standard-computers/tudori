@@ -1,0 +1,2 @@
+ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS app_open_mode TEXT DEFAULT 'current';
+UPDATE public.user_preferences SET app_open_mode = 'new_tab' WHERE open_apps_in_new_tab = true AND (app_open_mode IS NULL OR app_open_mode = 'current');
