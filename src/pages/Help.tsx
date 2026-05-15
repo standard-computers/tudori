@@ -543,6 +543,13 @@ import {
  
    return (
      <div className="min-h-screen bg-background flex flex-col">
+       <input
+         ref={fileInputRef}
+         type="file"
+         accept=".md,.markdown,text/markdown,text/plain"
+         className="hidden"
+         onChange={handleUploadMarkdown}
+       />
        {/* Header */}
        <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
          <div className="flex items-center justify-between h-14 px-4">
