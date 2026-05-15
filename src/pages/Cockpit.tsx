@@ -3193,6 +3193,15 @@ const [areaFormData, setAreaFormData] = useState({
                           className="text-right"
                         />
                         <SortableTableHead
+                          label="UoM"
+                          sortKey="uom.abbreviation"
+                          currentSortKey={inventorySortConfig.key}
+                          currentSortDirection={inventorySortConfig.direction}
+                          onSort={handleInventorySort}
+                          filterValue={inventoryFilters['uom.abbreviation']}
+                          onFilter={(value) => setInventoryFilter('uom.abbreviation', value)}
+                        />
+                        <SortableTableHead
                           label="Min"
                           sortKey="min_quantity"
                           currentSortKey={inventorySortConfig.key}
