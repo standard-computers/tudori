@@ -139,6 +139,8 @@ interface PurchaseOrderItem {
   quantity: number;
   unit_price: number | null;
   total_price: number | null;
+  uom_id?: string | null;
+  uom?: { id: string; name: string; abbreviation: string | null; conversion_factor: number } | null;
   product?: {
     name: string;
     product_id: string;
