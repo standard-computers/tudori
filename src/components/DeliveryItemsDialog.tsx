@@ -28,7 +28,9 @@ interface POItem {
   product_id: string;
   quantity: number;
   unit_price: number | null;
+  uom_id: string | null;
   product?: { name: string; product_id: string };
+  uom?: { abbreviation: string | null; name: string } | null;
 }
 
 interface DeliveryItemSelection {
@@ -38,6 +40,8 @@ interface DeliveryItemSelection {
   po_quantity: number;
   delivery_quantity: number;
   selected: boolean;
+  uom_id: string | null;
+  uom_label: string | null;
 }
 
 interface DeliveryItemsDialogProps {
@@ -45,7 +49,7 @@ interface DeliveryItemsDialogProps {
   onOpenChange: (open: boolean) => void;
   purchaseOrderId: string;
   companyId: string;
-  onConfirm: (items: { product_id: string; quantity: number }[]) => void;
+  onConfirm: (items: { product_id: string; quantity: number; uom_id: string | null }[]) => void;
   title?: string;
   description?: string;
 }
@@ -79,7 +83,9 @@ export const DeliveryItemsDialog = ({
           product_id,
           quantity,
           unit_price,
-          product:products(name, product_id)
+          uom_id,
+          product:products(name, product_id),
+          uom:product_uoms!purchase_order_items_uom_id_fkey(name, abbreviation)
         `)
         .eq('purchase_order_id', purchaseOrderId),
       supabase
@@ -103,7 +109,7 @@ export const DeliveryItemsDialog = ({
       }
     }
 
-    const selections: DeliveryItemSelection[] = (data || []).map((item: POItem) => {
+    const selections: DeliveryItemSelection[] = (data || []).map((item: any) => {
       const remaining = Math.max(0, item.quantity - (deliveredByProduct[item.product_id] || 0));
       return {
         product_id: item.product_id,
@@ -112,6 +118,8 @@ export const DeliveryItemsDialog = ({
         po_quantity: remaining,
         delivery_quantity: remaining,
         selected: remaining > 0,
+        uom_id: item.uom_id || null,
+        uom_label: item.uom?.abbreviation || item.uom?.name || null,
       };
     }).filter(s => s.po_quantity > 0);
 
@@ -147,6 +155,7 @@ export const DeliveryItemsDialog = ({
       .map(item => ({
         product_id: item.product_id,
         quantity: item.delivery_quantity,
+        uom_id: item.uom_id,
       }));
 
     onConfirm(selectedItems);
@@ -189,6 +198,7 @@ export const DeliveryItemsDialog = ({
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Product</TableHead>
+                  <TableHead className="w-20">UoM</TableHead>
                   <TableHead className="w-24 text-right">Remaining</TableHead>
                   <TableHead className="w-32 text-right">Delivery Qty</TableHead>
                 </TableRow>
@@ -211,6 +221,9 @@ export const DeliveryItemsDialog = ({
                           {item.product_code}
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {item.uom_label || '—'}
                     </TableCell>
                     <TableCell className="text-right">{item.po_quantity}</TableCell>
                     <TableCell className="text-right">
