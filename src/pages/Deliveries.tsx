@@ -329,6 +329,15 @@ const Deliveries = () => {
     }));
   }, [purchaseOrders]);
 
+  // Truck options for SearchableSelect (active only)
+  const truckOptions: SearchableSelectOption[] = useMemo(() => {
+    return trucks.map((t) => ({
+      value: t.id,
+      label: t.truck_id,
+      sublabel: t.carrier?.name || '',
+    }));
+  }, [trucks]);
+
   // Ctrl+S to save
   useSaveShortcut(() => {
     if (isDialogOpen && formRef.current) {
