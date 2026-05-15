@@ -563,7 +563,11 @@ const Deliveries = () => {
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    if (!editingId) return;
+    if (!editingId) {
+      // In-memory removal during create
+      setDeliveryItems(prev => prev.filter(i => i.id !== itemId));
+      return;
+    }
 
     const { error } = await supabase
       .from('delivery_items')
@@ -580,7 +584,10 @@ const Deliveries = () => {
   };
 
   const handleUpdateItemQuantity = async (itemId: string, quantity: number) => {
-    if (!editingId) return;
+    if (!editingId) {
+      setDeliveryItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity } : i));
+      return;
+    }
 
     const { error } = await supabase
       .from('delivery_items')
@@ -596,7 +603,15 @@ const Deliveries = () => {
   };
 
   const handleUpdateItemUom = async (itemId: string, uomId: string | null) => {
-    if (!editingId) return;
+    if (!editingId) {
+      setDeliveryItems(prev => prev.map(i => {
+        if (i.id !== itemId) return i;
+        const allUoms = productUoms.filter(u => u.product_id === i.product_id);
+        const uom = uomId ? allUoms.find(u => u.id === uomId) : null;
+        return { ...i, uom_id: uomId, uom: uom ? { id: uom.id, name: uom.name, abbreviation: uom.abbreviation, conversion_factor: uom.conversion_factor } : null };
+      }));
+      return;
+    }
     const { error } = await supabase
       .from('delivery_items')
       .update({ uom_id: uomId })
@@ -606,6 +621,68 @@ const Deliveries = () => {
       return;
     }
     fetchDeliveryItems(editingId);
+  };
+
+  // Populate in-memory items from a PO during create
+  const loadItemsFromPO = async (poId: string) => {
+    if (!poId) {
+      setDeliveryItems([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('purchase_order_items')
+      .select(`
+        product_id,
+        quantity,
+        uom_id,
+        product:products(name, product_id, unit, width, length, height, weight, width_uom, length_uom, height_uom, weight_uom),
+        uom:product_uoms!purchase_order_items_uom_id_fkey(id, name, abbreviation, conversion_factor)
+      `)
+      .eq('purchase_order_id', poId);
+    if (error) {
+      toast.error('Failed to load PO items');
+      return;
+    }
+    const items: DeliveryItem[] = (data || []).map((it: any, idx: number) => ({
+      id: `new-${Date.now()}-${idx}`,
+      delivery_id: '',
+      product_id: it.product_id,
+      quantity: it.quantity,
+      pu_id: null,
+      uom_id: it.uom_id || null,
+      notes: null,
+      product: it.product || null,
+      uom: it.uom || null,
+    }));
+    setDeliveryItems(items);
+    const productIds = [...new Set(items.map(i => i.product_id).filter(Boolean))];
+    if (productIds.length > 0) fetchProductUoms(productIds);
+  };
+
+  // Auto-fill vendor/destination/expected date from selected PO during create
+  const handlePOSelect = async (poId: string) => {
+    setFormData(prev => ({ ...prev, purchase_order_id: poId }));
+    if (!poId) {
+      if (!isEditing) setDeliveryItems([]);
+      return;
+    }
+    if (!isEditing) {
+      const { data: po } = await supabase
+        .from('purchase_orders')
+        .select('vendor_id, location_id, expected_delivery_date')
+        .eq('id', poId)
+        .maybeSingle();
+      if (po) {
+        setFormData(prev => ({
+          ...prev,
+          purchase_order_id: poId,
+          vendor_id: po.vendor_id || prev.vendor_id,
+          location_id: po.location_id || prev.location_id,
+          expected_date: (po as any).expected_delivery_date || prev.expected_date,
+        }));
+      }
+      await loadItemsFromPO(poId);
+    }
   };
 
   const handleViewUpdateItemUom = async (itemId: string, uomId: string | null) => {
