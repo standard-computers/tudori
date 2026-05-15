@@ -1232,6 +1232,7 @@ const [areaFormData, setAreaFormData] = useState({
           id,
           product_id,
           quantity,
+          uom_id,
           product:products(name, product_id)
         `)
         .eq('sales_order_id', order.sales_order_id);
@@ -1243,6 +1244,7 @@ const [areaFormData, setAreaFormData] = useState({
           id,
           product_id,
           quantity,
+          uom_id,
           product:products(name, product_id)
         `)
         .eq('purchase_order_id', order.purchase_order_id);
