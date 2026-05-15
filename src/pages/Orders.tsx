@@ -2095,7 +2095,7 @@ const Orders = () => {
     }
   };
 
-  const handleDeliveryItemsConfirm = async (items: { product_id: string; quantity: number }[]) => {
+  const handleDeliveryItemsConfirm = async (items: { product_id: string; quantity: number; uom_id: string | null }[]) => {
     if (pendingConfirmOrderId) {
       await executeStatusUpdate(pendingConfirmOrderId, "confirmed", items);
 
