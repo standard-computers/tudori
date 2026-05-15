@@ -393,6 +393,7 @@ const Deliveries = () => {
       fetchLocations();
       fetchProducts();
       fetchCarriers();
+      fetchTrucks();
     }
   }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
 
