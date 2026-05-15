@@ -3456,6 +3456,7 @@ const Orders = () => {
                           <TableHead>Item ID</TableHead>
                           <TableHead>Product</TableHead>
                           <TableHead className="text-right">Qty</TableHead>
+                          <TableHead>UoM</TableHead>
                           <TableHead className="text-right">Unit Price</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                           <TableHead>Expected Delivery</TableHead>
@@ -3464,6 +3465,7 @@ const Orders = () => {
                       <TableBody>
                         {viewItems.map((item, index) => {
                           const viewProduct = products.find((p) => p.id === item.product_id);
+                          const uomLabel = item.uom?.abbreviation || item.uom?.name || item.product?.unit || '—';
                           return (
                             <TableRow key={item.id}>
                               <TableCell className="text-muted-foreground">{index + 1}</TableCell>
@@ -3478,6 +3480,7 @@ const Orders = () => {
                               </TableCell>
                               <TableCell>{item.product?.name || "Unknown"}</TableCell>
                               <TableCell className="text-right">{item.quantity}</TableCell>
+                              <TableCell className="text-sm">{uomLabel}</TableCell>
                               <TableCell className="text-right font-mono">
                                 ${Number(item.unit_price || 0).toFixed(2)}
                               </TableCell>
