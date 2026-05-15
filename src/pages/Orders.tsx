@@ -308,6 +308,7 @@ const statusColors: Record<string, string> = {
   delivered: "bg-green-500",
   cancelled: "bg-red-500",
   backorder: "bg-orange-500",
+  partial: "bg-amber-500",
 };
 
 interface Company {
