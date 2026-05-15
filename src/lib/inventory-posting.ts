@@ -28,6 +28,8 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
     for (const item of items as any[]) {
       const puId = item.pu_id || null;
       const batchId = item.batch_id || null;
+      const conversionFactor = item.uom?.conversion_factor || 1;
+      const baseQty = Math.round(item.quantity * conversionFactor);
       
       if (puId) {
         await supabase
@@ -35,7 +37,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
           .insert({
             location_id: locationId,
             product_id: item.product_id,
-            quantity: item.quantity,
+            quantity: baseQty,
             bin_id: item.bin_id || null,
             pu_id: puId,
             batch_id: batchId,
@@ -61,7 +63,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
           await supabase
             .from('inventory')
             .update({ 
-              quantity: existingInventory.quantity + item.quantity,
+              quantity: existingInventory.quantity + baseQty,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingInventory.id);
@@ -71,7 +73,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
             .insert({
               location_id: locationId,
               product_id: item.product_id,
-              quantity: item.quantity,
+              quantity: baseQty,
               bin_id: item.bin_id || null,
               pu_id: null,
               batch_id: batchId,
@@ -87,7 +89,9 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
     if (ledgerId) {
       const totalValue = (items as any[]).reduce((sum, item) => {
         const price = item.product?.price || 0;
-        return sum + (price * item.quantity);
+        const conversionFactor = item.uom?.conversion_factor || 1;
+        const baseQty = item.quantity * conversionFactor;
+        return sum + (price * baseQty);
       }, 0);
 
       if (totalValue > 0) {
