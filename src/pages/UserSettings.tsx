@@ -880,18 +880,20 @@ const UserSettings = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/50">
-                  <Checkbox 
-                    id="open-new-tab" 
-                    checked={openInNewTab}
-                    onCheckedChange={handleOpenInNewTabChange}
-                  />
-                  <Label 
-                    htmlFor="open-new-tab" 
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    Open apps in new tabs
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/50">
+                  <Label htmlFor="app-open-mode" className="text-sm font-medium">
+                    Open apps in
                   </Label>
+                  <Select value={appOpenMode} onValueChange={(v) => handleAppOpenModeChange(v as any)}>
+                    <SelectTrigger id="app-open-mode" className="w-56">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Current window</SelectItem>
+                      <SelectItem value="new_tab">New tab</SelectItem>
+                      <SelectItem value="new_window">New window</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <DndContext
