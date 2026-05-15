@@ -218,12 +218,15 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows, show_app_menu, default_location_id')
+       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, app_open_mode, theme, design_system, maximize_windows, show_app_menu, default_location_id')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     const hiddenTiles = new Set((data?.hidden_tiles as string[]) || []);
     setOpenInNewTab(data?.open_apps_in_new_tab || false);
+    const mode = ((data as any)?.app_open_mode as 'current' | 'new_tab' | 'new_window' | null)
+      || (data?.open_apps_in_new_tab ? 'new_tab' : 'current');
+    setAppOpenMode(mode);
     setMaximizeWindows(data?.maximize_windows || false);
     setMaximizePreferenceCache(data?.maximize_windows || false);
     setShowAppMenu(data?.show_app_menu ?? true);
