@@ -135,7 +135,7 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
     // Get items for this issue with product prices
     const { data: items } = await supabase
       .from('goods_issue_items' as any)
-      .select('*, product:products(name, price)')
+      .select('*, product:products(name, price), uom:product_uoms(id, conversion_factor)')
       .eq('goods_issue_id', issueId);
 
     if (!items || items.length === 0) {
@@ -144,6 +144,9 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
 
     // Deduct each item from inventory
     for (const item of items as any[]) {
+      const conversionFactor = item.uom?.conversion_factor || 1;
+      const baseQty = Math.round(item.quantity * conversionFactor);
+
       if (item.pu_id) {
         const { data: puInventory } = await supabase
           .from('inventory')
@@ -185,16 +188,16 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
       }
 
       const totalAvailable = inventoryRecords.reduce((sum, inv) => sum + inv.quantity, 0);
-      if (totalAvailable < item.quantity) {
+      if (totalAvailable < baseQty) {
         const { data: productData } = await supabase
           .from('products')
           .select('name')
           .eq('id', item.product_id)
           .single();
-        return { success: false, error: `Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${item.quantity}` };
+        return { success: false, error: `Insufficient inventory for ${productData?.name || 'product'}. Available: ${totalAvailable}, Required: ${baseQty}` };
       }
 
-      let remainingToDeduct = item.quantity;
+      let remainingToDeduct = baseQty;
       for (const inv of inventoryRecords) {
         if (remainingToDeduct <= 0) break;
         
@@ -221,7 +224,9 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
     if (ledgerId) {
       const totalValue = (items as any[]).reduce((sum, item) => {
         const price = item.product?.price || 0;
-        return sum + (price * item.quantity);
+        const conversionFactor = item.uom?.conversion_factor || 1;
+        const baseQty = item.quantity * conversionFactor;
+        return sum + (price * baseQty);
       }, 0);
 
       if (totalValue > 0) {
