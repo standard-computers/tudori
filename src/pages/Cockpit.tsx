@@ -1620,10 +1620,10 @@ const [areaFormData, setAreaFormData] = useState({
           setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Loading order items...` }; return next; });
           let items: any[] = [];
           if (od.sales_order_id) {
-            const { data } = await supabase.from('sales_order_items' as any).select('product_id, quantity').eq('sales_order_id', od.sales_order_id);
+            const { data } = await supabase.from('sales_order_items' as any).select('product_id, quantity, uom_id').eq('sales_order_id', od.sales_order_id);
             items = (data as any) || [];
           } else if (od.purchase_order_id) {
-            const { data } = await supabase.from('purchase_order_items' as any).select('product_id, quantity').eq('purchase_order_id', od.purchase_order_id);
+            const { data } = await supabase.from('purchase_order_items' as any).select('product_id, quantity, uom_id').eq('purchase_order_id', od.purchase_order_id);
             items = (data as any) || [];
           }
           if (items.length === 0) {
