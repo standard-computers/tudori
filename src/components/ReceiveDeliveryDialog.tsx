@@ -745,6 +745,7 @@ export const ReceiveDeliveryDialog = ({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{item.uom_label || '—'}</TableCell>
                       <TableCell className="text-right font-medium">1</TableCell>
                       <TableCell className="text-right font-medium">1</TableCell>
                     </TableRow>
