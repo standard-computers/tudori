@@ -310,7 +310,7 @@ const Deliveries = () => {
   }, []);
 
   // Use vendor sources hook
-  const { vendorOptions } = useVendorSources(companyId);
+  const { vendorOptions, parseVendorValue } = useVendorSources(companyId);
 
   // Location options for SearchableSelect
   const locationOptions: SearchableSelectOption[] = useMemo(() => {
@@ -669,14 +669,19 @@ const Deliveries = () => {
     if (!isEditing) {
       const { data: po } = await supabase
         .from('purchase_orders')
-        .select('vendor_id, location_id, expected_delivery_date')
+        .select('vendor_id, source_location_id, location_id, expected_delivery_date')
         .eq('id', poId)
         .maybeSingle();
       if (po) {
+        const vendorCombo = po.vendor_id
+          ? `vendor:${po.vendor_id}`
+          : (po as any).source_location_id
+            ? `location:${(po as any).source_location_id}`
+            : '';
         setFormData(prev => ({
           ...prev,
           purchase_order_id: poId,
-          vendor_id: po.vendor_id || prev.vendor_id,
+          vendor_id: vendorCombo || prev.vendor_id,
           location_id: po.location_id || prev.location_id,
           expected_date: (po as any).expected_delivery_date || prev.expected_date,
         }));
@@ -981,7 +986,11 @@ const Deliveries = () => {
       delivery_id: delivery.delivery_id,
       purchase_order_id: delivery.purchase_order_id || '',
       location_id: delivery.location_id || '',
-      vendor_id: delivery.vendor_id || '',
+      vendor_id: delivery.vendor_id
+        ? `vendor:${delivery.vendor_id}`
+        : (delivery as any).source_location_id
+          ? `location:${(delivery as any).source_location_id}`
+          : '',
       truck_id: (delivery as any).truck_id || '',
       status: delivery.status,
       expected_date: delivery.expected_date || '',
@@ -1016,10 +1025,12 @@ const Deliveries = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const parsedVendor = parseVendorValue(formData.vendor_id);
     const payload = {
       purchase_order_id: formData.purchase_order_id || null,
       location_id: formData.location_id || null,
-      vendor_id: formData.vendor_id || null,
+      vendor_id: parsedVendor?.type === 'vendor' ? parsedVendor.id : null,
+      source_location_id: parsedVendor?.type === 'location' ? parsedVendor.id : null,
       truck_id: formData.truck_id || null,
       status: isEditing ? formData.status : 'pending',
       expected_date: formData.expected_date || null,
@@ -1162,7 +1173,11 @@ const Deliveries = () => {
                             status: delivery.status,
                             purchase_order_id: delivery.purchase_order_id || '',
                             location_id: delivery.location_id || '',
-                            vendor_id: delivery.vendor_id || '',
+                            vendor_id: delivery.vendor_id
+                              ? `vendor:${delivery.vendor_id}`
+                              : delivery.source_location_id
+                                ? `location:${delivery.source_location_id}`
+                                : '',
                             carrier: delivery.carrier || '',
                             tracking_number: '', // Don't copy tracking number
                             expected_date: delivery.expected_date || '',
