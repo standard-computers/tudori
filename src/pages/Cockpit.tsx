@@ -1447,6 +1447,7 @@ const [areaFormData, setAreaFormData] = useState({
         goods_issue_id: (goodsIssue as any).id,
         product_id: item.product_id,
         quantity: item.quantity,
+        uom_id: item.uom_id || null,
       }));
 
       const { error: itemsError } = await supabase
