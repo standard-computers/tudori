@@ -1670,7 +1670,7 @@ const [areaFormData, setAreaFormData] = useState({
 
           // Step 5: Posting goods issue (deducting inventory & ledger)
           setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Posting ${issueNumber} — deducting inventory & recording ledger...` }; return next; });
-          const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity }));
+          const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity, uom_id: item.uom_id || null }));
           await supabase.from('goods_issue_items' as any).insert(giItems);
           await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'in_transit', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
 
@@ -1682,7 +1682,7 @@ const [areaFormData, setAreaFormData] = useState({
           }
 
           // Step 6: Creating outbound delivery items
-          const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity }));
+          const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity, uom_id: item.uom_id || null }));
           await supabase.from('outbound_delivery_items' as any).insert(odItems);
 
           // Step 7: Create inbound delivery at destination for internal transfers
