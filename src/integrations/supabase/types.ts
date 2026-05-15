@@ -5287,6 +5287,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          app_open_mode: string | null
           created_at: string
           custom_primary_hsl: Json | null
           dashboard_tile_order: string[] | null
@@ -5302,6 +5303,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          app_open_mode?: string | null
           created_at?: string
           custom_primary_hsl?: Json | null
           dashboard_tile_order?: string[] | null
@@ -5317,6 +5319,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          app_open_mode?: string | null
           created_at?: string
           custom_primary_hsl?: Json | null
           dashboard_tile_order?: string[] | null

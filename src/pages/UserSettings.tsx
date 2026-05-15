@@ -121,6 +121,7 @@ const UserSettings = () => {
   const [apps, setApps] = useState<AppPreference[]>([]);
   const [saving, setSaving] = useState(false);
   const [openInNewTab, setOpenInNewTab] = useState(false);
+  const [appOpenMode, setAppOpenMode] = useState<'current' | 'new_tab' | 'new_window'>('current');
   const [maximizeWindows, setMaximizeWindows] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ first_name: '', last_name: '', avatar_url: null, company_id: null });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -217,12 +218,15 @@ const UserSettings = () => {
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('user_preferences')
-       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, theme, design_system, maximize_windows, show_app_menu, default_location_id')
+       .select('dashboard_tile_order, hidden_tiles, open_apps_in_new_tab, app_open_mode, theme, design_system, maximize_windows, show_app_menu, default_location_id')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     const hiddenTiles = new Set((data?.hidden_tiles as string[]) || []);
     setOpenInNewTab(data?.open_apps_in_new_tab || false);
+    const mode = ((data as any)?.app_open_mode as 'current' | 'new_tab' | 'new_window' | null)
+      || (data?.open_apps_in_new_tab ? 'new_tab' : 'current');
+    setAppOpenMode(mode);
     setMaximizeWindows(data?.maximize_windows || false);
     setMaximizePreferenceCache(data?.maximize_windows || false);
     setShowAppMenu(data?.show_app_menu ?? true);
@@ -309,6 +313,27 @@ const UserSettings = () => {
   const handleOpenInNewTabChange = async (checked: boolean) => {
     setOpenInNewTab(checked);
     await savePreferences(apps, checked);
+  };
+
+  const handleAppOpenModeChange = async (value: 'current' | 'new_tab' | 'new_window') => {
+    setAppOpenMode(value);
+    if (!user) return;
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const payload: any = {
+      app_open_mode: value,
+      open_apps_in_new_tab: value === 'new_tab',
+    };
+    if (existing) {
+      await supabase.from('user_preferences').update(payload).eq('user_id', user.id);
+    } else {
+      await supabase.from('user_preferences').insert({ user_id: user.id, ...payload });
+    }
+    setOpenInNewTab(value === 'new_tab');
+    toast.success('Preference saved');
   };
 
   const handleMaximizeWindowsChange = async (checked: boolean) => {
@@ -855,18 +880,20 @@ const UserSettings = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/50">
-                  <Checkbox 
-                    id="open-new-tab" 
-                    checked={openInNewTab}
-                    onCheckedChange={handleOpenInNewTabChange}
-                  />
-                  <Label 
-                    htmlFor="open-new-tab" 
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    Open apps in new tabs
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/50">
+                  <Label htmlFor="app-open-mode" className="text-sm font-medium">
+                    Open apps in
                   </Label>
+                  <Select value={appOpenMode} onValueChange={(v) => handleAppOpenModeChange(v as any)}>
+                    <SelectTrigger id="app-open-mode" className="w-56">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Current window</SelectItem>
+                      <SelectItem value="new_tab">New tab</SelectItem>
+                      <SelectItem value="new_window">New window</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <DndContext

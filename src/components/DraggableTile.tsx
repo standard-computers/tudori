@@ -13,6 +13,7 @@ interface DraggableTileProps {
   path: string | null;
   index: number;
   openInNewTab?: boolean;
+  openMode?: 'current' | 'new_tab' | 'new_window';
   onCustomClick?: () => void;
 }
 
@@ -25,6 +26,7 @@ export const DraggableTile = ({
   path, 
   index,
   openInNewTab = false,
+  openMode,
   onCustomClick,
 }: DraggableTileProps) => {
   const navigate = useNavigate();
@@ -50,8 +52,11 @@ export const DraggableTile = ({
       return;
     }
     if (path) {
-      if (openInNewTab) {
+      const mode = openMode ?? (openInNewTab ? 'new_tab' : 'current');
+      if (mode === 'new_tab') {
         window.open(path, '_blank');
+      } else if (mode === 'new_window') {
+        window.open(path, '_blank', 'noopener,noreferrer,popup=yes,width=1280,height=800');
       } else {
         navigate(path);
       }
