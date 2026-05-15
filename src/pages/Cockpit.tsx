@@ -179,6 +179,7 @@ interface OutboundOrderItem {
   id: string;
   product_id: string;
   quantity: number;
+  uom_id?: string | null;
   product?: { name: string; product_id: string; unit?: string | null };
 }
 
