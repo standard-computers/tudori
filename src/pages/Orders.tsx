@@ -1948,7 +1948,7 @@ const Orders = () => {
   const executeStatusUpdate = async (
     id: string,
     newStatus: string,
-    deliveryItems?: { product_id: string; quantity: number }[],
+    deliveryItems?: { product_id: string; quantity: number; uom_id?: string | null }[],
     options?: { skipDeliveryCreation?: boolean },
   ) => {
     const order = orders.find((o) => o.id === id);
