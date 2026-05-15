@@ -1173,7 +1173,11 @@ const Deliveries = () => {
                             status: delivery.status,
                             purchase_order_id: delivery.purchase_order_id || '',
                             location_id: delivery.location_id || '',
-                            vendor_id: delivery.vendor_id || '',
+                            vendor_id: delivery.vendor_id
+                              ? `vendor:${delivery.vendor_id}`
+                              : delivery.source_location_id
+                                ? `location:${delivery.source_location_id}`
+                                : '',
                             carrier: delivery.carrier || '',
                             tracking_number: '', // Don't copy tracking number
                             expected_date: delivery.expected_date || '',
