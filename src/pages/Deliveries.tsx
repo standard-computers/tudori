@@ -669,14 +669,19 @@ const Deliveries = () => {
     if (!isEditing) {
       const { data: po } = await supabase
         .from('purchase_orders')
-        .select('vendor_id, location_id, expected_delivery_date')
+        .select('vendor_id, source_location_id, location_id, expected_delivery_date')
         .eq('id', poId)
         .maybeSingle();
       if (po) {
+        const vendorCombo = po.vendor_id
+          ? `vendor:${po.vendor_id}`
+          : (po as any).source_location_id
+            ? `location:${(po as any).source_location_id}`
+            : '';
         setFormData(prev => ({
           ...prev,
           purchase_order_id: poId,
-          vendor_id: po.vendor_id || prev.vendor_id,
+          vendor_id: vendorCombo || prev.vendor_id,
           location_id: po.location_id || prev.location_id,
           expected_date: (po as any).expected_delivery_date || prev.expected_date,
         }));
