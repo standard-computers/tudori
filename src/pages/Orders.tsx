@@ -2292,12 +2292,13 @@ const Orders = () => {
         try {
           const { data: poItems } = await supabase
             .from("purchase_order_items")
-            .select("product_id, quantity")
+            .select("product_id, quantity, uom_id")
             .eq("purchase_order_id", orderId);
 
           const deliveryItems = (poItems || []).map((item: any) => ({
             product_id: item.product_id,
             quantity: item.quantity,
+            uom_id: item.uom_id || null,
           }));
 
           await executeStatusUpdate(orderId, "confirmed", deliveryItems.length > 0 ? deliveryItems : undefined);
