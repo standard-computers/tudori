@@ -315,6 +315,27 @@ const UserSettings = () => {
     await savePreferences(apps, checked);
   };
 
+  const handleAppOpenModeChange = async (value: 'current' | 'new_tab' | 'new_window') => {
+    setAppOpenMode(value);
+    if (!user) return;
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const payload: any = {
+      app_open_mode: value,
+      open_apps_in_new_tab: value === 'new_tab',
+    };
+    if (existing) {
+      await supabase.from('user_preferences').update(payload).eq('user_id', user.id);
+    } else {
+      await supabase.from('user_preferences').insert({ user_id: user.id, ...payload });
+    }
+    setOpenInNewTab(value === 'new_tab');
+    toast.success('Preference saved');
+  };
+
   const handleMaximizeWindowsChange = async (checked: boolean) => {
     setMaximizeWindows(checked);
     setMaximizePreferenceCache(checked);
