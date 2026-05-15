@@ -3299,6 +3299,7 @@ const [areaFormData, setAreaFormData] = useState({
                               <TableCell className="font-mono text-sm text-primary">{item.packaging_unit?.pu_number || '—'}</TableCell>
                               <TableCell className="font-mono text-sm">{item.bin?.bin_id || 'Unassigned'}</TableCell>
                               <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{item.uom?.abbreviation || item.uom?.name || 'base'}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.min_quantity ?? '—'}</TableCell>
                               <TableCell className="text-right text-muted-foreground">{item.max_quantity ?? '—'}</TableCell>
                               <TableCell className="font-mono text-sm">{item.batch?.batch_number || '—'}</TableCell>
