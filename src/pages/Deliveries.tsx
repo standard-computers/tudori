@@ -512,6 +512,16 @@ const Deliveries = () => {
     setCarriers(data || []);
   };
 
+  const fetchTrucks = async () => {
+    const { data } = await supabase
+      .from('trucks')
+      .select('id, truck_id, carrier_id, carrier:carriers(name)')
+      .eq('company_id', companyId!)
+      .eq('is_active', true)
+      .order('truck_id');
+    setTrucks((data || []) as unknown as Truck[]);
+  };
+
   const fetchDeliveryItems = async (deliveryId: string) => {
     const { data } = await supabase
       .from('delivery_items')
