@@ -179,6 +179,7 @@ interface OutboundOrderItem {
   id: string;
   product_id: string;
   quantity: number;
+  uom_id?: string | null;
   product?: { name: string; product_id: string; unit?: string | null };
 }
 
@@ -1231,6 +1232,7 @@ const [areaFormData, setAreaFormData] = useState({
           id,
           product_id,
           quantity,
+          uom_id,
           product:products(name, product_id)
         `)
         .eq('sales_order_id', order.sales_order_id);
@@ -1242,6 +1244,7 @@ const [areaFormData, setAreaFormData] = useState({
           id,
           product_id,
           quantity,
+          uom_id,
           product:products(name, product_id)
         `)
         .eq('purchase_order_id', order.purchase_order_id);
@@ -1382,6 +1385,7 @@ const [areaFormData, setAreaFormData] = useState({
         product_id: item.product_id,
         quantity: fulfillQuantities[item.id] ?? item.quantity,
         originalQuantity: item.quantity,
+        uom_id: (item as any).uom_id ?? null,
         product: item.product,
       })).filter(item => item.quantity > 0);
       
@@ -1443,6 +1447,7 @@ const [areaFormData, setAreaFormData] = useState({
         goods_issue_id: (goodsIssue as any).id,
         product_id: item.product_id,
         quantity: item.quantity,
+        uom_id: item.uom_id || null,
       }));
 
       const { error: itemsError } = await supabase
@@ -1477,6 +1482,7 @@ const [areaFormData, setAreaFormData] = useState({
         outbound_delivery_id: selectedOutboundOrder.id,
         product_id: item.product_id,
         quantity: item.quantity,
+        uom_id: item.uom_id || null,
       }));
       await supabase.from('outbound_delivery_items' as any).insert(odItems);
 
@@ -1614,10 +1620,10 @@ const [areaFormData, setAreaFormData] = useState({
           setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Loading order items...` }; return next; });
           let items: any[] = [];
           if (od.sales_order_id) {
-            const { data } = await supabase.from('sales_order_items' as any).select('product_id, quantity').eq('sales_order_id', od.sales_order_id);
+            const { data } = await supabase.from('sales_order_items' as any).select('product_id, quantity, uom_id').eq('sales_order_id', od.sales_order_id);
             items = (data as any) || [];
           } else if (od.purchase_order_id) {
-            const { data } = await supabase.from('purchase_order_items' as any).select('product_id, quantity').eq('purchase_order_id', od.purchase_order_id);
+            const { data } = await supabase.from('purchase_order_items' as any).select('product_id, quantity, uom_id').eq('purchase_order_id', od.purchase_order_id);
             items = (data as any) || [];
           }
           if (items.length === 0) {
@@ -1664,7 +1670,7 @@ const [areaFormData, setAreaFormData] = useState({
 
           // Step 5: Posting goods issue (deducting inventory & ledger)
           setBulkFulfillResults(prev => { const next = [...prev]; next[next.length - 1] = { row: rowIndex, status: 'success', message: `${dn}: Posting ${issueNumber} — deducting inventory & recording ledger...` }; return next; });
-          const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity }));
+          const giItems = items.map((item: any) => ({ goods_issue_id: (goodsIssue as any).id, product_id: item.product_id, quantity: item.quantity, uom_id: item.uom_id || null }));
           await supabase.from('goods_issue_items' as any).insert(giItems);
           await supabase.from('outbound_deliveries' as any).update({ goods_issue_id: (goodsIssue as any).id, status: 'in_transit', shipped_date: new Date().toISOString().split('T')[0] }).eq('id', od.id);
 
@@ -1676,7 +1682,7 @@ const [areaFormData, setAreaFormData] = useState({
           }
 
           // Step 6: Creating outbound delivery items
-          const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity }));
+          const odItems = items.map((item: any) => ({ outbound_delivery_id: od.id, product_id: item.product_id, quantity: item.quantity, uom_id: item.uom_id || null }));
           await supabase.from('outbound_delivery_items' as any).insert(odItems);
 
           // Step 7: Create inbound delivery at destination for internal transfers
