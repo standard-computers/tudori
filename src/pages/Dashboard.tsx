@@ -312,6 +312,7 @@ const Dashboard = () => {
                       path={app.path}
                       index={index}
                       openInNewTab={openAppsInNewTab}
+                      openMode={appOpenMode}
                     />
                   ))}
                 {(() => {
