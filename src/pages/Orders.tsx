@@ -2040,6 +2040,7 @@ const Orders = () => {
             delivery_id: deliveryData.id,
             product_id: item.product_id,
             quantity: item.quantity,
+            uom_id: item.uom_id || null,
           }));
 
           await supabase.from("delivery_items").insert(itemsToInsert);
