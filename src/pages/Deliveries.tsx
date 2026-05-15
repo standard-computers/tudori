@@ -216,6 +216,13 @@ interface Carrier {
   carrier_id: string;
 }
 
+interface Truck {
+  id: string;
+  truck_id: string;
+  carrier_id: string;
+  carrier?: { name: string } | null;
+}
+
 const DELIVERY_STATUSES = ['pending', 'in_transit', 'delivered', 'cancelled'];
 
 const getStatusColor = (status: string) => {
