@@ -155,6 +155,7 @@ export const DeliveryItemsDialog = ({
       .map(item => ({
         product_id: item.product_id,
         quantity: item.delivery_quantity,
+        uom_id: item.uom_id,
       }));
 
     onConfirm(selectedItems);
