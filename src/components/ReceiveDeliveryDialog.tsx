@@ -53,6 +53,7 @@ interface ReceivedItem {
   is_batched?: boolean;
   uom_id?: string | null;
   uom_label?: string | null;
+  conversion_factor?: number;
 }
 
 interface ReceiveDeliveryDialogProps {
