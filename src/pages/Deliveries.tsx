@@ -943,7 +943,8 @@ const Deliveries = () => {
       purchase_order_id: formData.purchase_order_id || null,
       location_id: formData.location_id || null,
       vendor_id: formData.vendor_id || null,
-      status: formData.status,
+      truck_id: formData.truck_id || null,
+      status: isEditing ? formData.status : 'pending',
       expected_date: formData.expected_date || null,
       delivered_date: formData.delivered_date || null,
       tracking_number: formData.tracking_number || null,
@@ -964,17 +965,36 @@ const Deliveries = () => {
 
       toast.success('Delivery updated');
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('deliveries')
         .insert({
           ...payload,
           company_id: companyId!,
           delivery_id: formData.delivery_id,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) {
+      if (error || !created) {
         toast.error('Failed to create delivery');
         return;
+      }
+
+      // Insert in-memory line items
+      const itemsToInsert = deliveryItems
+        .filter(i => i.product_id)
+        .map(i => ({
+          delivery_id: created.id,
+          product_id: i.product_id,
+          quantity: i.quantity || 1,
+          uom_id: i.uom_id || null,
+          notes: i.notes || null,
+        }));
+      if (itemsToInsert.length > 0) {
+        const { error: itemsErr } = await supabase.from('delivery_items').insert(itemsToInsert);
+        if (itemsErr) {
+          toast.error('Delivery created but failed to add items');
+        }
       }
 
       toast.success('Delivery created');
