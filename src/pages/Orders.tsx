@@ -1775,12 +1775,13 @@ const Orders = () => {
       .select(
         `
         *,
-        product:products(name, product_id, price, sku, description, category, unit, vendor_id)
+        product:products(name, product_id, price, sku, description, category, unit, vendor_id),
+        uom:product_uoms(id, name, abbreviation, conversion_factor)
       `,
       )
       .eq("purchase_order_id", order.id);
 
-    setViewItems(items || []);
+    setViewItems((items as any) || []);
 
     // Fetch applied tax rates
     const { data: appliedTaxRates } = await supabase
