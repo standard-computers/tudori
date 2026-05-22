@@ -109,8 +109,8 @@ function printAssetBarcode(a: Asset) {
 
 const Assets = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const companyId = profile?.company_id;
+  const { user } = useAuth();
+  const [companyId, setCompanyId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -123,6 +123,12 @@ const Assets = () => {
   const [saving, setSaving] = useState(false);
 
   const [viewing, setViewing] = useState<Asset | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("company_id").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setCompanyId((data?.company_id as string) || null));
+  }, [user]);
 
   useEffect(() => {
     if (!companyId) return;
