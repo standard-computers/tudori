@@ -64,6 +64,7 @@ import NotFound from "./pages/NotFound";
 import Developers from "./pages/Developers";
 import Agreements from "./pages/Agreements";
 import Accounting from "./pages/Accounting";
+import Assets from "./pages/Assets";
 
 const queryClient = new QueryClient();
 
