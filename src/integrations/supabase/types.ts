@@ -365,6 +365,60 @@ export type Database = {
           },
         ]
       }
+      assets: {
+        Row: {
+          asset_tag: string | null
+          company_id: string
+          created_at: string
+          depreciation_rate: number
+          description: string | null
+          id: string
+          location_id: string | null
+          name: string
+          notes: string | null
+          procurement_date: string
+          procurement_value: number
+          salvage_value: number
+          status: string
+          updated_at: string
+          useful_life_years: number | null
+        }
+        Insert: {
+          asset_tag?: string | null
+          company_id: string
+          created_at?: string
+          depreciation_rate?: number
+          description?: string | null
+          id?: string
+          location_id?: string | null
+          name: string
+          notes?: string | null
+          procurement_date?: string
+          procurement_value?: number
+          salvage_value?: number
+          status?: string
+          updated_at?: string
+          useful_life_years?: number | null
+        }
+        Update: {
+          asset_tag?: string | null
+          company_id?: string
+          created_at?: string
+          depreciation_rate?: number
+          description?: string | null
+          id?: string
+          location_id?: string | null
+          name?: string
+          notes?: string | null
+          procurement_date?: string
+          procurement_value?: number
+          salvage_value?: number
+          status?: string
+          updated_at?: string
+          useful_life_years?: number | null
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           assignment_id: string
