@@ -13,6 +13,7 @@ import {
   Truck,
   ShoppingCart,
   Warehouse,
+  Box,
   ClipboardList,
   MessageSquare,
   UserCog,
