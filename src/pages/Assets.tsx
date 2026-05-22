@@ -1,7 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useStatusBar } from "@/contexts/StatusBarContext";
+import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useTransactionAction } from "@/hooks/use-transaction-action";
+import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { useTableSort, ColumnFilterConfig } from "@/hooks/use-table-sort";
+import { useMaximizedState } from "@/hooks/use-maximize-preference";
+import { ColumnToggle } from "@/components/ColumnToggle";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,8 +24,13 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/SearchableSelect";
-import { ArrowLeft, Plus, Loader2, Trash2, Pencil, Printer, Box } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ArrowLeft, Plus, Loader2, Trash2, Pencil, Printer, Box, MoreHorizontal,
+  Maximize2, Minimize2,
+} from "lucide-react";
 import { toast } from "@/lib/toast";
 import { format, parseISO } from "date-fns";
 import {
@@ -44,21 +58,24 @@ interface LocationOpt { id: string; name: string; location_id: string }
 
 const STATUSES = ["active", "in_repair", "retired", "disposed"];
 
-function emptyForm(): Omit<Asset, "id"> {
-  return {
-    name: "",
-    asset_tag: "",
-    description: "",
-    procurement_value: 0,
-    procurement_date: format(new Date(), "yyyy-MM-dd"),
-    depreciation_rate: 20,
-    useful_life_years: 5,
-    salvage_value: 0,
-    location_id: null,
-    status: "active",
-    notes: "",
-  };
-}
+const ASSET_COLUMNS: ColumnDefinition[] = [
+  { key: "asset_tag", label: "Tag", defaultVisible: true },
+  { key: "name", label: "Name", defaultVisible: true },
+  { key: "location", label: "Location", defaultVisible: true },
+  { key: "procurement_value", label: "Procurement Value", defaultVisible: true },
+  { key: "procurement_date", label: "Procurement Date", defaultVisible: true },
+  { key: "depreciation_rate", label: "Depr. %", defaultVisible: true },
+  { key: "book_value", label: "Book Value", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "actions", label: "Actions", alwaysVisible: true },
+];
+
+const emptyForm = (): Omit<Asset, "id"> => ({
+  name: "", asset_tag: "", description: "",
+  procurement_value: 0, procurement_date: format(new Date(), "yyyy-MM-dd"),
+  depreciation_rate: 20, useful_life_years: 5, salvage_value: 0,
+  location_id: null, status: "active", notes: "",
+});
 
 function computeSchedule(a: Pick<Asset, "procurement_value" | "procurement_date" | "depreciation_rate" | "salvage_value" | "useful_life_years">) {
   const start = parseISO(a.procurement_date);
@@ -109,63 +126,77 @@ function printAssetBarcode(a: Asset) {
 
 const Assets = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const { setTransaction } = useStatusBar();
 
   const [loading, setLoading] = useState(true);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationOpt[]>([]);
-  const [search, setSearch] = useState("");
 
-  const [createOpen, setCreateOpen] = useState(false);
+  const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } =
+    useColumnVisibility("assets", ASSET_COLUMNS);
+
+  const { sortConfig, handleSort, setFilter, getFilterConfig, sortedAndFilteredData } =
+    useTableSort<Asset>(assets, "name", "asc");
+
+  const handleFilterConfig = (key: string, config: ColumnFilterConfig | null) => {
+    if (config) setFilter(key, config); else setFilter(key, "");
+  };
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [viewingAsset, setViewingAsset] = useState<Asset | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
   const [form, setForm] = useState(emptyForm());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const [viewing, setViewing] = useState<Asset | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    supabase.from("profiles").select("company_id").eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => setCompanyId((data?.company_id as string) || null));
+    if (!authLoading && !user) navigate("/auth");
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      supabase.from("profiles").select("company_id").eq("user_id", user.id).single()
+        .then(({ data }) => setCompanyId((data?.company_id as string) || null));
+    }
   }, [user]);
 
   useEffect(() => {
-    if (!companyId) return;
-    void load();
-    void loadLocations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (companyId) { void fetchAssets(); void fetchLocations(); }
   }, [companyId]);
 
-  async function load() {
+  useEffect(() => {
+    if (isDialogOpen) setTransaction(editingAsset ? "asset/edit" : "asset/new");
+    else setTransaction("asset");
+  }, [isDialogOpen, editingAsset, setTransaction]);
+
+  async function fetchAssets() {
     setLoading(true);
     const { data, error } = await supabase
-      .from("assets" as any)
-      .select("*")
-      .eq("company_id", companyId!)
-      .order("created_at", { ascending: false });
+      .from("assets" as any).select("*")
+      .eq("company_id", companyId!).order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     else setAssets((data || []) as any);
     setLoading(false);
   }
 
-  async function loadLocations() {
+  async function fetchLocations() {
     const { data } = await supabase
-      .from("locations")
-      .select("id, name, location_id")
-      .eq("company_id", companyId!)
-      .order("name");
+      .from("locations").select("id, name, location_id")
+      .eq("company_id", companyId!).order("name");
     setLocations((data || []) as any);
   }
 
-  function openCreate() {
-    setEditingId(null);
+  const handleAddClick = () => {
+    setEditingAsset(null);
     setForm(emptyForm());
-    setCreateOpen(true);
-  }
+    setIsDialogOpen(true);
+  };
 
-  function openEdit(a: Asset) {
-    setEditingId(a.id);
+  const handleEditClick = (a: Asset) => {
+    setEditingAsset(a);
     setForm({
       name: a.name, asset_tag: a.asset_tag || "", description: a.description || "",
       procurement_value: a.procurement_value, procurement_date: a.procurement_date,
@@ -173,116 +204,195 @@ const Assets = () => {
       salvage_value: a.salvage_value, location_id: a.location_id, status: a.status,
       notes: a.notes || "",
     });
-    setCreateOpen(true);
-  }
+    setIsDialogOpen(true);
+  };
 
-  async function save() {
-    if (!form.name.trim()) { toast.error("Name is required"); return; }
-    setSaving(true);
-    const payload: any = {
-      ...form,
-      company_id: companyId,
-      asset_tag: form.asset_tag || null,
-      location_id: form.location_id || null,
-      useful_life_years: form.useful_life_years || null,
-    };
-    const q = editingId
-      ? supabase.from("assets" as any).update(payload).eq("id", editingId)
-      : supabase.from("assets" as any).insert(payload);
-    const { error } = await q;
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(editingId ? "Asset updated" : "Asset created");
-    setCreateOpen(false);
-    await load();
-  }
+  useKeyboardShortcut("n", handleAddClick);
+  useTransactionAction("new", handleAddClick);
 
-  async function remove(id: string) {
+  const handleSubmit = async () => {
+    if (!form.name.trim()) { toast.error("Please enter a name"); return; }
+    setIsSubmitting(true);
+    try {
+      const payload: any = {
+        ...form,
+        company_id: companyId,
+        name: form.name.trim(),
+        asset_tag: form.asset_tag?.trim() || null,
+        description: form.description?.trim() || null,
+        notes: form.notes?.trim() || null,
+        location_id: form.location_id || null,
+        useful_life_years: form.useful_life_years || null,
+      };
+      const q = editingAsset
+        ? supabase.from("assets" as any).update(payload).eq("id", editingAsset.id)
+        : supabase.from("assets" as any).insert(payload);
+      const { error } = await q;
+      if (error) throw error;
+      toast.success(editingAsset ? "Asset updated" : "Asset created");
+      setIsDialogOpen(false);
+      await fetchAssets();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save asset");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useSaveShortcut(() => {
+    if (isDialogOpen && !isSubmitting) handleSubmit();
+  }, isDialogOpen);
+
+  const handleDelete = async (id: string) => {
     if (!confirm("Delete this asset?")) return;
     const { error } = await supabase.from("assets" as any).delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Deleted"); await load(); if (viewing?.id === id) setViewing(null); }
-  }
+    if (error) toast.error("Failed to delete asset");
+    else { toast.success("Asset deleted"); fetchAssets(); }
+  };
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return assets;
-    return assets.filter(a =>
-      a.name.toLowerCase().includes(q) ||
-      (a.asset_tag || "").toLowerCase().includes(q) ||
-      (a.description || "").toLowerCase().includes(q)
+  const locationLabel = (id: string | null) =>
+    locations.find(l => l.id === id)?.name || "-";
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
     );
-  }, [assets, search]);
-
-  const locationLabel = (id: string | null) => locations.find(l => l.id === id)?.name || "—";
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b sticky top-0 z-50 bg-background">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
-            <ArrowLeft className="h-4 w-4" />
-            <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
-          </Button>
-          <Box className="h-5 w-5 text-fuchsia-500" />
-          <h1 className="text-xl font-semibold">Assets</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <Input
-              placeholder="Search assets…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-64"
-            />
-            <Button onClick={openCreate} size="icon" className="relative">
-              <Plus className="h-4 w-4" />
-            </Button>
+      {/* Header */}
+      <header className="bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="px-4">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
+                <ArrowLeft className="w-5 h-5" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
+              </Button>
+              <div className="flex items-center gap-3">
+                <Box className="w-7 h-7 text-fuchsia-500" />
+                <h1 className="text-xl font-display font-bold text-foreground">Assets</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={ASSET_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
+              <Button onClick={handleAddClick} variant="default" size="icon" className="relative">
+                <Plus className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="container mx-auto px-4 py-6">
-        {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <Box className="h-12 w-12 mx-auto mb-3 opacity-40" />
-            <p>No assets yet. Create your first asset to get started.</p>
+      {/* Main */}
+      <main className="flex-1">
+        {assets.length === 0 ? (
+          <div className="text-center py-12">
+            <Box className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No assets yet</h3>
+            <p className="text-muted-foreground mb-4">Create your first asset to track procurement and depreciation</p>
+            <Button onClick={handleAddClick}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add First Asset
+            </Button>
           </div>
         ) : (
-          <div className="rounded-md border bg-card">
+          <div className="overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Tag</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Procurement</TableHead>
-                  <TableHead className="text-right">Depr. %</TableHead>
-                  <TableHead className="text-right">Book Value</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-32 text-right">Actions</TableHead>
+                  {isColumnVisible("asset_tag") && (
+                    <SortableTableHead label="Tag" sortKey="asset_tag" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("asset_tag")} onFilterConfig={handleFilterConfig} filterKey="asset_tag" />
+                  )}
+                  {isColumnVisible("name") && (
+                    <SortableTableHead label="Name" sortKey="name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("name")} onFilterConfig={handleFilterConfig} filterKey="name" />
+                  )}
+                  {isColumnVisible("location") && (
+                    <SortableTableHead label="Location" sortKey="location_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("location_id")} onFilterConfig={handleFilterConfig} filterKey="location_id" />
+                  )}
+                  {isColumnVisible("procurement_value") && (
+                    <SortableTableHead label="Procurement Value" sortKey="procurement_value" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("procurement_value")} onFilterConfig={handleFilterConfig} filterKey="procurement_value" className="text-right" />
+                  )}
+                  {isColumnVisible("procurement_date") && (
+                    <SortableTableHead label="Procurement Date" sortKey="procurement_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("procurement_date")} onFilterConfig={handleFilterConfig} filterKey="procurement_date" />
+                  )}
+                  {isColumnVisible("depreciation_rate") && (
+                    <SortableTableHead label="Depr. %" sortKey="depreciation_rate" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("depreciation_rate")} onFilterConfig={handleFilterConfig} filterKey="depreciation_rate" className="text-right" />
+                  )}
+                  {isColumnVisible("book_value") && (
+                    <TableHead className="text-right">Book Value</TableHead>
+                  )}
+                  {isColumnVisible("status") && (
+                    <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("status")} onFilterConfig={handleFilterConfig} filterKey="status" />
+                  )}
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(a => (
-                  <TableRow key={a.id} className="cursor-pointer" onClick={() => setViewing(a)}>
-                    <TableCell className="font-medium">{a.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{a.asset_tag || "—"}</TableCell>
-                    <TableCell>{locationLabel(a.location_id)}</TableCell>
-                    <TableCell className="text-right">${a.procurement_value.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{a.depreciation_rate}%</TableCell>
-                    <TableCell className="text-right">${currentBookValue(a).toFixed(2)}</TableCell>
-                    <TableCell><Badge variant="secondary">{a.status}</Badge></TableCell>
-                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" onClick={() => printAssetBarcode(a)} title="Print barcode">
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(a)} title="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(a.id)} title="Delete">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                {sortedAndFilteredData.map((a) => (
+                  <TableRow key={a.id}>
+                    {isColumnVisible("asset_tag") && (
+                      <TableCell className="font-mono">
+                        <button
+                          type="button"
+                          onClick={() => { setViewingAsset(a); setIsViewDialogOpen(true); }}
+                          className="text-primary hover:underline"
+                        >
+                          {a.asset_tag || a.id.slice(0, 8)}
+                        </button>
+                      </TableCell>
+                    )}
+                    {isColumnVisible("name") && (
+                      <TableCell className="font-medium">{a.name}</TableCell>
+                    )}
+                    {isColumnVisible("location") && (
+                      <TableCell className="text-muted-foreground">{locationLabel(a.location_id)}</TableCell>
+                    )}
+                    {isColumnVisible("procurement_value") && (
+                      <TableCell className="text-right font-mono">${a.procurement_value.toFixed(2)}</TableCell>
+                    )}
+                    {isColumnVisible("procurement_date") && (
+                      <TableCell>{format(parseISO(a.procurement_date), "MMM d, yyyy")}</TableCell>
+                    )}
+                    {isColumnVisible("depreciation_rate") && (
+                      <TableCell className="text-right font-mono">{a.depreciation_rate}%</TableCell>
+                    )}
+                    {isColumnVisible("book_value") && (
+                      <TableCell className="text-right font-mono">${currentBookValue(a).toFixed(2)}</TableCell>
+                    )}
+                    {isColumnVisible("status") && (
+                      <TableCell><Badge variant="secondary">{a.status}</Badge></TableCell>
+                    )}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => printAssetBarcode(a)} title="Print barcode">
+                          <Printer className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(a)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleDelete(a.id)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -290,191 +400,283 @@ const Assets = () => {
             </Table>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="!w-screen !h-screen max-w-none">
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Asset" : "Create Asset"}</DialogTitle>
-            <DialogDescription>Capture procurement details and depreciation settings.</DialogDescription>
+            <DialogTitle>{editingAsset ? "Edit Asset" : "Add Asset"}</DialogTitle>
+            <DialogDescription>
+              {editingAsset ? "Update asset details and depreciation settings" : "Track procurement value and depreciation over time"}
+            </DialogDescription>
           </DialogHeader>
-          <DialogBody>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-              <div className="md:col-span-2">
-                <Label>Name *</Label>
-                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div>
-                <Label>Asset Tag</Label>
-                <Input value={form.asset_tag || ""} onChange={e => setForm({ ...form, asset_tag: e.target.value })} placeholder="e.g. AST-0001" />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Procurement Value</Label>
-                <Input type="number" step="0.01" value={form.procurement_value}
-                  onChange={e => setForm({ ...form, procurement_value: parseFloat(e.target.value) || 0 })} />
-              </div>
-              <div>
-                <Label>Procurement Date</Label>
-                <Input type="date" value={form.procurement_date}
-                  onChange={e => setForm({ ...form, procurement_date: e.target.value })} />
-              </div>
-              <div>
-                <Label>Depreciation Rate (% per year)</Label>
-                <Input type="number" step="0.01" value={form.depreciation_rate}
-                  onChange={e => setForm({ ...form, depreciation_rate: parseFloat(e.target.value) || 0 })} />
-              </div>
-              <div>
-                <Label>Useful Life (years)</Label>
-                <Input type="number" value={form.useful_life_years || ""}
-                  onChange={e => setForm({ ...form, useful_life_years: parseInt(e.target.value) || null })} />
-              </div>
-              <div>
-                <Label>Salvage Value</Label>
-                <Input type="number" step="0.01" value={form.salvage_value}
-                  onChange={e => setForm({ ...form, salvage_value: parseFloat(e.target.value) || 0 })} />
-              </div>
-              <div>
-                <Label>Location</Label>
-                <SearchableSelect
-                  options={locations.map(l => ({ value: l.id, label: l.name, sublabel: l.location_id }))}
-                  value={form.location_id || ""}
-                  onValueChange={v => setForm({ ...form, location_id: v || null })}
-                  placeholder="Select location"
-                  allowClear
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Description</Label>
-                <Textarea value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Label>Notes</Label>
-                <Textarea value={form.notes || ""} onChange={e => setForm({ ...form, notes: e.target.value })} />
-              </div>
+
+          <Tabs defaultValue="general" className="flex flex-col flex-1 min-h-0">
+            <div className="px-6 pt-2">
+              <TabsList>
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
             </div>
-          </DialogBody>
+
+            <TabsContent value="general" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="asset_tag">Asset Tag</Label>
+                    <Input id="asset_tag" value={form.asset_tag || ""}
+                      onChange={(e) => setForm({ ...form, asset_tag: e.target.value })}
+                      placeholder="e.g., AST-0001" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
+                  <Input id="name" value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g., Forklift #3" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Location</Label>
+                  <SearchableSelect
+                    options={locations.map(l => ({ value: l.id, label: l.name, sublabel: l.location_id }))}
+                    value={form.location_id || ""}
+                    onValueChange={(v) => setForm({ ...form, location_id: v || null })}
+                    placeholder="Select location"
+                    allowClear
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea id="description" value={form.description || ""}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Optional description..." rows={2} />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="depreciation" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="procurement_value">Procurement Value *</Label>
+                    <Input id="procurement_value" type="number" step="0.01" min="0"
+                      value={form.procurement_value}
+                      onChange={(e) => setForm({ ...form, procurement_value: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="procurement_date">Procurement Date *</Label>
+                    <Input id="procurement_date" type="date" value={form.procurement_date}
+                      onChange={(e) => setForm({ ...form, procurement_date: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depreciation_rate">Depreciation Rate (% / yr) *</Label>
+                    <Input id="depreciation_rate" type="number" step="0.01" min="0" max="100"
+                      value={form.depreciation_rate}
+                      onChange={(e) => setForm({ ...form, depreciation_rate: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="useful_life">Useful Life (years)</Label>
+                    <Input id="useful_life" type="number" min="0"
+                      value={form.useful_life_years || ""}
+                      onChange={(e) => setForm({ ...form, useful_life_years: parseInt(e.target.value) || null })} />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="salvage">Salvage Value</Label>
+                    <Input id="salvage" type="number" step="0.01" min="0"
+                      value={form.salvage_value}
+                      onChange={(e) => setForm({ ...form, salvage_value: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="notes" className="flex-1 overflow-y-auto mt-0">
+              <div className="px-6 py-4">
+                <Textarea value={form.notes || ""} rows={12}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="Add notes about this asset..." />
+              </div>
+            </TabsContent>
+          </Tabs>
+
           <DialogFooter>
-            <Button onClick={save} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingId ? "Save Changes" : "Create Asset"}
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingAsset ? "Update" : "Create"}
+              <Kbd className="ml-2">⌘S</Kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* View Asset Dialog */}
-      <Dialog open={!!viewing} onOpenChange={o => !o && setViewing(null)}>
-        <DialogContent className="!w-screen !h-screen max-w-none">
-          {viewing && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Box className="h-5 w-5 text-fuchsia-500" />
-                  {viewing.name}
-                  <Badge variant="secondary">{viewing.status}</Badge>
-                </DialogTitle>
-                <DialogDescription>
-                  Tag: <span className="font-mono">{viewing.asset_tag || viewing.id.slice(0, 8)}</span>
-                </DialogDescription>
-              </DialogHeader>
-              <DialogBody>
-                <Tabs defaultValue="overview">
-                  <TabsList>
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="overview" className="mt-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <Stat label="Procurement Value" value={`$${viewing.procurement_value.toFixed(2)}`} />
-                      <Stat label="Procurement Date" value={format(parseISO(viewing.procurement_date), "MMM d, yyyy")} />
-                      <Stat label="Depreciation Rate" value={`${viewing.depreciation_rate}% / yr`} />
-                      <Stat label="Salvage Value" value={`$${viewing.salvage_value.toFixed(2)}`} />
-                      <Stat label="Useful Life" value={viewing.useful_life_years ? `${viewing.useful_life_years} yrs` : "—"} />
-                      <Stat label="Location" value={locationLabel(viewing.location_id)} />
-                      <Stat label="Current Book Value" value={`$${currentBookValue(viewing).toFixed(2)}`} highlight />
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent
+          className={isViewMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none" : "sm:max-w-[700px]"}
+        >
+          <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => viewingAsset && printAssetBarcode(viewingAsset)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+              title="Print barcode"
+            >
+              <Printer className="h-4 w-4" />
+              <span className="sr-only">Print barcode</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewDialogOpen(false);
+                if (viewingAsset) handleEditClick(viewingAsset);
+              }}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+              title="Modify"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Modify</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsViewMaximized(!isViewMaximized)}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            >
+              {isViewMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          </div>
+          <DialogHeader>
+            <DialogTitle>View Asset</DialogTitle>
+            <DialogDescription>
+              {viewingAsset?.asset_tag || viewingAsset?.id.slice(0, 8)} - {viewingAsset?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingAsset && (
+            <Tabs defaultValue="overview" className="flex flex-col flex-1 min-h-0">
+              <div className="px-6 pt-2">
+                <TabsList>
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="overview" className="flex-1 overflow-y-auto mt-0">
+                <DialogBody className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Tag</Label>
+                      <p className="font-mono text-sm">{viewingAsset.asset_tag || viewingAsset.id.slice(0, 8)}</p>
                     </div>
-                    {viewing.description && (
-                      <div className="mt-6">
-                        <h3 className="font-medium mb-1">Description</h3>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewing.description}</p>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Status</Label>
+                      <div className="mt-1"><Badge variant="secondary">{viewingAsset.status}</Badge></div>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-muted-foreground text-xs">Name</Label>
+                      <p className="text-sm font-medium">{viewingAsset.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Location</Label>
+                      <p className="text-sm">{locationLabel(viewingAsset.location_id)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Procurement Date</Label>
+                      <p className="text-sm">{format(parseISO(viewingAsset.procurement_date), "MMM d, yyyy")}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Procurement Value</Label>
+                      <p className="font-mono text-sm">${viewingAsset.procurement_value.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Salvage Value</Label>
+                      <p className="font-mono text-sm">${viewingAsset.salvage_value.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Depreciation Rate</Label>
+                      <p className="font-mono text-sm">{viewingAsset.depreciation_rate}% / yr</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Useful Life</Label>
+                      <p className="text-sm">{viewingAsset.useful_life_years ? `${viewingAsset.useful_life_years} yrs` : "-"}</p>
+                    </div>
+                    <div className="col-span-2 rounded-md border bg-primary/5 border-primary/30 p-3">
+                      <Label className="text-muted-foreground text-xs">Current Book Value</Label>
+                      <p className="text-lg font-semibold text-primary">${currentBookValue(viewingAsset).toFixed(2)}</p>
+                    </div>
+                    {viewingAsset.description && (
+                      <div className="col-span-2">
+                        <Label className="text-muted-foreground text-xs">Description</Label>
+                        <p className="text-sm whitespace-pre-wrap">{viewingAsset.description}</p>
                       </div>
                     )}
-                    {viewing.notes && (
-                      <div className="mt-4">
-                        <h3 className="font-medium mb-1">Notes</h3>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewing.notes}</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                  <TabsContent value="depreciation" className="mt-4">
-                    <div className="rounded-md border p-4 bg-card">
-                      <h3 className="font-medium mb-3">Depreciation Schedule (Straight-line)</h3>
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={computeSchedule(viewing)}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="year" className="text-xs" />
-                            <YAxis className="text-xs" />
-                            <Tooltip
-                              contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                              formatter={(v: any) => `$${Number(v).toFixed(2)}`}
-                            />
-                            <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="mt-4 overflow-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow><TableHead>Year</TableHead><TableHead className="text-right">Book Value</TableHead></TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {computeSchedule(viewing).map(p => (
-                              <TableRow key={p.year}>
-                                <TableCell>{p.year}</TableCell>
-                                <TableCell className="text-right">${p.value.toFixed(2)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+                  </div>
+                </DialogBody>
+              </TabsContent>
+
+              <TabsContent value="depreciation" className="flex-1 overflow-y-auto mt-0">
+                <DialogBody>
+                  <div className="rounded-md border p-4 bg-card">
+                    <h3 className="font-medium mb-3">Depreciation Schedule (Straight-line)</h3>
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={computeSchedule(viewingAsset)}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="year" className="text-xs" />
+                          <YAxis className="text-xs" />
+                          <Tooltip
+                            contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                            formatter={(v: any) => `$${Number(v).toFixed(2)}`}
+                          />
+                          <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
-                  </TabsContent>
-                </Tabs>
-              </DialogBody>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => printAssetBarcode(viewing)}>
-                  <Printer className="h-4 w-4 mr-2" />Print Barcode
-                </Button>
-                <Button variant="outline" onClick={() => { setViewing(null); openEdit(viewing); }}>
-                  <Pencil className="h-4 w-4 mr-2" />Edit
-                </Button>
-              </DialogFooter>
-            </>
+                  </div>
+                  <div className="mt-4 border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow><TableHead>Year</TableHead><TableHead className="text-right">Book Value</TableHead></TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {computeSchedule(viewingAsset).map(p => (
+                          <TableRow key={p.year}>
+                            <TableCell>{p.year}</TableCell>
+                            <TableCell className="text-right font-mono">${p.value.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </DialogBody>
+              </TabsContent>
+
+              <TabsContent value="notes" className="flex-1 overflow-y-auto mt-0">
+                <DialogBody>
+                  {viewingAsset.notes ? (
+                    <p className="text-sm whitespace-pre-wrap">{viewingAsset.notes}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No notes for this asset.</p>
+                  )}
+                </DialogBody>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
     </div>
   );
 };
-
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className={`rounded-md border p-3 ${highlight ? "bg-primary/5 border-primary/30" : "bg-card"}`}>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`mt-1 font-semibold ${highlight ? "text-primary" : ""}`}>{value}</div>
-    </div>
-  );
-}
 
 export default Assets;
