@@ -3340,6 +3340,61 @@ const Orders = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Route Picker Dialog */}
+      <Dialog open={isRoutePickerOpen} onOpenChange={setIsRoutePickerOpen}>
+        <DialogContent className="z-[60]">
+          <DialogHeader>
+            <DialogTitle>Enter Route</DialogTitle>
+            <DialogDescription>
+              Select a transportation route to auto-fill Vendor/Source, Ship To, and Bill To.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Route</Label>
+            <SearchableSelect
+              options={transportRoutes.map((r) => {
+                const src = locations.find((l) => l.id === r.source_location_id);
+                const dst = locations.find((l) => l.id === r.destination_location_id);
+                return {
+                  value: r.id,
+                  label: r.name,
+                  sublabel: `${r.route_id} • ${src?.name || "?"} → ${dst?.name || "?"}`,
+                };
+              })}
+              value={pickedRouteId}
+              onValueChange={setPickedRouteId}
+              placeholder="Select route"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRoutePickerOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const route = transportRoutes.find((r) => r.id === pickedRouteId);
+                if (!route) {
+                  toast.error("Please select a route");
+                  return;
+                }
+                setFormData((prev) => ({
+                  ...prev,
+                  vendor_id: `location:${route.source_location_id}`,
+                  location_id: route.destination_location_id,
+                  bill_to_location_id: route.destination_location_id,
+                }));
+                setOrderItems([]);
+                setIsRoutePickerOpen(false);
+              }}
+            >
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
       {/* Delivery Items Selection Dialog */}
       {pendingConfirmOrderId && companyId && (
         <DeliveryItemsDialog
