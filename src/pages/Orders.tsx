@@ -484,6 +484,18 @@ const Orders = () => {
   const [enforceRouteRecords, setEnforceRouteRecords] = useState(false);
   const [routeFilteredVendors, setRouteFilteredVendors] = useState<string[] | null>(null);
 
+  // Transportation routes (for "Enter Route" quick-fill)
+  const [transportRoutes, setTransportRoutes] = useState<Array<{
+    id: string;
+    route_id: string;
+    name: string;
+    source_location_id: string;
+    destination_location_id: string;
+  }>>([]);
+  const [isRoutePickerOpen, setIsRoutePickerOpen] = useState(false);
+  const [pickedRouteId, setPickedRouteId] = useState<string>("");
+
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
