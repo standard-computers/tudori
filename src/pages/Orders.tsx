@@ -523,6 +523,7 @@ const Orders = () => {
       fetchLedgers();
       fetchAllVendors();
       fetchAssignments();
+      fetchTransportRoutes();
       fetchRouteEnforcementSetting();
     }
   }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
