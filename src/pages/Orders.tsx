@@ -2892,15 +2892,31 @@ const Orders = () => {
             <div className="grid grid-cols-3 gap-4 pb-4 border-b px-6">
               <div className="space-y-2">
                 <Label htmlFor="vendor">Vendor / Source *</Label>
-                <SearchableSelect
-                  options={routeValidVendorOptions}
-                  value={formData.vendor_id}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, vendor_id: value });
-                    setOrderItems([]);
-                  }}
-                  placeholder="Select vendor or source"
-                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    title="Enter route"
+                    onClick={() => {
+                      setPickedRouteId("");
+                      setIsRoutePickerOpen(true);
+                    }}
+                  >
+                    <RouteIcon className="h-4 w-4" />
+                  </Button>
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={routeValidVendorOptions}
+                      value={formData.vendor_id}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, vendor_id: value });
+                        setOrderItems([]);
+                      }}
+                      placeholder="Select vendor or source"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
