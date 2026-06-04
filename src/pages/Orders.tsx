@@ -741,6 +741,16 @@ const Orders = () => {
     setAssignments(data || []);
   };
 
+  const fetchTransportRoutes = async () => {
+    const { data } = await supabase
+      .from("routes")
+      .select("id, route_id, name, source_location_id, destination_location_id")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("name");
+    setTransportRoutes(data || []);
+  };
+
   const fetchRouteEnforcementSetting = async () => {
     const { data } = await supabase
       .from("company_settings")
