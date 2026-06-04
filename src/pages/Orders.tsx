@@ -61,6 +61,7 @@ import {
   AlertTriangle,
   Search,
   Wand2,
+  Route as RouteIcon,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -483,6 +484,18 @@ const Orders = () => {
   const [enforceRouteRecords, setEnforceRouteRecords] = useState(false);
   const [routeFilteredVendors, setRouteFilteredVendors] = useState<string[] | null>(null);
 
+  // Transportation routes (for "Enter Route" quick-fill)
+  const [transportRoutes, setTransportRoutes] = useState<Array<{
+    id: string;
+    route_id: string;
+    name: string;
+    source_location_id: string;
+    destination_location_id: string;
+  }>>([]);
+  const [isRoutePickerOpen, setIsRoutePickerOpen] = useState(false);
+  const [pickedRouteId, setPickedRouteId] = useState<string>("");
+
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -510,6 +523,7 @@ const Orders = () => {
       fetchLedgers();
       fetchAllVendors();
       fetchAssignments();
+      fetchTransportRoutes();
       fetchRouteEnforcementSetting();
     }
   }, [companyId, reduceAppLoad, reduceAppLoadLoading]);
@@ -725,6 +739,16 @@ const Orders = () => {
       .eq("company_id", companyId)
       .eq("is_active", true);
     setAssignments(data || []);
+  };
+
+  const fetchTransportRoutes = async () => {
+    const { data } = await supabase
+      .from("routes")
+      .select("id, route_id, name, source_location_id, destination_location_id")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("name");
+    setTransportRoutes(data || []);
   };
 
   const fetchRouteEnforcementSetting = async () => {
@@ -2868,15 +2892,31 @@ const Orders = () => {
             <div className="grid grid-cols-3 gap-4 pb-4 border-b px-6">
               <div className="space-y-2">
                 <Label htmlFor="vendor">Vendor / Source *</Label>
-                <SearchableSelect
-                  options={routeValidVendorOptions}
-                  value={formData.vendor_id}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, vendor_id: value });
-                    setOrderItems([]);
-                  }}
-                  placeholder="Select vendor or source"
-                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    title="Enter route"
+                    onClick={() => {
+                      setPickedRouteId("");
+                      setIsRoutePickerOpen(true);
+                    }}
+                  >
+                    <RouteIcon className="h-4 w-4" />
+                  </Button>
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={routeValidVendorOptions}
+                      value={formData.vendor_id}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, vendor_id: value });
+                        setOrderItems([]);
+                      }}
+                      placeholder="Select vendor or source"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -3299,6 +3339,61 @@ const Orders = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Route Picker Dialog */}
+      <Dialog open={isRoutePickerOpen} onOpenChange={setIsRoutePickerOpen}>
+        <DialogContent className="z-[60]">
+          <DialogHeader>
+            <DialogTitle>Enter Route</DialogTitle>
+            <DialogDescription>
+              Select a transportation route to auto-fill Vendor/Source, Ship To, and Bill To.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Route</Label>
+            <SearchableSelect
+              options={transportRoutes.map((r) => {
+                const src = locations.find((l) => l.id === r.source_location_id);
+                const dst = locations.find((l) => l.id === r.destination_location_id);
+                return {
+                  value: r.id,
+                  label: r.name,
+                  sublabel: `${r.route_id} • ${src?.name || "?"} → ${dst?.name || "?"}`,
+                };
+              })}
+              value={pickedRouteId}
+              onValueChange={setPickedRouteId}
+              placeholder="Select route"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRoutePickerOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const route = transportRoutes.find((r) => r.id === pickedRouteId);
+                if (!route) {
+                  toast.error("Please select a route");
+                  return;
+                }
+                setFormData((prev) => ({
+                  ...prev,
+                  vendor_id: `location:${route.source_location_id}`,
+                  location_id: route.destination_location_id,
+                  bill_to_location_id: route.destination_location_id,
+                }));
+                setOrderItems([]);
+                setIsRoutePickerOpen(false);
+              }}
+            >
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Delivery Items Selection Dialog */}
       {pendingConfirmOrderId && companyId && (
