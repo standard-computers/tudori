@@ -489,7 +489,8 @@ const Orders = () => {
     id: string;
     route_id: string;
     name: string;
-    source_location_id: string;
+    source_location_id: string | null;
+    source_vendor_id: string | null;
     destination_location_id: string;
   }>>([]);
   const [isRoutePickerOpen, setIsRoutePickerOpen] = useState(false);
@@ -744,7 +745,7 @@ const Orders = () => {
   const fetchTransportRoutes = async () => {
     const { data } = await supabase
       .from("routes")
-      .select("id, route_id, name, source_location_id, destination_location_id")
+      .select("id, route_id, name, source_location_id, source_vendor_id, destination_location_id")
       .eq("company_id", companyId)
       .eq("is_active", true)
       .order("name");
@@ -3353,12 +3354,14 @@ const Orders = () => {
             <Label>Route</Label>
             <SearchableSelect
               options={transportRoutes.map((r) => {
-                const src = locations.find((l) => l.id === r.source_location_id);
+                const srcLabel = r.source_vendor_id
+                  ? (allVendors.find((v) => v.id === r.source_vendor_id)?.name || "Vendor")
+                  : (locations.find((l) => l.id === r.source_location_id)?.name || "?");
                 const dst = locations.find((l) => l.id === r.destination_location_id);
                 return {
                   value: r.id,
                   label: r.name,
-                  sublabel: `${r.route_id} • ${src?.name || "?"} → ${dst?.name || "?"}`,
+                  sublabel: `${r.route_id} • ${srcLabel} → ${dst?.name || "?"}`,
                 };
               })}
               value={pickedRouteId}
@@ -3377,9 +3380,12 @@ const Orders = () => {
                   toast.error("Please select a route");
                   return;
                 }
+                const vendorValue = route.source_vendor_id
+                  ? `vendor:${route.source_vendor_id}`
+                  : `location:${route.source_location_id}`;
                 setFormData((prev) => ({
                   ...prev,
-                  vendor_id: `location:${route.source_location_id}`,
+                  vendor_id: vendorValue,
                   location_id: route.destination_location_id,
                   bill_to_location_id: route.destination_location_id,
                 }));

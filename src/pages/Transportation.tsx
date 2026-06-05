@@ -74,7 +74,8 @@ interface RouteRecord {
   id: string;
   route_id: string;
   name: string;
-  source_location_id: string;
+  source_location_id: string | null;
+  source_vendor_id: string | null;
   destination_location_id: string;
   carrier_id: string | null;
   priority: number;
@@ -82,6 +83,7 @@ interface RouteRecord {
   is_active: boolean;
   notes: string | null;
   source_location?: { id: string; location_id: string; name: string } | null;
+  source_vendor?: { id: string; vendor_id: string; name: string } | null;
   destination_location?: { id: string; location_id: string; name: string } | null;
   carrier?: { id: string; carrier_id: string; name: string } | null;
 }
@@ -198,7 +200,7 @@ const Transportation = () => {
   const [routeForm, setRouteForm] = useState({
     route_id: '',
     name: '',
-    source_location_id: '',
+    source_value: '', // 'vendor:{id}' or 'location:{id}'
     destination_location_id: '',
     carrier_id: '',
     priority: 1,
@@ -261,7 +263,7 @@ const Transportation = () => {
     if (isCarrierDialogOpen && carrierForm.carrier_id && carrierForm.name) {
       handleSaveCarrier();
     }
-    if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_location_id && routeForm.destination_location_id) {
+    if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_value && routeForm.destination_location_id) {
       handleSaveRoute();
     }
     if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.source_value && assignmentForm.destination_location_id) {
@@ -358,6 +360,7 @@ const Transportation = () => {
       .select(`
         *,
         source_location:locations!routes_source_location_id_fkey(id, location_id, name),
+        source_vendor:vendors!routes_source_vendor_id_fkey(id, vendor_id, name),
         destination_location:locations!routes_destination_location_id_fkey(id, location_id, name),
         carrier:carriers(id, carrier_id, name)
       `)
@@ -563,7 +566,7 @@ const Transportation = () => {
     setRouteForm({
       route_id: nextId,
       name: '',
-      source_location_id: '',
+      source_value: '',
       destination_location_id: '',
       carrier_id: '',
       priority: 1,
@@ -579,7 +582,11 @@ const Transportation = () => {
     setRouteForm({
       route_id: route.route_id,
       name: route.name,
-      source_location_id: route.source_location_id,
+      source_value: route.source_vendor_id
+        ? `vendor:${route.source_vendor_id}`
+        : route.source_location_id
+        ? `location:${route.source_location_id}`
+        : '',
       destination_location_id: route.destination_location_id,
       carrier_id: route.carrier_id || '',
       priority: route.priority,
@@ -592,9 +599,15 @@ const Transportation = () => {
   };
 
   const handleSaveRoute = async () => {
-    if (!companyId || !routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id) return;
+    if (!companyId || !routeForm.route_id || !routeForm.name || !routeForm.source_value || !routeForm.destination_location_id) return;
 
-    if (routeForm.source_location_id === routeForm.destination_location_id) {
+    const parsedSource = parseVendorValue(routeForm.source_value);
+    if (!parsedSource) {
+      toast.error('Invalid source selection');
+      return;
+    }
+
+    if (parsedSource.type === 'location' && parsedSource.id === routeForm.destination_location_id) {
       toast.error('Source and destination locations must be different');
       return;
     }
@@ -603,7 +616,8 @@ const Transportation = () => {
       company_id: companyId,
       route_id: routeForm.route_id,
       name: routeForm.name,
-      source_location_id: routeForm.source_location_id,
+      source_location_id: parsedSource.type === 'location' ? parsedSource.id : null,
+      source_vendor_id: parsedSource.type === 'vendor' ? parsedSource.id : null,
       destination_location_id: routeForm.destination_location_id,
       carrier_id: routeForm.carrier_id || null,
       priority: routeForm.priority,
@@ -611,6 +625,7 @@ const Transportation = () => {
       is_active: routeForm.is_active,
       notes: routeForm.notes || null,
     };
+
 
     if (editingRoute) {
       const { error } = await supabase
@@ -1310,7 +1325,7 @@ const Transportation = () => {
                     filterValue={routeFilters['name'] || ''}
                     onFilter={(value) => setRouteFilter('name', value)}
                   />
-                  <TableHead>Source Location</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead></TableHead>
                   <TableHead>Destination Location</TableHead>
                   <TableHead>Carrier</TableHead>
@@ -1332,7 +1347,11 @@ const Transportation = () => {
                     <TableRow key={route.id}>
                       <TableCell className="font-mono">{route.route_id}</TableCell>
                       <TableCell className="font-medium">{route.name}</TableCell>
-                      <TableCell>{route.source_location?.name || '-'}</TableCell>
+                      <TableCell>
+                        {route.source_vendor
+                          ? `${route.source_vendor.name} (Vendor)`
+                          : route.source_location?.name || '-'}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         <ArrowRight className="h-4 w-4" />
                       </TableCell>
@@ -1672,12 +1691,12 @@ const Transportation = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Source Location *</Label>
+                <Label>Source *</Label>
                 <SearchableSelect
-                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
-                  value={routeForm.source_location_id}
-                  onValueChange={(value) => setRouteForm({ ...routeForm, source_location_id: value })}
-                  placeholder="Select source location"
+                  options={vendorOptions}
+                  value={routeForm.source_value}
+                  onValueChange={(value) => setRouteForm({ ...routeForm, source_value: value })}
+                  placeholder="Select vendor or location"
                 />
               </div>
 
@@ -1744,7 +1763,7 @@ const Transportation = () => {
           <DialogFooter className="shrink-0">
             <Button
               onClick={handleSaveRoute}
-              disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id}
+              disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_value || !routeForm.destination_location_id}
             >
               {editingRoute ? 'Update' : 'Create'}
               <Kbd>⌘S</Kbd>
