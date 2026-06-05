@@ -74,7 +74,8 @@ interface RouteRecord {
   id: string;
   route_id: string;
   name: string;
-  source_location_id: string;
+  source_location_id: string | null;
+  source_vendor_id: string | null;
   destination_location_id: string;
   carrier_id: string | null;
   priority: number;
@@ -82,6 +83,7 @@ interface RouteRecord {
   is_active: boolean;
   notes: string | null;
   source_location?: { id: string; location_id: string; name: string } | null;
+  source_vendor?: { id: string; vendor_id: string; name: string } | null;
   destination_location?: { id: string; location_id: string; name: string } | null;
   carrier?: { id: string; carrier_id: string; name: string } | null;
 }
