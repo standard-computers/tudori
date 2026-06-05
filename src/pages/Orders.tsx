@@ -745,7 +745,7 @@ const Orders = () => {
   const fetchTransportRoutes = async () => {
     const { data } = await supabase
       .from("routes")
-      .select("id, route_id, name, source_location_id, destination_location_id")
+      .select("id, route_id, name, source_location_id, source_vendor_id, destination_location_id")
       .eq("company_id", companyId)
       .eq("is_active", true)
       .order("name");
