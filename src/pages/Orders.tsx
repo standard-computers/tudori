@@ -3354,12 +3354,14 @@ const Orders = () => {
             <Label>Route</Label>
             <SearchableSelect
               options={transportRoutes.map((r) => {
-                const src = locations.find((l) => l.id === r.source_location_id);
+                const srcLabel = r.source_vendor_id
+                  ? (vendors.find((v) => v.id === r.source_vendor_id)?.name || "Vendor")
+                  : (locations.find((l) => l.id === r.source_location_id)?.name || "?");
                 const dst = locations.find((l) => l.id === r.destination_location_id);
                 return {
                   value: r.id,
                   label: r.name,
-                  sublabel: `${r.route_id} • ${src?.name || "?"} → ${dst?.name || "?"}`,
+                  sublabel: `${r.route_id} • ${srcLabel} → ${dst?.name || "?"}`,
                 };
               })}
               value={pickedRouteId}
@@ -3378,9 +3380,12 @@ const Orders = () => {
                   toast.error("Please select a route");
                   return;
                 }
+                const vendorValue = route.source_vendor_id
+                  ? `vendor:${route.source_vendor_id}`
+                  : `location:${route.source_location_id}`;
                 setFormData((prev) => ({
                   ...prev,
-                  vendor_id: `location:${route.source_location_id}`,
+                  vendor_id: vendorValue,
                   location_id: route.destination_location_id,
                   bill_to_location_id: route.destination_location_id,
                 }));
