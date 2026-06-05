@@ -263,7 +263,7 @@ const Transportation = () => {
     if (isCarrierDialogOpen && carrierForm.carrier_id && carrierForm.name) {
       handleSaveCarrier();
     }
-    if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_location_id && routeForm.destination_location_id) {
+    if (isRouteDialogOpen && routeForm.route_id && routeForm.name && routeForm.source_value && routeForm.destination_location_id) {
       handleSaveRoute();
     }
     if (isAssignmentDialogOpen && assignmentForm.assignment_id && assignmentForm.product_id && assignmentForm.source_value && assignmentForm.destination_location_id) {
