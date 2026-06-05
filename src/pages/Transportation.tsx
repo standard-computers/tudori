@@ -598,9 +598,15 @@ const Transportation = () => {
   };
 
   const handleSaveRoute = async () => {
-    if (!companyId || !routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id) return;
+    if (!companyId || !routeForm.route_id || !routeForm.name || !routeForm.source_value || !routeForm.destination_location_id) return;
 
-    if (routeForm.source_location_id === routeForm.destination_location_id) {
+    const parsedSource = parseVendorValue(routeForm.source_value);
+    if (!parsedSource) {
+      toast.error('Invalid source selection');
+      return;
+    }
+
+    if (parsedSource.type === 'location' && parsedSource.id === routeForm.destination_location_id) {
       toast.error('Source and destination locations must be different');
       return;
     }
@@ -609,7 +615,8 @@ const Transportation = () => {
       company_id: companyId,
       route_id: routeForm.route_id,
       name: routeForm.name,
-      source_location_id: routeForm.source_location_id,
+      source_location_id: parsedSource.type === 'location' ? parsedSource.id : null,
+      source_vendor_id: parsedSource.type === 'vendor' ? parsedSource.id : null,
       destination_location_id: routeForm.destination_location_id,
       carrier_id: routeForm.carrier_id || null,
       priority: routeForm.priority,
@@ -617,6 +624,7 @@ const Transportation = () => {
       is_active: routeForm.is_active,
       notes: routeForm.notes || null,
     };
+
 
     if (editingRoute) {
       const { error } = await supabase
