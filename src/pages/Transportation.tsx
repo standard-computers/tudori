@@ -360,6 +360,7 @@ const Transportation = () => {
       .select(`
         *,
         source_location:locations!routes_source_location_id_fkey(id, location_id, name),
+        source_vendor:vendors!routes_source_vendor_id_fkey(id, vendor_id, name),
         destination_location:locations!routes_destination_location_id_fkey(id, location_id, name),
         carrier:carriers(id, carrier_id, name)
       `)
