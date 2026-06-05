@@ -1690,28 +1690,28 @@ const Transportation = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Source *</Label>
-                <SearchableSelect
-                  options={vendorOptions}
-                  value={routeForm.source_value}
-                  onValueChange={(value) => setRouteForm({ ...routeForm, source_value: value })}
-                  placeholder="Select vendor or location"
-                />
-              </div>
-
-              <div className="flex justify-center">
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Destination Location *</Label>
-                <SearchableSelect
-                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
-                  value={routeForm.destination_location_id}
-                  onValueChange={(value) => setRouteForm({ ...routeForm, destination_location_id: value })}
-                  placeholder="Select destination location"
-                />
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
+                <div className="space-y-2">
+                  <Label>Source *</Label>
+                  <SearchableSelect
+                    options={vendorOptions}
+                    value={routeForm.source_value}
+                    onValueChange={(value) => setRouteForm({ ...routeForm, source_value: value })}
+                    placeholder="Select vendor or location"
+                  />
+                </div>
+                <div className="pb-2.5 text-muted-foreground">
+                  <ArrowRight className="h-5 w-5" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Destination Location *</Label>
+                  <SearchableSelect
+                    options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
+                    value={routeForm.destination_location_id}
+                    onValueChange={(value) => setRouteForm({ ...routeForm, destination_location_id: value })}
+                    placeholder="Select destination location"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
