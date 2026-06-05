@@ -489,7 +489,8 @@ const Orders = () => {
     id: string;
     route_id: string;
     name: string;
-    source_location_id: string;
+    source_location_id: string | null;
+    source_vendor_id: string | null;
     destination_location_id: string;
   }>>([]);
   const [isRoutePickerOpen, setIsRoutePickerOpen] = useState(false);
