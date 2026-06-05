@@ -1686,12 +1686,12 @@ const Transportation = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Source Location *</Label>
+                <Label>Source *</Label>
                 <SearchableSelect
-                  options={locations.map((l) => ({ value: l.id, label: `${l.location_id} - ${l.name}` }))}
-                  value={routeForm.source_location_id}
-                  onValueChange={(value) => setRouteForm({ ...routeForm, source_location_id: value })}
-                  placeholder="Select source location"
+                  options={vendorOptions}
+                  value={routeForm.source_value}
+                  onValueChange={(value) => setRouteForm({ ...routeForm, source_value: value })}
+                  placeholder="Select vendor or location"
                 />
               </div>
 
