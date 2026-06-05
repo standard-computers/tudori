@@ -1758,7 +1758,7 @@ const Transportation = () => {
           <DialogFooter className="shrink-0">
             <Button
               onClick={handleSaveRoute}
-              disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_location_id || !routeForm.destination_location_id}
+              disabled={!routeForm.route_id || !routeForm.name || !routeForm.source_value || !routeForm.destination_location_id}
             >
               {editingRoute ? 'Update' : 'Create'}
               <Kbd>⌘S</Kbd>
