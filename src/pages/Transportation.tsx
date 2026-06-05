@@ -200,7 +200,7 @@ const Transportation = () => {
   const [routeForm, setRouteForm] = useState({
     route_id: '',
     name: '',
-    source_location_id: '',
+    source_value: '', // 'vendor:{id}' or 'location:{id}'
     destination_location_id: '',
     carrier_id: '',
     priority: 1,
