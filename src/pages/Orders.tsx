@@ -3355,7 +3355,7 @@ const Orders = () => {
             <SearchableSelect
               options={transportRoutes.map((r) => {
                 const srcLabel = r.source_vendor_id
-                  ? (vendors.find((v) => v.id === r.source_vendor_id)?.name || "Vendor")
+                  ? (allVendors.find((v) => v.id === r.source_vendor_id)?.name || "Vendor")
                   : (locations.find((l) => l.id === r.source_location_id)?.name || "?");
                 const dst = locations.find((l) => l.id === r.destination_location_id);
                 return {
