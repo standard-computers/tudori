@@ -1347,7 +1347,11 @@ const Transportation = () => {
                     <TableRow key={route.id}>
                       <TableCell className="font-mono">{route.route_id}</TableCell>
                       <TableCell className="font-medium">{route.name}</TableCell>
-                      <TableCell>{route.source_location?.name || '-'}</TableCell>
+                      <TableCell>
+                        {route.source_vendor
+                          ? `${route.source_vendor.name} (Vendor)`
+                          : route.source_location?.name || '-'}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         <ArrowRight className="h-4 w-4" />
                       </TableCell>
