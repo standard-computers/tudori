@@ -565,7 +565,7 @@ const Transportation = () => {
     setRouteForm({
       route_id: nextId,
       name: '',
-      source_location_id: '',
+      source_value: '',
       destination_location_id: '',
       carrier_id: '',
       priority: 1,
@@ -581,7 +581,11 @@ const Transportation = () => {
     setRouteForm({
       route_id: route.route_id,
       name: route.name,
-      source_location_id: route.source_location_id,
+      source_value: route.source_vendor_id
+        ? `vendor:${route.source_vendor_id}`
+        : route.source_location_id
+        ? `location:${route.source_location_id}`
+        : '',
       destination_location_id: route.destination_location_id,
       carrier_id: route.carrier_id || '',
       priority: route.priority,
