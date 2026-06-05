@@ -4593,7 +4593,8 @@ export type Database = {
           notes: string | null
           priority: number | null
           route_id: string
-          source_location_id: string
+          source_location_id: string | null
+          source_vendor_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4608,7 +4609,8 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           route_id: string
-          source_location_id: string
+          source_location_id?: string | null
+          source_vendor_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4623,7 +4625,8 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           route_id?: string
-          source_location_id?: string
+          source_location_id?: string | null
+          source_vendor_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4653,6 +4656,13 @@ export type Database = {
             columns: ["source_location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routes_source_vendor_id_fkey"
+            columns: ["source_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
