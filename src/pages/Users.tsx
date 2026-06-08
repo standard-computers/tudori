@@ -430,6 +430,9 @@ const Users = () => {
 
   const resetForm = () => {
     setEmail('');
+    setFirstName('');
+    setLastName('');
+    setSendInvite(false);
     setRole('member');
     setErrors({});
   };
