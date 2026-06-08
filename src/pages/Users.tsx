@@ -283,7 +283,7 @@ const Users = () => {
     e.preventDefault();
     setErrors({});
 
-    const result = inviteSchema.safeParse({ email, role });
+    const result = inviteSchema.safeParse({ email, role, first_name: firstName, last_name: lastName });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
