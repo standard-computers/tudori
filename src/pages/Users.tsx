@@ -436,6 +436,44 @@ const Users = () => {
     fetchTeamData();
   };
 
+  const canResetPasswords = currentUserRole === 'admin' || currentUserRole === 'it' || currentUserRole === 'owner';
+
+  const handleResetPassword = async (member: TeamMember) => {
+    if (!companyId) return;
+    if (member.user_id === user?.id) {
+      toast.error('Cannot reset your own password here');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { target_user_id: member.user_id, company_id: companyId },
+      });
+      if (error) {
+        toast.error('Failed to reset password: ' + error.message);
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      setCreatedPasswordEmail(member.email || `${member.first_name} ${member.last_name}`);
+      setCreatedTempPassword(data.temp_password);
+      setPasswordDialogTitle('Password Reset Successfully');
+      setPasswordDialogDescription(
+        <>The password for <strong>{member.first_name} {member.last_name}</strong>{member.email ? <> (<strong>{member.email}</strong>)</> : null} has been reset. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong></>
+      );
+      setConfirmResetOpen(false);
+      setViewingMember(null);
+      setShowPasswordDialog(true);
+      toast.success('Password reset');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setEmail('');
     setFirstName('');
