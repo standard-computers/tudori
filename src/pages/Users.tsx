@@ -173,8 +173,11 @@ const Users = () => {
     setTransaction(isDialogOpen ? 'user/new' : 'user');
   }, [isDialogOpen, setTransaction]);
 
-  // Invite form
+  // Create user form
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [sendInvite, setSendInvite] = useState(false);
   const [role, setRole] = useState<'admin' | 'member' | 'viewer' | 'it'>('member');
   const [createdPasswordEmail, setCreatedPasswordEmail] = useState('');
   const [createdTempPassword, setCreatedTempPassword] = useState('');
