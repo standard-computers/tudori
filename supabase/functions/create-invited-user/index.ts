@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, role, company_id, first_name, last_name } = await req.json();
+    const { email, role, company_id, first_name, last_name, send_invite } = await req.json();
 
     if (!email || !company_id) {
       return new Response(
