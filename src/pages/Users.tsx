@@ -320,6 +320,9 @@ const Users = () => {
           email: email.toLowerCase(),
           role,
           company_id: companyId,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          send_invite: sendInvite,
         },
       });
 
