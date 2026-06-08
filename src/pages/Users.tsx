@@ -109,11 +109,13 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
   );
 };
 
-const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword }: { 
+const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword, title, description }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void; 
   email: string; 
   tempPassword: string; 
+  title?: string;
+  description?: React.ReactNode;
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -127,11 +129,11 @@ const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>User Created Successfully</DialogTitle>
+          <DialogTitle>{title || 'User Created Successfully'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            A user account has been created for <strong>{email}</strong>. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong>
+            {description || (<>A user account has been created for <strong>{email}</strong>. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong></>)}
           </p>
           <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/30">
             <code className="text-sm bg-muted px-3 py-1.5 rounded font-mono flex-1">
