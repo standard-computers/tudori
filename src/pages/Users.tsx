@@ -513,13 +513,35 @@ const Users = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Invite Team Member</DialogTitle>
+                    <DialogTitle>Create User</DialogTitle>
                     <DialogDescription>
-                      Create a user account with a temporary password. Share the credentials with them so they can log in.
+                      Create a new user account. A temporary password will be generated and shown once after creation.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogBody>
                     <form id="invite-form" onSubmit={handleInvite} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="first_name">First Name</Label>
+                          <Input
+                            id="first_name"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="Jane"
+                            className={errors.first_name ? 'border-destructive' : ''}
+                          />
+                          {errors.first_name && <p className="text-sm text-destructive">{errors.first_name}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="last_name">Last Name</Label>
+                          <Input
+                            id="last_name"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="Doe"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
                         <Input
@@ -547,12 +569,27 @@ const Users = () => {
                         </Select>
                         <p className="text-sm text-muted-foreground">{roleDescriptions[role]}</p>
                       </div>
+                      <div className="flex items-start gap-2 pt-2">
+                        <Checkbox
+                          id="send_invite"
+                          checked={sendInvite}
+                          onCheckedChange={(v) => setSendInvite(v === true)}
+                        />
+                        <div className="grid gap-1 leading-none">
+                          <Label htmlFor="send_invite" className="cursor-pointer">
+                            Send invite email
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Also email the user a password setup link. Off by default.
+                          </p>
+                        </div>
+                      </div>
                     </form>
                   </DialogBody>
                   <DialogFooter>
                     <Button type="submit" form="invite-form" disabled={inviteLoading}>
                       {inviteLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                      Send Invitation
+                      Create User
                     </Button>
                   </DialogFooter>
                 </DialogContent>
