@@ -49,6 +49,8 @@ interface UserRole {
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email'),
+  first_name: z.string().trim().min(1, 'First name is required').max(60),
+  last_name: z.string().trim().max(60).optional().or(z.literal('')),
   role: z.enum(['admin', 'member', 'viewer', 'it']),
 });
 
