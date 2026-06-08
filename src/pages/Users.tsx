@@ -912,6 +912,21 @@ const Users = () => {
                       </div>
                     );
                   })()}
+                  {viewingMember && canResetPasswords && viewingMember.user_id !== user?.id && (
+                    <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                      <Label className="text-muted-foreground">Password</Label>
+                      <p className="text-xs text-muted-foreground">Reset this user's password. A new temporary password will be generated and shown only once.</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmResetOpen(true)}
+                        disabled={resetLoading}
+                      >
+                        {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        Reset Password
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
                 <TabsContent value="locations" className="mt-4">
                   {viewingMember && (
