@@ -347,6 +347,8 @@ const Users = () => {
       toast.success(`User created for ${email}.`);
       setCreatedPasswordEmail(email.toLowerCase());
       setCreatedTempPassword(data.temp_password);
+      setPasswordDialogTitle(undefined);
+      setPasswordDialogDescription(undefined);
       setIsDialogOpen(false);
       setShowPasswordDialog(true);
       resetForm();
