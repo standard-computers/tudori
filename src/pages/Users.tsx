@@ -959,7 +959,6 @@ const Users = () => {
           onOpenChange={setConfirmResetOpen}
           title="Reset Password"
           description={`Are you sure you want to reset the password for ${viewingMember?.first_name ?? ''} ${viewingMember?.last_name ?? ''}? Their current password will stop working immediately and a new temporary password will be shown only once.`}
-          confirmLabel="Reset Password"
           onConfirm={() => {
             if (viewingMember) handleResetPassword(viewingMember);
           }}
