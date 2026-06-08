@@ -109,11 +109,13 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
   );
 };
 
-const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword }: { 
+const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword, title, description }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void; 
   email: string; 
   tempPassword: string; 
+  title?: string;
+  description?: React.ReactNode;
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -127,11 +129,11 @@ const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>User Created Successfully</DialogTitle>
+          <DialogTitle>{title || 'User Created Successfully'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            A user account has been created for <strong>{email}</strong>. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong>
+            {description || (<>A user account has been created for <strong>{email}</strong>. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong></>)}
           </p>
           <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/30">
             <code className="text-sm bg-muted px-3 py-1.5 rounded font-mono flex-1">
@@ -182,6 +184,10 @@ const Users = () => {
   const [createdPasswordEmail, setCreatedPasswordEmail] = useState('');
   const [createdTempPassword, setCreatedTempPassword] = useState('');
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordDialogTitle, setPasswordDialogTitle] = useState<string | undefined>(undefined);
+  const [passwordDialogDescription, setPasswordDialogDescription] = useState<React.ReactNode | undefined>(undefined);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -341,6 +347,8 @@ const Users = () => {
       toast.success(`User created for ${email}.`);
       setCreatedPasswordEmail(email.toLowerCase());
       setCreatedTempPassword(data.temp_password);
+      setPasswordDialogTitle(undefined);
+      setPasswordDialogDescription(undefined);
       setIsDialogOpen(false);
       setShowPasswordDialog(true);
       resetForm();
@@ -426,6 +434,44 @@ const Users = () => {
 
     toast.success(`${member.first_name} has been removed from the team`);
     fetchTeamData();
+  };
+
+  const canResetPasswords = currentUserRole === 'admin' || currentUserRole === 'it' || currentUserRole === 'owner';
+
+  const handleResetPassword = async (member: TeamMember) => {
+    if (!companyId) return;
+    if (member.user_id === user?.id) {
+      toast.error('Cannot reset your own password here');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { target_user_id: member.user_id, company_id: companyId },
+      });
+      if (error) {
+        toast.error('Failed to reset password: ' + error.message);
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      setCreatedPasswordEmail(member.email || `${member.first_name} ${member.last_name}`);
+      setCreatedTempPassword(data.temp_password);
+      setPasswordDialogTitle('Password Reset Successfully');
+      setPasswordDialogDescription(
+        <>The password for <strong>{member.first_name} {member.last_name}</strong>{member.email ? <> (<strong>{member.email}</strong>)</> : null} has been reset. Copy the temporary password below and share it securely. <strong>This password will not be shown again.</strong></>
+      );
+      setConfirmResetOpen(false);
+      setViewingMember(null);
+      setShowPasswordDialog(true);
+      toast.success('Password reset');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -866,6 +912,21 @@ const Users = () => {
                       </div>
                     );
                   })()}
+                  {viewingMember && canResetPasswords && viewingMember.user_id !== user?.id && (
+                    <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                      <Label className="text-muted-foreground">Password</Label>
+                      <p className="text-xs text-muted-foreground">Reset this user's password. A new temporary password will be generated and shown only once.</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmResetOpen(true)}
+                        disabled={resetLoading}
+                      >
+                        {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        Reset Password
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
                 <TabsContent value="locations" className="mt-4">
                   {viewingMember && (
@@ -890,6 +951,17 @@ const Users = () => {
           onOpenChange={setShowPasswordDialog} 
           email={createdPasswordEmail} 
           tempPassword={createdTempPassword} 
+          title={passwordDialogTitle}
+          description={passwordDialogDescription}
+        />
+        <ConfirmDeleteDialog
+          open={confirmResetOpen}
+          onOpenChange={setConfirmResetOpen}
+          title="Reset Password"
+          description={`Are you sure you want to reset the password for ${viewingMember?.first_name ?? ''} ${viewingMember?.last_name ?? ''}? Their current password will stop working immediately and a new temporary password will be shown only once.`}
+          onConfirm={() => {
+            if (viewingMember) handleResetPassword(viewingMember);
+          }}
         />
         <ConfirmDeleteDialog
           open={confirmDeleteOpen}
