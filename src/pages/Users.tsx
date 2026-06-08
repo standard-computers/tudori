@@ -184,6 +184,10 @@ const Users = () => {
   const [createdPasswordEmail, setCreatedPasswordEmail] = useState('');
   const [createdTempPassword, setCreatedTempPassword] = useState('');
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordDialogTitle, setPasswordDialogTitle] = useState<string | undefined>(undefined);
+  const [passwordDialogDescription, setPasswordDialogDescription] = useState<React.ReactNode | undefined>(undefined);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
