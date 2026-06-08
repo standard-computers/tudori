@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, role, company_id, first_name, last_name } = await req.json();
+    const { email, role, company_id, first_name, last_name, send_invite } = await req.json();
 
     if (!email || !company_id) {
       return new Response(
@@ -143,11 +143,27 @@ serve(async (req) => {
       console.error('Error creating invitation:', inviteError);
     }
 
+    // Optionally email the user a password recovery link so they can set their own password
+    let invite_sent = false;
+    if (send_invite) {
+      const redirectTo = req.headers.get('origin') ? `${req.headers.get('origin')}/auth` : undefined;
+      const { error: recoveryError } = await supabaseAdmin.auth.resetPasswordForEmail(
+        normalizedEmail,
+        redirectTo ? { redirectTo } : undefined,
+      );
+      if (recoveryError) {
+        console.error('Error sending invite email:', recoveryError);
+      } else {
+        invite_sent = true;
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         temp_password: tempPassword,
         user_id: userId,
+        invite_sent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

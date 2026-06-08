@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
 import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { z } from 'zod';
 import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
@@ -48,6 +49,8 @@ interface UserRole {
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email'),
+  first_name: z.string().trim().min(1, 'First name is required').max(60),
+  last_name: z.string().trim().max(60).optional().or(z.literal('')),
   role: z.enum(['admin', 'member', 'viewer', 'it']),
 });
 
@@ -170,8 +173,11 @@ const Users = () => {
     setTransaction(isDialogOpen ? 'user/new' : 'user');
   }, [isDialogOpen, setTransaction]);
 
-  // Invite form
+  // Create user form
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [sendInvite, setSendInvite] = useState(false);
   const [role, setRole] = useState<'admin' | 'member' | 'viewer' | 'it'>('member');
   const [createdPasswordEmail, setCreatedPasswordEmail] = useState('');
   const [createdTempPassword, setCreatedTempPassword] = useState('');
@@ -277,7 +283,7 @@ const Users = () => {
     e.preventDefault();
     setErrors({});
 
-    const result = inviteSchema.safeParse({ email, role });
+    const result = inviteSchema.safeParse({ email, role, first_name: firstName, last_name: lastName });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -314,6 +320,9 @@ const Users = () => {
           email: email.toLowerCase(),
           role,
           company_id: companyId,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          send_invite: sendInvite,
         },
       });
 
@@ -421,6 +430,9 @@ const Users = () => {
 
   const resetForm = () => {
     setEmail('');
+    setFirstName('');
+    setLastName('');
+    setSendInvite(false);
     setRole('member');
     setErrors({});
   };
@@ -501,13 +513,35 @@ const Users = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Invite Team Member</DialogTitle>
+                    <DialogTitle>Create User</DialogTitle>
                     <DialogDescription>
-                      Create a user account with a temporary password. Share the credentials with them so they can log in.
+                      Create a new user account. A temporary password will be generated and shown once after creation.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogBody>
                     <form id="invite-form" onSubmit={handleInvite} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="first_name">First Name</Label>
+                          <Input
+                            id="first_name"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="Jane"
+                            className={errors.first_name ? 'border-destructive' : ''}
+                          />
+                          {errors.first_name && <p className="text-sm text-destructive">{errors.first_name}</p>}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="last_name">Last Name</Label>
+                          <Input
+                            id="last_name"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="Doe"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
                         <Input
@@ -535,12 +569,27 @@ const Users = () => {
                         </Select>
                         <p className="text-sm text-muted-foreground">{roleDescriptions[role]}</p>
                       </div>
+                      <div className="flex items-start gap-2 pt-2">
+                        <Checkbox
+                          id="send_invite"
+                          checked={sendInvite}
+                          onCheckedChange={(v) => setSendInvite(v === true)}
+                        />
+                        <div className="grid gap-1 leading-none">
+                          <Label htmlFor="send_invite" className="cursor-pointer">
+                            Send invite email
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Also email the user a password setup link. Off by default.
+                          </p>
+                        </div>
+                      </div>
                     </form>
                   </DialogBody>
                   <DialogFooter>
                     <Button type="submit" form="invite-form" disabled={inviteLoading}>
                       {inviteLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                      Send Invitation
+                      Create User
                     </Button>
                   </DialogFooter>
                 </DialogContent>
