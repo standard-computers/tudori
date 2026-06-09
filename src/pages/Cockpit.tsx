@@ -2459,7 +2459,12 @@ const [areaFormData, setAreaFormData] = useState({
                               ) : '—'}
                             </TableCell>
                             <TableCell>{od.customer?.name || od.to_location?.name || '—'}</TableCell>
-                            <TableCell>
+                             <TableCell>
+                               {od.created_at
+                                 ? new Date(od.created_at).toLocaleDateString()
+                                 : '—'}
+                             </TableCell>
+                             <TableCell>
                               <Badge variant="outline" className={statusColors[od.status] || ''}>
                                 {od.status}
                               </Badge>
