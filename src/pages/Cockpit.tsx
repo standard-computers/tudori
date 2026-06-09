@@ -2419,7 +2419,8 @@ const [areaFormData, setAreaFormData] = useState({
                         <SortableTableHead label="Delivery #" sortKey="delivery_number" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['delivery_number']} onFilter={(v) => setOrdersFilter('delivery_number', v)} />
                         <SortableTableHead label="Order #" sortKey="sales_order.so_number" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['sales_order.so_number']} onFilter={(v) => setOrdersFilter('sales_order.so_number', v)} />
                         <SortableTableHead label="Ship To" sortKey="customer.name" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['customer.name']} onFilter={(v) => setOrdersFilter('customer.name', v)} />
-                        <SortableTableHead label="Status" sortKey="status" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['status']} onFilter={(v) => setOrdersFilter('status', v)} />
+                         <SortableTableHead label="Created" sortKey="created_at" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterable={false} />
+                         <SortableTableHead label="Status" sortKey="status" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['status']} onFilter={(v) => setOrdersFilter('status', v)} />
                         <TableHead className="w-32"></TableHead>
                       </TableRow>
                     </TableHeader>
