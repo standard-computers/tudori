@@ -537,6 +537,14 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                 filterable={false}
               />
               <SortableTableHead
+                label="Created"
+                sortKey="created_at"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
                 label="Status"
                 sortKey="status"
                 currentSortKey={sortConfig.key}
