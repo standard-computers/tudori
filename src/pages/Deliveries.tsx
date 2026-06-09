@@ -102,6 +102,7 @@ interface Delivery {
   tracking_number: string | null;
   carrier: string | null;
   notes: string | null;
+  created_at?: string | null;
   purchase_order?: { po_number: string } | null;
   location?: { name: string } | null;
   vendor?: { name: string } | null;
