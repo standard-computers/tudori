@@ -129,6 +129,7 @@ interface Delivery {
   delivery_id: string;
   status: string;
   expected_date: string | null;
+  created_at?: string | null;
   purchase_order_id: string | null;
   is_fulfilled: boolean;
   vendor?: { name: string } | null;
@@ -881,6 +882,7 @@ const [areaFormData, setAreaFormData] = useState({
       .select(`
         id, 
         delivery_id, 
+        created_at,
         status, 
         expected_date, 
         purchase_order_id, 
@@ -2259,6 +2261,7 @@ const [areaFormData, setAreaFormData] = useState({
                         <SortableTableHead label="PO #" sortKey="purchase_order.po_number" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['purchase_order.po_number']} onFilter={(v) => setDeliveryFilter('purchase_order.po_number', v)} />
                         <SortableTableHead label="Source" sortKey="vendor.name" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['vendor.name']} onFilter={(v) => setDeliveryFilter('vendor.name', v)} />
                         <SortableTableHead label="Expected Date" sortKey="expected_date" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['expected_date']} onFilter={(v) => setDeliveryFilter('expected_date', v)} />
+                        <SortableTableHead label="Created" sortKey="created_at" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterable={false} />
                         <SortableTableHead label="Status" sortKey="status" currentSortKey={deliverySortConfig.key} currentSortDirection={deliverySortConfig.direction} onSort={handleDeliverySort} filterValue={deliveryFilters['status']} onFilter={(v) => setDeliveryFilter('status', v)} />
                         <TableHead className="w-44"></TableHead>
                       </TableRow>
@@ -2280,6 +2283,11 @@ const [areaFormData, setAreaFormData] = useState({
                               )}
                             </TableCell>
                             <TableCell>{sourceName || '—'}</TableCell>
+                            <TableCell>
+                              {delivery.created_at
+                                ? new Date(delivery.created_at).toLocaleDateString()
+                                : '—'}
+                            </TableCell>
                             <TableCell>
                               {delivery.expected_date 
                                 ? new Date(delivery.expected_date).toLocaleDateString() 
@@ -2411,7 +2419,8 @@ const [areaFormData, setAreaFormData] = useState({
                         <SortableTableHead label="Delivery #" sortKey="delivery_number" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['delivery_number']} onFilter={(v) => setOrdersFilter('delivery_number', v)} />
                         <SortableTableHead label="Order #" sortKey="sales_order.so_number" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['sales_order.so_number']} onFilter={(v) => setOrdersFilter('sales_order.so_number', v)} />
                         <SortableTableHead label="Ship To" sortKey="customer.name" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['customer.name']} onFilter={(v) => setOrdersFilter('customer.name', v)} />
-                        <SortableTableHead label="Status" sortKey="status" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['status']} onFilter={(v) => setOrdersFilter('status', v)} />
+                         <SortableTableHead label="Created" sortKey="created_at" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterable={false} />
+                         <SortableTableHead label="Status" sortKey="status" currentSortKey={ordersSortConfig.key} currentSortDirection={ordersSortConfig.direction} onSort={handleOrdersSort} filterValue={ordersFilters['status']} onFilter={(v) => setOrdersFilter('status', v)} />
                         <TableHead className="w-32"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2450,7 +2459,12 @@ const [areaFormData, setAreaFormData] = useState({
                               ) : '—'}
                             </TableCell>
                             <TableCell>{od.customer?.name || od.to_location?.name || '—'}</TableCell>
-                            <TableCell>
+                             <TableCell>
+                               {od.created_at
+                                 ? new Date(od.created_at).toLocaleDateString()
+                                 : '—'}
+                             </TableCell>
+                             <TableCell>
                               <Badge variant="outline" className={statusColors[od.status] || ''}>
                                 {od.status}
                               </Badge>
