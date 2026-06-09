@@ -594,6 +594,11 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                     : '—'}
                 </TableCell>
                 <TableCell>
+                  {delivery.created_at
+                    ? format(parseISO(delivery.created_at), 'MMM d, yyyy')
+                    : '—'}
+                </TableCell>
+                <TableCell>
                   <Badge variant="outline" className={getStatusColor(delivery.status)}>
                     {delivery.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </Badge>
