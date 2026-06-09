@@ -537,6 +537,14 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                 filterable={false}
               />
               <SortableTableHead
+                label="Created"
+                sortKey="created_at"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
                 label="Status"
                 sortKey="status"
                 currentSortKey={sortConfig.key}
@@ -583,6 +591,11 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
                 <TableCell>
                   {delivery.shipped_date
                     ? format(parseISO(delivery.shipped_date), 'MMM d, yyyy')
+                    : '—'}
+                </TableCell>
+                <TableCell>
+                  {delivery.created_at
+                    ? format(parseISO(delivery.created_at), 'MMM d, yyyy')
                     : '—'}
                 </TableCell>
                 <TableCell>

@@ -102,6 +102,7 @@ interface Delivery {
   tracking_number: string | null;
   carrier: string | null;
   notes: string | null;
+  created_at?: string | null;
   purchase_order?: { po_number: string } | null;
   location?: { name: string } | null;
   vendor?: { name: string } | null;
@@ -1658,6 +1659,14 @@ const Deliveries = () => {
                         filterable={false}
                       />
                       <SortableTableHead
+                        label="Created"
+                        sortKey="created_at"
+                        currentSortKey={sortConfig.key}
+                        currentSortDirection={sortConfig.direction}
+                        onSort={handleSort}
+                        filterable={false}
+                      />
+                      <SortableTableHead
                         label="Status"
                         sortKey="status"
                         currentSortKey={sortConfig.key}
@@ -1716,6 +1725,11 @@ const Deliveries = () => {
                           <TableCell>
                             {delivery.expected_date 
                               ? format(parseISO(delivery.expected_date), 'MMM d, yyyy')
+                              : '—'}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.created_at
+                              ? format(parseISO(delivery.created_at), 'MMM d, yyyy')
                               : '—'}
                           </TableCell>
                           <TableCell>
