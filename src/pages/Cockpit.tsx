@@ -2284,6 +2284,11 @@ const [areaFormData, setAreaFormData] = useState({
                             </TableCell>
                             <TableCell>{sourceName || '—'}</TableCell>
                             <TableCell>
+                              {delivery.created_at
+                                ? new Date(delivery.created_at).toLocaleDateString()
+                                : '—'}
+                            </TableCell>
+                            <TableCell>
                               {delivery.expected_date 
                                 ? new Date(delivery.expected_date).toLocaleDateString() 
                                 : '—'}
