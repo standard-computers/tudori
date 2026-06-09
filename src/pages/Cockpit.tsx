@@ -882,6 +882,7 @@ const [areaFormData, setAreaFormData] = useState({
       .select(`
         id, 
         delivery_id, 
+        created_at,
         status, 
         expected_date, 
         purchase_order_id, 
