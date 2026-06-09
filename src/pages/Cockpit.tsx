@@ -129,6 +129,7 @@ interface Delivery {
   delivery_id: string;
   status: string;
   expected_date: string | null;
+  created_at?: string | null;
   purchase_order_id: string | null;
   is_fulfilled: boolean;
   vendor?: { name: string } | null;
