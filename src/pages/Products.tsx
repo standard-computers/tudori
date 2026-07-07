@@ -2565,30 +2565,43 @@ const Products = () => {
                                   <TableRow>
                                     <TableHead>UOM</TableHead>
                                     <TableHead>Conversion</TableHead>
+                                    <TableHead>Base Quantity</TableHead>
                                     <TableHead className="w-16"></TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {uoms.map((uom, index) => (
-                                    <TableRow key={index}>
-                                      <TableCell className="font-medium">
-                                        {uom.abbreviation} - {uom.name}
-                                      </TableCell>
-                                      <TableCell>
-                                        1 {uom.abbreviation} = {uom.conversion_factor} {uom.lower_uom || formData.unit}
-                                      </TableCell>
-                                      <TableCell>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => handleRemoveUom(index)}
-                                        >
-                                          <Trash2 className="w-4 h-4 text-destructive" />
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {uoms.map((uom, index) => {
+                                    const baseFactor = parseFloat(uom.conversion_factor) || 1;
+                                    const lowerLabel = uom.lower_uom || formData.unit;
+                                    const lowerEntry = uom.lower_uom && uom.lower_uom !== formData.unit
+                                      ? uoms.find((u) => u.abbreviation === uom.lower_uom)
+                                      : null;
+                                    const lowerBaseFactor = lowerEntry ? (parseFloat(lowerEntry.conversion_factor) || 1) : 1;
+                                    const displayFactor = baseFactor / lowerBaseFactor;
+                                    return (
+                                      <TableRow key={index}>
+                                        <TableCell className="font-medium">
+                                          {uom.abbreviation} - {uom.name}
+                                        </TableCell>
+                                        <TableCell>
+                                          1 {uom.abbreviation} = {Number.isInteger(displayFactor) ? displayFactor : displayFactor.toFixed(4)} {lowerLabel}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                          {baseFactor} {formData.unit}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleRemoveUom(index)}
+                                          >
+                                            <Trash2 className="w-4 h-4 text-destructive" />
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
                                 </TableBody>
                               </Table>
                             </div>
