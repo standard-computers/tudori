@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import CompleteProfile from "./pages/CompleteProfile";
+import Logout from "./pages/Logout";
 import { Navigate } from "react-router-dom";
 import Locations from "./pages/Locations";
 import Vendors from "./pages/Vendors";
