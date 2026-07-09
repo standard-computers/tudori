@@ -378,10 +378,20 @@ const HR = () => {
       // Update employee wage from position
       const assignedPosition = positions.find(p => p.id === assignPositionId);
       if (assignedPosition && assignedPosition.wage != null) {
+        // is_hourly is a non-sensitive column; wage must go through the admin-only RPC
         await supabase
           .from('employees')
-          .update({ wage: assignedPosition.wage, is_hourly: assignedPosition.is_hourly })
+          .update({ is_hourly: assignedPosition.is_hourly })
           .eq('id', viewingEmployee.id);
+        const { data: currentSens } = await supabase.rpc('get_employee_sensitive', { p_employee_id: viewingEmployee.id });
+        const cur = Array.isArray(currentSens) && currentSens.length > 0 ? currentSens[0] : null;
+        await supabase.rpc('upsert_employee_sensitive', {
+          p_employee_id: viewingEmployee.id,
+          p_social_id: cur?.social_id ?? null,
+          p_wage: assignedPosition.wage,
+          p_gender: cur?.gender ?? null,
+          p_ethnicity: cur?.ethnicity ?? null,
+        });
         setViewingEmployee(prev => prev ? { ...prev, wage: assignedPosition.wage, is_hourly: assignedPosition.is_hourly } : prev);
       }
       toast.success('Employee assigned to position');
