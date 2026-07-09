@@ -91,6 +91,7 @@ const App = () => (
                   <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/logout" element={<Logout />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/complete-profile" element={<CompleteProfile />} />
                   <Route path="/user-settings" element={<UserSettings />} />
