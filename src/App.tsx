@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import CompleteProfile from "./pages/CompleteProfile";
+import Logout from "./pages/Logout";
 import { Navigate } from "react-router-dom";
 import Locations from "./pages/Locations";
 import Vendors from "./pages/Vendors";
@@ -90,6 +91,7 @@ const App = () => (
                   <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/logout" element={<Logout />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/complete-profile" element={<CompleteProfile />} />
                   <Route path="/user-settings" element={<UserSettings />} />
