@@ -508,6 +508,7 @@ const Employees = () => {
     setIsSubmitting(true);
 
     try {
+      // Non-sensitive columns only – sensitive fields go through upsert_employee_sensitive RPC
       const employeeData = {
         company_id: companyId!,
         employee_id: formData.employee_id,
@@ -520,7 +521,6 @@ const Employees = () => {
         hire_date: formData.hire_date || null,
         status: formData.status,
         notes: formData.notes || null,
-        wage: formData.wage ? parseFloat(formData.wage) : null,
         is_hourly: formData.is_hourly,
         bonus_eligible: formData.bonus_eligible,
         user_id: formData.user_id || null,
@@ -530,9 +530,6 @@ const Employees = () => {
         state: formData.state || null,
         postal_code: formData.postal_code || null,
         country: formData.country || null,
-        social_id: formData.social_id || null,
-        gender: formData.gender || null,
-        ethnicity: formData.ethnicity || null,
       };
 
       let employeeId = editingId;
@@ -546,6 +543,20 @@ const Employees = () => {
         if (error) throw error;
         employeeId = data.id;
         toast.success("Employee created");
+      }
+
+      // Persist sensitive fields via admin/self-only RPC
+      if (employeeId) {
+        const { error: sensErr } = await supabase.rpc('upsert_employee_sensitive', {
+          p_employee_id: employeeId,
+          p_social_id: formData.social_id || null,
+          p_wage: formData.wage ? parseFloat(formData.wage) : null,
+          p_gender: formData.gender || null,
+          p_ethnicity: formData.ethnicity || null,
+        });
+        if (sensErr) {
+          console.warn('Sensitive employee fields not saved:', sensErr.message);
+        }
       }
 
       // Sync team membership based on department (team name)
