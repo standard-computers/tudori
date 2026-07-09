@@ -5874,6 +5874,16 @@ export type Database = {
           wage: number
         }[]
       }
+      upsert_employee_sensitive: {
+        Args: {
+          p_employee_id: string
+          p_ethnicity: string
+          p_gender: string
+          p_social_id: string
+          p_wage: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "member" | "viewer" | "it"
