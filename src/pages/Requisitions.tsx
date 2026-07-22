@@ -723,15 +723,24 @@ const Requisitions = () => {
       }
     }
 
+    // Only include products that have a vendor assigned — requisitions must
+    // always be tied to a specific vendor, never "All Vendors".
+    const withVendor = eligibleProducts.filter(p => !!p.vendor_id);
+    const skipped = eligibleProducts.length - withVendor.length;
+    if (skipped > 0) {
+      toast.warning(`${skipped} product(s) skipped — no vendor assigned`);
+    }
+
     // Generate suggested items (in a real app, this would be based on inventory levels, reorder points, etc.)
     // For now, suggest all eligible products with a random quantity between 1-10
-    const suggestions = eligibleProducts.map(product => ({
+    const suggestions = withVendor.map(product => ({
       product,
       quantity: Math.floor(Math.random() * 10) + 1,
     }));
 
     setSuggestedItems(suggestions);
   };
+
 
   const handleRunRequisition = async () => {
     if (!runFormData.location_id) {
@@ -764,6 +773,9 @@ const Requisitions = () => {
 
       // Create separate requisition for each vendor group
       for (const [vendorId, vendorItems] of itemsByVendor) {
+        // Skip any items that somehow lack a vendor — requisitions must be per-vendor
+        if (!vendorId) continue;
+
         // Get next requisition ID for each requisition
         const { data: nextId, error: idError } = await supabase.rpc('get_next_requisition_id', {
           p_company_id: companyId,
@@ -876,7 +888,12 @@ const Requisitions = () => {
 
   const handleSaveEdit = async () => {
     if (!editingRequisition) return;
+    if (!editFormData.vendor_id) {
+      toast.error('Vendor / Source is required');
+      return;
+    }
     setIsSavingEdit(true);
+
 
     try {
       // Recalculate total from items
@@ -1835,10 +1852,9 @@ const Requisitions = () => {
                   options={vendorOptions}
                   value={editFormData.vendor_id}
                   onValueChange={(v) => setEditFormData(p => ({ ...p, vendor_id: v }))}
-                  placeholder="All vendors"
-                  allowClear
-                  clearLabel="All Vendors"
+                  placeholder="Select vendor / source"
                 />
+
               </div>
               <div className="space-y-2">
                 <Label>Notes</Label>
