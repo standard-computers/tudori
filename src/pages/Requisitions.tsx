@@ -773,6 +773,9 @@ const Requisitions = () => {
 
       // Create separate requisition for each vendor group
       for (const [vendorId, vendorItems] of itemsByVendor) {
+        // Skip any items that somehow lack a vendor — requisitions must be per-vendor
+        if (!vendorId) continue;
+
         // Get next requisition ID for each requisition
         const { data: nextId, error: idError } = await supabase.rpc('get_next_requisition_id', {
           p_company_id: companyId,
