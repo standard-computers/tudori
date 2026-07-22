@@ -723,15 +723,24 @@ const Requisitions = () => {
       }
     }
 
+    // Only include products that have a vendor assigned — requisitions must
+    // always be tied to a specific vendor, never "All Vendors".
+    const withVendor = eligibleProducts.filter(p => !!p.vendor_id);
+    const skipped = eligibleProducts.length - withVendor.length;
+    if (skipped > 0) {
+      toast.warning(`${skipped} product(s) skipped — no vendor assigned`);
+    }
+
     // Generate suggested items (in a real app, this would be based on inventory levels, reorder points, etc.)
     // For now, suggest all eligible products with a random quantity between 1-10
-    const suggestions = eligibleProducts.map(product => ({
+    const suggestions = withVendor.map(product => ({
       product,
       quantity: Math.floor(Math.random() * 10) + 1,
     }));
 
     setSuggestedItems(suggestions);
   };
+
 
   const handleRunRequisition = async () => {
     if (!runFormData.location_id) {
