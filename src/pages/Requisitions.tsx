@@ -1847,10 +1847,9 @@ const Requisitions = () => {
                   options={vendorOptions}
                   value={editFormData.vendor_id}
                   onValueChange={(v) => setEditFormData(p => ({ ...p, vendor_id: v }))}
-                  placeholder="All vendors"
-                  allowClear
-                  clearLabel="All Vendors"
+                  placeholder="Select vendor / source"
                 />
+
               </div>
               <div className="space-y-2">
                 <Label>Notes</Label>
