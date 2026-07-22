@@ -888,7 +888,12 @@ const Requisitions = () => {
 
   const handleSaveEdit = async () => {
     if (!editingRequisition) return;
+    if (!editFormData.vendor_id) {
+      toast.error('Vendor / Source is required');
+      return;
+    }
     setIsSavingEdit(true);
+
 
     try {
       // Recalculate total from items
