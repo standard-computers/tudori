@@ -9,6 +9,7 @@ export interface TransactionCode {
 }
 
 export const TRANSACTION_CODES: TransactionCode[] = [
+  { code: 'operand_ai', name: 'Operand AI', description: 'AI assistant for guided actions', path: '/operand-ai' },
   { code: 'go', name: 'Go', description: 'Mobile work execution', path: '/go' },
   { code: 'pos', name: 'POS', description: 'Point of sale', path: '/pos' },
   { code: 'cockpit', name: 'Cockpit', description: 'Location dashboard', path: '/cockpit' },

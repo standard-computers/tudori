@@ -300,6 +300,115 @@ export type Database = {
           },
         ]
       }
+      ai_messages: {
+        Row: {
+          created_at: string
+          id: string
+          parts: Json
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parts?: Json
+          role: string
+          thread_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parts?: Json
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_plan_steps: {
+        Row: {
+          action_type: string
+          created_at: string
+          description: string
+          error: string | null
+          executed_at: string | null
+          id: string
+          payload: Json
+          result: Json | null
+          seq: number
+          status: string
+          thread_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          description: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          payload?: Json
+          result?: Json | null
+          seq?: number
+          status?: string
+          thread_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          description?: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          payload?: Json
+          result?: Json | null
+          seq?: number
+          status?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_plan_steps_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_threads: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       areas: {
         Row: {
           area_id: string

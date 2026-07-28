@@ -66,6 +66,7 @@ import Developers from "./pages/Developers";
 import Agreements from "./pages/Agreements";
 import Accounting from "./pages/Accounting";
 import Assets from "./pages/Assets";
+import OperandAI from "./pages/OperandAI";
 
 const queryClient = new QueryClient();
 
@@ -140,6 +141,8 @@ const App = () => (
                   <Route path="/agreements" element={<ProtectedRoute><Agreements /></ProtectedRoute>} />
                   <Route path="/accounting" element={<ProtectedRoute><Accounting /></ProtectedRoute>} />
                   <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+                  <Route path="/operand-ai" element={<ProtectedRoute><OperandAI /></ProtectedRoute>} />
+                  <Route path="/operand-ai/:threadId" element={<ProtectedRoute><OperandAI /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </div>
