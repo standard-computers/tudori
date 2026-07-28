@@ -23,6 +23,9 @@ import { toast } from '@/lib/toast';
 import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { AreaBinSelector } from '@/components/inventory/AreaBinSelector';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { format, parseISO } from 'date-fns';
 
 interface InventoryCountDialogProps {
