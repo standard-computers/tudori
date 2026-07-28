@@ -69,6 +69,7 @@ const POS = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [posProductIds, setPosProductIds] = useState<Set<string> | null>(null);
   const [showProductIdsOnTiles, setShowProductIdsOnTiles] = useState(false);
+  const [showProductImagesOnTiles, setShowProductImagesOnTiles] = useState(true);
   const [locationRates, setLocationRates] = useState<LocationRate[]>([]);
 
   useEffect(() => {
@@ -103,6 +104,9 @@ const POS = () => {
       // Load show product IDs preference
       const stored = localStorage.getItem(`pos-show-ids-${selectedLocationId}`);
       setShowProductIdsOnTiles(stored === 'true');
+      // Load show product images preference (default true)
+      const storedImages = localStorage.getItem(`pos-show-images-${selectedLocationId}`);
+      setShowProductImagesOnTiles(storedImages === null ? true : storedImages === 'true');
     }
   }, [selectedLocationId, user]);
 
