@@ -98,6 +98,8 @@ export const InventoryCountDialog = ({
   const [deleteTarget, setDeleteTarget] = useState<CountSession | null>(null);
   const [selectedBinIds, setSelectedBinIds] = useState<Set<string>>(new Set());
   const [includeUnbinned, setIncludeUnbinned] = useState(true);
+  const [explode, setExplode] = useState(false);
+  const [explodeBy, setExplodeBy] = useState<'area' | 'bin'>('area');
   const fetchCounts = useCallback(async () => {
     if (!companyId || !locationId) return;
     setIsLoading(true);
