@@ -11,3 +11,4 @@ verify_jwt = false
 
 [functions.build-report]
 verify_jwt = false
+
