@@ -55,7 +55,7 @@ export default function OperandAI() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("company_id").eq("id", user.id).maybeSingle().then(({ data }) => {
+    supabase.from("profiles").select("company_id").eq("user_id", user.id).maybeSingle().then(({ data }) => {
       setCompanyId((data as any)?.company_id ?? null);
     });
   }, [user?.id]);
