@@ -513,6 +513,27 @@ export default function Agreements() {
       // Sort by date
       docs.sort((a, b) => a.periodDate.localeCompare(b.periodDate));
       setPendingDocs(docs);
+
+      // Log check run to audit history if enabled
+      if (isHistoryEnabled("agreement")) {
+        const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+        await supabase.from("audit_log").insert({
+          table_name: "agreements",
+          record_id: selectedAgreement.id,
+          action: "UPDATE",
+          old_value: null,
+          new_value: {
+            check_run: true,
+            pending_documents: docs.length,
+            period_start: startDate.toISOString().slice(0, 10),
+            period_end: endDate.toISOString().slice(0, 10),
+          } as any,
+          changed_fields: ["check_run"],
+          user_id: userId,
+          company_id: companyId,
+        });
+      }
+
       setCheckDialogOpen(true);
     } finally {
       setChecking(false);
