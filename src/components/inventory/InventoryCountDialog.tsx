@@ -145,8 +145,55 @@ export const InventoryCountDialog = ({
     }
     setSelectedBinIds(new Set());
     setIncludeUnbinned(true);
+    setExplode(false);
+    setExplodeBy('area');
     setView('select_scope');
   };
+
+  const createSingleCountSheet = async (
+    filteredInventory: typeof inventory,
+    noteSuffix?: string,
+  ): Promise<{ id: string; count_number: string } | null> => {
+    const { data: countNumber, error: numError } = await supabase
+      .rpc('get_next_count_number', { p_company_id: companyId! });
+    if (numError) {
+      toast.error('Failed to generate count number');
+      return null;
+    }
+    const { data: newCount, error: createError } = await supabase
+      .from('inventory_counts')
+      .insert({
+        count_number: countNumber,
+        company_id: companyId!,
+        location_id: locationId,
+        status: 'in_progress',
+        created_by: user?.id,
+        notes: noteSuffix || null,
+      })
+      .select('id, count_number, status, count_date, notes, created_at')
+      .single();
+    if (createError || !newCount) {
+      toast.error('Failed to create count sheet');
+      return null;
+    }
+    const items = filteredInventory.map((inv) => ({
+      count_id: newCount.id,
+      product_id: inv.product?.id || '',
+      bin_id: inv.bin?.id || null,
+      system_quantity: inv.quantity,
+    }));
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase
+        .from('inventory_count_items')
+        .insert(items);
+      if (itemsError) {
+        toast.error('Failed to create count items');
+        return null;
+      }
+    }
+    return { id: newCount.id, count_number: newCount.count_number };
+  };
+
 
   const handleConfirmCreate = async () => {
     if (!companyId || !locationId) return;
