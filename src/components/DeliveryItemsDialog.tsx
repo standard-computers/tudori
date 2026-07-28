@@ -180,6 +180,19 @@ export const DeliveryItemsDialog = ({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
+        {(sourceName || destinationName) && (
+          <div className="grid grid-cols-2 gap-4 px-6 py-3 bg-muted/50 rounded-md mx-6 mb-2 text-sm">
+            <div>
+              <div className="text-muted-foreground text-xs uppercase tracking-wide">{sourceLabel}</div>
+              <div className="font-medium truncate">{sourceName || '—'}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground text-xs uppercase tracking-wide">{destinationLabel}</div>
+              <div className="font-medium truncate">{destinationName || '—'}</div>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-8 px-6">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
