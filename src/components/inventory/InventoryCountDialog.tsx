@@ -23,6 +23,9 @@ import { toast } from '@/lib/toast';
 import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { AreaBinSelector } from '@/components/inventory/AreaBinSelector';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { format, parseISO } from 'date-fns';
 
 interface InventoryCountDialogProps {
@@ -95,6 +98,8 @@ export const InventoryCountDialog = ({
   const [deleteTarget, setDeleteTarget] = useState<CountSession | null>(null);
   const [selectedBinIds, setSelectedBinIds] = useState<Set<string>>(new Set());
   const [includeUnbinned, setIncludeUnbinned] = useState(true);
+  const [explode, setExplode] = useState(false);
+  const [explodeBy, setExplodeBy] = useState<'area' | 'bin'>('area');
   const fetchCounts = useCallback(async () => {
     if (!companyId || !locationId) return;
     setIsLoading(true);
@@ -140,8 +145,55 @@ export const InventoryCountDialog = ({
     }
     setSelectedBinIds(new Set());
     setIncludeUnbinned(true);
+    setExplode(false);
+    setExplodeBy('area');
     setView('select_scope');
   };
+
+  const createSingleCountSheet = async (
+    filteredInventory: typeof inventory,
+    noteSuffix?: string,
+  ): Promise<{ id: string; count_number: string } | null> => {
+    const { data: countNumber, error: numError } = await supabase
+      .rpc('get_next_count_number', { p_company_id: companyId! });
+    if (numError) {
+      toast.error('Failed to generate count number');
+      return null;
+    }
+    const { data: newCount, error: createError } = await supabase
+      .from('inventory_counts')
+      .insert({
+        count_number: countNumber,
+        company_id: companyId!,
+        location_id: locationId,
+        status: 'in_progress',
+        created_by: user?.id,
+        notes: noteSuffix || null,
+      })
+      .select('id, count_number, status, count_date, notes, created_at')
+      .single();
+    if (createError || !newCount) {
+      toast.error('Failed to create count sheet');
+      return null;
+    }
+    const items = filteredInventory.map((inv) => ({
+      count_id: newCount.id,
+      product_id: inv.product?.id || '',
+      bin_id: inv.bin?.id || null,
+      system_quantity: inv.quantity,
+    }));
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase
+        .from('inventory_count_items')
+        .insert(items);
+      if (itemsError) {
+        toast.error('Failed to create count items');
+        return null;
+      }
+    }
+    return { id: newCount.id, count_number: newCount.count_number };
+  };
+
 
   const handleConfirmCreate = async () => {
     if (!companyId || !locationId) return;
@@ -159,60 +211,85 @@ export const InventoryCountDialog = ({
 
     setIsSaving(true);
 
-    // Get next count number
-    const { data: countNumber, error: numError } = await supabase
-      .rpc('get_next_count_number', { p_company_id: companyId });
-
-    if (numError) {
-      toast.error('Failed to generate count number');
+    // Non-exploded: single sheet
+    if (!explode) {
+      const result = await createSingleCountSheet(filteredInventory);
       setIsSaving(false);
-      return;
-    }
-
-    // Create the count session
-    const { data: newCount, error: createError } = await supabase
-      .from('inventory_counts')
-      .insert({
-        count_number: countNumber,
-        company_id: companyId,
-        location_id: locationId,
+      if (!result) return;
+      toast.success(`Count sheet ${result.count_number} created with ${filteredInventory.length} item(s)`);
+      setSelectedCount({
+        id: result.id,
+        count_number: result.count_number,
         status: 'in_progress',
-        created_by: user?.id,
-      })
-      .select('id, count_number, status, count_date, notes, created_at')
-      .single();
-
-    if (createError) {
-      toast.error('Failed to create count sheet');
-      setIsSaving(false);
+        count_date: new Date().toISOString().slice(0, 10),
+        notes: null,
+        created_at: new Date().toISOString(),
+        location: { name: locationName },
+      });
+      await fetchCountItems(result.id);
+      setView('detail');
       return;
     }
 
-    // Create count items from filtered inventory snapshot
-    const items = filteredInventory.map((inv) => ({
-      count_id: newCount.id,
-      product_id: inv.product?.id || '',
-      bin_id: inv.bin?.id || null,
-      system_quantity: inv.quantity,
-    }));
+    // Explode: group filtered inventory
+    const groups = new Map<string, { label: string; items: typeof inventory }>();
 
-    const { error: itemsError } = await supabase
-      .from('inventory_count_items')
-      .insert(items);
+    if (explodeBy === 'bin') {
+      for (const inv of filteredInventory) {
+        const key = inv.bin?.id || '__unbinned__';
+        const label = inv.bin?.name || 'Unbinned';
+        if (!groups.has(key)) groups.set(key, { label, items: [] });
+        groups.get(key)!.items.push(inv);
+      }
+    } else {
+      // by area — need bin -> area mapping
+      const binIds = Array.from(
+        new Set(filteredInventory.map((inv) => inv.bin?.id).filter(Boolean) as string[]),
+      );
+      let binAreaMap = new Map<string, { area_id: string; area_name: string }>();
+      if (binIds.length > 0) {
+        const { data: binRows } = await supabase
+          .from('bins')
+          .select('id, area_id, area:areas(id, name)')
+          .in('id', binIds);
+        for (const b of (binRows || []) as any[]) {
+          binAreaMap.set(b.id, {
+            area_id: b.area_id,
+            area_name: b.area?.name || 'Unknown Area',
+          });
+        }
+      }
+      for (const inv of filteredInventory) {
+        if (!inv.bin?.id) {
+          const key = '__unbinned__';
+          if (!groups.has(key)) groups.set(key, { label: 'Unbinned', items: [] });
+          groups.get(key)!.items.push(inv);
+          continue;
+        }
+        const info = binAreaMap.get(inv.bin.id);
+        const key = info?.area_id || '__unknown__';
+        const label = info?.area_name || 'Unknown Area';
+        if (!groups.has(key)) groups.set(key, { label, items: [] });
+        groups.get(key)!.items.push(inv);
+      }
+    }
+
+    const created: string[] = [];
+    for (const [, group] of groups) {
+      const result = await createSingleCountSheet(
+        group.items,
+        `${explodeBy === 'area' ? 'Area' : 'Bin'}: ${group.label}`,
+      );
+      if (result) created.push(result.count_number);
+    }
 
     setIsSaving(false);
-
-    if (itemsError) {
-      toast.error('Failed to create count items');
-      return;
-    }
-
-    toast.success(`Count sheet ${countNumber} created with ${filteredInventory.length} item(s)`);
-    // Open the new count
-    setSelectedCount({ ...newCount, location: { name: locationName } } as CountSession);
-    await fetchCountItems(newCount.id);
-    setView('detail');
+    if (created.length === 0) return;
+    toast.success(`Created ${created.length} count sheet${created.length === 1 ? '' : 's'}`);
+    setView('list');
+    fetchCounts();
   };
+
 
   const handleViewCount = async (count: CountSession) => {
     setSelectedCount(count);
@@ -568,7 +645,50 @@ export const InventoryCountDialog = ({
                 includeUnbinned={includeUnbinned}
                 onIncludeUnbinnedChange={setIncludeUnbinned}
               />
+
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="explode-count"
+                    checked={explode}
+                    onCheckedChange={(v) => setExplode(v === true)}
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label htmlFor="explode-count" className="cursor-pointer">
+                      Explode into multiple count sheets
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Create a separate count sheet per group instead of one combined sheet.
+                    </p>
+                  </div>
+                </div>
+
+                {explode && (
+                  <div className="pl-6">
+                    <Label className="text-xs text-muted-foreground">Explode by</Label>
+                    <RadioGroup
+                      value={explodeBy}
+                      onValueChange={(v) => setExplodeBy(v as 'area' | 'bin')}
+                      className="flex gap-4 mt-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="area" id="explode-by-area" />
+                        <Label htmlFor="explode-by-area" className="cursor-pointer font-normal">
+                          Area (one sheet per area)
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="bin" id="explode-by-bin" />
+                        <Label htmlFor="explode-by-bin" className="cursor-pointer font-normal">
+                          Bin (one sheet per bin)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
             </div>
+
           ) : (
             <div className="space-y-4">
               {/* Variance summary */}
@@ -657,7 +777,7 @@ export const InventoryCountDialog = ({
             </Button>
             <Button size="sm" onClick={handleConfirmCreate} disabled={isSaving || (selectedBinIds.size === 0 && !includeUnbinned)}>
               <Plus className="h-4 w-4 mr-1" />
-              {isSaving ? 'Creating...' : 'Create Count Sheet'}
+              {isSaving ? 'Creating...' : explode ? 'Create Count Sheets' : 'Create Count Sheet'}
             </Button>
           </div>
         )}
