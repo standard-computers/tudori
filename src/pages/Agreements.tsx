@@ -556,8 +556,12 @@ export default function Agreements() {
         return;
       }
       let lastRateIds = new Set<string>();
+      const historyEnabled = isHistoryEnabled("agreement");
+      const userId = historyEnabled ? (await supabase.auth.getUser()).data.user?.id ?? null : null;
+      const auditRows: any[] = [];
 
       for (const agr of selectedAgreements) {
+        const docsBefore = docs.length;
         const [{ data: accs }, { data: items }, { data: agrRatesData }] = await Promise.all([
           supabase.from("agreement_accounts")
             .select("id, account_id, account:accounts(id, account_id, name, type)")
