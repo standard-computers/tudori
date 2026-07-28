@@ -52,6 +52,10 @@ interface DeliveryItemsDialogProps {
   onConfirm: (items: { product_id: string; quantity: number; uom_id: string | null }[]) => void;
   title?: string;
   description?: string;
+  sourceName?: string | null;
+  sourceLabel?: string;
+  destinationName?: string | null;
+  destinationLabel?: string;
 }
 
 export const DeliveryItemsDialog = ({
@@ -62,6 +66,10 @@ export const DeliveryItemsDialog = ({
   onConfirm,
   title = 'Select Delivery Items',
   description = 'Choose which items to include in this delivery.',
+  sourceName,
+  sourceLabel = 'Source',
+  destinationName,
+  destinationLabel = 'Destination',
 }: DeliveryItemsDialogProps) => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<DeliveryItemSelection[]>([]);
