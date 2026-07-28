@@ -652,6 +652,28 @@ export default function Agreements() {
             }
           }
         }
+        if (historyEnabled) {
+          auditRows.push({
+            table_name: "agreements",
+            record_id: agr.id,
+            action: "UPDATE",
+            old_value: null,
+            new_value: {
+              check_run: true,
+              pending_documents: docs.length - docsBefore,
+              period_start: startDate.toISOString().slice(0, 10),
+              period_end: endDate.toISOString().slice(0, 10),
+              bulk: true,
+            } as any,
+            changed_fields: ["check_run"],
+            user_id: userId,
+            company_id: companyId,
+          });
+        }
+      }
+
+      if (auditRows.length > 0) {
+        await supabase.from("audit_log").insert(auditRows);
       }
 
       setLinkedRateIds(lastRateIds);
