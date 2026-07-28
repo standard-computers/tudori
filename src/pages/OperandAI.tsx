@@ -38,10 +38,11 @@ const ACTION_LABEL: Record<string, string> = {
 };
 
 export default function OperandAI() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { threadId } = useParams<{ threadId?: string }>();
 
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [steps, setSteps] = useState<PlanStep[]>([]);
@@ -50,9 +51,14 @@ export default function OperandAI() {
   const [executingId, setExecutingId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  useKeyboardShortcut({ key: "F1", callback: () => navigate(-1) });
+  useKeyboardShortcut("F1", () => navigate(-1));
 
-  const companyId = profile?.company_id;
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("company_id").eq("id", user.id).maybeSingle().then(({ data }) => {
+      setCompanyId((data as any)?.company_id ?? null);
+    });
+  }, [user?.id]);
 
   const loadThreads = async () => {
     if (!user) return;
@@ -273,7 +279,7 @@ export default function OperandAI() {
 
           <div className="border-t p-3">
             <div className="mx-auto w-full max-w-3xl">
-              <PromptInput onSubmit={(e) => { e.preventDefault(); if (!sending) send(); }}>
+              <PromptInput onSubmit={() => { if (!sending) send(); }}>
                 <PromptInputTextarea
                   ref={textareaRef as any}
                   value={input}
