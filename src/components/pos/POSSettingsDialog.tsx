@@ -21,6 +21,8 @@ interface POSSettingsDialogProps {
   onSaved: () => void;
   showProductIds?: boolean;
   onShowProductIdsChange?: (value: boolean) => void;
+  showProductImages?: boolean;
+  onShowProductImagesChange?: (value: boolean) => void;
 }
 
 const POSSettingsDialog = ({
@@ -32,6 +34,8 @@ const POSSettingsDialog = ({
   onSaved,
   showProductIds = false,
   onShowProductIdsChange,
+  showProductImages = true,
+  onShowProductImagesChange,
 }: POSSettingsDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,6 +56,17 @@ const POSSettingsDialog = ({
                 id="show-product-ids"
                 checked={showProductIds}
                 onCheckedChange={(checked) => onShowProductIdsChange?.(checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <Label htmlFor="show-product-images" className="text-sm font-medium cursor-pointer">
+                Show Product Images on tiles
+              </Label>
+              <Switch
+                id="show-product-images"
+                checked={showProductImages}
+                onCheckedChange={(checked) => onShowProductImagesChange?.(checked)}
               />
             </div>
 

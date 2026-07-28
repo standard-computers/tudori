@@ -69,6 +69,7 @@ const POS = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [posProductIds, setPosProductIds] = useState<Set<string> | null>(null);
   const [showProductIdsOnTiles, setShowProductIdsOnTiles] = useState(false);
+  const [showProductImagesOnTiles, setShowProductImagesOnTiles] = useState(true);
   const [locationRates, setLocationRates] = useState<LocationRate[]>([]);
 
   useEffect(() => {
@@ -103,6 +104,9 @@ const POS = () => {
       // Load show product IDs preference
       const stored = localStorage.getItem(`pos-show-ids-${selectedLocationId}`);
       setShowProductIdsOnTiles(stored === 'true');
+      // Load show product images preference (default true)
+      const storedImages = localStorage.getItem(`pos-show-images-${selectedLocationId}`);
+      setShowProductImagesOnTiles(storedImages === null ? true : storedImages === 'true');
     }
   }, [selectedLocationId, user]);
 
@@ -400,17 +404,19 @@ const POS = () => {
                 onClick={() => addToCart(product)}
               >
                 <CardContent className="p-4">
-                  <div className="aspect-square bg-muted rounded-md mb-3 flex items-center justify-center overflow-hidden">
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <ShoppingCart className="w-8 h-8 text-muted-foreground" />
-                    )}
-                  </div>
+                  {showProductImagesOnTiles && (
+                    <div className="aspect-square bg-muted rounded-md mb-3 flex items-center justify-center overflow-hidden">
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ShoppingCart className="w-8 h-8 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
                   <h3 className="font-medium text-sm truncate">{product.name}</h3>
                   {showProductIdsOnTiles && (
                     <p className="text-xs text-muted-foreground truncate">{product.product_id}</p>
@@ -449,17 +455,19 @@ const POS = () => {
               <div className="space-y-3">
                 {cart.map(item => (
                   <div key={item.product.id} className="flex items-center gap-3 p-2 border rounded-lg">
-                    <div className="w-12 h-12 bg-muted rounded flex items-center justify-center shrink-0 overflow-hidden">
-                      {item.product.image_url ? (
-                        <img
-                          src={item.product.image_url}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <ShoppingCart className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </div>
+                    {showProductImagesOnTiles && (
+                      <div className="w-12 h-12 bg-muted rounded flex items-center justify-center shrink-0 overflow-hidden">
+                        {item.product.image_url ? (
+                          <img
+                            src={item.product.image_url}
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ShoppingCart className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.product.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -548,6 +556,11 @@ const POS = () => {
           onShowProductIdsChange={(val) => {
             setShowProductIdsOnTiles(val);
             localStorage.setItem(`pos-show-ids-${selectedLocationId}`, String(val));
+          }}
+          showProductImages={showProductImagesOnTiles}
+          onShowProductImagesChange={(val) => {
+            setShowProductImagesOnTiles(val);
+            localStorage.setItem(`pos-show-images-${selectedLocationId}`, String(val));
           }}
         />
       )}
