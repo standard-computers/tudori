@@ -52,6 +52,10 @@ interface DeliveryItemsDialogProps {
   onConfirm: (items: { product_id: string; quantity: number; uom_id: string | null }[]) => void;
   title?: string;
   description?: string;
+  sourceName?: string | null;
+  sourceLabel?: string;
+  destinationName?: string | null;
+  destinationLabel?: string;
 }
 
 export const DeliveryItemsDialog = ({
@@ -62,6 +66,10 @@ export const DeliveryItemsDialog = ({
   onConfirm,
   title = 'Select Delivery Items',
   description = 'Choose which items to include in this delivery.',
+  sourceName,
+  sourceLabel = 'Source',
+  destinationName,
+  destinationLabel = 'Destination',
 }: DeliveryItemsDialogProps) => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<DeliveryItemSelection[]>([]);
@@ -171,6 +179,19 @@ export const DeliveryItemsDialog = ({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+
+        {(sourceName || destinationName) && (
+          <div className="grid grid-cols-2 gap-4 px-6 py-3 bg-muted/50 rounded-md mx-6 mb-2 text-sm">
+            <div>
+              <div className="text-muted-foreground text-xs uppercase tracking-wide">{sourceLabel}</div>
+              <div className="font-medium truncate">{sourceName || '—'}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground text-xs uppercase tracking-wide">{destinationLabel}</div>
+              <div className="font-medium truncate">{destinationName || '—'}</div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-8 px-6">
