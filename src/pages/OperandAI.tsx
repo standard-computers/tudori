@@ -279,7 +279,7 @@ export default function OperandAI() {
 
           <div className="border-t p-3">
             <div className="mx-auto w-full max-w-3xl">
-              <PromptInput onSubmit={() => { if (!sending) send(); }}>
+              <PromptInput onSubmit={(e) => { console.log("[OperandAI] onSubmit fired", e); if (!sending) send(); }}>
                 <PromptInputTextarea
                   ref={textareaRef as any}
                   value={input}
