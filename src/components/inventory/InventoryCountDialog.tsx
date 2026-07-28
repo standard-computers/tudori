@@ -211,60 +211,85 @@ export const InventoryCountDialog = ({
 
     setIsSaving(true);
 
-    // Get next count number
-    const { data: countNumber, error: numError } = await supabase
-      .rpc('get_next_count_number', { p_company_id: companyId });
-
-    if (numError) {
-      toast.error('Failed to generate count number');
+    // Non-exploded: single sheet
+    if (!explode) {
+      const result = await createSingleCountSheet(filteredInventory);
       setIsSaving(false);
-      return;
-    }
-
-    // Create the count session
-    const { data: newCount, error: createError } = await supabase
-      .from('inventory_counts')
-      .insert({
-        count_number: countNumber,
-        company_id: companyId,
-        location_id: locationId,
+      if (!result) return;
+      toast.success(`Count sheet ${result.count_number} created with ${filteredInventory.length} item(s)`);
+      setSelectedCount({
+        id: result.id,
+        count_number: result.count_number,
         status: 'in_progress',
-        created_by: user?.id,
-      })
-      .select('id, count_number, status, count_date, notes, created_at')
-      .single();
-
-    if (createError) {
-      toast.error('Failed to create count sheet');
-      setIsSaving(false);
+        count_date: new Date().toISOString().slice(0, 10),
+        notes: null,
+        created_at: new Date().toISOString(),
+        location: { name: locationName },
+      });
+      await fetchCountItems(result.id);
+      setView('detail');
       return;
     }
 
-    // Create count items from filtered inventory snapshot
-    const items = filteredInventory.map((inv) => ({
-      count_id: newCount.id,
-      product_id: inv.product?.id || '',
-      bin_id: inv.bin?.id || null,
-      system_quantity: inv.quantity,
-    }));
+    // Explode: group filtered inventory
+    const groups = new Map<string, { label: string; items: typeof inventory }>();
 
-    const { error: itemsError } = await supabase
-      .from('inventory_count_items')
-      .insert(items);
+    if (explodeBy === 'bin') {
+      for (const inv of filteredInventory) {
+        const key = inv.bin?.id || '__unbinned__';
+        const label = inv.bin?.name || 'Unbinned';
+        if (!groups.has(key)) groups.set(key, { label, items: [] });
+        groups.get(key)!.items.push(inv);
+      }
+    } else {
+      // by area — need bin -> area mapping
+      const binIds = Array.from(
+        new Set(filteredInventory.map((inv) => inv.bin?.id).filter(Boolean) as string[]),
+      );
+      let binAreaMap = new Map<string, { area_id: string; area_name: string }>();
+      if (binIds.length > 0) {
+        const { data: binRows } = await supabase
+          .from('bins')
+          .select('id, area_id, area:areas(id, name)')
+          .in('id', binIds);
+        for (const b of (binRows || []) as any[]) {
+          binAreaMap.set(b.id, {
+            area_id: b.area_id,
+            area_name: b.area?.name || 'Unknown Area',
+          });
+        }
+      }
+      for (const inv of filteredInventory) {
+        if (!inv.bin?.id) {
+          const key = '__unbinned__';
+          if (!groups.has(key)) groups.set(key, { label: 'Unbinned', items: [] });
+          groups.get(key)!.items.push(inv);
+          continue;
+        }
+        const info = binAreaMap.get(inv.bin.id);
+        const key = info?.area_id || '__unknown__';
+        const label = info?.area_name || 'Unknown Area';
+        if (!groups.has(key)) groups.set(key, { label, items: [] });
+        groups.get(key)!.items.push(inv);
+      }
+    }
+
+    const created: string[] = [];
+    for (const [, group] of groups) {
+      const result = await createSingleCountSheet(
+        group.items,
+        `${explodeBy === 'area' ? 'Area' : 'Bin'}: ${group.label}`,
+      );
+      if (result) created.push(result.count_number);
+    }
 
     setIsSaving(false);
-
-    if (itemsError) {
-      toast.error('Failed to create count items');
-      return;
-    }
-
-    toast.success(`Count sheet ${countNumber} created with ${filteredInventory.length} item(s)`);
-    // Open the new count
-    setSelectedCount({ ...newCount, location: { name: locationName } } as CountSession);
-    await fetchCountItems(newCount.id);
-    setView('detail');
+    if (created.length === 0) return;
+    toast.success(`Created ${created.length} count sheet${created.length === 1 ? '' : 's'}`);
+    setView('list');
+    fetchCounts();
   };
+
 
   const handleViewCount = async (count: CountSession) => {
     setSelectedCount(count);
