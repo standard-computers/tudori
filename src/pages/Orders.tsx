@@ -3425,6 +3425,19 @@ const Orders = () => {
               : "Select Items for Delivery"
           }
           description="Choose which items to include in this delivery. You can select all or partial quantities."
+          sourceName={(() => {
+            const po = orders.find((o) => o.id === pendingConfirmOrderId);
+            return po?.vendor?.name || po?.source_location?.name || null;
+          })()}
+          sourceLabel={(() => {
+            const po = orders.find((o) => o.id === pendingConfirmOrderId);
+            return po?.source_location_id ? "Source Location" : "Vendor";
+          })()}
+          destinationName={(() => {
+            const po = orders.find((o) => o.id === pendingConfirmOrderId);
+            return po?.location?.name || null;
+          })()}
+          destinationLabel="Ship To"
         />
       )}
 
