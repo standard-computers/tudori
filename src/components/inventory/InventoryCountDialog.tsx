@@ -645,7 +645,50 @@ export const InventoryCountDialog = ({
                 includeUnbinned={includeUnbinned}
                 onIncludeUnbinnedChange={setIncludeUnbinned}
               />
+
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="explode-count"
+                    checked={explode}
+                    onCheckedChange={(v) => setExplode(v === true)}
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label htmlFor="explode-count" className="cursor-pointer">
+                      Explode into multiple count sheets
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Create a separate count sheet per group instead of one combined sheet.
+                    </p>
+                  </div>
+                </div>
+
+                {explode && (
+                  <div className="pl-6">
+                    <Label className="text-xs text-muted-foreground">Explode by</Label>
+                    <RadioGroup
+                      value={explodeBy}
+                      onValueChange={(v) => setExplodeBy(v as 'area' | 'bin')}
+                      className="flex gap-4 mt-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="area" id="explode-by-area" />
+                        <Label htmlFor="explode-by-area" className="cursor-pointer font-normal">
+                          Area (one sheet per area)
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="bin" id="explode-by-bin" />
+                        <Label htmlFor="explode-by-bin" className="cursor-pointer font-normal">
+                          Bin (one sheet per bin)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
             </div>
+
           ) : (
             <div className="space-y-4">
               {/* Variance summary */}
