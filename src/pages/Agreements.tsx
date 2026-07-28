@@ -513,6 +513,27 @@ export default function Agreements() {
       // Sort by date
       docs.sort((a, b) => a.periodDate.localeCompare(b.periodDate));
       setPendingDocs(docs);
+
+      // Log check run to audit history if enabled
+      if (isHistoryEnabled("agreement")) {
+        const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+        await supabase.from("audit_log").insert({
+          table_name: "agreements",
+          record_id: selectedAgreement.id,
+          action: "UPDATE",
+          old_value: null,
+          new_value: {
+            check_run: true,
+            pending_documents: docs.length,
+            period_start: startDate.toISOString().slice(0, 10),
+            period_end: endDate.toISOString().slice(0, 10),
+          } as any,
+          changed_fields: ["check_run"],
+          user_id: userId,
+          company_id: companyId,
+        });
+      }
+
       setCheckDialogOpen(true);
     } finally {
       setChecking(false);
@@ -535,8 +556,12 @@ export default function Agreements() {
         return;
       }
       let lastRateIds = new Set<string>();
+      const historyEnabled = isHistoryEnabled("agreement");
+      const userId = historyEnabled ? (await supabase.auth.getUser()).data.user?.id ?? null : null;
+      const auditRows: any[] = [];
 
       for (const agr of selectedAgreements) {
+        const docsBefore = docs.length;
         const [{ data: accs }, { data: items }, { data: agrRatesData }] = await Promise.all([
           supabase.from("agreement_accounts")
             .select("id, account_id, account:accounts(id, account_id, name, type)")
@@ -627,6 +652,28 @@ export default function Agreements() {
             }
           }
         }
+        if (historyEnabled) {
+          auditRows.push({
+            table_name: "agreements",
+            record_id: agr.id,
+            action: "UPDATE",
+            old_value: null,
+            new_value: {
+              check_run: true,
+              pending_documents: docs.length - docsBefore,
+              period_start: startDate.toISOString().slice(0, 10),
+              period_end: endDate.toISOString().slice(0, 10),
+              bulk: true,
+            } as any,
+            changed_fields: ["check_run"],
+            user_id: userId,
+            company_id: companyId,
+          });
+        }
+      }
+
+      if (auditRows.length > 0) {
+        await supabase.from("audit_log").insert(auditRows);
       }
 
       setLinkedRateIds(lastRateIds);
