@@ -777,7 +777,7 @@ export const InventoryCountDialog = ({
             </Button>
             <Button size="sm" onClick={handleConfirmCreate} disabled={isSaving || (selectedBinIds.size === 0 && !includeUnbinned)}>
               <Plus className="h-4 w-4 mr-1" />
-              {isSaving ? 'Creating...' : 'Create Count Sheet'}
+              {isSaving ? 'Creating...' : explode ? 'Create Count Sheets' : 'Create Count Sheet'}
             </Button>
           </div>
         )}
