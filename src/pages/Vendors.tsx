@@ -1469,6 +1469,10 @@ const Vendors = () => {
                 </div>
               </TabsContent>
 
+              <TabsContent value="products">
+                <VendorProductsTab vendorId={viewingVendor.id} />
+              </TabsContent>
+
               <TabsContent value="notes">
                 <div className="space-y-4">
                   <p className="whitespace-pre-wrap">{viewingVendor.notes || "No notes."}</p>
