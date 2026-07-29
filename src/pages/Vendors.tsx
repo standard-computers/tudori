@@ -1565,7 +1565,7 @@ function VendorProductsTab({ vendorId }: { vendorId: string }) {
       setLoading(true);
       const { data } = await supabase
         .from("products")
-        .select("id, product_id, name, sku, status, base_price")
+        .select("id, product_id, name, sku, status, price")
         .eq("vendor_id", vendorId)
         .order("name");
       if (active) {
@@ -1597,7 +1597,7 @@ function VendorProductsTab({ vendorId }: { vendorId: string }) {
             <SortableTableHead label="Name" sortKey="name" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
             <SortableTableHead label="SKU" sortKey="sku" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
             <SortableTableHead label="Status" sortKey="status" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
-            <SortableTableHead label="Base Price" sortKey="base_price" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
+            <SortableTableHead label="Base Price" sortKey="price" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1607,7 +1607,7 @@ function VendorProductsTab({ vendorId }: { vendorId: string }) {
               <TableCell>{p.name}</TableCell>
               <TableCell className="font-mono text-sm">{p.sku || "-"}</TableCell>
               <TableCell><Badge variant="secondary">{p.status || "-"}</Badge></TableCell>
-              <TableCell>{p.base_price != null ? Number(p.base_price).toFixed(2) : "-"}</TableCell>
+              <TableCell>{p.price != null ? Number(p.price).toFixed(2) : "-"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
