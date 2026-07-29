@@ -1450,6 +1450,64 @@ const BillOfMaterials = () => {
           >
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
+          {!isEditing && !isViewMode && (
+            <CopyFromIdDialog<{ bom: BillOfMaterial; items: BomItem[]; steps: BomStep[] }>
+              idLabel="BoM ID"
+              className="absolute right-16 top-4 z-10"
+              onFetch={async (bomIdInput) => {
+                const { data: bomRow, error: bomErr } = await supabase
+                  .from('bill_of_materials')
+                  .select('*, product:products(name, product_id)')
+                  .eq('company_id', companyId!)
+                  .ilike('bom_id', bomIdInput)
+                  .maybeSingle();
+                if (bomErr || !bomRow) return null;
+
+                const { data: itemRows } = await supabase
+                  .from('bom_items')
+                  .select('id, product_id, quantity, notes, product:products(product_id, name, unit)')
+                  .eq('bom_id', (bomRow as any).id);
+
+                const { data: stepRows } = await supabase
+                  .from('bom_steps')
+                  .select('id, step_number, name, description, location_id, bin_id, estimated_duration_minutes, location:locations(name), bin:bins(name, bin_id)')
+                  .eq('bom_id', (bomRow as any).id)
+                  .order('step_number');
+
+                const stepsWithItems: BomStep[] = await Promise.all(
+                  (stepRows || []).map(async (step: any) => {
+                    const { data: stepItems } = await supabase
+                      .from('bom_step_items')
+                      .select('id, product_id, quantity, notes, product:products(product_id, name, unit)')
+                      .eq('bom_step_id', step.id);
+                    return { ...step, items: (stepItems || []) } as BomStep;
+                  })
+                );
+
+                return {
+                  bom: bomRow as unknown as BillOfMaterial,
+                  items: (itemRows || []) as unknown as BomItem[],
+                  steps: stepsWithItems,
+                };
+              }}
+              onApply={({ bom, items, steps }) => {
+                setFormData(prev => ({
+                  ...prev,
+                  name: `${bom.name} (Copy)`,
+                  product_id: bom.product_id,
+                  output_quantity: bom.output_quantity,
+                  status: bom.status,
+                  notes: bom.notes || '',
+                }));
+                // Strip DB ids so inserts create fresh rows
+                setBomItems(items.map(({ id, ...rest }) => rest));
+                setBomSteps(steps.map(({ id, ...rest }) => ({
+                  ...rest,
+                  items: (rest.items || []).map(({ id: _i, ...it }) => it),
+                })));
+              }}
+            />
+          )}
           <DialogHeader className="shrink-0">
             <DialogTitle>
               {isViewMode ? 'View Bill of Materials' : isEditing ? 'Edit Bill of Materials' : 'New Bill of Materials'}
