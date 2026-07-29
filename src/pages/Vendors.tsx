@@ -1385,8 +1385,9 @@ const Vendors = () => {
           </DialogHeader>
           {viewingVendor && (
             <Tabs defaultValue="details" className="w-full px-6 py-4">
-              <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsList className="grid w-full grid-cols-4 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="products">Products</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-1">
                   <History className="w-3.5 h-3.5" /> History
