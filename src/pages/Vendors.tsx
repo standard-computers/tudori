@@ -1385,8 +1385,9 @@ const Vendors = () => {
           </DialogHeader>
           {viewingVendor && (
             <Tabs defaultValue="details" className="w-full px-6 py-4">
-              <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsList className="grid w-full grid-cols-4 mb-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="products">Products</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-1">
                   <History className="w-3.5 h-3.5" /> History
@@ -1466,6 +1467,10 @@ const Vendors = () => {
                     </p>
                   </div>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="products">
+                <VendorProductsTab vendorId={viewingVendor.id} />
               </TabsContent>
 
               <TabsContent value="notes">
@@ -1550,4 +1555,66 @@ const Vendors = () => {
   );
 };
 
+function VendorProductsTab({ vendorId }: { vendorId: string }) {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("products")
+        .select("id, product_id, name, sku, status, base_price")
+        .eq("vendor_id", vendorId)
+        .order("name");
+      if (active) {
+        setProducts(data || []);
+        setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [vendorId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading products...
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return <p className="text-sm text-muted-foreground py-8 text-center">No products belong to this vendor.</p>;
+  }
+
+  return (
+    <div className="border rounded-md">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <SortableTableHead label="Product ID" sortKey="product_id" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
+            <SortableTableHead label="Name" sortKey="name" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
+            <SortableTableHead label="SKU" sortKey="sku" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
+            <SortableTableHead label="Status" sortKey="status" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
+            <SortableTableHead label="Base Price" sortKey="base_price" currentSortKey="" currentSortDirection={null} onSort={() => {}} filterable={false} />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {products.map((p) => (
+            <TableRow key={p.id}>
+              <TableCell className="font-mono text-sm">{p.product_id || "-"}</TableCell>
+              <TableCell>{p.name}</TableCell>
+              <TableCell className="font-mono text-sm">{p.sku || "-"}</TableCell>
+              <TableCell><Badge variant="secondary">{p.status || "-"}</Badge></TableCell>
+              <TableCell>{p.base_price != null ? Number(p.base_price).toFixed(2) : "-"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 export default Vendors;
+
