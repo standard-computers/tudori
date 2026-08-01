@@ -1313,7 +1313,11 @@ const Vendors = () => {
                         </div>
                       </TabsContent>
                     </Tabs>
-                    <DialogFooter className="shrink-0 flex justify-between">
+                    <DialogFooter className="shrink-0 flex justify-end gap-2">
+                      <Button type="submit">
+                        {isEditing ? "Update" : "Create"}
+                        <Kbd className="ml-2">⌘S</Kbd>
+                      </Button>
                       {isEditing && editingId && (
                         <Button
                           type="button"
@@ -1330,10 +1334,6 @@ const Vendors = () => {
                           Delete
                         </Button>
                       )}
-                      <Button type="submit" className="ml-auto">
-                        {isEditing ? "Update" : "Create"}
-                        <Kbd className="ml-2">⌘S</Kbd>
-                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
