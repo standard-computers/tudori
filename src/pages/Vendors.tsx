@@ -1313,8 +1313,24 @@ const Vendors = () => {
                         </div>
                       </TabsContent>
                     </Tabs>
-                    <DialogFooter className="shrink-0">
-                      <Button type="submit">
+                    <DialogFooter className="shrink-0 flex justify-between">
+                      {isEditing && editingId && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => {
+                            const vendor = vendors.find((v) => v.id === editingId);
+                            if (vendor) {
+                              setIsDialogOpen(false);
+                              handleDeleteRequest(vendor);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      )}
+                      <Button type="submit" className="ml-auto">
                         {isEditing ? "Update" : "Create"}
                         <Kbd className="ml-2">⌘S</Kbd>
                       </Button>
