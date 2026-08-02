@@ -455,17 +455,20 @@ export default function Go() {
               Choose a location to view and manage work.
             </p>
             {locations.length > 0 ? (
-              <div className="w-full max-w-xs space-y-2">
-                {locations.map((loc) => (
-                  <button
-                    key={loc.id}
-                    className="w-full p-4 rounded-xl bg-card border border-border text-left hover:border-primary/30 transition-colors"
-                    onClick={() => setSelectedLocationId(loc.id)}
-                  >
-                    <div className="font-medium text-sm">{loc.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{loc.location_id}</div>
-                  </button>
-                ))}
+              <div className="w-full max-w-xs space-y-4">
+                <SearchableSelect
+                  options={locations.map((loc) => ({
+                    value: loc.id,
+                    label: `${loc.location_id} ${loc.name}`,
+                  }))}
+                  value={selectedLocationId}
+                  onValueChange={setSelectedLocationId}
+                  placeholder="Search locations..."
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground text-center">
+                  {locations.length} location{locations.length !== 1 ? 's' : ''} available
+                </p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No locations assigned to you.</p>
