@@ -275,6 +275,16 @@ export function StatusBar() {
               </div>
             )}
           </ScrollArea>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => clearMessages()}
+              disabled={messages.length === 0}
+            >
+              Clear Log
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
