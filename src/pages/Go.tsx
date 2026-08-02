@@ -8,13 +8,7 @@ import { checkAndCompleteDelivery } from '@/lib/delivery-fulfillment';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/SearchableSelect';
 import {
   ArrowLeft,
   MapPin,
