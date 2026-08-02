@@ -77,7 +77,7 @@ const TRANSACTION_ROUTES: Record<string, TransactionRoute> = {
 
 export function StatusBar() {
   const navigate = useNavigate();
-  const { transaction, isLoading, loadingText, messages, visibleMessages, addMessage } = useStatusBar();
+  const { transaction, isLoading, loadingText, messages, visibleMessages, addMessage, clearMessages } = useStatusBar();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
