@@ -128,59 +128,7 @@ const CompleteProfile = () => {
 
     setLoading(true);
 
-    if (hasExistingProfile) {
-      // User already has a profile but no company — create company and link it
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          industry: industry || null,
-          size: size || null,
-          address_line1: addressLine1,
-          address_line2: addressLine2 || null,
-          city,
-          state,
-          postal_code: postalCode,
-          country,
-        })
-        .select('id')
-        .single();
-
-      if (companyError || !companyData) {
-        toast.error('Failed to create company: ' + (companyError?.message || 'Unknown error'));
-        setLoading(false);
-        return;
-      }
-
-      // Update profile with new company and name
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          company_id: companyData.id,
-          first_name: firstName,
-          last_name: lastName,
-        })
-        .eq('user_id', user.id);
-
-      if (profileError) {
-        toast.error('Failed to update profile: ' + profileError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Assign owner + IT roles
-      await supabase.from('user_roles').insert([
-        { user_id: user.id, company_id: companyData.id, role: 'owner' as const },
-        { user_id: user.id, company_id: companyData.id, role: 'it' as const },
-      ]);
-
-      toast.success('Company setup complete!');
-      navigate('/dashboard');
-      setLoading(false);
-      return;
-    }
-
-    // No existing profile — use the RPC to create everything in one transaction
+    // Single secure server-side step for both cases (new profile, or profile without company)
     const { error } = await supabase.rpc('create_company_and_profile', {
       p_company_name: companyName,
       p_industry: industry || null,
@@ -200,6 +148,7 @@ const CompleteProfile = () => {
       setLoading(false);
       return;
     }
+
 
     toast.success('Profile setup complete!');
     navigate('/dashboard');
