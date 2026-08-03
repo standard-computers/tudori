@@ -287,71 +287,33 @@ const Auth = () => {
     }
 
     if (authData.user) {
-      // Create new company
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          industry,
-          size,
-          address_line1: addressLine1,
-          address_line2: addressLine2 || null,
-          city,
-          state,
-          postal_code: postalCode,
-          country,
-        })
-        .select()
-        .single();
-
-      if (companyError) {
-        toast.error('Failed to create company: ' + companyError.message);
+      // Without an active session (e.g. email confirmation required) we cannot
+      // create the company yet — onboarding finishes on first sign-in.
+      if (!authData.session) {
+        toast.success('Account created! Confirm your email, then sign in to finish setup.');
+        setIsLogin(true);
+        setSignupStep(1);
         setLoading(false);
         return;
       }
 
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id,
-          company_id: companyData.id,
-          first_name: firstName,
-          last_name: lastName,
-        });
+      // Create company + profile + roles in one secure server-side transaction
+      const { error: setupError } = await supabase.rpc('create_company_and_profile', {
+        p_company_name: companyName,
+        p_industry: industry || null,
+        p_size: size || null,
+        p_address_line1: addressLine1,
+        p_address_line2: addressLine2 || null,
+        p_city: city,
+        p_state: state,
+        p_postal_code: postalCode,
+        p_country: country,
+        p_first_name: firstName,
+        p_last_name: lastName,
+      });
 
-      if (profileError) {
-        toast.error('Failed to create profile: ' + profileError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Assign owner and IT roles to the user who created the company
-      const { error: ownerRoleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          company_id: companyData.id,
-          role: 'owner',
-        });
-
-      if (ownerRoleError) {
-        toast.error('Failed to assign owner role: ' + ownerRoleError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Also assign IT role for full system access
-      const { error: itRoleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          company_id: companyData.id,
-          role: 'it',
-        });
-
-      if (itRoleError) {
-        toast.error('Failed to assign IT role: ' + itRoleError.message);
+      if (setupError) {
+        toast.error('Failed to create company: ' + setupError.message);
         setLoading(false);
         return;
       }
@@ -359,6 +321,7 @@ const Auth = () => {
       toast.success('Account created successfully!');
       navigate('/dashboard');
     }
+
     
     setLoading(false);
   };
