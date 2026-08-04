@@ -117,15 +117,26 @@ serve(async (req) => {
       .eq('company_id', company_id)
       .maybeSingle();
     if (!targetRole) {
-      return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', target_user_id)
+        .eq('company_id', company_id)
+        .maybeSingle();
+      if (!targetProfile) {
+        return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
     }
 
     const tempPassword = generateTempPassword();
+    // email_confirm ensures the user can sign in immediately without confirming email
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
       password: tempPassword,
+      email_confirm: true,
     });
+
 
     if (updateError) {
       console.error('Error resetting password:', updateError);
