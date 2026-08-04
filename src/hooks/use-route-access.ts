@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PATH_TO_CODE } from '@/config/transaction-codes';
+import { isSoleCompanyUser } from '@/lib/permissions';
 
 /**
  * Hook to check if the current user has access to a specific route
@@ -45,6 +46,13 @@ export const useRouteAccess = (path: string) => {
       if (!profile?.company_id) {
         setChecking(false);
         setHasAccess(true);
+        return;
+      }
+
+      const sole = await isSoleCompanyUser(profile.company_id, user.id);
+      if (sole) {
+        setHasAccess(true);
+        setChecking(false);
         return;
       }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSoleCompanyUser } from '@/lib/permissions';
 
 interface TransactionAccess {
   accessMap: Record<string, boolean>;
@@ -34,7 +35,8 @@ export const useTransactionAccess = (companyId?: string): TransactionAccess => {
 
       // Build access map - if no records exist, user has access to everything (default)
       const map: Record<string, boolean> = {};
-      if (data && data.length > 0) {
+      const sole = await isSoleCompanyUser(companyId, user.id);
+      if (!sole && data && data.length > 0) {
         data.forEach((record) => {
           map[record.transaction_code] = record.has_access;
         });
