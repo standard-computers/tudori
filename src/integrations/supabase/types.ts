@@ -5973,6 +5973,10 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      is_sole_company_user: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       list_employee_sensitive: {
         Args: { p_company_id: string }
         Returns: {
