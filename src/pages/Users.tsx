@@ -492,6 +492,37 @@ const Users = () => {
     }
   };
 
+  const handleResetInvitationPassword = async (invitation: Invitation) => {
+    if (!companyId) return;
+    setResetLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { target_email: invitation.email, company_id: companyId },
+      });
+      if (error) {
+        toast.error('Failed to reset password: ' + error.message);
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      setCreatedPasswordEmail(invitation.email);
+      setCreatedTempPassword(data.temp_password);
+      setPasswordDialogTitle('Password Reset Successfully');
+      setPasswordDialogDescription(
+        <>The password for <strong>{invitation.email}</strong> has been reset. They can sign in immediately with this temporary password — no email confirmation required. <strong>This password will not be shown again.</strong></>
+      );
+      setShowPasswordDialog(true);
+      toast.success('Password reset');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+
   const resetForm = () => {
     setEmail('');
     setFirstName('');
