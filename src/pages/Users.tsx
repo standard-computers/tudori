@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X, KeyRound } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { z } from 'zod';
@@ -70,10 +70,13 @@ const roleDescriptions: Record<string, string> = {
   viewer: 'Read-only access to data',
 };
 
-const InvitationRow = ({ invitation, canManageUsers, onCancel }: { 
+const InvitationRow = ({ invitation, canManageUsers, canResetPasswords, onCancel, onResetPassword, resetLoading }: { 
   invitation: Invitation; 
   canManageUsers: boolean; 
+  canResetPasswords: boolean;
   onCancel: (id: string) => void;
+  onResetPassword: (invitation: Invitation) => void;
+  resetLoading: boolean;
 }) => {
   return (
     <TableRow>
@@ -94,20 +97,35 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
         {new Date(invitation.created_at).toLocaleDateString()}
       </TableCell>
       <TableCell className="text-right">
-        {canManageUsers && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onCancel(invitation.id)}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        )}
+        <div className="flex items-center justify-end gap-1">
+          {canResetPasswords && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={resetLoading}
+              onClick={() => onResetPassword(invitation)}
+              title="Reset password"
+            >
+              {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+            </Button>
+          )}
+          {canManageUsers && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onCancel(invitation.id)}
+              className="text-destructive hover:text-destructive"
+              title="Cancel invitation"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
 };
+
 
 const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword, title, description }: { 
   open: boolean; 
@@ -474,6 +492,37 @@ const Users = () => {
     }
   };
 
+  const handleResetInvitationPassword = async (invitation: Invitation) => {
+    if (!companyId) return;
+    setResetLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { target_email: invitation.email, company_id: companyId },
+      });
+      if (error) {
+        toast.error('Failed to reset password: ' + error.message);
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      setCreatedPasswordEmail(invitation.email);
+      setCreatedTempPassword(data.temp_password);
+      setPasswordDialogTitle('Password Reset Successfully');
+      setPasswordDialogDescription(
+        <>The password for <strong>{invitation.email}</strong> has been reset. They can sign in immediately with this temporary password — no email confirmation required. <strong>This password will not be shown again.</strong></>
+      );
+      setShowPasswordDialog(true);
+      toast.success('Password reset');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+
   const resetForm = () => {
     setEmail('');
     setFirstName('');
@@ -767,8 +816,12 @@ const Users = () => {
                         key={invitation.id}
                         invitation={invitation}
                         canManageUsers={canManageUsers}
+                        canResetPasswords={canResetPasswords}
                         onCancel={handleCancelInvitation}
+                        onResetPassword={handleResetInvitationPassword}
+                        resetLoading={resetLoading}
                       />
+
                     ))}
                   </TableBody>
                 </Table>

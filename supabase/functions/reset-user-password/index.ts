@@ -48,11 +48,31 @@ serve(async (req) => {
       });
     }
 
-    const { target_user_id, company_id } = await req.json();
-    if (!target_user_id || !company_id) {
-      return new Response(JSON.stringify({ error: 'target_user_id and company_id are required' }), {
+    const body = await req.json();
+    const { company_id, target_email } = body;
+    let target_user_id = body.target_user_id as string | undefined;
+
+    if (!company_id || (!target_user_id && !target_email)) {
+      return new Response(JSON.stringify({ error: 'company_id and target_user_id or target_email are required' }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
+    }
+
+    // Resolve user id from email (used for pending invitations)
+    if (!target_user_id && target_email) {
+      const normalized = String(target_email).toLowerCase().trim();
+      const { data: prof } = await supabaseAdmin
+        .from('profiles')
+        .select('user_id')
+        .ilike('email', normalized)
+        .eq('company_id', company_id)
+        .maybeSingle();
+      if (!prof?.user_id) {
+        return new Response(JSON.stringify({ error: 'No user account found for this invitation yet' }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      target_user_id = prof.user_id;
     }
 
     if (target_user_id === callingUser.id) {
@@ -60,6 +80,7 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
+
 
     // Caller must be admin or IT of the company
     const { data: isAdmin } = await supabaseAdmin.rpc('has_role', {
@@ -96,15 +117,26 @@ serve(async (req) => {
       .eq('company_id', company_id)
       .maybeSingle();
     if (!targetRole) {
-      return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', target_user_id)
+        .eq('company_id', company_id)
+        .maybeSingle();
+      if (!targetProfile) {
+        return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
     }
 
     const tempPassword = generateTempPassword();
+    // email_confirm ensures the user can sign in immediately without confirming email
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
       password: tempPassword,
+      email_confirm: true,
     });
+
 
     if (updateError) {
       console.error('Error resetting password:', updateError);
