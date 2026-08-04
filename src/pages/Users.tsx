@@ -816,8 +816,12 @@ const Users = () => {
                         key={invitation.id}
                         invitation={invitation}
                         canManageUsers={canManageUsers}
+                        canResetPasswords={canResetPasswords}
                         onCancel={handleCancelInvitation}
+                        onResetPassword={handleResetInvitationPassword}
+                        resetLoading={resetLoading}
                       />
+
                     ))}
                   </TableBody>
                 </Table>
