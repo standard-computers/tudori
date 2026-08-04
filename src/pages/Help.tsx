@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import {
+import { isSoleCompanyUser } from '@/lib/permissions';
   DndContext,
   DragOverlay,
   useDraggable,
@@ -201,7 +202,8 @@ import {
        .eq("user_id", user!.id)
        .eq("company_id", companyId!)
        .in("role", ["owner", "admin", "it"]);
-     setIsAdmin(data && data.length > 0);
+     const sole = await isSoleCompanyUser(companyId, user!.id);
+    setIsAdmin(sole || (data && data.length > 0));
    };
  
    const fetchData = async () => {

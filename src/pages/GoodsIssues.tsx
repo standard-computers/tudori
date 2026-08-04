@@ -56,6 +56,7 @@ import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
+import { isSoleCompanyUser } from '@/lib/permissions';
 
 interface GoodsIssue {
   id: string;
@@ -246,7 +247,8 @@ const GoodsIssues = () => {
         .eq('company_id', data.company_id);
 
       const adminRoles = ['admin', 'owner', 'it'];
-      setIsAdmin(roles?.some(r => adminRoles.includes(r.role)) ?? false);
+      const sole = await isSoleCompanyUser(data.company_id, user!.id);
+      setIsAdmin(sole || (roles?.some(r => adminRoles.includes(r.role)) ?? false));
     }
   };
 

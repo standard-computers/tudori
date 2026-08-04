@@ -68,6 +68,7 @@ import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
+import { isSoleCompanyUser } from '@/lib/permissions';
 
 // Maps document types to their route for navigation
 const DOC_TYPE_ROUTE: Record<string, string> = {
@@ -286,7 +287,8 @@ const Ledgers = () => {
         .eq('company_id', profile.company_id)
         .single();
 
-      setCurrentUserRole(roleData?.role || null);
+      const sole = await isSoleCompanyUser(profile.company_id, user!.id);
+      setCurrentUserRole(roleData?.role || (sole ? 'owner' : null));
 
       await Promise.all([
         fetchLedgers(profile.company_id),

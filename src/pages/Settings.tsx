@@ -14,6 +14,7 @@ import { ArrowLeft, Building2, Save, Loader2, ShieldAlert, Upload, X } from 'luc
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/lib/toast';
 import { Database } from '@/integrations/supabase/types';
+import { isSoleCompanyUser } from '@/lib/permissions';
 
 interface Company {
   id: string;
@@ -104,7 +105,8 @@ const Settings = () => {
           .eq('company_id', profile.company_id);
 
         const roles = (roleData as UserRoleEntry[] | null)?.map(r => r.role) || [];
-        setCurrentUserRoles(roles);
+        const sole = await isSoleCompanyUser(profile.company_id, user!.id);
+        setCurrentUserRoles(sole && roles.length === 0 ? ['owner'] : roles);
 
         const { data: companyData, error } = await supabase
           .from('companies')

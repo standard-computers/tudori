@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { createPackagingUnit, createMultiplePackagingUnits } from '@/lib/packaging-units';
 import { logMaterialMovement } from '@/lib/material-movements';
+import { isSoleCompanyUser } from '@/lib/permissions';
 interface InventoryItem {
   id: string;
   location_id: string;
@@ -144,7 +145,8 @@ export const InventoryDetailDialog = ({
           .eq('company_id', item.product.company_id)
           .eq('user_id', user.id);
 
-        const isAdmin = !!(urData && urData.some((r: any) => r.role === 'owner' || r.role === 'admin'));
+        const sole = await isSoleCompanyUser(item.product.company_id, user.id);
+        const isAdmin = sole || !!(urData && urData.some((r: any) => r.role === 'owner' || r.role === 'admin'));
         setIsLocationAdmin(isAdmin);
       } else {
         setIsLocationAdmin(false);
