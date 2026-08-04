@@ -70,10 +70,13 @@ const roleDescriptions: Record<string, string> = {
   viewer: 'Read-only access to data',
 };
 
-const InvitationRow = ({ invitation, canManageUsers, onCancel }: { 
+const InvitationRow = ({ invitation, canManageUsers, canResetPasswords, onCancel, onResetPassword, resetLoading }: { 
   invitation: Invitation; 
   canManageUsers: boolean; 
+  canResetPasswords: boolean;
   onCancel: (id: string) => void;
+  onResetPassword: (invitation: Invitation) => void;
+  resetLoading: boolean;
 }) => {
   return (
     <TableRow>
@@ -94,20 +97,35 @@ const InvitationRow = ({ invitation, canManageUsers, onCancel }: {
         {new Date(invitation.created_at).toLocaleDateString()}
       </TableCell>
       <TableCell className="text-right">
-        {canManageUsers && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onCancel(invitation.id)}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        )}
+        <div className="flex items-center justify-end gap-1">
+          {canResetPasswords && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={resetLoading}
+              onClick={() => onResetPassword(invitation)}
+              title="Reset password"
+            >
+              {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+            </Button>
+          )}
+          {canManageUsers && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onCancel(invitation.id)}
+              className="text-destructive hover:text-destructive"
+              title="Cancel invitation"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
 };
+
 
 const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword, title, description }: { 
   open: boolean; 
