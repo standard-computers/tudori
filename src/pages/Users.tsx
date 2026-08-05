@@ -241,14 +241,18 @@ const Users = () => {
       .from('user_roles')
       .select('role')
       .eq('user_id', user!.id)
-      .eq('company_id', profileData.company_id)
-      .maybeSingle();
+      .eq('company_id', profileData.company_id);
 
     if (roleError) {
       console.error('Error fetching role:', roleError);
     }
-    
-    setCurrentUserRole(roleData?.role || null);
+
+    // A user can hold multiple roles (e.g. owner + it) — pick the most privileged
+    const rolePriority: Record<string, number> = { it: 0, owner: 1, admin: 2, member: 3, viewer: 4 };
+    const myRoles = (roleData || []).map((r) => r.role as string);
+    myRoles.sort((a, b) => (rolePriority[a] ?? 9) - (rolePriority[b] ?? 9));
+    setCurrentUserRole(myRoles[0] || null);
+
 
     const { data: profiles } = await supabase
       .from('profiles')
