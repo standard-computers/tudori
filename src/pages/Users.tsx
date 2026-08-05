@@ -515,9 +515,11 @@ const Users = () => {
         body: { target_email: invitation.email, company_id: companyId },
       });
       if (error) {
-        toast.error('Failed to reset password: ' + error.message);
+        const detail = await extractFnError(error);
+        toast.error('Failed to reset password: ' + detail);
         return;
       }
+
       if (data?.error) {
         toast.error(data.error);
         return;
