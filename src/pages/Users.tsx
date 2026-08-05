@@ -277,7 +277,14 @@ const Users = () => {
 
     if (profiles && roles) {
       const rolesMap = new Map<string, UserRole['role']>();
-      roles.forEach((r) => rolesMap.set(r.user_id, r.role as UserRole['role']));
+      roles.forEach((r) => {
+        const existing = rolesMap.get(r.user_id);
+        const rank = (v?: string) => (rolePriority[v ?? ''] ?? 9);
+        if (!existing || rank(r.role) < rank(existing)) {
+          rolesMap.set(r.user_id, r.role as UserRole['role']);
+        }
+      });
+
 
       const members: TeamMember[] = profiles.map((p) => ({
         id: p.id,
