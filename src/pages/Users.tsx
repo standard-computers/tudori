@@ -241,14 +241,18 @@ const Users = () => {
       .from('user_roles')
       .select('role')
       .eq('user_id', user!.id)
-      .eq('company_id', profileData.company_id)
-      .maybeSingle();
+      .eq('company_id', profileData.company_id);
 
     if (roleError) {
       console.error('Error fetching role:', roleError);
     }
-    
-    setCurrentUserRole(roleData?.role || null);
+
+    // A user can hold multiple roles (e.g. owner + it) — pick the most privileged
+    const rolePriority: Record<string, number> = { it: 0, owner: 1, admin: 2, member: 3, viewer: 4 };
+    const myRoles = (roleData || []).map((r) => r.role as string);
+    myRoles.sort((a, b) => (rolePriority[a] ?? 9) - (rolePriority[b] ?? 9));
+    setCurrentUserRole(myRoles[0] || null);
+
 
     const { data: profiles } = await supabase
       .from('profiles')
@@ -273,7 +277,14 @@ const Users = () => {
 
     if (profiles && roles) {
       const rolesMap = new Map<string, UserRole['role']>();
-      roles.forEach((r) => rolesMap.set(r.user_id, r.role as UserRole['role']));
+      roles.forEach((r) => {
+        const existing = rolesMap.get(r.user_id);
+        const rank = (v?: string) => (rolePriority[v ?? ''] ?? 9);
+        if (!existing || rank(r.role) < rank(existing)) {
+          rolesMap.set(r.user_id, r.role as UserRole['role']);
+        }
+      });
+
 
       const members: TeamMember[] = profiles.map((p) => ({
         id: p.id,
@@ -293,7 +304,9 @@ const Users = () => {
     setLoading(false);
   };
 
-  const canManageUsers = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
+  const isSoleUser = teamMembers.length <= 1;
+  const canManageUsers = isSoleUser || currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
+
 
   const openInviteDialog = () => {
     resetForm();
@@ -454,7 +467,7 @@ const Users = () => {
     fetchTeamData();
   };
 
-  const canResetPasswords = currentUserRole === 'admin' || currentUserRole === 'it' || currentUserRole === 'owner';
+  const canResetPasswords = isSoleUser || currentUserRole === 'admin' || currentUserRole === 'it' || currentUserRole === 'owner';
 
   const handleResetPassword = async (member: TeamMember) => {
     if (!companyId) return;
