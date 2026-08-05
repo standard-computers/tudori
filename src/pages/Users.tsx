@@ -304,7 +304,9 @@ const Users = () => {
     setLoading(false);
   };
 
-  const canManageUsers = currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
+  const isSoleUser = teamMembers.length <= 1;
+  const canManageUsers = isSoleUser || currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'it';
+
 
   const openInviteDialog = () => {
     resetForm();
