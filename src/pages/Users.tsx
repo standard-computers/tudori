@@ -467,7 +467,7 @@ const Users = () => {
     fetchTeamData();
   };
 
-  const canResetPasswords = currentUserRole === 'admin' || currentUserRole === 'it' || currentUserRole === 'owner';
+  const canResetPasswords = isSoleUser || currentUserRole === 'admin' || currentUserRole === 'it' || currentUserRole === 'owner';
 
   const handleResetPassword = async (member: TeamMember) => {
     if (!companyId) return;
