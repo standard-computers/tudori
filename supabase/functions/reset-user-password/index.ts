@@ -82,41 +82,39 @@ serve(async (req) => {
     }
 
 
-    // Caller must be admin or IT of the company
-    const { data: isAdmin } = await supabaseAdmin.rpc('has_role', {
-      _user_id: callingUser.id, _role: 'admin'
-    });
-    const { data: isIt } = await supabaseAdmin.rpc('has_role', {
-      _user_id: callingUser.id, _role: 'it'
-    });
-    const { data: isOwner } = await supabaseAdmin.rpc('has_role', {
-      _user_id: callingUser.id, _role: 'owner'
-    });
+    // Caller must be admin/it/owner of the company (a user may hold multiple roles)
+    const { data: callerRoles } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', callingUser.id)
+      .eq('company_id', company_id);
 
-    if (!isAdmin && !isIt && !isOwner) {
-      // Fallback: check company-scoped membership
-      const { data: roleRow } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', callingUser.id)
-        .eq('company_id', company_id)
-        .maybeSingle();
-      const allowed = roleRow && ['admin', 'it', 'owner'].includes(roleRow.role);
-      if (!allowed) {
-        return new Response(JSON.stringify({ error: 'Not authorized' }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
+    let allowed = (callerRoles || []).some((r: { role: string }) =>
+      ['admin', 'it', 'owner'].includes(r.role)
+    );
+
+    // A company's sole user has full privileges regardless of role
+    if (!allowed) {
+      const { count } = await supabaseAdmin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', company_id);
+      if ((count ?? 0) <= 1) allowed = true;
+    }
+
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: 'Not authorized' }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     // Verify the target user belongs to the same company
-    const { data: targetRole } = await supabaseAdmin
+    const { data: targetRoles } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', target_user_id)
-      .eq('company_id', company_id)
-      .maybeSingle();
-    if (!targetRole) {
+      .eq('company_id', company_id);
+    if (!targetRoles || targetRoles.length === 0) {
       const { data: targetProfile } = await supabaseAdmin
         .from('profiles')
         .select('user_id')
@@ -129,6 +127,7 @@ serve(async (req) => {
         });
       }
     }
+
 
     const tempPassword = generateTempPassword();
     // email_confirm ensures the user can sign in immediately without confirming email
