@@ -45,8 +45,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
-import {
 import { isSoleCompanyUser } from '@/lib/permissions';
+import {
   DndContext,
   DragOverlay,
   useDraggable,
