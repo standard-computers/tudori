@@ -153,25 +153,28 @@ serve(async (req) => {
       });
     }
 
-    // Verify the target user belongs to the same company
-    const { data: targetRoles } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', target_user_id)
-      .eq('company_id', company_id);
-    if (!targetRoles || targetRoles.length === 0) {
-      const { data: targetProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('user_id')
+    // Verify the target user belongs to the same company (skip when resolved by email above)
+    if (!target_email) {
+      const { data: targetRoles } = await supabaseAdmin
+        .from('user_roles')
+        .select('role')
         .eq('user_id', target_user_id)
-        .eq('company_id', company_id)
-        .maybeSingle();
-      if (!targetProfile) {
-        return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        .eq('company_id', company_id);
+      if (!targetRoles || targetRoles.length === 0) {
+        const { data: targetProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', target_user_id)
+          .eq('company_id', company_id)
+          .maybeSingle();
+        if (!targetProfile) {
+          return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
+            status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
       }
     }
+
 
 
     const tempPassword = generateTempPassword();
