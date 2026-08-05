@@ -47,7 +47,28 @@ interface UserRole {
   role: 'owner' | 'admin' | 'member' | 'viewer' | 'it';
 }
 
+// Edge function errors hide the response body in error.message ("non-2xx status code").
+// Pull the real message out of the attached Response when available.
+const extractFnError = async (error: any): Promise<string> => {
+  try {
+    const res = error?.context;
+    if (res && typeof res.text === 'function') {
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        if (json?.error) return typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
+      } catch {
+        if (text) return text;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return error?.message || 'Unknown error';
+};
+
 const inviteSchema = z.object({
+
   email: z.string().email('Please enter a valid email'),
   first_name: z.string().trim().min(1, 'First name is required').max(60),
   last_name: z.string().trim().max(60).optional().or(z.literal('')),
@@ -481,9 +502,11 @@ const Users = () => {
         body: { target_user_id: member.user_id, company_id: companyId },
       });
       if (error) {
-        toast.error('Failed to reset password: ' + error.message);
+        const detail = await extractFnError(error);
+        toast.error('Failed to reset password: ' + detail);
         return;
       }
+
       if (data?.error) {
         toast.error(data.error);
         return;
@@ -513,9 +536,11 @@ const Users = () => {
         body: { target_email: invitation.email, company_id: companyId },
       });
       if (error) {
-        toast.error('Failed to reset password: ' + error.message);
+        const detail = await extractFnError(error);
+        toast.error('Failed to reset password: ' + detail);
         return;
       }
+
       if (data?.error) {
         toast.error(data.error);
         return;

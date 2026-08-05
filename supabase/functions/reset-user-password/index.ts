@@ -61,19 +61,64 @@ serve(async (req) => {
     // Resolve user id from email (used for pending invitations)
     if (!target_user_id && target_email) {
       const normalized = String(target_email).toLowerCase().trim();
+
+      // 1) Try the profiles table (profiles.email may be null for invited users)
       const { data: prof } = await supabaseAdmin
         .from('profiles')
         .select('user_id')
         .ilike('email', normalized)
         .eq('company_id', company_id)
         .maybeSingle();
-      if (!prof?.user_id) {
+
+      if (prof?.user_id) {
+        target_user_id = prof.user_id;
+      } else {
+        // 2) Fall back to the auth user list, then verify company membership
+        let page = 1;
+        let found: string | undefined;
+        while (page <= 20 && !found) {
+          const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+          if (listErr || !list?.users?.length) break;
+          const match = list.users.find(
+            (u: { id: string; email?: string | null }) => (u.email || '').toLowerCase() === normalized
+          );
+          if (match) found = match.id;
+          if (list.users.length < 200) break;
+          page++;
+        }
+
+        if (found) {
+          const { data: memberProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('user_id')
+            .eq('user_id', found)
+            .eq('company_id', company_id)
+            .maybeSingle();
+          const { data: memberRoles } = await supabaseAdmin
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', found)
+            .eq('company_id', company_id);
+          const { data: invite } = await supabaseAdmin
+            .from('invitations')
+            .select('id')
+            .ilike('email', normalized)
+            .eq('company_id', company_id)
+            .maybeSingle();
+
+          if (memberProfile || (memberRoles && memberRoles.length > 0) || invite) {
+            target_user_id = found;
+          }
+        }
+      }
+
+      if (!target_user_id) {
         return new Response(JSON.stringify({ error: 'No user account found for this invitation yet' }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
-      target_user_id = prof.user_id;
     }
+
 
     if (target_user_id === callingUser.id) {
       return new Response(JSON.stringify({ error: 'Cannot reset your own password here' }), {
@@ -108,25 +153,28 @@ serve(async (req) => {
       });
     }
 
-    // Verify the target user belongs to the same company
-    const { data: targetRoles } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', target_user_id)
-      .eq('company_id', company_id);
-    if (!targetRoles || targetRoles.length === 0) {
-      const { data: targetProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('user_id')
+    // Verify the target user belongs to the same company (skip when resolved by email above)
+    if (!target_email) {
+      const { data: targetRoles } = await supabaseAdmin
+        .from('user_roles')
+        .select('role')
         .eq('user_id', target_user_id)
-        .eq('company_id', company_id)
-        .maybeSingle();
-      if (!targetProfile) {
-        return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
-          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        .eq('company_id', company_id);
+      if (!targetRoles || targetRoles.length === 0) {
+        const { data: targetProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', target_user_id)
+          .eq('company_id', company_id)
+          .maybeSingle();
+        if (!targetProfile) {
+          return new Response(JSON.stringify({ error: 'Target user not in this company' }), {
+            status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
       }
     }
+
 
 
     const tempPassword = generateTempPassword();
