@@ -291,11 +291,12 @@ const Dashboard = () => {
 
         {/* Apps grid with drag and drop */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={apps.filter(a => a.name !== 'Logout').map((app) => app.name)} strategy={rectSortingStrategy}>
+          <SortableContext items={apps.filter(a => a.name !== 'Logout' && a.name !== 'Dashboard').map((app) => app.name)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {apps
                   .filter((app) => {
                     if (app.name === 'Logout') return false;
+                    if (app.name === 'Dashboard') return false;
                     if (hiddenTiles.has(app.name)) return false;
                     const code = APP_NAME_TO_CODE[app.name];
                     if (code && !hasAccess(code)) return false;
