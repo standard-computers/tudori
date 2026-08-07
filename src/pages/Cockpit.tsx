@@ -4140,7 +4140,16 @@ const [areaFormData, setAreaFormData] = useState({
         </DialogContent>
       </Dialog>
 
+      <MoveProgressDialog
+        open={isMoveProgressOpen}
+        onOpenChange={setIsMoveProgressOpen}
+        targetBin={moveTargetBinLabel}
+        items={moveProgressItems}
+        isComplete={moveProgressComplete}
+      />
+
       {/* Material Movements Dialog */}
+
       <MaterialMovementsDialog
         open={isMaterialFlowDialogOpen}
         onOpenChange={setIsMaterialFlowDialogOpen}
