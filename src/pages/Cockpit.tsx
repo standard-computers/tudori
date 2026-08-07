@@ -28,6 +28,8 @@ import AutoMakeAreasDialog from '@/components/cockpit/AutoMakeAreasDialog';
 import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
+import MoveProgressDialog, { type MoveProgressItem } from '@/components/cockpit/MoveProgressDialog';
+
 import ViewWorkOrderDialog from '@/components/cockpit/ViewWorkOrderDialog';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import CockpitUsersTab from '@/components/cockpit/CockpitUsersTab';
@@ -278,6 +280,11 @@ const [areaFormData, setAreaFormData] = useState({
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [moveToBinId, setMoveToBinId] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
+  const [isMoveProgressOpen, setIsMoveProgressOpen] = useState(false);
+  const [moveProgressItems, setMoveProgressItems] = useState<MoveProgressItem[]>([]);
+  const [moveProgressComplete, setMoveProgressComplete] = useState(false);
+  const [moveTargetBinLabel, setMoveTargetBinLabel] = useState('');
+
   const [isMaterialFlowDialogOpen, setIsMaterialFlowDialogOpen] = useState(false);
 
    // Outbound orders to fulfill state
@@ -1148,25 +1155,41 @@ const [areaFormData, setAreaFormData] = useState({
 
   const handleBulkMoveToBin = async () => {
     if (selectedInventoryIds.size === 0 || !moveToBinId) return;
-    
+
+    const targetBin = bins.find(b => b.id === moveToBinId);
+    const targetLabel = targetBin?.bin_id || 'Selected bin';
+    const itemsToMove = inventory.filter(inv => selectedInventoryIds.has(inv.id));
+
+    const initial: MoveProgressItem[] = itemsToMove.map(inv => ({
+      label: inv.product?.product_id || inv.product_id,
+      detail: `${inv.quantity} ${inv.product?.name ? '· ' + inv.product.name : ''}`.trim(),
+      from: bins.find(b => b.id === inv.bin_id)?.bin_id,
+      to: targetLabel,
+      status: 'pending',
+    }));
+
+    setMoveProgressItems(initial);
+    setMoveProgressComplete(false);
+    setMoveTargetBinLabel(targetLabel);
+    setIsMoveProgressOpen(true);
     setIsMoving(true);
-    
-    try {
-      const itemIds = Array.from(selectedInventoryIds);
-      
-      // Get the inventory items being moved for logging
-      const itemsToMove = inventory.filter(inv => selectedInventoryIds.has(inv.id));
-      
-      const { error } = await supabase
-        .from('inventory')
-        .update({ bin_id: moveToBinId })
-        .in('id', itemIds);
-      
-      if (error) throw error;
-      
-      // Log material movements for each item (bin-to-bin transfer)
-      if (companyId && selectedLocationId) {
-        for (const invItem of itemsToMove) {
+    setIsMoveDialogOpen(false);
+
+    let successCount = 0;
+
+    for (let i = 0; i < itemsToMove.length; i++) {
+      const invItem = itemsToMove[i];
+      setMoveProgressItems(prev => prev.map((p, idx) => (idx === i ? { ...p, status: 'moving' } : p)));
+
+      try {
+        const { error } = await supabase
+          .from('inventory')
+          .update({ bin_id: moveToBinId })
+          .eq('id', invItem.id);
+
+        if (error) throw error;
+
+        if (companyId && selectedLocationId) {
           await logMaterialMovement({
             companyId,
             locationId: selectedLocationId,
@@ -1179,21 +1202,27 @@ const [areaFormData, setAreaFormData] = useState({
             destinationBinId: moveToBinId,
           });
         }
+
+        successCount++;
+        setMoveProgressItems(prev => prev.map((p, idx) => (idx === i ? { ...p, status: 'success', message: 'Moved' } : p)));
+      } catch (error) {
+        console.error('Bulk move error:', error);
+        const message = error instanceof Error ? error.message : 'Failed to move';
+        setMoveProgressItems(prev => prev.map((p, idx) => (idx === i ? { ...p, status: 'error', message } : p)));
       }
-      
-      const targetBin = bins.find(b => b.id === moveToBinId);
-      toast.success(`Moved ${itemIds.length} items to ${targetBin?.bin_id || 'selected bin'}`);
-      setSelectedInventoryIds(new Set());
-      setIsMoveDialogOpen(false);
-      setMoveToBinId('');
-      fetchInventory();
-    } catch (error) {
-      console.error('Bulk move error:', error);
-      toast.error('Failed to move items');
-    } finally {
-      setIsMoving(false);
+    }
+
+    setMoveProgressComplete(true);
+    setIsMoving(false);
+    setMoveToBinId('');
+    setSelectedInventoryIds(new Set());
+    fetchInventory();
+
+    if (successCount > 0) {
+      toast.success(`Moved ${successCount} item${successCount !== 1 ? 's' : ''} to ${targetLabel}`);
     }
   };
+
 
   const fetchOutboundOrders = async () => {
     if (!selectedLocationId) return;
@@ -4111,7 +4140,16 @@ const [areaFormData, setAreaFormData] = useState({
         </DialogContent>
       </Dialog>
 
+      <MoveProgressDialog
+        open={isMoveProgressOpen}
+        onOpenChange={setIsMoveProgressOpen}
+        targetBin={moveTargetBinLabel}
+        items={moveProgressItems}
+        isComplete={moveProgressComplete}
+      />
+
       {/* Material Movements Dialog */}
+
       <MaterialMovementsDialog
         open={isMaterialFlowDialogOpen}
         onOpenChange={setIsMaterialFlowDialogOpen}
