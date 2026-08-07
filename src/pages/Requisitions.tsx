@@ -2523,6 +2523,11 @@ function RequisitionsTable({
                 <TableCell className="text-right font-mono">
                   ${req.total_amount?.toFixed(2) || '0.00'}
                 </TableCell>
+                <TableCell className="text-sm">
+                  {req.expected_delivery_date
+                    ? format(parseISO(req.expected_delivery_date), 'MMM d, yyyy')
+                    : '-'}
+                </TableCell>
                 <TableCell>
                   {req.creator ? `${req.creator.first_name || ''} ${req.creator.last_name || ''}`.trim() || '-' : '-'}
                 </TableCell>
