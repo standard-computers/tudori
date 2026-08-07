@@ -357,6 +357,7 @@ const Requisitions = () => {
             subtotal,
             tax_amount: 0,
             total_amount: totalAmount,
+            expected_delivery_date: (requisition as any).expected_delivery_date || null,
             notes: `Converted from requisition ${requisition.requisition_id}`,
             created_by: user!.id,
           })
@@ -1151,6 +1152,7 @@ const Requisitions = () => {
           subtotal,
           tax_amount: 0,
           total_amount: totalAmount,
+          expected_delivery_date: (requisition as any).expected_delivery_date || null,
           notes: `Converted from requisition ${requisition.requisition_id}`,
           created_by: user!.id,
         })
