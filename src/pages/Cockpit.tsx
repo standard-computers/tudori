@@ -278,6 +278,11 @@ const [areaFormData, setAreaFormData] = useState({
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [moveToBinId, setMoveToBinId] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
+  const [isMoveProgressOpen, setIsMoveProgressOpen] = useState(false);
+  const [moveProgressItems, setMoveProgressItems] = useState<MoveProgressItem[]>([]);
+  const [moveProgressComplete, setMoveProgressComplete] = useState(false);
+  const [moveTargetBinLabel, setMoveTargetBinLabel] = useState('');
+
   const [isMaterialFlowDialogOpen, setIsMaterialFlowDialogOpen] = useState(false);
 
    // Outbound orders to fulfill state
