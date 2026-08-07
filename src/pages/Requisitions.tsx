@@ -2437,6 +2437,14 @@ function RequisitionsTable({
                 filterable={false}
               />
               <SortableTableHead
+                label="Expected Delivery"
+                sortKey="expected_delivery_date"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
                 label="Created By"
                 sortKey="creator.last_name"
                 currentSortKey={sortConfig.key}
