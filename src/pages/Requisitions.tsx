@@ -815,6 +815,9 @@ const Requisitions = () => {
             location_id: runFormData.location_id || null,
             vendor_id: vendorId,
             total_amount: totalAmount,
+            expected_delivery_date: calculateRequisitionExpectedDate(
+              vendorItems.map((i) => i.product.lead_time_days),
+            ),
             notes: `Auto-generated requisition for ${locationName}`,
             created_by: user?.id || null,
           })
