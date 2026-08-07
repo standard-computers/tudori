@@ -4620,6 +4620,7 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          expected_delivery_date: string | null
           id: string
           location_id: string | null
           notes: string | null
@@ -4634,6 +4635,7 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          expected_delivery_date?: string | null
           id?: string
           location_id?: string | null
           notes?: string | null
@@ -4648,6 +4650,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          expected_delivery_date?: string | null
           id?: string
           location_id?: string | null
           notes?: string | null
