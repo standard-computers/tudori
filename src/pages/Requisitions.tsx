@@ -1709,6 +1709,14 @@ const Requisitions = () => {
                   <p className="mt-1 font-mono text-lg">${viewRequisition.total_amount?.toFixed(2) || '0.00'}</p>
                 </div>
                 <div>
+                  <Label className="text-muted-foreground">Expected Delivery</Label>
+                  <p className="mt-1 text-sm">
+                    {viewRequisition.expected_delivery_date
+                      ? format(parseISO(viewRequisition.expected_delivery_date), 'MMM d, yyyy')
+                      : '-'}
+                  </p>
+                </div>
+                <div>
                   <Label className="text-muted-foreground">Location</Label>
                   {viewRequisition.location ? (
                     <button
