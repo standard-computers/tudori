@@ -28,6 +28,8 @@ import AutoMakeAreasDialog from '@/components/cockpit/AutoMakeAreasDialog';
 import BinSequenceDialog from '@/components/cockpit/BinSequenceDialog';
 import { BulkInventoryActionsDialog } from '@/components/cockpit/BulkInventoryActionsDialog';
 import MaterialMovementsDialog from '@/components/cockpit/MaterialMovementsDialog';
+import MoveProgressDialog, { type MoveProgressItem } from '@/components/cockpit/MoveProgressDialog';
+
 import ViewWorkOrderDialog from '@/components/cockpit/ViewWorkOrderDialog';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import CockpitUsersTab from '@/components/cockpit/CockpitUsersTab';
