@@ -70,6 +70,7 @@ interface Requisition {
   notes: string | null;
   total_amount: number;
   created_at: string;
+  expected_delivery_date?: string | null;
   created_by: string | null;
   location?: { name: string; location_id: string } | null;
   source_location?: { name: string; location_id: string } | null;
@@ -139,7 +140,23 @@ interface Product {
   price: number | null;
   vendor_id: string | null;
   status: string;
+  lead_time_days?: number | null;
 }
+
+/**
+ * Expected delivery date for a requisition:
+ * create date + 1 day + sum of the lead times of the products on the requisition.
+ * Returned as a `yyyy-MM-dd` string (local date, no timezone shift).
+ */
+const calculateRequisitionExpectedDate = (leadTimes: (number | null | undefined)[]): string => {
+  const totalLeadDays = leadTimes.reduce((sum, d) => sum + (Number(d) || 0), 0);
+  const date = new Date();
+  date.setDate(date.getDate() + 1 + totalLeadDays);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 interface PurchaseOrder {
   id: string;
