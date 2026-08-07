@@ -1734,7 +1734,10 @@ const Orders = () => {
           subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
-          expected_delivery_date: calculateLatestExpectedDeliveryDate(orderItems, products),
+          // Requisition-derived POs keep the requisition's expected delivery date
+          ...(orders.find((o) => o.id === editOrderId)?.requisition_id
+            ? {}
+            : { expected_delivery_date: calculateLatestExpectedDeliveryDate(orderItems, products) }),
           notes: formData.notes || null,
         })
         .eq("id", editOrderId);

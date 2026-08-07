@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { format, parseISO } from 'date-fns';
 import { useShiftSelect } from '@/hooks/use-shift-select';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useReduceAppLoad } from '@/hooks/use-reduce-app-load';
@@ -70,6 +71,7 @@ interface Requisition {
   notes: string | null;
   total_amount: number;
   created_at: string;
+  expected_delivery_date?: string | null;
   created_by: string | null;
   location?: { name: string; location_id: string } | null;
   source_location?: { name: string; location_id: string } | null;
@@ -139,7 +141,23 @@ interface Product {
   price: number | null;
   vendor_id: string | null;
   status: string;
+  lead_time_days?: number | null;
 }
+
+/**
+ * Expected delivery date for a requisition:
+ * create date + 1 day + sum of the lead times of the products on the requisition.
+ * Returned as a `yyyy-MM-dd` string (local date, no timezone shift).
+ */
+const calculateRequisitionExpectedDate = (leadTimes: (number | null | undefined)[]): string => {
+  const totalLeadDays = leadTimes.reduce((sum, d) => sum + (Number(d) || 0), 0);
+  const date = new Date();
+  date.setDate(date.getDate() + 1 + totalLeadDays);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 interface PurchaseOrder {
   id: string;
@@ -340,6 +358,7 @@ const Requisitions = () => {
             subtotal,
             tax_amount: 0,
             total_amount: totalAmount,
+            expected_delivery_date: (requisition as any).expected_delivery_date || null,
             notes: `Converted from requisition ${requisition.requisition_id}`,
             created_by: user!.id,
           })
@@ -696,7 +715,7 @@ const Requisitions = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id, status')
+      .select('id, name, product_id, price, vendor_id, status, lead_time_days')
       .eq('company_id', companyId)
       .eq('status', 'active') // Only fetch active products
       .order('name');
@@ -798,6 +817,9 @@ const Requisitions = () => {
             location_id: runFormData.location_id || null,
             vendor_id: vendorId,
             total_amount: totalAmount,
+            expected_delivery_date: calculateRequisitionExpectedDate(
+              vendorItems.map((i) => i.product.lead_time_days),
+            ),
             notes: `Auto-generated requisition for ${locationName}`,
             created_by: user?.id || null,
           })
@@ -1131,6 +1153,7 @@ const Requisitions = () => {
           subtotal,
           tax_amount: 0,
           total_amount: totalAmount,
+          expected_delivery_date: (requisition as any).expected_delivery_date || null,
           notes: `Converted from requisition ${requisition.requisition_id}`,
           created_by: user!.id,
         })
@@ -1684,6 +1707,14 @@ const Requisitions = () => {
                 <div>
                   <Label className="text-muted-foreground">Total Amount</Label>
                   <p className="mt-1 font-mono text-lg">${viewRequisition.total_amount?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Expected Delivery</Label>
+                  <p className="mt-1 text-sm">
+                    {viewRequisition.expected_delivery_date
+                      ? format(parseISO(viewRequisition.expected_delivery_date), 'MMM d, yyyy')
+                      : '-'}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Location</Label>
@@ -2415,6 +2446,14 @@ function RequisitionsTable({
                 filterable={false}
               />
               <SortableTableHead
+                label="Expected Delivery"
+                sortKey="expected_delivery_date"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterable={false}
+              />
+              <SortableTableHead
                 label="Created By"
                 sortKey="creator.last_name"
                 currentSortKey={sortConfig.key}
@@ -2492,6 +2531,11 @@ function RequisitionsTable({
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   ${req.total_amount?.toFixed(2) || '0.00'}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {req.expected_delivery_date
+                    ? format(parseISO(req.expected_delivery_date), 'MMM d, yyyy')
+                    : '-'}
                 </TableCell>
                 <TableCell>
                   {req.creator ? `${req.creator.first_name || ''} ${req.creator.last_name || ''}`.trim() || '-' : '-'}

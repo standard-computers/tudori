@@ -1,0 +1,1 @@
+ALTER TABLE public.requisitions ADD COLUMN IF NOT EXISTS expected_delivery_date date;
