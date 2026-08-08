@@ -729,7 +729,7 @@ const Requisitions = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id, status, lead_time_days')
+      .select('id, name, product_id, price, vendor_id, status, lead_time_days, transport_time_days, manufacture_time_days')
       .eq('company_id', companyId)
       .eq('status', 'active') // Only fetch active products
       .order('name');
