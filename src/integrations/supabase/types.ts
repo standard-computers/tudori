@@ -5896,6 +5896,7 @@ export type Database = {
       }
       get_next_account_id: { Args: { p_company_id: string }; Returns: string }
       get_next_agreement_id: { Args: { p_company_id: string }; Returns: string }
+      get_next_asset_id: { Args: { p_company_id: string }; Returns: string }
       get_next_bom_id: { Args: { p_company_id: string }; Returns: string }
       get_next_count_number: { Args: { p_company_id: string }; Returns: string }
       get_next_credit_memo_number: {

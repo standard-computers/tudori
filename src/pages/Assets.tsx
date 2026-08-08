@@ -11,6 +11,8 @@ import { useMaximizedState } from "@/hooks/use-maximize-preference";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { useChangeHistorySettings } from "@/hooks/use-change-history-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,6 +135,8 @@ const Assets = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationOpt[]>([]);
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
+  const historyEnabled = isHistoryEnabled("asset");
 
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } =
     useColumnVisibility("assets", ASSET_COLUMNS);
@@ -189,9 +193,14 @@ const Assets = () => {
     setLocations((data || []) as any);
   }
 
-  const handleAddClick = () => {
+  const handleAddClick = async () => {
     setEditingAsset(null);
-    setForm(emptyForm());
+    let nextTag = "";
+    if (companyId) {
+      const { data } = await supabase.rpc("get_next_asset_id" as any, { p_company_id: companyId });
+      nextTag = (data as string) || "";
+    }
+    setForm({ ...emptyForm(), asset_tag: nextTag });
     setIsDialogOpen(true);
   };
 
@@ -569,6 +578,7 @@ const Assets = () => {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
+                  {historyEnabled && <TabsTrigger value="history">History</TabsTrigger>}
                 </TabsList>
               </div>
 
@@ -671,6 +681,14 @@ const Assets = () => {
                   )}
                 </DialogBody>
               </TabsContent>
+
+              {historyEnabled && (
+                <TabsContent value="history" className="flex-1 overflow-y-auto mt-0">
+                  <DialogBody>
+                    <AuditHistoryTab tableName="assets" recordId={viewingAsset.id} />
+                  </DialogBody>
+                </TabsContent>
+              )}
             </Tabs>
           )}
         </DialogContent>
