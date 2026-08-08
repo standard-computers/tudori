@@ -11,6 +11,8 @@ import { useMaximizedState } from "@/hooks/use-maximize-preference";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { AuditHistoryTab } from "@/components/AuditHistoryTab";
+import { useChangeHistorySettings } from "@/hooks/use-change-history-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
