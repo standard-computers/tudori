@@ -569,6 +569,7 @@ const Assets = () => {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
+                  {historyEnabled && <TabsTrigger value="history">History</TabsTrigger>}
                 </TabsList>
               </div>
 
