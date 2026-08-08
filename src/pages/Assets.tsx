@@ -193,9 +193,14 @@ const Assets = () => {
     setLocations((data || []) as any);
   }
 
-  const handleAddClick = () => {
+  const handleAddClick = async () => {
     setEditingAsset(null);
-    setForm(emptyForm());
+    let nextTag = "";
+    if (companyId) {
+      const { data } = await supabase.rpc("get_next_asset_id" as any, { p_company_id: companyId });
+      nextTag = (data as string) || "";
+    }
+    setForm({ ...emptyForm(), asset_tag: nextTag });
     setIsDialogOpen(true);
   };
 
