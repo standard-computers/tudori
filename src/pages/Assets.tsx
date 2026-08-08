@@ -135,6 +135,8 @@ const Assets = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationOpt[]>([]);
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
+  const historyEnabled = isHistoryEnabled("asset");
 
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } =
     useColumnVisibility("assets", ASSET_COLUMNS);
