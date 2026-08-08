@@ -142,22 +142,36 @@ interface Product {
   vendor_id: string | null;
   status: string;
   lead_time_days?: number | null;
+  transport_time_days?: number | null;
+  manufacture_time_days?: number | null;
 }
 
 /**
- * Expected delivery date for a requisition:
- * create date + 1 day + sum of the lead times of the products on the requisition.
+ * Expected delivery date — must match the PO line-item rule exactly:
+ * today + the LARGEST (transport + manufacture + lead) across the products,
+ * with a minimum of 1 day.
  * Returned as a `yyyy-MM-dd` string (local date, no timezone shift).
  */
-const calculateRequisitionExpectedDate = (leadTimes: (number | null | undefined)[]): string => {
-  const totalLeadDays = leadTimes.reduce((sum, d) => sum + (Number(d) || 0), 0);
+const calculateRequisitionExpectedDate = (
+  products: (Pick<Product, 'lead_time_days' | 'transport_time_days' | 'manufacture_time_days'> | null | undefined)[],
+): string => {
+  let maxLeadDays = 1;
+  for (const p of products) {
+    if (!p) continue;
+    const leadDays =
+      (Number(p.transport_time_days) || 0) +
+      (Number(p.manufacture_time_days) || 0) +
+      (Number(p.lead_time_days) || 0);
+    if (leadDays > maxLeadDays) maxLeadDays = leadDays;
+  }
   const date = new Date();
-  date.setDate(date.getDate() + 1 + totalLeadDays);
+  date.setDate(date.getDate() + maxLeadDays);
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 };
+
 
 interface PurchaseOrder {
   id: string;
@@ -715,7 +729,7 @@ const Requisitions = () => {
   const fetchProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, name, product_id, price, vendor_id, status, lead_time_days')
+      .select('id, name, product_id, price, vendor_id, status, lead_time_days, transport_time_days, manufacture_time_days')
       .eq('company_id', companyId)
       .eq('status', 'active') // Only fetch active products
       .order('name');
@@ -818,7 +832,7 @@ const Requisitions = () => {
             vendor_id: vendorId,
             total_amount: totalAmount,
             expected_delivery_date: calculateRequisitionExpectedDate(
-              vendorItems.map((i) => i.product.lead_time_days),
+              vendorItems.map((i) => i.product),
             ),
             notes: `Auto-generated requisition for ${locationName}`,
             created_by: user?.id || null,
