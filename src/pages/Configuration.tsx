@@ -30,6 +30,7 @@ interface DocumentIdConfig {
 const DOCUMENT_TYPES = [
   { value: 'account', label: 'Account', prefix_placeholder: 'ACC-', icon: Receipt },
   { value: 'agreement', label: 'Agreement', prefix_placeholder: 'AGR-', icon: FileText },
+  { value: 'asset', label: 'Asset', prefix_placeholder: 'AST-', icon: Box },
   { value: 'assignment', label: 'Assignment', prefix_placeholder: 'ASN-', icon: Users },
   { value: 'bill_of_materials', label: 'Bill of Materials', prefix_placeholder: 'BOM-', icon: ClipboardList },
   { value: 'carrier', label: 'Carrier', prefix_placeholder: 'CAR-', icon: Truck },
