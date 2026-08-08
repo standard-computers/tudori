@@ -671,6 +671,14 @@ const Assets = () => {
                   )}
                 </DialogBody>
               </TabsContent>
+
+              {historyEnabled && (
+                <TabsContent value="history" className="flex-1 overflow-y-auto mt-0">
+                  <DialogBody>
+                    <AuditHistoryTab tableName="assets" recordId={viewingAsset.id} />
+                  </DialogBody>
+                </TabsContent>
+              )}
             </Tabs>
           )}
         </DialogContent>
