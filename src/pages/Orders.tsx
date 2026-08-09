@@ -351,6 +351,12 @@ const Orders = () => {
   const { exportToExcel } = useExcel();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
+    "orders",
+    ORDER_COLUMNS,
+  );
+
+
 
   // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
   useEffect(() => {
