@@ -326,13 +326,20 @@ interface Company {
 
 // Column definitions for Purchase Orders table
 const ORDER_COLUMNS: ColumnDefinition[] = [
+  { key: "select", label: "Select", alwaysVisible: true },
   { key: "po_number", label: "PO #", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
-  { key: "vendor", label: "Vendor", defaultVisible: true },
-  { key: "ship_to", label: "Ship To", defaultVisible: true },
-  { key: "bill_to", label: "Bill To", defaultVisible: true },
+  { key: "vendor_id", label: "Vendor ID", defaultVisible: true },
+  { key: "vendor_name", label: "Vendor Name", defaultVisible: true },
+  { key: "ship_to_id", label: "Ship To ID", defaultVisible: true },
+  { key: "ship_to_name", label: "Ship To Name", defaultVisible: true },
+  { key: "bill_to_id", label: "Bill To ID", defaultVisible: true },
+  { key: "bill_to_name", label: "Bill To Name", defaultVisible: true },
+  { key: "item_count", label: "Items", defaultVisible: true },
   { key: "total_amount", label: "Total", defaultVisible: true },
-  { key: "order_date", label: "Date", defaultVisible: true },
+  { key: "created_by", label: "Created By", defaultVisible: true },
+  { key: "date", label: "Date", defaultVisible: true },
+  { key: "time", label: "Time", defaultVisible: true },
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
