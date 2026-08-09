@@ -4342,86 +4342,110 @@ function OrdersTable({
                     onCheckedChange={() => {}}
                   />
                 </TableCell>
-                <TableCell className="font-mono">
-                  <button
-                    type="button"
-                    onClick={() => onViewOrder(order)}
-                    className="text-primary hover:underline cursor-pointer"
-                  >
-                    {order.po_number}
-                  </button>
-                </TableCell>
-                <TableCell>
-                  <Badge className={`${statusColors[order.status]} text-white`}>{order.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  {order.vendor?.vendor_id ? (
+                {isColumnVisible("po_number") && (
+                  <TableCell className="font-mono">
                     <button
                       type="button"
-                      onClick={() => onVendorClick(order.vendor_id!)}
-                      className="text-primary hover:underline font-mono"
+                      onClick={() => onViewOrder(order)}
+                      className="text-primary hover:underline cursor-pointer"
                     >
-                      {order.vendor.vendor_id}
+                      {order.po_number}
                     </button>
-                  ) : order.source_location?.location_id ? (
-                    <button
-                      type="button"
-                      onClick={() => onLocationClick(order.source_location_id!)}
-                      className="text-primary hover:underline font-mono"
-                    >
-                      {order.source_location.location_id}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {order.vendor?.name || order.source_location?.name || "-"}
-                  {order.source_location && !order.vendor && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      Transfer
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {order.location?.location_id ? (
-                    <button
-                      type="button"
-                      onClick={() => onLocationClick(order.location_id!)}
-                      className="text-primary hover:underline font-mono"
-                    >
-                      {order.location.location_id}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>{order.location?.name || "-"}</TableCell>
-                <TableCell>
-                  {order.bill_to_location?.location_id ? (
-                    <button
-                      type="button"
-                      onClick={() => onLocationClick(order.bill_to_location_id!)}
-                      className="text-primary hover:underline font-mono"
-                    >
-                      {order.bill_to_location.location_id}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>{order.bill_to_location?.name || "-"}</TableCell>
-                <TableCell className="text-right font-mono">{order.item_count ?? 0}</TableCell>
-                <TableCell className="text-right font-mono">${Number(order.total_amount || 0).toFixed(2)}</TableCell>
-                <TableCell className="text-sm">
-                  {order.creator
-                    ? `${order.creator.first_name || ""} ${order.creator.last_name || ""}`.trim() || "-"
-                    : "-"}
-                </TableCell>
-                <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(order.created_at).toLocaleTimeString()}
-                </TableCell>
+                  </TableCell>
+                )}
+                {isColumnVisible("status") && (
+                  <TableCell>
+                    <Badge className={`${statusColors[order.status]} text-white`}>{order.status}</Badge>
+                  </TableCell>
+                )}
+                {isColumnVisible("vendor_id") && (
+                  <TableCell>
+                    {order.vendor?.vendor_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onVendorClick(order.vendor_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.vendor.vendor_id}
+                      </button>
+                    ) : order.source_location?.location_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onLocationClick(order.source_location_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.source_location.location_id}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("vendor_name") && (
+                  <TableCell>
+                    {order.vendor?.name || order.source_location?.name || "-"}
+                    {order.source_location && !order.vendor && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        Transfer
+                      </Badge>
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("ship_to_id") && (
+                  <TableCell>
+                    {order.location?.location_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onLocationClick(order.location_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.location.location_id}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("ship_to_name") && <TableCell>{order.location?.name || "-"}</TableCell>}
+                {isColumnVisible("bill_to_id") && (
+                  <TableCell>
+                    {order.bill_to_location?.location_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onLocationClick(order.bill_to_location_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.bill_to_location.location_id}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("bill_to_name") && <TableCell>{order.bill_to_location?.name || "-"}</TableCell>}
+                {isColumnVisible("item_count") && (
+                  <TableCell className="text-right font-mono">{order.item_count ?? 0}</TableCell>
+                )}
+                {isColumnVisible("total_amount") && (
+                  <TableCell className="text-right font-mono">
+                    ${Number(order.total_amount || 0).toFixed(2)}
+                  </TableCell>
+                )}
+                {isColumnVisible("created_by") && (
+                  <TableCell className="text-sm">
+                    {order.creator
+                      ? `${order.creator.first_name || ""} ${order.creator.last_name || ""}`.trim() || "-"
+                      : "-"}
+                  </TableCell>
+                )}
+                {isColumnVisible("date") && (
+                  <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                )}
+                {isColumnVisible("time") && (
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(order.created_at).toLocaleTimeString()}
+                  </TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" onClick={() => onViewOrder(order)}>
