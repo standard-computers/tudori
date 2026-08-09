@@ -2779,6 +2779,7 @@ const Orders = () => {
             onDeleteOrder={handleDeleteOrder}
             onVendorClick={openVendorDetail}
             onLocationClick={(locationId) => openLocationDetail(locationId, "Ship To")}
+            isColumnVisible={isColumnVisible}
           />
         )}
       </main>
