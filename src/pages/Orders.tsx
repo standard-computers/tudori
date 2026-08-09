@@ -4119,6 +4119,7 @@ function OrdersTable({
   onDeleteOrder,
   onVendorClick,
   onLocationClick,
+  isColumnVisible,
 }: {
   orders: PurchaseOrder[];
   selectedOrderIds: Set<string>;
@@ -4129,6 +4130,7 @@ function OrdersTable({
   onDeleteOrder: (id: string) => void;
   onVendorClick: (vendorId: string) => void;
   onLocationClick: (locationId: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }) {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     orders,
