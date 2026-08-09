@@ -4195,96 +4195,116 @@ function OrdersTable({
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <SortableTableHead
-                label="PO #"
-                sortKey="po_number"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["po_number"]}
-                onFilter={(v) => setFilter("po_number", v)}
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["status"]}
-                onFilter={(v) => setFilter("status", v)}
-              />
-              <SortableTableHead
-                label="Vendor ID"
-                sortKey="vendor.vendor_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["vendor.vendor_id"]}
-                onFilter={(v) => setFilter("vendor.vendor_id", v)}
-              />
-              <SortableTableHead
-                label="Vendor Name"
-                sortKey="vendor.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["vendor.name"]}
-                onFilter={(v) => setFilter("vendor.name", v)}
-              />
-              <SortableTableHead
-                label="Ship To ID"
-                sortKey="location.location_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["location.location_id"]}
-                onFilter={(v) => setFilter("location.location_id", v)}
-              />
-              <SortableTableHead
-                label="Ship To Name"
-                sortKey="location.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["location.name"]}
-                onFilter={(v) => setFilter("location.name", v)}
-              />
-              <SortableTableHead
-                label="Bill To ID"
-                sortKey="bill_to_location.location_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["bill_to_location.location_id"]}
-                onFilter={(v) => setFilter("bill_to_location.location_id", v)}
-              />
-              <SortableTableHead
-                label="Bill To Name"
-                sortKey="bill_to_location.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["bill_to_location.name"]}
-                onFilter={(v) => setFilter("bill_to_location.name", v)}
-              />
-              <SortableTableHead
-                label="Items"
-                sortKey="item_count"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                className="text-right"
-                filterable={false}
-              />
-              <SortableTableHead
-                label="Total"
-                sortKey="total_amount"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                className="text-right"
-                filterable={false}
-              />
+              {isColumnVisible("po_number") && (
+                <SortableTableHead
+                  label="PO #"
+                  sortKey="po_number"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["po_number"]}
+                  onFilter={(v) => setFilter("po_number", v)}
+                />
+              )}
+              {isColumnVisible("status") && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["status"]}
+                  onFilter={(v) => setFilter("status", v)}
+                />
+              )}
+              {isColumnVisible("vendor_id") && (
+                <SortableTableHead
+                  label="Vendor ID"
+                  sortKey="vendor.vendor_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["vendor.vendor_id"]}
+                  onFilter={(v) => setFilter("vendor.vendor_id", v)}
+                />
+              )}
+              {isColumnVisible("vendor_name") && (
+                <SortableTableHead
+                  label="Vendor Name"
+                  sortKey="vendor.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["vendor.name"]}
+                  onFilter={(v) => setFilter("vendor.name", v)}
+                />
+              )}
+              {isColumnVisible("ship_to_id") && (
+                <SortableTableHead
+                  label="Ship To ID"
+                  sortKey="location.location_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["location.location_id"]}
+                  onFilter={(v) => setFilter("location.location_id", v)}
+                />
+              )}
+              {isColumnVisible("ship_to_name") && (
+                <SortableTableHead
+                  label="Ship To Name"
+                  sortKey="location.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["location.name"]}
+                  onFilter={(v) => setFilter("location.name", v)}
+                />
+              )}
+              {isColumnVisible("bill_to_id") && (
+                <SortableTableHead
+                  label="Bill To ID"
+                  sortKey="bill_to_location.location_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["bill_to_location.location_id"]}
+                  onFilter={(v) => setFilter("bill_to_location.location_id", v)}
+                />
+              )}
+              {isColumnVisible("bill_to_name") && (
+                <SortableTableHead
+                  label="Bill To Name"
+                  sortKey="bill_to_location.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["bill_to_location.name"]}
+                  onFilter={(v) => setFilter("bill_to_location.name", v)}
+                />
+              )}
+              {isColumnVisible("item_count") && (
+                <SortableTableHead
+                  label="Items"
+                  sortKey="item_count"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  className="text-right"
+                  filterable={false}
+                />
+              )}
+              {isColumnVisible("total_amount") && (
+                <SortableTableHead
+                  label="Total"
+                  sortKey="total_amount"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  className="text-right"
+                  filterable={false}
+                />
+              )}
               <SortableTableHead
                 label="Created By"
                 sortKey="creator.last_name"
