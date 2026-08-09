@@ -2699,6 +2699,14 @@ const Orders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={ORDER_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setShowQueryDialog(true)} title="Search purchase orders">
                 <Search className="w-4 h-4" />
                 <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
