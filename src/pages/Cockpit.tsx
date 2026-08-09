@@ -2038,11 +2038,20 @@ const [areaFormData, setAreaFormData] = useState({
   };
 
   const applyAreaCopy = (data: Area) => {
-    setAreaFormData({
-      ...areaFormData,
+    setAreaFormData((prev) => ({
+      ...prev,
       name: data.name,
       description: data.description || '',
-    });
+      width: data.width ?? '',
+      width_uom: data.width_uom || 'in',
+      length: data.length ?? '',
+      length_uom: data.length_uom || 'in',
+      height: data.height ?? '',
+      height_uom: data.height_uom || 'in',
+      is_production_enabled: data.is_production_enabled ?? false,
+      is_goods_receipt_enabled: data.is_goods_receipt_enabled ?? false,
+      is_goods_issue_enabled: data.is_goods_issue_enabled ?? false,
+    }));
   };
 
   useKeyboardShortcut('a', () => {
