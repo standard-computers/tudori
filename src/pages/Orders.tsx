@@ -4305,24 +4305,28 @@ function OrdersTable({
                   filterable={false}
                 />
               )}
-              <SortableTableHead
-                label="Created By"
-                sortKey="creator.last_name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["creator.last_name"]}
-                onFilter={(v) => setFilter("creator.last_name", v)}
-              />
-              <SortableTableHead
-                label="Date"
-                sortKey="created_at"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-              />
-              <TableHead>Time</TableHead>
+              {isColumnVisible("created_by") && (
+                <SortableTableHead
+                  label="Created By"
+                  sortKey="creator.last_name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["creator.last_name"]}
+                  onFilter={(v) => setFilter("creator.last_name", v)}
+                />
+              )}
+              {isColumnVisible("date") && (
+                <SortableTableHead
+                  label="Date"
+                  sortKey="created_at"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                />
+              )}
+              {isColumnVisible("time") && <TableHead>Time</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
