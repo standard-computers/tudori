@@ -326,13 +326,20 @@ interface Company {
 
 // Column definitions for Purchase Orders table
 const ORDER_COLUMNS: ColumnDefinition[] = [
+  { key: "select", label: "Select", alwaysVisible: true },
   { key: "po_number", label: "PO #", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
-  { key: "vendor", label: "Vendor", defaultVisible: true },
-  { key: "ship_to", label: "Ship To", defaultVisible: true },
-  { key: "bill_to", label: "Bill To", defaultVisible: true },
+  { key: "vendor_id", label: "Vendor ID", defaultVisible: true },
+  { key: "vendor_name", label: "Vendor Name", defaultVisible: true },
+  { key: "ship_to_id", label: "Ship To ID", defaultVisible: true },
+  { key: "ship_to_name", label: "Ship To Name", defaultVisible: true },
+  { key: "bill_to_id", label: "Bill To ID", defaultVisible: true },
+  { key: "bill_to_name", label: "Bill To Name", defaultVisible: true },
+  { key: "item_count", label: "Items", defaultVisible: true },
   { key: "total_amount", label: "Total", defaultVisible: true },
-  { key: "order_date", label: "Date", defaultVisible: true },
+  { key: "created_by", label: "Created By", defaultVisible: true },
+  { key: "date", label: "Date", defaultVisible: true },
+  { key: "time", label: "Time", defaultVisible: true },
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
@@ -344,6 +351,12 @@ const Orders = () => {
   const { exportToExcel } = useExcel();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } = useColumnVisibility(
+    "orders",
+    ORDER_COLUMNS,
+  );
+
+
 
   // Auto-open view dialog when navigated here with openRef state (e.g. from Ledgers)
   useEffect(() => {
@@ -2686,6 +2699,14 @@ const Orders = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={ORDER_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => setShowQueryDialog(true)} title="Search purchase orders">
                 <Search className="w-4 h-4" />
                 <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘F</Kbd>
@@ -2766,6 +2787,7 @@ const Orders = () => {
             onDeleteOrder={handleDeleteOrder}
             onVendorClick={openVendorDetail}
             onLocationClick={(locationId) => openLocationDetail(locationId, "Ship To")}
+            isColumnVisible={isColumnVisible}
           />
         )}
       </main>
@@ -4097,6 +4119,7 @@ function OrdersTable({
   onDeleteOrder,
   onVendorClick,
   onLocationClick,
+  isColumnVisible,
 }: {
   orders: PurchaseOrder[];
   selectedOrderIds: Set<string>;
@@ -4107,6 +4130,7 @@ function OrdersTable({
   onDeleteOrder: (id: string) => void;
   onVendorClick: (vendorId: string) => void;
   onLocationClick: (locationId: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }) {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     orders,
@@ -4171,114 +4195,138 @@ function OrdersTable({
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <SortableTableHead
-                label="PO #"
-                sortKey="po_number"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["po_number"]}
-                onFilter={(v) => setFilter("po_number", v)}
-              />
-              <SortableTableHead
-                label="Status"
-                sortKey="status"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["status"]}
-                onFilter={(v) => setFilter("status", v)}
-              />
-              <SortableTableHead
-                label="Vendor ID"
-                sortKey="vendor.vendor_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["vendor.vendor_id"]}
-                onFilter={(v) => setFilter("vendor.vendor_id", v)}
-              />
-              <SortableTableHead
-                label="Vendor Name"
-                sortKey="vendor.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["vendor.name"]}
-                onFilter={(v) => setFilter("vendor.name", v)}
-              />
-              <SortableTableHead
-                label="Ship To ID"
-                sortKey="location.location_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["location.location_id"]}
-                onFilter={(v) => setFilter("location.location_id", v)}
-              />
-              <SortableTableHead
-                label="Ship To Name"
-                sortKey="location.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["location.name"]}
-                onFilter={(v) => setFilter("location.name", v)}
-              />
-              <SortableTableHead
-                label="Bill To ID"
-                sortKey="bill_to_location.location_id"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["bill_to_location.location_id"]}
-                onFilter={(v) => setFilter("bill_to_location.location_id", v)}
-              />
-              <SortableTableHead
-                label="Bill To Name"
-                sortKey="bill_to_location.name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["bill_to_location.name"]}
-                onFilter={(v) => setFilter("bill_to_location.name", v)}
-              />
-              <SortableTableHead
-                label="Items"
-                sortKey="item_count"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                className="text-right"
-                filterable={false}
-              />
-              <SortableTableHead
-                label="Total"
-                sortKey="total_amount"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                className="text-right"
-                filterable={false}
-              />
-              <SortableTableHead
-                label="Created By"
-                sortKey="creator.last_name"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterValue={filters["creator.last_name"]}
-                onFilter={(v) => setFilter("creator.last_name", v)}
-              />
-              <SortableTableHead
-                label="Date"
-                sortKey="created_at"
-                currentSortKey={sortConfig.key}
-                currentSortDirection={sortConfig.direction}
-                onSort={handleSort}
-                filterable={false}
-              />
-              <TableHead>Time</TableHead>
+              {isColumnVisible("po_number") && (
+                <SortableTableHead
+                  label="PO #"
+                  sortKey="po_number"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["po_number"]}
+                  onFilter={(v) => setFilter("po_number", v)}
+                />
+              )}
+              {isColumnVisible("status") && (
+                <SortableTableHead
+                  label="Status"
+                  sortKey="status"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["status"]}
+                  onFilter={(v) => setFilter("status", v)}
+                />
+              )}
+              {isColumnVisible("vendor_id") && (
+                <SortableTableHead
+                  label="Vendor ID"
+                  sortKey="vendor.vendor_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["vendor.vendor_id"]}
+                  onFilter={(v) => setFilter("vendor.vendor_id", v)}
+                />
+              )}
+              {isColumnVisible("vendor_name") && (
+                <SortableTableHead
+                  label="Vendor Name"
+                  sortKey="vendor.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["vendor.name"]}
+                  onFilter={(v) => setFilter("vendor.name", v)}
+                />
+              )}
+              {isColumnVisible("ship_to_id") && (
+                <SortableTableHead
+                  label="Ship To ID"
+                  sortKey="location.location_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["location.location_id"]}
+                  onFilter={(v) => setFilter("location.location_id", v)}
+                />
+              )}
+              {isColumnVisible("ship_to_name") && (
+                <SortableTableHead
+                  label="Ship To Name"
+                  sortKey="location.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["location.name"]}
+                  onFilter={(v) => setFilter("location.name", v)}
+                />
+              )}
+              {isColumnVisible("bill_to_id") && (
+                <SortableTableHead
+                  label="Bill To ID"
+                  sortKey="bill_to_location.location_id"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["bill_to_location.location_id"]}
+                  onFilter={(v) => setFilter("bill_to_location.location_id", v)}
+                />
+              )}
+              {isColumnVisible("bill_to_name") && (
+                <SortableTableHead
+                  label="Bill To Name"
+                  sortKey="bill_to_location.name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["bill_to_location.name"]}
+                  onFilter={(v) => setFilter("bill_to_location.name", v)}
+                />
+              )}
+              {isColumnVisible("item_count") && (
+                <SortableTableHead
+                  label="Items"
+                  sortKey="item_count"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  className="text-right"
+                  filterable={false}
+                />
+              )}
+              {isColumnVisible("total_amount") && (
+                <SortableTableHead
+                  label="Total"
+                  sortKey="total_amount"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  className="text-right"
+                  filterable={false}
+                />
+              )}
+              {isColumnVisible("created_by") && (
+                <SortableTableHead
+                  label="Created By"
+                  sortKey="creator.last_name"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["creator.last_name"]}
+                  onFilter={(v) => setFilter("creator.last_name", v)}
+                />
+              )}
+              {isColumnVisible("date") && (
+                <SortableTableHead
+                  label="Date"
+                  sortKey="created_at"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterable={false}
+                />
+              )}
+              {isColumnVisible("time") && <TableHead>Time</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -4294,86 +4342,110 @@ function OrdersTable({
                     onCheckedChange={() => {}}
                   />
                 </TableCell>
-                <TableCell className="font-mono">
-                  <button
-                    type="button"
-                    onClick={() => onViewOrder(order)}
-                    className="text-primary hover:underline cursor-pointer"
-                  >
-                    {order.po_number}
-                  </button>
-                </TableCell>
-                <TableCell>
-                  <Badge className={`${statusColors[order.status]} text-white`}>{order.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  {order.vendor?.vendor_id ? (
+                {isColumnVisible("po_number") && (
+                  <TableCell className="font-mono">
                     <button
                       type="button"
-                      onClick={() => onVendorClick(order.vendor_id!)}
-                      className="text-primary hover:underline font-mono"
+                      onClick={() => onViewOrder(order)}
+                      className="text-primary hover:underline cursor-pointer"
                     >
-                      {order.vendor.vendor_id}
+                      {order.po_number}
                     </button>
-                  ) : order.source_location?.location_id ? (
-                    <button
-                      type="button"
-                      onClick={() => onLocationClick(order.source_location_id!)}
-                      className="text-primary hover:underline font-mono"
-                    >
-                      {order.source_location.location_id}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {order.vendor?.name || order.source_location?.name || "-"}
-                  {order.source_location && !order.vendor && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      Transfer
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {order.location?.location_id ? (
-                    <button
-                      type="button"
-                      onClick={() => onLocationClick(order.location_id!)}
-                      className="text-primary hover:underline font-mono"
-                    >
-                      {order.location.location_id}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>{order.location?.name || "-"}</TableCell>
-                <TableCell>
-                  {order.bill_to_location?.location_id ? (
-                    <button
-                      type="button"
-                      onClick={() => onLocationClick(order.bill_to_location_id!)}
-                      className="text-primary hover:underline font-mono"
-                    >
-                      {order.bill_to_location.location_id}
-                    </button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>{order.bill_to_location?.name || "-"}</TableCell>
-                <TableCell className="text-right font-mono">{order.item_count ?? 0}</TableCell>
-                <TableCell className="text-right font-mono">${Number(order.total_amount || 0).toFixed(2)}</TableCell>
-                <TableCell className="text-sm">
-                  {order.creator
-                    ? `${order.creator.first_name || ""} ${order.creator.last_name || ""}`.trim() || "-"
-                    : "-"}
-                </TableCell>
-                <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(order.created_at).toLocaleTimeString()}
-                </TableCell>
+                  </TableCell>
+                )}
+                {isColumnVisible("status") && (
+                  <TableCell>
+                    <Badge className={`${statusColors[order.status]} text-white`}>{order.status}</Badge>
+                  </TableCell>
+                )}
+                {isColumnVisible("vendor_id") && (
+                  <TableCell>
+                    {order.vendor?.vendor_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onVendorClick(order.vendor_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.vendor.vendor_id}
+                      </button>
+                    ) : order.source_location?.location_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onLocationClick(order.source_location_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.source_location.location_id}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("vendor_name") && (
+                  <TableCell>
+                    {order.vendor?.name || order.source_location?.name || "-"}
+                    {order.source_location && !order.vendor && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        Transfer
+                      </Badge>
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("ship_to_id") && (
+                  <TableCell>
+                    {order.location?.location_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onLocationClick(order.location_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.location.location_id}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("ship_to_name") && <TableCell>{order.location?.name || "-"}</TableCell>}
+                {isColumnVisible("bill_to_id") && (
+                  <TableCell>
+                    {order.bill_to_location?.location_id ? (
+                      <button
+                        type="button"
+                        onClick={() => onLocationClick(order.bill_to_location_id!)}
+                        className="text-primary hover:underline font-mono"
+                      >
+                        {order.bill_to_location.location_id}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
+                {isColumnVisible("bill_to_name") && <TableCell>{order.bill_to_location?.name || "-"}</TableCell>}
+                {isColumnVisible("item_count") && (
+                  <TableCell className="text-right font-mono">{order.item_count ?? 0}</TableCell>
+                )}
+                {isColumnVisible("total_amount") && (
+                  <TableCell className="text-right font-mono">
+                    ${Number(order.total_amount || 0).toFixed(2)}
+                  </TableCell>
+                )}
+                {isColumnVisible("created_by") && (
+                  <TableCell className="text-sm">
+                    {order.creator
+                      ? `${order.creator.first_name || ""} ${order.creator.last_name || ""}`.trim() || "-"
+                      : "-"}
+                  </TableCell>
+                )}
+                {isColumnVisible("date") && (
+                  <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                )}
+                {isColumnVisible("time") && (
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(order.created_at).toLocaleTimeString()}
+                  </TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" onClick={() => onViewOrder(order)}>
