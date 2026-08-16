@@ -378,9 +378,32 @@ export const InventoryCountDialog = ({
       }
     }
 
+    // Build progress steps
+    const steps: PostProgressStep[] = [
+      { label: 'Goods Receipt (gains)', detail: `${gains.length} item(s)`, status: 'pending' },
+      { label: 'Goods Issue (losses)', detail: `${losses.length} item(s)`, status: 'pending' },
+      { label: 'Ledger adjustment', detail: netValuationChange !== 0 ? netValuationChange.toFixed(2) : '0.00', status: 'pending' },
+      ...countItems.map((item) => ({
+        label: `Update ${item.product?.name || item.product_id}`,
+        detail: item.bin?.name || 'Unbinned',
+        status: 'pending' as const,
+      })),
+      { label: 'Mark count as posted', detail: selectedCount.count_number, status: 'pending' },
+    ];
+    setPostSteps(steps);
+    setPostComplete(false);
+    setPostProgressOpen(true);
+
+    const update = (index: number, patch: Partial<PostProgressStep>) => {
+      setPostSteps((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+    };
+
+    const ITEM_OFFSET = 3;
+
     try {
       // Create Goods Receipt for gains (positive variances)
       if (gains.length > 0) {
+        update(0, { status: 'running' });
         const { data: grNumber } = await supabase.rpc('get_next_goods_receipt_number', { p_company_id: companyId });
 
         const { data: gr, error: grError } = await supabase
@@ -396,7 +419,10 @@ export const InventoryCountDialog = ({
           .select('id')
           .single();
 
-        if (grError) throw grError;
+        if (grError) {
+          update(0, { status: 'error', message: grError.message });
+          throw grError;
+        }
 
         const grItems = gains.map((item) => ({
           goods_receipt_id: (gr as any).id,
@@ -409,11 +435,18 @@ export const InventoryCountDialog = ({
         const { error: grItemsError } = await supabase
           .from('goods_receipt_items' as any)
           .insert(grItems);
-        if (grItemsError) throw grItemsError;
+        if (grItemsError) {
+          update(0, { status: 'error', message: grItemsError.message });
+          throw grItemsError;
+        }
+        update(0, { status: 'success', message: `Receipt ${grNumber}` });
+      } else {
+        update(0, { status: 'skipped', message: 'No gains' });
       }
 
       // Create Goods Issue for losses (negative variances)
       if (losses.length > 0) {
+        update(1, { status: 'running' });
         const { data: giNumber } = await supabase.rpc('get_next_goods_issue_number', { p_company_id: companyId });
 
         const { data: gi, error: giError } = await supabase
@@ -429,7 +462,10 @@ export const InventoryCountDialog = ({
           .select('id')
           .single();
 
-        if (giError) throw giError;
+        if (giError) {
+          update(1, { status: 'error', message: giError.message });
+          throw giError;
+        }
 
         const giItems = losses.map((item) => ({
           goods_issue_id: (gi as any).id,
@@ -442,11 +478,18 @@ export const InventoryCountDialog = ({
         const { error: giItemsError } = await supabase
           .from('goods_issue_items' as any)
           .insert(giItems);
-        if (giItemsError) throw giItemsError;
+        if (giItemsError) {
+          update(1, { status: 'error', message: giItemsError.message });
+          throw giItemsError;
+        }
+        update(1, { status: 'success', message: `Issue ${giNumber}` });
+      } else {
+        update(1, { status: 'skipped', message: 'No losses' });
       }
 
       // Create a single ledger adjustment for the net valuation change
       if (netValuationChange !== 0) {
+        update(2, { status: 'running' });
         const { getInventoryLedgerId } = await import('@/lib/inventory-account');
         const ledgerId = await getInventoryLedgerId(locationId, companyId);
 
@@ -460,11 +503,20 @@ export const InventoryCountDialog = ({
             description: `Inventory count adjustment – ${selectedCount.count_number}${netValuationChange > 0 ? ' (net gain)' : ' (net loss)'}`,
             transaction_date: new Date().toISOString().split('T')[0],
           });
+          update(2, { status: 'success', message: netValuationChange > 0 ? 'Net gain posted' : 'Net loss posted' });
+        } else {
+          update(2, { status: 'skipped', message: 'No inventory ledger found' });
         }
+      } else {
+        update(2, { status: 'skipped', message: 'No valuation change' });
       }
 
       // Apply variance adjustments to inventory
-      for (const item of countItems) {
+      for (let idx = 0; idx < countItems.length; idx++) {
+        const item = countItems[idx];
+        const stepIndex = ITEM_OFFSET + idx;
+        update(stepIndex, { status: 'running' });
+
         if (item.variance && item.variance !== 0) {
           const { error } = await supabase
             .from('inventory')
@@ -474,23 +526,38 @@ export const InventoryCountDialog = ({
             .eq(item.bin_id ? 'bin_id' : 'id', item.bin_id || '');
 
           if (error && item.bin_id) {
-            await supabase
+            const { error: retryError } = await supabase
               .from('inventory')
               .update({ quantity: item.counted_quantity!, last_counted_at: new Date().toISOString() })
               .eq('location_id', locationId)
               .eq('product_id', item.product_id)
               .eq('bin_id', item.bin_id);
+            if (retryError) {
+              update(stepIndex, { status: 'error', message: retryError.message });
+              continue;
+            }
+          } else if (error) {
+            update(stepIndex, { status: 'error', message: error.message });
+            continue;
           }
+          update(stepIndex, { status: 'success', message: `Qty set to ${item.counted_quantity}` });
         } else {
-          await supabase
+          const { error } = await supabase
             .from('inventory')
             .update({ last_counted_at: new Date().toISOString() })
             .eq('location_id', locationId)
             .eq('product_id', item.product_id);
+          if (error) {
+            update(stepIndex, { status: 'error', message: error.message });
+            continue;
+          }
+          update(stepIndex, { status: 'success', message: 'No variance' });
         }
       }
 
       // Mark count as posted
+      const lastIndex = steps.length - 1;
+      update(lastIndex, { status: 'running' });
       const { error } = await supabase
         .from('inventory_counts')
         .update({ status: 'posted' })
@@ -498,15 +565,20 @@ export const InventoryCountDialog = ({
 
       setIsSaving(false);
       if (error) {
+        update(lastIndex, { status: 'error', message: error.message });
+        setPostComplete(true);
         toast.error('Failed to post adjustments');
         return;
       }
+      update(lastIndex, { status: 'success', message: 'Posted' });
+      setPostComplete(true);
 
       toast.success('Inventory adjustments posted');
       setSelectedCount({ ...selectedCount, status: 'posted' });
     } catch (err: any) {
       console.error('Failed to post inventory adjustments:', err);
       setIsSaving(false);
+      setPostComplete(true);
       toast.error(err.message || 'Failed to post adjustments');
     }
   };
