@@ -885,6 +885,15 @@ export const InventoryCountDialog = ({
         description={`Are you sure you want to delete count sheet ${deleteTarget?.count_number || ''}? This action cannot be undone.`}
         onConfirm={handleDeleteCount}
       />
+
+      <PostProgressDialog
+        open={postProgressOpen}
+        onOpenChange={setPostProgressOpen}
+        description={`Posting count ${selectedCount?.count_number || ''}`}
+        steps={postSteps}
+        isComplete={postComplete}
+      />
+
     </Dialog>
   );
 };
