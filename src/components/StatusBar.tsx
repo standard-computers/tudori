@@ -6,8 +6,8 @@ import { Loader2, CheckCircle2, XCircle, Info, MessageSquare } from 'lucide-reac
 import { AnimatePresence, motion } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from '@/components/ui/dialog';
+
 import { Button } from '@/components/ui/button';
 
 // Transaction code to route mapping
@@ -253,7 +253,7 @@ export function StatusBar() {
           <DialogHeader>
             <DialogTitle>Message Log</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-96">
+          <DialogBody className="max-h-[60vh] overflow-y-auto px-0">
             {messages.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No messages yet.</p>
             ) : (
@@ -274,7 +274,8 @@ export function StatusBar() {
                 ))}
               </div>
             )}
-          </ScrollArea>
+          </DialogBody>
+
           <DialogFooter>
             <Button
               variant="outline"
