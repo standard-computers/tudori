@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS: ImportExportSettings = {
   product: { import_enabled: false, export_enabled: true },
   location: { import_enabled: false, export_enabled: true },
   tax_rate: { import_enabled: false, export_enabled: true },
+  asset: { import_enabled: false, export_enabled: true },
   carrier: { import_enabled: false, export_enabled: true },
   route: { import_enabled: false, export_enabled: true },
   assignment: { import_enabled: false, export_enabled: true },

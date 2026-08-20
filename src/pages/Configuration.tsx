@@ -111,6 +111,7 @@ const DEFAULT_IMPORT_EXPORT_SETTINGS: ImportExportSettings = {
   product: { import_enabled: false, export_enabled: true },
   location: { import_enabled: false, export_enabled: true },
   tax_rate: { import_enabled: false, export_enabled: true },
+  asset: { import_enabled: false, export_enabled: true },
 };
 
 type AppRole = Database['public']['Enums']['app_role'];

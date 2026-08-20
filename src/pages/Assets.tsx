@@ -13,6 +13,10 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { useChangeHistorySettings } from "@/hooks/use-change-history-settings";
+import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useExcel } from "@/hooks/use-excel";
+import { ImportExportButtons } from "@/components/ImportExportButtons";
+import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,6 +141,14 @@ const Assets = () => {
   const [locations, setLocations] = useState<LocationOpt[]>([]);
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const historyEnabled = isHistoryEnabled("asset");
+  const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { exportToExcel, readExcel } = useExcel();
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [importTotal, setImportTotal] = useState(0);
+  const [importProcessed, setImportProcessed] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
 
   const { visibleColumns, isColumnVisible, toggleColumn, resetToDefaults, showAll, hideAll } =
     useColumnVisibility("assets", ASSET_COLUMNS);
@@ -259,6 +271,134 @@ const Assets = () => {
     else { toast.success("Asset deleted"); fetchAssets(); }
   };
 
+  const ASSET_TEMPLATE_COLUMNS = [
+    { header: "Name", key: "Name", width: 25 },
+    { header: "Tag", key: "Tag", width: 16 },
+    { header: "Description", key: "Description", width: 30 },
+    { header: "Procurement Value", key: "Procurement Value", width: 18 },
+    { header: "Procurement Date", key: "Procurement Date", width: 18 },
+    { header: "Depreciation Rate", key: "Depreciation Rate", width: 18 },
+    { header: "Useful Life Years", key: "Useful Life Years", width: 18 },
+    { header: "Salvage Value", key: "Salvage Value", width: 16 },
+    { header: "Location", key: "Location", width: 20 },
+    { header: "Status", key: "Status", width: 14 },
+    { header: "Notes", key: "Notes", width: 30 },
+  ];
+
+  const handleDownloadTemplate = async () => {
+    const sampleRow = {
+      Name: "Forklift",
+      Tag: "",
+      Description: "Electric forklift",
+      "Procurement Value": 25000,
+      "Procurement Date": format(new Date(), "yyyy-MM-dd"),
+      "Depreciation Rate": 20,
+      "Useful Life Years": 5,
+      "Salvage Value": 1000,
+      Location: locations[0]?.name || "",
+      Status: "active",
+      Notes: "",
+    };
+    await exportToExcel([sampleRow], "asset_import_template.xlsx", "Assets", ASSET_TEMPLATE_COLUMNS);
+    toast.success("Template downloaded");
+  };
+
+  const handleExport = async () => {
+    if (assets.length === 0) { toast.info("No assets to export"); return; }
+    const rows = sortedAndFilteredData.map((a) => ({
+      Name: a.name,
+      Tag: a.asset_tag || "",
+      Description: a.description || "",
+      "Procurement Value": a.procurement_value,
+      "Procurement Date": a.procurement_date,
+      "Depreciation Rate": a.depreciation_rate,
+      "Useful Life Years": a.useful_life_years ?? "",
+      "Salvage Value": a.salvage_value,
+      Location: locations.find((l) => l.id === a.location_id)?.name || "",
+      Status: a.status,
+      "Book Value": Math.round(currentBookValue(a) * 100) / 100,
+      Notes: a.notes || "",
+    }));
+    await exportToExcel(rows, `assets_${format(new Date(), "yyyy-MM-dd")}.xlsx`, "Assets");
+    toast.success(`Exported ${rows.length} asset${rows.length > 1 ? "s" : ""}`);
+  };
+
+  const handleImport = async (file: File) => {
+    if (!companyId) return;
+    let rows: Record<string, any>[] = [];
+    try {
+      rows = await readExcel(file);
+    } catch {
+      toast.error("Failed to read file");
+      return;
+    }
+    if (rows.length === 0) { toast.error("No data found in file"); return; }
+
+    setImportResults([]);
+    setImportProcessed(0);
+    setImportTotal(rows.length);
+    setImportComplete(false);
+    setImportOpen(true);
+
+    const results: ImportResult[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2;
+      const name = row["Name"]?.toString()?.trim();
+      if (!name) {
+        results.push({ row: rowNum, status: "error", message: "Missing Name" });
+        setImportResults([...results]);
+        setImportProcessed(i + 1);
+        continue;
+      }
+      try {
+        let tag = row["Tag"]?.toString()?.trim() || "";
+        if (!tag) {
+          const { data } = await supabase.rpc("get_next_asset_id" as any, { p_company_id: companyId });
+          tag = (data as string) || "";
+        }
+        const locName = row["Location"]?.toString()?.trim();
+        const loc = locName
+          ? locations.find(
+              (l) =>
+                l.name.toLowerCase() === locName.toLowerCase() ||
+                l.location_id?.toLowerCase() === locName.toLowerCase(),
+            )
+          : null;
+        const statusRaw = row["Status"]?.toString()?.trim()?.toLowerCase();
+        const num = (v: any) => (v === null || v === undefined || v === "" ? null : Number(v));
+        const dateRaw = row["Procurement Date"];
+        let procurementDate = format(new Date(), "yyyy-MM-dd");
+        if (dateRaw instanceof Date) procurementDate = format(dateRaw, "yyyy-MM-dd");
+        else if (dateRaw) procurementDate = dateRaw.toString().slice(0, 10);
+
+        const { error } = await supabase.from("assets" as any).insert({
+          company_id: companyId,
+          name,
+          asset_tag: tag || null,
+          description: row["Description"]?.toString()?.trim() || null,
+          procurement_value: num(row["Procurement Value"]) ?? 0,
+          procurement_date: procurementDate,
+          depreciation_rate: num(row["Depreciation Rate"]) ?? 0,
+          useful_life_years: num(row["Useful Life Years"]),
+          salvage_value: num(row["Salvage Value"]) ?? 0,
+          location_id: loc?.id || null,
+          status: STATUSES.includes(statusRaw || "") ? statusRaw : "active",
+          notes: row["Notes"]?.toString()?.trim() || null,
+        });
+        if (error) throw error;
+        results.push({ row: rowNum, status: "success", message: `Created ${name}` });
+      } catch (e: any) {
+        results.push({ row: rowNum, status: "error", message: e?.message || "Failed to create asset" });
+      }
+      setImportResults([...results]);
+      setImportProcessed(i + 1);
+    }
+
+    setImportComplete(true);
+    await fetchAssets();
+  };
+
   const locationLabel = (id: string | null) =>
     locations.find(l => l.id === id)?.name || "-";
 
@@ -294,6 +434,14 @@ const Assets = () => {
                 onResetToDefaults={resetToDefaults}
                 onShowAll={showAll}
                 onHideAll={hideAll}
+              />
+              <ImportExportButtons
+                importEnabled={isImportEnabled("asset")}
+                exportEnabled={isExportEnabled("asset")}
+                onImport={handleImport}
+                onExport={handleExport}
+                onDownloadTemplate={handleDownloadTemplate}
+                entityName="Assets"
               />
               <Button onClick={handleAddClick} variant="default" size="icon" className="relative">
                 <Plus className="w-4 h-4" />
@@ -693,6 +841,16 @@ const Assets = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Importing Assets"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={importComplete}
+      />
     </div>
   );
 };
