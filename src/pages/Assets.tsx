@@ -841,6 +841,16 @@ const Assets = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImportProgressDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Importing Assets"
+        totalRows={importTotal}
+        processedRows={importProcessed}
+        results={importResults}
+        isComplete={importComplete}
+      />
     </div>
   );
 };
