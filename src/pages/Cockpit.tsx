@@ -2923,6 +2923,9 @@ const [areaFormData, setAreaFormData] = useState({
                         <SortableTableHead label="ID" sortKey="area_id" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterValue={areasFilters['area_id']} onFilter={(v) => setAreasFilter('area_id', v)} />
                         <SortableTableHead label="Name" sortKey="name" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterValue={areasFilters['name']} onFilter={(v) => setAreasFilter('name', v)} />
                         <SortableTableHead label="Description" sortKey="description" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterValue={areasFilters['description']} onFilter={(v) => setAreasFilter('description', v)} />
+                        <SortableTableHead label="Width" sortKey="width" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-right" />
+                        <SortableTableHead label="Length" sortKey="length" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-right" />
+                        <SortableTableHead label="Height" sortKey="height" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-right" />
                         <SortableTableHead label="GR" sortKey="is_goods_receipt_enabled" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-center" />
                         <SortableTableHead label="GI" sortKey="is_goods_issue_enabled" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-center" />
                         <SortableTableHead label="Production" sortKey="is_production_enabled" currentSortKey={areasSortConfig.key} currentSortDirection={areasSortConfig.direction} onSort={handleAreasSort} filterable={false} className="text-center" />
@@ -2940,6 +2943,9 @@ const [areaFormData, setAreaFormData] = useState({
                           </TableCell>
                           <TableCell className="font-medium">{area.name}</TableCell>
                           <TableCell className="text-muted-foreground">{area.description || '—'}</TableCell>
+                          <TableCell className="text-right text-muted-foreground whitespace-nowrap">{area.width != null ? `${area.width} ${area.width_uom || ''}`.trim() : '—'}</TableCell>
+                          <TableCell className="text-right text-muted-foreground whitespace-nowrap">{area.length != null ? `${area.length} ${area.length_uom || ''}`.trim() : '—'}</TableCell>
+                          <TableCell className="text-right text-muted-foreground whitespace-nowrap">{area.height != null ? `${area.height} ${area.height_uom || ''}`.trim() : '—'}</TableCell>
                           <TableCell className="text-center">
                             <div className={`w-2 h-2 rounded-full mx-auto ${area.is_goods_receipt_enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
                           </TableCell>
