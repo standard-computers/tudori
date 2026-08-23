@@ -737,27 +737,28 @@ export default function Agreements() {
       const doc = pendingDocs[idx];
       setProgressCurrent(idx + 1);
       try {
-        // Fetch account data (ledger, vendor, location) for all doc types
+        // Fetch account data (ledger, vendor, customer, location) for all doc types
         const { data: accData } = await supabase
           .from("accounts")
-          .select("vendor_id, location_id, ledger_id")
+          .select("vendor_id, customer_id, location_id, ledger_id")
           .eq("id", doc.accountId)
           .single();
 
         const accountLedgerId = accData?.ledger_id ?? null;
         const userId = (await supabase.auth.getUser()).data.user?.id;
 
-        // Resolve vendor_source from the agreement for SO/PO
-        const vendorSourceParsed = selectedAgreement?.vendor_source ? parseVendorValue(selectedAgreement.vendor_source) : null;
+        // Resolve vendor/source from the doc's own agreement
+        const vendorSourceParsed = doc.vendorSource ? parseVendorValue(doc.vendorSource) : null;
         const agreementVendorId = vendorSourceParsed?.type === 'vendor' ? vendorSourceParsed.id : null;
         const agreementLocationId = vendorSourceParsed?.type === 'location' ? vendorSourceParsed.id : null;
+        const destinationLocationId = accData?.location_id ?? defaultLocationId;
         const subtotal = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
-        // Fetch linked rates for this agreement
+        // Fetch linked rates for this doc's agreement
         const { data: agrRatesData } = await supabase
           .from("agreement_rates" as any)
           .select("rate_id")
-          .eq("agreement_id", selectedAgreement!.id);
+          .eq("agreement_id", doc.agreementId);
         const agrRateIds = (agrRatesData || []).map((r: any) => r.rate_id);
         let taxAmount = 0;
         if (agrRateIds.length > 0) {
