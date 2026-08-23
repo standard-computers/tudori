@@ -93,6 +93,8 @@ type DialogMode = "create" | "edit";
 
 interface PendingDocument {
   type: "purchase_order" | "sales_order";
+  agreementId: string;
+  vendorSource: string | null;
   accountId: string;
   accountName: string;
   accountType: string;
@@ -492,6 +494,8 @@ export default function Agreements() {
               } else {
                 docs.push({
                   type: isCustomer ? "sales_order" : "purchase_order",
+                  agreementId: selectedAgreement.id,
+                  vendorSource: selectedAgreement.vendor_source,
                   accountId: acc.id,
                   accountName: acc.name,
                   accountType: acc.type,
@@ -635,6 +639,8 @@ export default function Agreements() {
                 } else {
                   docs.push({
                     type: isCustomer ? "sales_order" : "purchase_order",
+                    agreementId: agr.id,
+                    vendorSource: agr.vendor_source,
                     accountId: acc.id,
                     accountName: acc.name,
                     accountType: acc.type,
@@ -702,6 +708,28 @@ export default function Agreements() {
     setProgressDone(false);
     setProgressDialogOpen(true);
 
+    // Resolve a fallback destination/bill-to location: user's default, else first company location
+    const authUserId = (await supabase.auth.getUser()).data.user?.id;
+    let defaultLocationId: string | null = null;
+    if (authUserId) {
+      const { data: pref } = await supabase
+        .from("user_preferences")
+        .select("default_location_id")
+        .eq("user_id", authUserId)
+        .maybeSingle();
+      defaultLocationId = pref?.default_location_id ?? null;
+    }
+    if (!defaultLocationId) {
+      const { data: loc } = await supabase
+        .from("locations")
+        .select("id")
+        .eq("company_id", companyId)
+        .order("name")
+        .limit(1)
+        .maybeSingle();
+      defaultLocationId = loc?.id ?? null;
+    }
+
     let created = 0;
     let errors = 0;
 
@@ -709,27 +737,28 @@ export default function Agreements() {
       const doc = pendingDocs[idx];
       setProgressCurrent(idx + 1);
       try {
-        // Fetch account data (ledger, vendor, location) for all doc types
+        // Fetch account data (ledger, vendor, customer, location) for all doc types
         const { data: accData } = await supabase
           .from("accounts")
-          .select("vendor_id, location_id, ledger_id")
+          .select("vendor_id, customer_id, location_id, ledger_id")
           .eq("id", doc.accountId)
           .single();
 
         const accountLedgerId = accData?.ledger_id ?? null;
         const userId = (await supabase.auth.getUser()).data.user?.id;
 
-        // Resolve vendor_source from the agreement for SO/PO
-        const vendorSourceParsed = selectedAgreement?.vendor_source ? parseVendorValue(selectedAgreement.vendor_source) : null;
+        // Resolve vendor/source from the doc's own agreement
+        const vendorSourceParsed = doc.vendorSource ? parseVendorValue(doc.vendorSource) : null;
         const agreementVendorId = vendorSourceParsed?.type === 'vendor' ? vendorSourceParsed.id : null;
         const agreementLocationId = vendorSourceParsed?.type === 'location' ? vendorSourceParsed.id : null;
+        const destinationLocationId = accData?.location_id ?? defaultLocationId;
         const subtotal = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
 
-        // Fetch linked rates for this agreement
+        // Fetch linked rates for this doc's agreement
         const { data: agrRatesData } = await supabase
           .from("agreement_rates" as any)
           .select("rate_id")
-          .eq("agreement_id", selectedAgreement!.id);
+          .eq("agreement_id", doc.agreementId);
         const agrRateIds = (agrRatesData || []).map((r: any) => r.rate_id);
         let taxAmount = 0;
         if (agrRateIds.length > 0) {
@@ -761,6 +790,7 @@ export default function Agreements() {
               created_by: userId,
               ledger_id: accountLedgerId,
               vendor_id: agreementVendorId,
+              customer_id: accData?.customer_id ?? null,
             })
             .select()
             .single();
@@ -823,7 +853,9 @@ export default function Agreements() {
               po_number: poNum,
               status: "draft",
               vendor_id: agreementVendorId ?? accData?.vendor_id ?? null,
-              location_id: agreementLocationId ?? accData?.location_id ?? null,
+              source_location_id: agreementLocationId,
+              location_id: destinationLocationId,
+              bill_to_location_id: destinationLocationId,
               total_amount: total,
               order_date: doc.periodDate,
               created_by: userId,
