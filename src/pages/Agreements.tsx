@@ -639,6 +639,8 @@ export default function Agreements() {
                 } else {
                   docs.push({
                     type: isCustomer ? "sales_order" : "purchase_order",
+                    agreementId: agr.id,
+                    vendorSource: agr.vendor_source,
                     accountId: acc.id,
                     accountName: acc.name,
                     accountType: acc.type,
