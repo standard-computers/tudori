@@ -708,6 +708,28 @@ export default function Agreements() {
     setProgressDone(false);
     setProgressDialogOpen(true);
 
+    // Resolve a fallback destination/bill-to location: user's default, else first company location
+    const authUserId = (await supabase.auth.getUser()).data.user?.id;
+    let defaultLocationId: string | null = null;
+    if (authUserId) {
+      const { data: pref } = await supabase
+        .from("user_preferences")
+        .select("default_location_id")
+        .eq("user_id", authUserId)
+        .maybeSingle();
+      defaultLocationId = pref?.default_location_id ?? null;
+    }
+    if (!defaultLocationId) {
+      const { data: loc } = await supabase
+        .from("locations")
+        .select("id")
+        .eq("company_id", companyId)
+        .order("name")
+        .limit(1)
+        .maybeSingle();
+      defaultLocationId = loc?.id ?? null;
+    }
+
     let created = 0;
     let errors = 0;
 
