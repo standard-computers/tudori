@@ -93,6 +93,8 @@ type DialogMode = "create" | "edit";
 
 interface PendingDocument {
   type: "purchase_order" | "sales_order";
+  agreementId: string;
+  vendorSource: string | null;
   accountId: string;
   accountName: string;
   accountType: string;
@@ -492,6 +494,8 @@ export default function Agreements() {
               } else {
                 docs.push({
                   type: isCustomer ? "sales_order" : "purchase_order",
+                  agreementId: selectedAgreement.id,
+                  vendorSource: selectedAgreement.vendor_source,
                   accountId: acc.id,
                   accountName: acc.name,
                   accountType: acc.type,
