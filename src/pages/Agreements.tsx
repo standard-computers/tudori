@@ -790,6 +790,7 @@ export default function Agreements() {
               created_by: userId,
               ledger_id: accountLedgerId,
               vendor_id: agreementVendorId,
+              customer_id: accData?.customer_id ?? null,
             })
             .select()
             .single();
@@ -852,7 +853,9 @@ export default function Agreements() {
               po_number: poNum,
               status: "draft",
               vendor_id: agreementVendorId ?? accData?.vendor_id ?? null,
-              location_id: agreementLocationId ?? accData?.location_id ?? null,
+              source_location_id: agreementLocationId,
+              location_id: destinationLocationId,
+              bill_to_location_id: destinationLocationId,
               total_amount: total,
               order_date: doc.periodDate,
               created_by: userId,
