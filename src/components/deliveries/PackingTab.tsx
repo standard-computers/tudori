@@ -74,11 +74,6 @@ function DraggableItem({
     );
   }
 
-  // Apply inline transform so the original element follows the pointer (prevents offset)
-  const style: React.CSSProperties = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: isDragging ? 50 : undefined }
-    : {};
-
   const parsed = parseInt(divisor, 10);
   const canSplit =
     !!parsed && parsed > 1 && Number(item.quantity) > 0 &&
