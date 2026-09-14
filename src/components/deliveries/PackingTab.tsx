@@ -351,6 +351,46 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
     onRefreshItems();
   };
 
+  // ─── Split an unpacked line into N equal lines ─────────────────────
+  const handleSplitItem = async (item: DeliveryItem, divisor: number) => {
+    const each = Number(item.quantity) / divisor;
+    if (!divisor || divisor < 2 || !Number.isFinite(each) || each <= 0) return;
+
+    const { data: full, error: fetchError } = await supabase
+      .from('delivery_items')
+      .select('*')
+      .eq('id', item.id)
+      .single();
+
+    if (fetchError || !full) {
+      toast.error('Failed to load line for splitting');
+      return;
+    }
+
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = full as Record<string, unknown>;
+    const newRows = Array.from({ length: divisor - 1 }, () => ({ ...rest, quantity: each }));
+
+    const { error: insertError } = await supabase.from('delivery_items').insert(newRows as never);
+    if (insertError) {
+      toast.error('Failed to split line');
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('delivery_items')
+      .update({ quantity: each })
+      .eq('id', item.id);
+
+    if (updateError) {
+      toast.error('Split partially applied');
+    } else {
+      toast.success(`Split into ${divisor} lines of ${each}`);
+    }
+
+    onRefreshItems();
+  };
+
+
   // ─── DnD handlers ────────────────────────────────────────────────
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
