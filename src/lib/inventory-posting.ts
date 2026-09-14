@@ -24,71 +24,86 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
       return { success: false, error: 'Cannot post receipt with no items' };
     }
 
-    // Add each item to inventory — preserve the receipt UoM (no base-unit conversion)
+    // Add each item to inventory — preserve the receipt UoM (no base-unit conversion).
+    // Each receipt line is processed independently; lines that land on the same
+    // location/bin/product/PU slot are merged (quantities added) so no line is lost.
     for (const item of items as any[]) {
       const puId = item.pu_id || null;
       const batchId = item.batch_id || null;
       const uomId = item.uom_id || null;
+      const binId = item.bin_id || null;
       const qty = Math.round(item.quantity);
+      if (!qty) continue;
 
-      if (puId) {
-        await supabase
+      let query = supabase
+        .from('inventory')
+        .select('id, quantity')
+        .eq('location_id', locationId)
+        .eq('product_id', item.product_id);
+
+      query = binId ? query.eq('bin_id', binId) : query.is('bin_id', null);
+      query = puId ? query.eq('pu_id', puId) : query.is('pu_id', null);
+      query = uomId ? query.eq('uom_id', uomId) : query.is('uom_id', null);
+      query = batchId ? query.eq('batch_id', batchId) : query.is('batch_id', null);
+
+      const { data: existingInventory } = await query.maybeSingle();
+
+      if (existingInventory) {
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({
+            quantity: existingInventory.quantity + qty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingInventory.id);
+        if (updateError) {
+          console.error('Failed to update inventory for receipt line:', updateError);
+          return { success: false, error: `Failed to receive line: ${updateError.message}` };
+        }
+      } else {
+        const { error: insertError } = await supabase
           .from('inventory')
           .insert({
             location_id: locationId,
             product_id: item.product_id,
             quantity: qty,
-            bin_id: item.bin_id || null,
+            bin_id: binId,
             pu_id: puId,
             batch_id: batchId,
             uom_id: uomId,
           } as any);
-      } else {
-        const query = supabase
-          .from('inventory')
-          .select('id, quantity')
-          .eq('location_id', locationId)
-          .eq('product_id', item.product_id)
-          .is('bin_id', item.bin_id || null)
-          .is('pu_id', null);
 
-        if (uomId) {
-          query.eq('uom_id', uomId);
-        } else {
-          query.is('uom_id', null);
-        }
-
-        if (batchId) {
-          query.eq('batch_id', batchId);
-        } else {
-          query.is('batch_id', null);
-        }
-
-        const { data: existingInventory } = await query.maybeSingle();
-
-        if (existingInventory) {
-          await supabase
+        if (insertError) {
+          // Slot already exists (e.g. same PU/bin/product from an earlier line) — merge instead
+          let retry = supabase
             .from('inventory')
-            .update({
-              quantity: existingInventory.quantity + qty,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingInventory.id);
-        } else {
-          await supabase
-            .from('inventory')
-            .insert({
-              location_id: locationId,
-              product_id: item.product_id,
-              quantity: qty,
-              bin_id: item.bin_id || null,
-              pu_id: null,
-              batch_id: batchId,
-              uom_id: uomId,
-            } as any);
+            .select('id, quantity')
+            .eq('location_id', locationId)
+            .eq('product_id', item.product_id);
+          retry = binId ? retry.eq('bin_id', binId) : retry.is('bin_id', null);
+          retry = puId ? retry.eq('pu_id', puId) : retry.is('pu_id', null);
+          const { data: conflictRow } = await retry.limit(1).maybeSingle();
+
+          if (conflictRow) {
+            const { error: mergeError } = await supabase
+              .from('inventory')
+              .update({
+                quantity: conflictRow.quantity + qty,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', conflictRow.id);
+            if (mergeError) {
+              console.error('Failed to merge inventory for receipt line:', mergeError);
+              return { success: false, error: `Failed to receive line: ${mergeError.message}` };
+            }
+          } else {
+            console.error('Failed to insert inventory for receipt line:', insertError);
+            return { success: false, error: `Failed to receive line: ${insertError.message}` };
+          }
         }
       }
     }
+
 
     // Resolve ledger: Inventory account → location ledger → company general
     const companyId = (receipt as any)?.company_id;
