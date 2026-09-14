@@ -454,7 +454,7 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
               ) : (
                 <div className="space-y-1.5 pr-2">
                   {unpackedItems.map((item) => (
-                    <DraggableItem key={item.id} item={item} />
+                    <DraggableItem key={item.id} item={item} onSplit={handleSplitItem} />
                   ))}
                 </div>
               )}
