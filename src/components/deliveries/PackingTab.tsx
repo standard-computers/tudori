@@ -13,8 +13,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { generatePUNumber } from '@/lib/packaging-units';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Package, Plus, GripVertical, Undo2, Trash2 } from 'lucide-react';
+import { Package, Plus, GripVertical, Undo2, Trash2, Scissors } from 'lucide-react';
 import { toast } from '@/lib/toast';
 
 interface DeliveryItem {
@@ -42,11 +43,20 @@ interface PackingTabProps {
 }
 
 // ─── Draggable item card ───────────────────────────────────────────────
-function DraggableItem({ item, overlay }: { item: DeliveryItem; overlay?: boolean }) {
+function DraggableItem({
+  item,
+  overlay,
+  onSplit,
+}: {
+  item: DeliveryItem;
+  overlay?: boolean;
+  onSplit?: (item: DeliveryItem, divisor: number) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
     data: { item },
   });
+  const [divisor, setDivisor] = useState('');
 
   const uomLabel = item.uom?.abbreviation || item.uom?.name || item.product?.unit || 'EA';
 
@@ -69,25 +79,68 @@ function DraggableItem({ item, overlay }: { item: DeliveryItem; overlay?: boolea
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: isDragging ? 50 : undefined }
     : {};
 
+  const parsed = parseInt(divisor, 10);
+  const canSplit =
+    !!parsed && parsed > 1 && Number(item.quantity) > 0 &&
+    Math.abs((Number(item.quantity) / parsed) - Math.round((Number(item.quantity) / parsed) * 1e6) / 1e6) < 1e-9;
+
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       style={style}
-      className={`flex items-center gap-2 rounded-md border bg-card p-2 text-sm cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? 'opacity-30' : 'hover:border-primary/50'}`}
+      className={`rounded-md border bg-card p-2 text-sm transition-opacity ${isDragging ? 'opacity-30' : 'hover:border-primary/50'}`}
     >
-      <GripVertical className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{item.product?.name || 'Unknown'}</div>
-        <div className="text-xs text-muted-foreground font-mono">{item.product?.product_id}</div>
+      <div className="flex items-center gap-2">
+        <span
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing shrink-0"
+        >
+          <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="font-medium truncate">{item.product?.name || 'Unknown'}</div>
+          <div className="text-xs text-muted-foreground font-mono">{item.product?.product_id}</div>
+        </div>
+        <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+          {item.quantity} {uomLabel}
+        </span>
       </div>
-      <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
-        {item.quantity} {uomLabel}
-      </span>
+      {onSplit && (
+        <div className="flex items-center gap-1.5 mt-1.5 pl-6">
+          <Input
+            type="number"
+            min={2}
+            step={1}
+            value={divisor}
+            placeholder="Split by"
+            onChange={(e) => setDivisor(e.target.value)}
+            className="h-7 w-24 text-xs"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            disabled={!canSplit}
+            onClick={() => onSplit(item, parsed)}
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            Split
+          </Button>
+          {parsed > 1 && (
+            <span className="text-xs text-muted-foreground">
+              {canSplit
+                ? `${parsed} × ${Number(item.quantity) / parsed} ${uomLabel}`
+                : 'Not evenly divisible'}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
 
 // ─── Droppable package zone ────────────────────────────────────────────
 function DroppablePackage({
@@ -298,6 +351,46 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
     onRefreshItems();
   };
 
+  // ─── Split an unpacked line into N equal lines ─────────────────────
+  const handleSplitItem = async (item: DeliveryItem, divisor: number) => {
+    const each = Number(item.quantity) / divisor;
+    if (!divisor || divisor < 2 || !Number.isFinite(each) || each <= 0) return;
+
+    const { data: full, error: fetchError } = await supabase
+      .from('delivery_items')
+      .select('*')
+      .eq('id', item.id)
+      .single();
+
+    if (fetchError || !full) {
+      toast.error('Failed to load line for splitting');
+      return;
+    }
+
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = full as Record<string, unknown>;
+    const newRows = Array.from({ length: divisor - 1 }, () => ({ ...rest, quantity: each }));
+
+    const { error: insertError } = await supabase.from('delivery_items').insert(newRows as never);
+    if (insertError) {
+      toast.error('Failed to split line');
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('delivery_items')
+      .update({ quantity: each })
+      .eq('id', item.id);
+
+    if (updateError) {
+      toast.error('Split partially applied');
+    } else {
+      toast.success(`Split into ${divisor} lines of ${each}`);
+    }
+
+    onRefreshItems();
+  };
+
+
   // ─── DnD handlers ────────────────────────────────────────────────
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -361,7 +454,7 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
               ) : (
                 <div className="space-y-1.5 pr-2">
                   {unpackedItems.map((item) => (
-                    <DraggableItem key={item.id} item={item} />
+                    <DraggableItem key={item.id} item={item} onSplit={handleSplitItem} />
                   ))}
                 </div>
               )}
