@@ -52,7 +52,7 @@ function DraggableItem({
   overlay?: boolean;
   onSplit?: (item: DeliveryItem, divisor: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
     data: { item },
   });
