@@ -745,7 +745,8 @@ const Deliveries = () => {
       .select(`
         *,
         product:products(name, product_id, unit, width, length, height, weight, width_uom, length_uom, height_uom, weight_uom),
-        uom:product_uoms(id, name, abbreviation, conversion_factor)
+        uom:product_uoms(id, name, abbreviation, conversion_factor),
+        packaging_unit:packaging_units(pu_number)
       `)
       .eq('delivery_id', deliveryId);
     const items = (data || []) as unknown as DeliveryItem[];
