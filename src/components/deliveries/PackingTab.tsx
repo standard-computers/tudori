@@ -52,7 +52,7 @@ function DraggableItem({
   overlay?: boolean;
   onSplit?: (item: DeliveryItem, divisor: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
     data: { item },
   });
@@ -74,11 +74,6 @@ function DraggableItem({
     );
   }
 
-  // Apply inline transform so the original element follows the pointer (prevents offset)
-  const style: React.CSSProperties = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: isDragging ? 50 : undefined }
-    : {};
-
   const parsed = parseInt(divisor, 10);
   const canSplit =
     !!parsed && parsed > 1 && Number(item.quantity) > 0 &&
@@ -87,7 +82,6 @@ function DraggableItem({
   return (
     <div
       ref={setNodeRef}
-      style={style}
       className={`rounded-md border bg-card p-2 text-sm transition-opacity ${isDragging ? 'opacity-30' : 'hover:border-primary/50'}`}
     >
       <div className="flex items-center gap-2">
