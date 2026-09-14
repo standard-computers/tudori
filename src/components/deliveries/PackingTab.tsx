@@ -82,7 +82,6 @@ function DraggableItem({
   return (
     <div
       ref={setNodeRef}
-      style={style}
       className={`rounded-md border bg-card p-2 text-sm transition-opacity ${isDragging ? 'opacity-30' : 'hover:border-primary/50'}`}
     >
       <div className="flex items-center gap-2">
