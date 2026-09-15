@@ -105,6 +105,19 @@ interface Customer {
 
 const ISSUE_STATUSES = ['pending', 'posted', 'cancelled', 'reversed'];
 
+// Column definitions for Goods Issues table
+const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
+  { key: 'issue_number', label: 'Issue #', defaultVisible: true },
+  { key: 'issue_date', label: 'Date', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'sales_order', label: 'SO', defaultVisible: true },
+  { key: 'outbound_delivery', label: 'Outbound Del.', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'items', label: 'Items', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'pending': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';

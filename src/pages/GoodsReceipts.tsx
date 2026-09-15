@@ -111,12 +111,13 @@ const RECEIPT_STATUSES = ['pending', 'posted', 'cancelled'];
 // Column definitions for Goods Receipts table
 const GOODS_RECEIPT_COLUMNS: ColumnDefinition[] = [
   { key: 'receipt_number', label: 'Receipt #', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'delivery', label: 'Delivery', defaultVisible: true },
+  { key: 'receipt_date', label: 'Date', defaultVisible: true },
   { key: 'location', label: 'Location', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
-  { key: 'delivery', label: 'Delivery', defaultVisible: true },
   { key: 'purchase_order', label: 'PO', defaultVisible: true },
-  { key: 'receipt_date', label: 'Date', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'items', label: 'Items', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
