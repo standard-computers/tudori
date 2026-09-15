@@ -1131,6 +1131,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
   } = useTableSort(issues, 'issue_number', 'desc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColCount = GOODS_ISSUE_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
