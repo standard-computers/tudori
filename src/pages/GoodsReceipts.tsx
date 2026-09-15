@@ -1161,6 +1161,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               filterValue={filters['vendor.name']}
               onFilter={(value) => setFilter('vendor.name', value)}
             />
+            )}
+            {isColumnVisible('purchase_order') && (
             <SortableTableHead
               label="PO"
               sortKey="purchase_order.po_number"
@@ -1170,6 +1172,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               filterValue={filters['purchase_order.po_number']}
               onFilter={(value) => setFilter('purchase_order.po_number', value)}
             />
+            )}
+            {isColumnVisible('status') && (
             <SortableTableHead
               label="Status"
               sortKey="status"
