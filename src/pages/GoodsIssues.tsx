@@ -1220,6 +1220,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['outbound_delivery.delivery_number']}
               onFilter={(value) => setFilter('outbound_delivery.delivery_number', value)}
             />
+            )}
+            {isColumnVisible('status') && (
             <SortableTableHead
               label="Status"
               sortKey="status"
@@ -1229,6 +1231,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['status']}
               onFilter={(value) => setFilter('status', value)}
             />
+            )}
+            {isColumnVisible('items') && (
             <SortableTableHead
               label="Items"
               sortKey="item_count"
