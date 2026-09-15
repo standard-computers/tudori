@@ -1249,7 +1249,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={visibleColCount} className="text-center text-muted-foreground py-8">
                 {issues.length === 0
                   ? 'No goods issues found. Create one to start issuing inventory.'
                   : 'No issues match your filters'}
@@ -1258,6 +1258,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
           ) : (
             sortedAndFilteredData.map((issue) => (
               <TableRow key={issue.id}>
+                {isColumnVisible('issue_number') && (
                 <TableCell className="font-mono">
                   <button
                     type="button"
@@ -1267,17 +1268,32 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
                     {issue.issue_number}
                   </button>
                 </TableCell>
+                )}
+                {isColumnVisible('issue_date') && (
                 <TableCell>{format(parseISO(issue.issue_date), 'MMM d, yyyy')}</TableCell>
+                )}
+                {isColumnVisible('location') && (
                 <TableCell>{issue.location?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('customer') && (
                 <TableCell>{issue.customer?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('sales_order') && (
                 <TableCell className="font-mono text-muted-foreground">{issue.sales_order?.so_number || '-'}</TableCell>
+                )}
+                {isColumnVisible('outbound_delivery') && (
                 <TableCell className="font-mono text-muted-foreground">{issue.outbound_delivery?.delivery_number || '-'}</TableCell>
+                )}
+                {isColumnVisible('status') && (
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(issue.status)}>
                     {issue.status}
                   </Badge>
                 </TableCell>
+                )}
+                {isColumnVisible('items') && (
                 <TableCell>{(issue as any).goods_issue_items?.[0]?.count ?? 0}</TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onView(issue)}>
