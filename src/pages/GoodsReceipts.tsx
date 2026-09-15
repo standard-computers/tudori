@@ -1082,6 +1082,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
   } = useTableSort(receipts, 'receipt_number', 'desc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColCount = GOODS_RECEIPT_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -1107,6 +1108,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
       <Table>
         <TableHeader>
           <TableRow>
+            {isColumnVisible('receipt_number') && (
             <SortableTableHead
               label="Receipt #"
               sortKey="receipt_number"
