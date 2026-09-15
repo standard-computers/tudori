@@ -1176,6 +1176,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               onSort={handleSort}
               filterable={false}
             />
+            )}
+            {isColumnVisible('location') && (
             <SortableTableHead
               label="Location"
               sortKey="location.name"
@@ -1185,6 +1187,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['location.name']}
               onFilter={(value) => setFilter('location.name', value)}
             />
+            )}
+            {isColumnVisible('customer') && (
             <SortableTableHead
               label="Customer"
               sortKey="customer.name"
