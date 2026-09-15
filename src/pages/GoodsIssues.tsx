@@ -173,6 +173,16 @@ const GoodsIssues = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
 
+  // Column visibility
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility('goods_issues', GOODS_ISSUE_COLUMNS);
+
   const locationOptions: SearchableSelectOption[] = useMemo(() => {
     return locations.map((loc) => ({
       value: loc.id,

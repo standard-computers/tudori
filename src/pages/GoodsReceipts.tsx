@@ -175,6 +175,16 @@ const GoodsReceipts = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
 
+  // Column visibility
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility('goods_receipts', GOODS_RECEIPT_COLUMNS);
+
   const { vendorOptions } = useVendorSources(companyId);
 
   const locationOptions: SearchableSelectOption[] = useMemo(() => {
