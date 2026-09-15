@@ -940,6 +940,7 @@ const GoodsIssues = () => {
         onPost={handlePostIssue}
         onReverse={handleReversal}
         isAdmin={isAdmin}
+        isColumnVisible={isColumnVisible}
       />
 
       {/* View Goods Issue Dialog */}

@@ -907,6 +907,7 @@ const GoodsReceipts = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPost={handlePostReceipt}
+        isColumnVisible={isColumnVisible}
       />
 
       {/* View Goods Receipt Dialog */}
