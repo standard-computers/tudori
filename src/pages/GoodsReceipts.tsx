@@ -1200,7 +1200,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={visibleColCount} className="text-center text-muted-foreground py-8">
                 {receipts.length === 0
                   ? 'No goods receipts found. Create one to start receiving inventory.'
                   : 'No receipts match your filters'}
@@ -1209,6 +1209,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
           ) : (
             sortedAndFilteredData.map((receipt) => (
               <TableRow key={receipt.id}>
+                {isColumnVisible('receipt_number') && (
                 <TableCell className="font-mono">
                   <button
                     type="button"
@@ -1218,17 +1219,32 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
                     {receipt.receipt_number}
                   </button>
                 </TableCell>
+                )}
+                {isColumnVisible('delivery') && (
                 <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
+                )}
+                {isColumnVisible('receipt_date') && (
                 <TableCell>{format(parseISO(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
+                )}
+                {isColumnVisible('location') && (
                 <TableCell>{receipt.location?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('vendor') && (
                 <TableCell>{receipt.vendor?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('purchase_order') && (
                 <TableCell className="font-mono text-muted-foreground">{receipt.purchase_order?.po_number || '-'}</TableCell>
+                )}
+                {isColumnVisible('status') && (
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(receipt.status)}>
                     {receipt.status}
                   </Badge>
                 </TableCell>
+                )}
+                {isColumnVisible('items') && (
                 <TableCell>{(receipt as any).goods_receipt_items?.[0]?.count ?? 0}</TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onView(receipt)}>
