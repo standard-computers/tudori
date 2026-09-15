@@ -1068,9 +1068,10 @@ interface GoodsReceiptsTableProps {
   onEdit: (receipt: GoodsReceipt) => void;
   onDelete: (id: string) => void;
   onPost: (id: string, locationId: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }
 
-const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: GoodsReceiptsTableProps) => {
+const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColumnVisible }: GoodsReceiptsTableProps) => {
   const {
     sortConfig,
     filters,

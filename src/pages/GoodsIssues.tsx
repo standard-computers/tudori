@@ -1117,9 +1117,10 @@ interface GoodsIssuesTableProps {
   onPost: (id: string, locationId: string) => void;
   onReverse: (issue: GoodsIssue) => void;
   isAdmin: boolean;
+  isColumnVisible: (key: string) => boolean;
 }
 
-const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse, isAdmin }: GoodsIssuesTableProps) => {
+const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse, isAdmin, isColumnVisible }: GoodsIssuesTableProps) => {
   const {
     sortConfig,
     filters,
