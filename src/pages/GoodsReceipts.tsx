@@ -1118,6 +1118,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               filterValue={filters['receipt_number']}
               onFilter={(value) => setFilter('receipt_number', value)}
             />
+            )}
+            {isColumnVisible('delivery') && (
             <SortableTableHead
               label="Delivery"
               sortKey="delivery.delivery_id"
@@ -1127,6 +1129,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               filterValue={filters['delivery.delivery_id']}
               onFilter={(value) => setFilter('delivery.delivery_id', value)}
             />
+            )}
+            {isColumnVisible('receipt_date') && (
             <SortableTableHead
               label="Date"
               sortKey="receipt_date"
