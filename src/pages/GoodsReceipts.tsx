@@ -1139,6 +1139,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               onSort={handleSort}
               filterable={false}
             />
+            )}
+            {isColumnVisible('location') && (
             <SortableTableHead
               label="Location"
               sortKey="location.name"
@@ -1148,6 +1150,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               filterValue={filters['location.name']}
               onFilter={(value) => setFilter('location.name', value)}
             />
+            )}
+            {isColumnVisible('vendor') && (
             <SortableTableHead
               label="Vendor"
               sortKey="vendor.name"
