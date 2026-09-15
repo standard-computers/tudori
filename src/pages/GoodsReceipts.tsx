@@ -111,12 +111,13 @@ const RECEIPT_STATUSES = ['pending', 'posted', 'cancelled'];
 // Column definitions for Goods Receipts table
 const GOODS_RECEIPT_COLUMNS: ColumnDefinition[] = [
   { key: 'receipt_number', label: 'Receipt #', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'delivery', label: 'Delivery', defaultVisible: true },
+  { key: 'receipt_date', label: 'Date', defaultVisible: true },
   { key: 'location', label: 'Location', defaultVisible: true },
   { key: 'vendor', label: 'Vendor', defaultVisible: true },
-  { key: 'delivery', label: 'Delivery', defaultVisible: true },
   { key: 'purchase_order', label: 'PO', defaultVisible: true },
-  { key: 'receipt_date', label: 'Date', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'items', label: 'Items', defaultVisible: true },
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
@@ -173,6 +174,16 @@ const GoodsReceipts = () => {
   const [importProcessed, setImportProcessed] = useState(0);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
+
+  // Column visibility
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility('goods_receipts', GOODS_RECEIPT_COLUMNS);
 
   const { vendorOptions } = useVendorSources(companyId);
 
@@ -675,6 +686,14 @@ const GoodsReceipts = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={GOODS_RECEIPT_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled('goods_receipt')}
                 exportEnabled={isExportEnabled('goods_receipt')}
@@ -888,6 +907,7 @@ const GoodsReceipts = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPost={handlePostReceipt}
+        isColumnVisible={isColumnVisible}
       />
 
       {/* View Goods Receipt Dialog */}
@@ -1048,9 +1068,10 @@ interface GoodsReceiptsTableProps {
   onEdit: (receipt: GoodsReceipt) => void;
   onDelete: (id: string) => void;
   onPost: (id: string, locationId: string) => void;
+  isColumnVisible: (key: string) => boolean;
 }
 
-const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: GoodsReceiptsTableProps) => {
+const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColumnVisible }: GoodsReceiptsTableProps) => {
   const {
     sortConfig,
     filters,
@@ -1061,6 +1082,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
   } = useTableSort(receipts, 'receipt_number', 'desc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColCount = GOODS_RECEIPT_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -1086,6 +1108,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
       <Table>
         <TableHeader>
           <TableRow>
+            {isColumnVisible('receipt_number') && (
             <SortableTableHead
               label="Receipt #"
               sortKey="receipt_number"
@@ -1095,6 +1118,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['receipt_number']}
               onFilter={(value) => setFilter('receipt_number', value)}
             />
+            )}
+            {isColumnVisible('delivery') && (
             <SortableTableHead
               label="Delivery"
               sortKey="delivery.delivery_id"
@@ -1104,6 +1129,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['delivery.delivery_id']}
               onFilter={(value) => setFilter('delivery.delivery_id', value)}
             />
+            )}
+            {isColumnVisible('receipt_date') && (
             <SortableTableHead
               label="Date"
               sortKey="receipt_date"
@@ -1112,6 +1139,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               onSort={handleSort}
               filterable={false}
             />
+            )}
+            {isColumnVisible('location') && (
             <SortableTableHead
               label="Location"
               sortKey="location.name"
@@ -1121,6 +1150,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['location.name']}
               onFilter={(value) => setFilter('location.name', value)}
             />
+            )}
+            {isColumnVisible('vendor') && (
             <SortableTableHead
               label="Vendor"
               sortKey="vendor.name"
@@ -1130,6 +1161,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['vendor.name']}
               onFilter={(value) => setFilter('vendor.name', value)}
             />
+            )}
+            {isColumnVisible('purchase_order') && (
             <SortableTableHead
               label="PO"
               sortKey="purchase_order.po_number"
@@ -1139,6 +1172,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['purchase_order.po_number']}
               onFilter={(value) => setFilter('purchase_order.po_number', value)}
             />
+            )}
+            {isColumnVisible('status') && (
             <SortableTableHead
               label="Status"
               sortKey="status"
@@ -1148,6 +1183,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               filterValue={filters['status']}
               onFilter={(value) => setFilter('status', value)}
             />
+            )}
+            {isColumnVisible('items') && (
             <SortableTableHead
               label="Items"
               sortKey="item_count"
@@ -1156,13 +1193,14 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
               onSort={handleSort}
               filterable={false}
             />
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={visibleColCount} className="text-center text-muted-foreground py-8">
                 {receipts.length === 0
                   ? 'No goods receipts found. Create one to start receiving inventory.'
                   : 'No receipts match your filters'}
@@ -1171,6 +1209,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
           ) : (
             sortedAndFilteredData.map((receipt) => (
               <TableRow key={receipt.id}>
+                {isColumnVisible('receipt_number') && (
                 <TableCell className="font-mono">
                   <button
                     type="button"
@@ -1180,17 +1219,32 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost }: Good
                     {receipt.receipt_number}
                   </button>
                 </TableCell>
+                )}
+                {isColumnVisible('delivery') && (
                 <TableCell className="font-mono text-muted-foreground">{receipt.delivery?.delivery_id || '-'}</TableCell>
+                )}
+                {isColumnVisible('receipt_date') && (
                 <TableCell>{format(parseISO(receipt.receipt_date), 'MMM d, yyyy')}</TableCell>
+                )}
+                {isColumnVisible('location') && (
                 <TableCell>{receipt.location?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('vendor') && (
                 <TableCell>{receipt.vendor?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('purchase_order') && (
                 <TableCell className="font-mono text-muted-foreground">{receipt.purchase_order?.po_number || '-'}</TableCell>
+                )}
+                {isColumnVisible('status') && (
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(receipt.status)}>
                     {receipt.status}
                   </Badge>
                 </TableCell>
+                )}
+                {isColumnVisible('items') && (
                 <TableCell>{(receipt as any).goods_receipt_items?.[0]?.count ?? 0}</TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onView(receipt)}>

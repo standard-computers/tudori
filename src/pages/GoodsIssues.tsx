@@ -105,6 +105,19 @@ interface Customer {
 
 const ISSUE_STATUSES = ['pending', 'posted', 'cancelled', 'reversed'];
 
+// Column definitions for Goods Issues table
+const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
+  { key: 'issue_number', label: 'Issue #', defaultVisible: true },
+  { key: 'issue_date', label: 'Date', defaultVisible: true },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'sales_order', label: 'SO', defaultVisible: true },
+  { key: 'outbound_delivery', label: 'Outbound Del.', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'items', label: 'Items', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'pending': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
@@ -159,6 +172,16 @@ const GoodsIssues = () => {
   const [importProcessed, setImportProcessed] = useState(0);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
+
+  // Column visibility
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility('goods_issues', GOODS_ISSUE_COLUMNS);
 
   const locationOptions: SearchableSelectOption[] = useMemo(() => {
     return locations.map((loc) => ({
@@ -722,6 +745,14 @@ const GoodsIssues = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ColumnToggle
+                columns={GOODS_ISSUE_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumn}
+                onResetToDefaults={resetToDefaults}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
               <ImportExportButtons
                 importEnabled={isImportEnabled('goods_issue')}
                 exportEnabled={isExportEnabled('goods_issue')}
@@ -909,6 +940,7 @@ const GoodsIssues = () => {
         onPost={handlePostIssue}
         onReverse={handleReversal}
         isAdmin={isAdmin}
+        isColumnVisible={isColumnVisible}
       />
 
       {/* View Goods Issue Dialog */}
@@ -1085,9 +1117,10 @@ interface GoodsIssuesTableProps {
   onPost: (id: string, locationId: string) => void;
   onReverse: (issue: GoodsIssue) => void;
   isAdmin: boolean;
+  isColumnVisible: (key: string) => boolean;
 }
 
-const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse, isAdmin }: GoodsIssuesTableProps) => {
+const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse, isAdmin, isColumnVisible }: GoodsIssuesTableProps) => {
   const {
     sortConfig,
     filters,
@@ -1098,6 +1131,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
   } = useTableSort(issues, 'issue_number', 'desc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColCount = GOODS_ISSUE_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -1123,6 +1157,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
       <Table>
         <TableHeader>
           <TableRow>
+            {isColumnVisible('issue_number') && (
             <SortableTableHead
               label="Issue #"
               sortKey="issue_number"
@@ -1132,6 +1167,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['issue_number']}
               onFilter={(value) => setFilter('issue_number', value)}
             />
+            )}
+            {isColumnVisible('issue_date') && (
             <SortableTableHead
               label="Date"
               sortKey="issue_date"
@@ -1140,6 +1177,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               onSort={handleSort}
               filterable={false}
             />
+            )}
+            {isColumnVisible('location') && (
             <SortableTableHead
               label="Location"
               sortKey="location.name"
@@ -1149,6 +1188,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['location.name']}
               onFilter={(value) => setFilter('location.name', value)}
             />
+            )}
+            {isColumnVisible('customer') && (
             <SortableTableHead
               label="Customer"
               sortKey="customer.name"
@@ -1158,6 +1199,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['customer.name']}
               onFilter={(value) => setFilter('customer.name', value)}
             />
+            )}
+            {isColumnVisible('sales_order') && (
             <SortableTableHead
               label="SO"
               sortKey="sales_order.so_number"
@@ -1167,6 +1210,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['sales_order.so_number']}
               onFilter={(value) => setFilter('sales_order.so_number', value)}
             />
+            )}
+            {isColumnVisible('outbound_delivery') && (
             <SortableTableHead
               label="Outbound Del."
               sortKey="outbound_delivery.delivery_number"
@@ -1176,6 +1221,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['outbound_delivery.delivery_number']}
               onFilter={(value) => setFilter('outbound_delivery.delivery_number', value)}
             />
+            )}
+            {isColumnVisible('status') && (
             <SortableTableHead
               label="Status"
               sortKey="status"
@@ -1185,6 +1232,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['status']}
               onFilter={(value) => setFilter('status', value)}
             />
+            )}
+            {isColumnVisible('items') && (
             <SortableTableHead
               label="Items"
               sortKey="item_count"
@@ -1193,13 +1242,14 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               onSort={handleSort}
               filterable={false}
             />
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedAndFilteredData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={visibleColCount} className="text-center text-muted-foreground py-8">
                 {issues.length === 0
                   ? 'No goods issues found. Create one to start issuing inventory.'
                   : 'No issues match your filters'}
@@ -1208,6 +1258,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
           ) : (
             sortedAndFilteredData.map((issue) => (
               <TableRow key={issue.id}>
+                {isColumnVisible('issue_number') && (
                 <TableCell className="font-mono">
                   <button
                     type="button"
@@ -1217,17 +1268,32 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
                     {issue.issue_number}
                   </button>
                 </TableCell>
+                )}
+                {isColumnVisible('issue_date') && (
                 <TableCell>{format(parseISO(issue.issue_date), 'MMM d, yyyy')}</TableCell>
+                )}
+                {isColumnVisible('location') && (
                 <TableCell>{issue.location?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('customer') && (
                 <TableCell>{issue.customer?.name || '-'}</TableCell>
+                )}
+                {isColumnVisible('sales_order') && (
                 <TableCell className="font-mono text-muted-foreground">{issue.sales_order?.so_number || '-'}</TableCell>
+                )}
+                {isColumnVisible('outbound_delivery') && (
                 <TableCell className="font-mono text-muted-foreground">{issue.outbound_delivery?.delivery_number || '-'}</TableCell>
+                )}
+                {isColumnVisible('status') && (
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(issue.status)}>
                     {issue.status}
                   </Badge>
                 </TableCell>
+                )}
+                {isColumnVisible('items') && (
                 <TableCell>{(issue as any).goods_issue_items?.[0]?.count ?? 0}</TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onView(issue)}>
