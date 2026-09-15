@@ -1183,6 +1183,8 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               filterValue={filters['status']}
               onFilter={(value) => setFilter('status', value)}
             />
+            )}
+            {isColumnVisible('items') && (
             <SortableTableHead
               label="Items"
               sortKey="item_count"
@@ -1191,6 +1193,7 @@ const GoodsReceiptsTable = ({ receipts, onView, onEdit, onDelete, onPost, isColu
               onSort={handleSort}
               filterable={false}
             />
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
