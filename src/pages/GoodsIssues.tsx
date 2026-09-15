@@ -1241,6 +1241,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               onSort={handleSort}
               filterable={false}
             />
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
