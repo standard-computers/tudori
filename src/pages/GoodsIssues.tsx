@@ -1156,6 +1156,7 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
       <Table>
         <TableHeader>
           <TableRow>
+            {isColumnVisible('issue_number') && (
             <SortableTableHead
               label="Issue #"
               sortKey="issue_number"
@@ -1165,6 +1166,8 @@ const GoodsIssuesTable = ({ issues, onView, onEdit, onDelete, onPost, onReverse,
               filterValue={filters['issue_number']}
               onFilter={(value) => setFilter('issue_number', value)}
             />
+            )}
+            {isColumnVisible('issue_date') && (
             <SortableTableHead
               label="Date"
               sortKey="issue_date"
