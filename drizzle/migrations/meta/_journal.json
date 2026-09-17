@@ -22,6 +22,13 @@
       "when": 1789673272111,
       "tag": "0002_create_interconnects",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789675131882,
+      "tag": "0003_product_id_honors_document_id_config",
+      "breakpoints": true
     }
   ]
 }
