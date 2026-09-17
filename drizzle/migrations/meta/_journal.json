@@ -15,6 +15,13 @@
       "when": 1789672759804,
       "tag": "0001_platform_documentation",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789673272111,
+      "tag": "0002_create_interconnects",
+      "breakpoints": true
     }
   ]
 }

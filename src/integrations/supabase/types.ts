@@ -2486,6 +2486,69 @@ export type Database = {
           },
         ]
       }
+      interconnects: {
+        Row: {
+          auth_key: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          interconnect_id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          partner_company_id: string | null
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          auth_key: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interconnect_id: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          partner_company_id?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          auth_key?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interconnect_id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          partner_company_id?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interconnects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interconnects_partner_company_id_fkey"
+            columns: ["partner_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           batch_id: string | null
@@ -6075,6 +6138,10 @@ export type Database = {
       is_sole_company_user: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_interconnect: {
+        Args: { p_auth_key: string; p_interconnect_id: string; p_name?: string }
+        Returns: Json
       }
       list_employee_sensitive: {
         Args: { p_company_id: string }

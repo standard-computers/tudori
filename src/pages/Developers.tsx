@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Key, Shield, Webhook, Eye, EyeOff, Copy, Trash2, ToggleLeft, ToggleRight, ArrowLeft } from 'lucide-react';
+import { Plus, Key, Shield, Webhook, Network, Eye, EyeOff, Copy, Trash2, ToggleLeft, ToggleRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { InterconnectsTab } from '@/components/developers/InterconnectsTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusMessage } from '@/hooks/use-status-message';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
@@ -53,6 +54,7 @@ export default function Developers() {
   const [deleteTarget, setDeleteTarget] = useState<DeveloperKey | null>(null);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState('api_key');
+  const [icDialogOpen, setIcDialogOpen] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -66,7 +68,16 @@ export default function Developers() {
     notes: '',
   });
 
-  useKeyboardShortcut('n', () => setDialogOpen(true));
+  const openCreate = () => {
+    if (tab === 'interconnect') {
+      setIcDialogOpen(true);
+    } else {
+      setForm(f => ({ ...f, key_type: tab }));
+      setDialogOpen(true);
+    }
+  };
+
+  useKeyboardShortcut('n', () => openCreate());
   useKeyboardShortcut('F1', () => navigate(-1));
 
   useEffect(() => {
@@ -195,7 +206,7 @@ export default function Developers() {
           <h1 className="text-xl font-semibold text-foreground">Developers</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => { setForm(f => ({ ...f, key_type: tab })); setDialogOpen(true); }} size="icon" className="relative">
+          <Button onClick={openCreate} size="icon" className="relative">
             <Plus className="w-4 h-4" />
             <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
           </Button>
@@ -215,8 +226,20 @@ export default function Developers() {
             <TabsTrigger value="webhook" className="gap-1.5">
               <Webhook className="w-3.5 h-3.5" /> Webhooks
             </TabsTrigger>
+            <TabsTrigger value="interconnect" className="gap-1.5">
+              <Network className="w-3.5 h-3.5" /> Interconnects
+            </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="interconnect" className="mt-0">
+          <InterconnectsTab
+            companyId={companyId}
+            userId={user?.id}
+            dialogOpen={icDialogOpen}
+            onDialogOpenChange={setIcDialogOpen}
+          />
+        </TabsContent>
 
         {['api_key', 'oauth', 'webhook'].map(type => (
           <TabsContent key={type} value={type} className="mt-0">
