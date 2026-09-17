@@ -947,6 +947,20 @@ const BillOfMaterials = () => {
     setIsDialogOpen(true);
   };
 
+  // Deep link: open the view window for a BOM referenced via ?ref=<bom_id>
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (!ref || boms.length === 0 || isDialogOpen) return;
+    const target = boms.find(b => b.bom_id === ref);
+    setSearchParams({}, { replace: true });
+    if (target) {
+      handleView(target);
+    } else {
+      toast.error(`Bill of Materials ${ref} not found`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, boms]);
+
   const handleEdit = async (bom: BillOfMaterial) => {
     setFormData({
       bom_id: bom.bom_id,
