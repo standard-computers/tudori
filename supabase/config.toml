@@ -12,3 +12,6 @@ verify_jwt = false
 [functions.build-report]
 verify_jwt = false
 
+
+[functions.platform-admin-bootstrap]
+verify_jwt = false
