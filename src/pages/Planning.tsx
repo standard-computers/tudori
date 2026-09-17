@@ -1232,12 +1232,12 @@ const Planning = () => {
                     />
                     <SortableTableHead
                       label="Required"
-                      sortKey="totalRequired"
+                      sortKey="requiredTotal"
                       currentSortKey={shortfallsSortConfig.key}
                       currentSortDirection={shortfallsSortConfig.direction}
                       onSort={handleShortfallsSort}
-                      filterValue={shortfallsFilters['totalRequired'] || ''}
-                      onFilter={(value) => setShortfallsFilter('totalRequired', value)}
+                      filterValue={shortfallsFilters['requiredTotal'] || ''}
+                      onFilter={(value) => setShortfallsFilter('requiredTotal', value)}
                       className="w-24 text-right"
                     />
                     <SortableTableHead
