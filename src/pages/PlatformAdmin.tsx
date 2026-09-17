@@ -205,7 +205,11 @@ const PlatformAdmin = () => {
     } else {
       const { error } = await sb
         .from("platform_doc_folders")
-        .insert({ parent_folder_id: parentFolderId, name: newFolderName });
+        .insert({
+          parent_folder_id: parentFolderId,
+          name: newFolderName,
+          sort_order: folders.filter((f) => f.parent_folder_id === parentFolderId).length,
+        });
       if (error) toast.error("Failed to create folder");
       else toast.success("Folder created");
     }
