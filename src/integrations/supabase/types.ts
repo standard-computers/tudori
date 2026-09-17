@@ -3725,6 +3725,7 @@ export type Database = {
           id: string
           name: string
           parent_folder_id: string | null
+          sort_order: number
           updated_at: string
         }
         Insert: {
@@ -3732,6 +3733,7 @@ export type Database = {
           id?: string
           name: string
           parent_folder_id?: string | null
+          sort_order?: number
           updated_at?: string
         }
         Update: {
@@ -3739,6 +3741,7 @@ export type Database = {
           id?: string
           name?: string
           parent_folder_id?: string | null
+          sort_order?: number
           updated_at?: string
         }
         Relationships: [
@@ -3758,6 +3761,7 @@ export type Database = {
           created_by: string | null
           folder_id: string | null
           id: string
+          sort_order: number
           title: string
           updated_at: string
           updated_by: string | null
@@ -3768,6 +3772,7 @@ export type Database = {
           created_by?: string | null
           folder_id?: string | null
           id?: string
+          sort_order?: number
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -3778,6 +3783,7 @@ export type Database = {
           created_by?: string | null
           folder_id?: string | null
           id?: string
+          sort_order?: number
           title?: string
           updated_at?: string
           updated_by?: string | null

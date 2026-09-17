@@ -29,6 +29,13 @@
       "when": 1789675131882,
       "tag": "0003_product_id_honors_document_id_config",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789677604819,
+      "tag": "0004_add_doc_sort_order",
+      "breakpoints": true
     }
   ]
 }
