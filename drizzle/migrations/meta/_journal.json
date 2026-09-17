@@ -8,6 +8,13 @@
       "when": 1789485655008,
       "tag": "0000_create_default_office_location_on_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789672759804,
+      "tag": "0001_platform_documentation",
+      "breakpoints": true
     }
   ]
 }
