@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Key, Shield, Webhook, Eye, EyeOff, Copy, Trash2, ToggleLeft, ToggleRight, ArrowLeft } from 'lucide-react';
+import { Plus, Key, Shield, Webhook, Network, Eye, EyeOff, Copy, Trash2, ToggleLeft, ToggleRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
