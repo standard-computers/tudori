@@ -180,15 +180,18 @@ export const DocsTree = (props: TreeProps) => {
             </CollapsibleTrigger>
             <Folder className="h-4 w-4 text-warning shrink-0" />
             <span className="flex-1 text-sm truncate">{folder.name}</span>
+            {props.editable && props.onMoveFolder && (
+              <div className="flex items-center gap-0.5">
+                {moveButtons(
+                  idx > 0,
+                  idx < siblings.length - 1,
+                  () => props.onMoveFolder!(folder, -1, siblings),
+                  () => props.onMoveFolder!(folder, 1, siblings),
+                )}
+              </div>
+            )}
             {props.editable && (
               <div className="hidden group-hover:flex items-center gap-0.5">
-                {props.onMoveFolder &&
-                  moveButtons(
-                    idx > 0,
-                    idx < siblings.length - 1,
-                    () => props.onMoveFolder!(folder, -1, siblings),
-                    () => props.onMoveFolder!(folder, 1, siblings),
-                  )}
                 <button
                   onClick={(e) => { e.stopPropagation(); props.onAddFolder?.(folder.id); }}
                   className="p-1 hover:bg-accent rounded"
