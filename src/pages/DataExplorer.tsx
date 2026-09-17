@@ -710,21 +710,24 @@ export default function DataExplorer() {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
         <div className={cn(
-          "border-r bg-muted/30 shrink-0 transition-all duration-200",
+          "border-r bg-muted/30 shrink-0 flex flex-col min-h-0 transition-all duration-200",
           sidebarCollapsed ? "w-0 overflow-hidden" : "w-56"
         )}>
-          <ScrollArea className="h-[calc(100vh-4rem)]">
-            <div className="p-2">
-              <div className="relative mb-2">
-                <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Filter tables..."
-                  value={tableSearch}
-                  onChange={(e) => setTableSearch(e.target.value)}
-                  className="pl-7 h-8 text-sm"
-                />
-              </div>
-              <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Tables</div>
+          {/* Search stays fixed above the scrolling table list so it's never clipped */}
+          <div className="p-2 pb-1 shrink-0">
+            <div className="relative">
+              <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Filter tables..."
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                className="pl-7 h-8 text-sm"
+              />
+            </div>
+            <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Tables</div>
+          </div>
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="px-2 pb-2">
               {AVAILABLE_TABLES.filter(t => t.includes(tableSearch.toLowerCase())).map((table) => (
                 <button
                   key={table}
@@ -735,7 +738,7 @@ export default function DataExplorer() {
                   )}
                 >
                   <TableIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{table}</span>
+                  <span className="truncate block min-w-0 flex-1">{table}</span>
                 </button>
               ))}
             </div>
