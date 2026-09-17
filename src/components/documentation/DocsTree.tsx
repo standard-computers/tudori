@@ -145,7 +145,7 @@ export const DocsTree = (props: TreeProps) => {
         <FileText className="h-4 w-4 text-primary shrink-0" />
         <span className="flex-1 text-sm truncate">{doc.title}</span>
         {props.editable && props.onMoveDocument && (
-          <div className="hidden group-hover:flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5">
             {moveButtons(
               idx > 0,
               idx < siblings.length - 1,
