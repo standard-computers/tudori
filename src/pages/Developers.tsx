@@ -206,7 +206,7 @@ export default function Developers() {
           <h1 className="text-xl font-semibold text-foreground">Developers</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => { setForm(f => ({ ...f, key_type: tab })); setDialogOpen(true); }} size="icon" className="relative">
+          <Button onClick={openCreate} size="icon" className="relative">
             <Plus className="w-4 h-4" />
             <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
           </Button>
