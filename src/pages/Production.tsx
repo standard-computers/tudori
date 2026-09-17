@@ -304,11 +304,25 @@ const ProductionOrderTable = ({
                         className="text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {order.bom.name}
+                        {order.bom.bom_id} - {order.bom.name}
                       </Link>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>{order.product?.name || '-'}</TableCell>
+                  <TableCell>
+                    {order.product?.product_id ? (
+                      <span>
+                        <Link
+                          to={`/products?ref=${encodeURIComponent(order.product.product_id)}`}
+                          className="text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {order.product.product_id}
+                        </Link>
+                        {' - '}
+                        {order.product.name}
+                      </span>
+                    ) : (order.product?.name || '-')}
+                  </TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
