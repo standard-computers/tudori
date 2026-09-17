@@ -497,6 +497,40 @@ const Planning = () => {
         .select('product_id, quantity')
         .eq('location_id', locationId);
 
+      // Get open purchase orders for this location (incoming supply not yet received)
+      const { data: openPOs } = await supabase
+        .from('purchase_orders')
+        .select('id, status, purchase_order_items(product_id, quantity)')
+        .eq('company_id', companyId!)
+        .eq('location_id', locationId)
+        .in('status', ['draft', 'pending', 'approved', 'confirmed', 'shipped', 'partial', 'in_transit']);
+
+      const openPoIds = (openPOs || []).map((po: any) => po.id);
+      let receivedByProduct = new Map<string, number>();
+      if (openPoIds.length > 0) {
+        const { data: receipts } = await supabase
+          .from('goods_receipts')
+          .select('purchase_order_id, goods_receipt_items(product_id, quantity)')
+          .in('purchase_order_id', openPoIds);
+        receipts?.forEach((gr: any) => {
+          (gr.goods_receipt_items as any[])?.forEach((item: any) => {
+            receivedByProduct.set(item.product_id, (receivedByProduct.get(item.product_id) || 0) + (item.quantity || 0));
+          });
+        });
+      }
+
+      // Incoming = ordered on open POs minus what has already been received against them
+      const onOrderMap = new Map<string, number>();
+      openPOs?.forEach((po: any) => {
+        (po.purchase_order_items as any[])?.forEach((item: any) => {
+          onOrderMap.set(item.product_id, (onOrderMap.get(item.product_id) || 0) + (item.quantity || 0));
+        });
+      });
+      receivedByProduct.forEach((received, productId) => {
+        const ordered = onOrderMap.get(productId) || 0;
+        onOrderMap.set(productId, Math.max(0, ordered - received));
+      });
+
       // Get outstanding requisitions for this location (draft, pending, approved - not yet converted to PO)
       const { data: outstandingReqs } = await supabase
         .from('requisitions')
