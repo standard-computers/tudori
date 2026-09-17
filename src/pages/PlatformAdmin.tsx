@@ -41,7 +41,7 @@ import {
   Upload,
   LogOut,
 } from "lucide-react";
-import { DocsTree, type DocFolder, type PlatformDoc } from "@/components/documentation/DocsTree";
+import { DocsTree, flattenDocOrder, type DocFolder, type PlatformDoc } from "@/components/documentation/DocsTree";
 
 const PlatformAdmin = () => {
   const [checking, setChecking] = useState(true);
@@ -91,12 +91,39 @@ const PlatformAdmin = () => {
 
   const fetchData = useCallback(async () => {
     const [foldersRes, docsRes] = await Promise.all([
-      sb.from("platform_doc_folders").select("*").order("name"),
-      sb.from("platform_documents").select("*").order("title"),
+      sb.from("platform_doc_folders").select("*").order("sort_order").order("name"),
+      sb.from("platform_documents").select("*").order("sort_order").order("title"),
     ]);
     if (foldersRes.data) setFolders(foldersRes.data as DocFolder[]);
     if (docsRes.data) setDocuments(docsRes.data as PlatformDoc[]);
   }, []);
+
+  const orderedDocs = flattenDocOrder(folders, documents);
+  const currentIndex = selectedDocument
+    ? orderedDocs.findIndex((d) => d.id === selectedDocument.id)
+    : -1;
+  const prevDoc = currentIndex > 0 ? orderedDocs[currentIndex - 1] : null;
+  const nextDoc =
+    currentIndex >= 0 && currentIndex < orderedDocs.length - 1 ? orderedDocs[currentIndex + 1] : null;
+
+  const persistOrder = async (
+    table: "platform_doc_folders" | "platform_documents",
+    ids: string[],
+  ) => {
+    await Promise.all(
+      ids.map((id, i) => sb.from(table).update({ sort_order: i }).eq("id", id)),
+    );
+    fetchData();
+  };
+
+  const moveItem = <T extends { id: string }>(items: T[], id: string, direction: -1 | 1) => {
+    const idx = items.findIndex((i) => i.id === id);
+    const target = idx + direction;
+    if (idx < 0 || target < 0 || target >= items.length) return null;
+    const next = [...items];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    return next.map((i) => i.id);
+  };
 
   useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
 
