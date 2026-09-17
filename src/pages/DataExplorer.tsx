@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft, Trash2, Download, ArrowUp, ArrowDown, Filter, Zap, SearchCheck } from "lucide-react";
+import { ArrowLeft, Database, Search, RefreshCw, Table as TableIcon, X, PanelLeftClose, PanelLeft, Trash2, Download, ArrowUp, ArrowDown, Filter, Zap, SearchCheck, Settings2 } from "lucide-react";
+import { DatabaseOptionsDialog } from "@/components/data-explorer/DatabaseOptionsDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Kbd } from "@/components/ui/kbd";
@@ -132,6 +133,7 @@ export default function DataExplorer() {
   const [tabs, setTabs] = useState<TableTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tableSearch, setTableSearch] = useState("");
+  const [dbOptionsOpen, setDbOptionsOpen] = useState(false);
 
   // Extended search state
   const [extOpen, setExtOpen] = useState(false);
@@ -627,6 +629,16 @@ export default function DataExplorer() {
           <SearchCheck className="h-5 w-5" />
         </Button>
 
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDbOptionsOpen(true)}
+          className="ml-2"
+          title="Database options"
+        >
+          <Settings2 className="h-5 w-5" />
+        </Button>
+
         {activeTab && (
           <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" size="icon" onClick={() => refreshTab(activeTab.id)} disabled={activeTab.isLoading}>
@@ -895,6 +907,14 @@ export default function DataExplorer() {
         processedRows={deleteProcessed}
         results={deleteResults}
         isComplete={deleteComplete}
+      />
+
+      <DatabaseOptionsDialog
+        open={dbOptionsOpen}
+        onOpenChange={setDbOptionsOpen}
+        tables={AVAILABLE_TABLES}
+        canPurge={hasITRole && allowMassDeletion}
+        onPurged={() => tabs.forEach(t => refreshTab(t.id))}
       />
 
       {/* Extended Search Dialog */}
