@@ -204,6 +204,16 @@ const ProductionOrderTable = ({
                 className="w-32"
               />
               <SortableTableHead
+                label="BoM ID"
+                sortKey="bom.bom_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['bom.bom_id']}
+                onFilter={(value) => setFilter('bom.bom_id', value)}
+                className="w-28"
+              />
+              <SortableTableHead
                 label="BoM"
                 sortKey="bom.name"
                 currentSortKey={sortConfig.key}
@@ -211,6 +221,16 @@ const ProductionOrderTable = ({
                 onSort={handleSort}
                 filterValue={filters['bom.name']}
                 onFilter={(value) => setFilter('bom.name', value)}
+              />
+              <SortableTableHead
+                label="Output Product ID"
+                sortKey="product.product_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['product.product_id']}
+                onFilter={(value) => setFilter('product.product_id', value)}
+                className="w-32"
               />
               <SortableTableHead
                 label="Output Product"
@@ -284,7 +304,7 @@ const ProductionOrderTable = ({
           <TableBody>
             {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                   No production orders found
                 </TableCell>
               </TableRow>
@@ -297,6 +317,17 @@ const ProductionOrderTable = ({
                   >
                     {order.order_number}
                   </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {order.bom?.bom_id ? (
+                      <Link
+                        to={`/bill-of-materials?ref=${encodeURIComponent(order.bom.bom_id)}`}
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.bom.bom_id}
+                      </Link>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>
                     {order.bom ? (
                       <Link
@@ -304,25 +335,22 @@ const ProductionOrderTable = ({
                         className="text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {order.bom.bom_id} - {order.bom.name}
+                        {order.bom.name}
                       </Link>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="font-mono text-sm">
                     {order.product?.product_id ? (
-                      <span>
-                        <Link
-                          to={`/products?ref=${encodeURIComponent(order.product.product_id)}`}
-                          className="text-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {order.product.product_id}
-                        </Link>
-                        {' - '}
-                        {order.product.name}
-                      </span>
-                    ) : (order.product?.name || '-')}
+                      <Link
+                        to={`/products?ref=${encodeURIComponent(order.product.product_id)}`}
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.product.product_id}
+                      </Link>
+                    ) : '-'}
                   </TableCell>
+                  <TableCell>{order.product?.name || '-'}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
