@@ -383,7 +383,9 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
         const [locId] = key.split('::');
         const currentStock = inventoryMap.get(key) || 0;
         const alreadyRequisitioned = requisitionedMap.get(key) || 0;
-        const shortfall = req.totalRequired + req.safetyStock - currentStock - alreadyRequisitioned;
+        const onOrder = onOrderMap.get(key) || 0;
+        const requiredTotal = req.totalRequired + req.safetyStock;
+        const shortfall = requiredTotal - currentStock - alreadyRequisitioned - onOrder;
 
         if (shortfall > 0) {
           const loc = locationLookup.get(locId);
@@ -400,10 +402,12 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
             vendorName: req.vendorName,
             unitPrice: req.unitPrice,
             totalRequired: req.totalRequired,
+            requiredTotal,
             productionRequired: req.productionRequired,
             requisitionDemand: req.requisitionDemand,
             safetyStock: req.safetyStock,
             currentStock,
+            onOrder,
             shortfall,
             salesOrders: req.salesOrders,
             productionOrders: req.productionOrders,
