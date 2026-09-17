@@ -133,6 +133,7 @@ export default function DataExplorer() {
   const [tabs, setTabs] = useState<TableTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tableSearch, setTableSearch] = useState("");
+  const [dbOptionsOpen, setDbOptionsOpen] = useState(false);
 
   // Extended search state
   const [extOpen, setExtOpen] = useState(false);
