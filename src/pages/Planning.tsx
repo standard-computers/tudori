@@ -404,7 +404,8 @@ const Planning = () => {
         const safety = safetyByLocProduct.get(key) || 0;
         const stock = inventoryByLocProduct.get(key) || 0;
         const requisitioned = requisitionedByLocProduct.get(key) || 0;
-        const shortfall = demand + safety - stock - requisitioned;
+        const onOrder = onOrderByLocProduct.get(key) || 0;
+        const shortfall = demand + safety - stock - requisitioned - onOrder;
         if (shortfall > 0) {
           totalShortfall += shortfall;
           shortfallCount++;
