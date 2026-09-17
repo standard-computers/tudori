@@ -54,6 +54,22 @@ import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
+import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
+
+const PRODUCTION_ORDER_COLUMNS: ColumnDefinition[] = [
+  { key: 'order_number', label: 'Order #', defaultVisible: true },
+  { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
+  { key: 'bom_name', label: 'BoM', defaultVisible: true },
+  { key: 'product_id', label: 'Output Product ID', defaultVisible: true },
+  { key: 'product_name', label: 'Output Product', defaultVisible: true },
+  { key: 'quantity', label: 'Quantity', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'duration', label: 'Duration', defaultVisible: true },
+  { key: 'assigned_to', label: 'Assigned To', defaultVisible: true },
+  { key: 'scheduled', label: 'Scheduled', defaultVisible: true },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
 
 interface ProductionOrder {
   id: string;
@@ -146,6 +162,7 @@ const ProductionOrderTable = ({
   onConfirm,
   onCompleteForeground,
   onAssignEmployee,
+  isColumnVisible,
 }: {
   orders: ProductionOrder[];
   onView: (order: ProductionOrder) => void;
@@ -156,6 +173,7 @@ const ProductionOrderTable = ({
   onConfirm: (order: ProductionOrder) => void;
   onCompleteForeground: (order: ProductionOrder) => void;
   onAssignEmployee: (order: ProductionOrder) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
@@ -167,6 +185,7 @@ const ProductionOrderTable = ({
   } = useTableSort(orders, 'order_number', 'desc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColCount = PRODUCTION_ORDER_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -193,6 +212,7 @@ const ProductionOrderTable = ({
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
+              {isColumnVisible('order_number') && (
               <SortableTableHead
                 label="Order #"
                 sortKey="order_number"
@@ -203,6 +223,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('order_number', value)}
                 className="w-32"
               />
+              )}
+              {isColumnVisible('bom_id') && (
               <SortableTableHead
                 label="BoM ID"
                 sortKey="bom.bom_id"
@@ -213,6 +235,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('bom.bom_id', value)}
                 className="w-28"
               />
+              )}
+              {isColumnVisible('bom_name') && (
               <SortableTableHead
                 label="BoM"
                 sortKey="bom.name"
@@ -222,6 +246,8 @@ const ProductionOrderTable = ({
                 filterValue={filters['bom.name']}
                 onFilter={(value) => setFilter('bom.name', value)}
               />
+              )}
+              {isColumnVisible('product_id') && (
               <SortableTableHead
                 label="Output Product ID"
                 sortKey="product.product_id"
@@ -232,6 +258,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('product.product_id', value)}
                 className="w-32"
               />
+              )}
+              {isColumnVisible('product_name') && (
               <SortableTableHead
                 label="Output Product"
                 sortKey="product.name"
@@ -241,6 +269,8 @@ const ProductionOrderTable = ({
                 filterValue={filters['product.name']}
                 onFilter={(value) => setFilter('product.name', value)}
               />
+              )}
+              {isColumnVisible('quantity') && (
               <SortableTableHead
                 label="Quantity"
                 sortKey="quantity"
@@ -251,6 +281,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('quantity', value)}
                 className="w-24"
               />
+              )}
+              {isColumnVisible('status') && (
               <SortableTableHead
                 label="Status"
                 sortKey="status"
@@ -261,6 +293,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('status', value)}
                 className="w-32"
               />
+              )}
+              {isColumnVisible('duration') && (
               <SortableTableHead
                 label="Duration"
                 sortKey="total_duration"
@@ -271,6 +305,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('total_duration', value)}
                 className="w-28"
               />
+              )}
+              {isColumnVisible('assigned_to') && (
               <SortableTableHead
                 label="Assigned To"
                 sortKey="assigned_employee.last_name"
@@ -280,6 +316,8 @@ const ProductionOrderTable = ({
                 filterValue={filters['assigned_employee.last_name']}
                 onFilter={(value) => setFilter('assigned_employee.last_name', value)}
               />
+              )}
+              {isColumnVisible('scheduled') && (
               <SortableTableHead
                 label="Scheduled"
                 sortKey="scheduled_date"
@@ -290,6 +328,7 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('scheduled_date', value)}
                 className="w-32"
               />
+              )}
               <SortableTableHead
                 label="Actions"
                 sortKey=""
@@ -302,21 +341,24 @@ const ProductionOrderTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedAndFilteredData.length === 0 ? (
+              {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColCount} className="text-center py-8 text-muted-foreground">
                   No production orders found
                 </TableCell>
               </TableRow>
             ) : (
               sortedAndFilteredData.map((order) => (
                 <TableRow key={order.id} className="whitespace-nowrap">
+                  {isColumnVisible('order_number') && (
                   <TableCell
                     className="font-mono text-sm text-primary cursor-pointer hover:underline"
                     onClick={() => onView(order)}
                   >
                     {order.order_number}
                   </TableCell>
+                  )}
+                  {isColumnVisible('bom_id') && (
                   <TableCell className="font-mono text-sm">
                     {order.bom?.bom_id ? (
                       <Link
@@ -328,6 +370,8 @@ const ProductionOrderTable = ({
                       </Link>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('bom_name') && (
                   <TableCell>
                     {order.bom ? (
                       <Link
@@ -339,6 +383,8 @@ const ProductionOrderTable = ({
                       </Link>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('product_id') && (
                   <TableCell className="font-mono text-sm">
                     {order.product?.product_id ? (
                       <Link
@@ -350,13 +396,21 @@ const ProductionOrderTable = ({
                       </Link>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('product_name') && (
                   <TableCell>{order.product?.name || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('quantity') && (
                   <TableCell>{order.quantity}</TableCell>
+                  )}
+                  {isColumnVisible('status') && (
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
                       {order.status.replace('_', ' ')}
                     </Badge>
                   </TableCell>
+                  )}
+                  {isColumnVisible('duration') && (
                   <TableCell>
                     {order.total_duration ? (
                       <div className="flex items-center gap-1 text-muted-foreground">
@@ -365,14 +419,19 @@ const ProductionOrderTable = ({
                       </div>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('assigned_to') && (
                   <TableCell>
                     {order.assigned_employee 
                       ? `${order.assigned_employee.first_name} ${order.assigned_employee.last_name}`
                       : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('scheduled') && (
                   <TableCell>
                     {order.scheduled_date ? format(parseISO(order.scheduled_date), 'MMM d, yyyy') : '-'}
                   </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => onView(order)}>
@@ -476,6 +535,16 @@ const Production = () => {
   const [importProcessed, setImportProcessed] = useState(0);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
+
+  // Column visibility
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility('production_orders', PRODUCTION_ORDER_COLUMNS);
 
   const [formData, setFormData] = useState({
     order_number: '',
@@ -1350,6 +1419,14 @@ const Production = () => {
                 </SelectContent>
               </Select>
             </div>
+            <ColumnToggle
+              columns={PRODUCTION_ORDER_COLUMNS}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <ImportExportButtons
               importEnabled={isImportEnabled('production_order')}
               exportEnabled={isExportEnabled('production_order')}
@@ -1377,6 +1454,7 @@ const Production = () => {
           onConfirm={handleConfirm}
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
+          isColumnVisible={isColumnVisible}
         />
       </main>
 
