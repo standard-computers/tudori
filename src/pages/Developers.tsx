@@ -68,7 +68,16 @@ export default function Developers() {
     notes: '',
   });
 
-  useKeyboardShortcut('n', () => setDialogOpen(true));
+  const openCreate = () => {
+    if (tab === 'interconnect') {
+      setIcDialogOpen(true);
+    } else {
+      setForm(f => ({ ...f, key_type: tab }));
+      setDialogOpen(true);
+    }
+  };
+
+  useKeyboardShortcut('n', () => openCreate());
   useKeyboardShortcut('F1', () => navigate(-1));
 
   useEffect(() => {
