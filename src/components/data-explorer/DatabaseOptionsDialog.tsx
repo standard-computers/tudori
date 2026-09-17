@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Trash2, AlertTriangle, RefreshCw, Database } from "lucide-react";
+import { Search, Trash2, AlertTriangle, RefreshCw, Database, Maximize2, Minimize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useStatusMessage } from "@/hooks/use-status-message";
 import { cn } from "@/lib/utils";
+import { useMaximizedState } from "@/hooks/use-maximize-preference";
 
 interface DatabaseOptionsDialogProps {
   open: boolean;
@@ -19,6 +20,8 @@ interface DatabaseOptionsDialogProps {
   onPurged?: () => void;
 }
 
+const EXCLUDED_TABLES = ["companies", "company_settings"];
+
 const generateCode = () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
@@ -26,6 +29,7 @@ const generateCode = () => {
 
 export function DatabaseOptionsDialog({ open, onOpenChange, tables, canPurge, onPurged }: DatabaseOptionsDialogProps) {
   const status = useStatusMessage();
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [purgeOpen, setPurgeOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -54,9 +58,14 @@ export function DatabaseOptionsDialog({ open, onOpenChange, tables, canPurge, on
     setPurgeOpen(true);
   };
 
+  const purgeableTables = useMemo(
+    () => tables.filter((t) => !EXCLUDED_TABLES.includes(t)),
+    [tables]
+  );
+
   const visibleTables = useMemo(
-    () => tables.filter((t) => t.includes(filter.toLowerCase())),
-    [tables, filter]
+    () => purgeableTables.filter((t) => t.includes(filter.toLowerCase())),
+    [purgeableTables, filter]
   );
 
   const toggleTable = (table: string) => {
@@ -79,7 +88,7 @@ export function DatabaseOptionsDialog({ open, onOpenChange, tables, canPurge, on
   };
 
   const runPurge = async () => {
-    const targets = tables.filter((t) => selected.has(t));
+    const targets = purgeableTables.filter((t) => selected.has(t));
     if (targets.length === 0 || typed.trim().toUpperCase() !== code) return;
 
     setRunning(true);
@@ -123,7 +132,14 @@ export function DatabaseOptionsDialog({ open, onOpenChange, tables, canPurge, on
   return (
     <>
       <Dialog open={open && !purgeOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={cn("flex flex-col overflow-hidden transition-all duration-200", isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "max-w-lg")}>
+        <button
+          type="button"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />
@@ -156,7 +172,14 @@ export function DatabaseOptionsDialog({ open, onOpenChange, tables, canPurge, on
       </Dialog>
 
       <Dialog open={purgeOpen} onOpenChange={(o) => { if (!running) setPurgeOpen(o); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className={cn("flex flex-col overflow-hidden transition-all duration-200", isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "max-w-2xl")}>
+        <button
+          type="button"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
