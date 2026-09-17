@@ -44,10 +44,12 @@ interface FlatShortfall {
   vendorName: string | null;
   unitPrice: number | null;
   totalRequired: number;
+  requiredTotal: number;
   productionRequired: number;
   requisitionDemand: number;
   safetyStock: number;
   currentStock: number;
+  onOrder: number;
   shortfall: number;
   salesOrders: string[];
   productionOrders: string[];
