@@ -8,7 +8,7 @@ import { ColumnToggle } from "@/components/ColumnToggle";
 import { useVendorSources } from "@/hooks/use-vendor-sources";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -1324,6 +1324,36 @@ const Products = () => {
     ]);
     setIsDialogOpen(true);
   };
+
+  // Deep link: open the window for a product referenced via ?ref=<product_id>
+  const openProductByRef = useCallback(async (productId: string) => {
+    const { data } = await supabase
+      .from("products")
+      .select("id")
+      .eq("company_id", companyId!)
+      .eq("product_id", productId)
+      .maybeSingle();
+    if (data) {
+      const { data: full } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (full) {
+        await handleEdit(full as Product);
+        return;
+      }
+    }
+    toast.error(`Product ${productId} not found`);
+  }, [companyId]);
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (!ref || !companyId || isDialogOpen) return;
+    setSearchParams({}, { replace: true });
+    openProductByRef(ref);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, companyId]);
 
   const fetchSafetyStocks = async (productId: string) => {
     const { data, error } = await supabase
