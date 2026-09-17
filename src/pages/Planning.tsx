@@ -772,18 +772,21 @@ const Planning = () => {
         }
       });
 
-      // Calculate shortfalls (including safety stock, minus already requisitioned)
+      // Calculate shortfalls: (demand + safety stock) - stock - already requisitioned - on order
       const shortfallList: InventoryShortfall[] = [];
       requirementMap.forEach((req) => {
         const currentStock = inventoryMap.get(req.productId) || 0;
         const alreadyRequisitioned = requisitionedMap.get(req.productId) || 0;
-        // Shortfall = required + safety stock - current stock - already requisitioned
-        const shortfall = req.totalRequired + req.safetyStock - currentStock - alreadyRequisitioned;
-        
+        const onOrder = onOrderMap.get(req.productId) || 0;
+        const requiredTotal = req.totalRequired + req.safetyStock;
+        const shortfall = requiredTotal - currentStock - alreadyRequisitioned - onOrder;
+
         if (shortfall > 0) {
           shortfallList.push({
             ...req,
+            requiredTotal,
             currentStock,
+            onOrder,
             shortfall,
           });
         }
