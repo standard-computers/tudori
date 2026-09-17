@@ -215,8 +215,20 @@ export default function Developers() {
             <TabsTrigger value="webhook" className="gap-1.5">
               <Webhook className="w-3.5 h-3.5" /> Webhooks
             </TabsTrigger>
+            <TabsTrigger value="interconnect" className="gap-1.5">
+              <Network className="w-3.5 h-3.5" /> Interconnects
+            </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="interconnect" className="mt-0">
+          <InterconnectsTab
+            companyId={companyId}
+            userId={user?.id}
+            dialogOpen={icDialogOpen}
+            onDialogOpenChange={setIcDialogOpen}
+          />
+        </TabsContent>
 
         {['api_key', 'oauth', 'webhook'].map(type => (
           <TabsContent key={type} value={type} className="mt-0">
