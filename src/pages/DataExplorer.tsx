@@ -627,6 +627,16 @@ export default function DataExplorer() {
           <SearchCheck className="h-5 w-5" />
         </Button>
 
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDbOptionsOpen(true)}
+          className="ml-2"
+          title="Database options"
+        >
+          <Settings2 className="h-5 w-5" />
+        </Button>
+
         {activeTab && (
           <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" size="icon" onClick={() => refreshTab(activeTab.id)} disabled={activeTab.isLoading}>
