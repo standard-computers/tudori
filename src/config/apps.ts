@@ -65,7 +65,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Inventory', icon: Warehouse, color: 'text-blue-500', description: 'Stock management', path: '/inventory' },
   { name: 'Assets', icon: Box, color: 'text-fuchsia-500', description: 'Fixed assets & depreciation', path: '/assets' },
   { name: 'Bill of Materials', icon: ClipboardCheck, color: 'text-amber-500', description: 'Product recipes', path: '/bill-of-materials' },
-  { name: 'Production', icon: Factory, color: 'text-indigo-500', description: 'Production orders', path: '/production' },
+  { name: 'Production Orders', icon: Factory, color: 'text-indigo-500', description: 'Production orders', path: '/production' },
   { name: 'Goods Receipts', icon: PackagePlus, color: 'text-emerald-500', description: 'Receive inventory', path: '/goods-receipts' },
   { name: 'Goods Issues', icon: PackageMinus, color: 'text-orange-500', description: 'Issue inventory', path: '/goods-issues' },
   { name: 'Locations', icon: MapPin, color: 'text-green-500', description: 'Warehouses & stores', path: '/locations' },

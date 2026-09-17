@@ -18,7 +18,7 @@ export const TRANSACTION_CODES: TransactionCode[] = [
   { code: 'inventory', name: 'Inventory', description: 'Stock management', path: '/inventory' },
   { code: 'assets', name: 'Assets', description: 'Fixed assets & depreciation', path: '/assets' },
   { code: 'bill_of_materials', name: 'Bill of Materials', description: 'Product recipes', path: '/bill-of-materials' },
-  { code: 'production', name: 'Production', description: 'Production orders', path: '/production' },
+  { code: 'production', name: 'Production Orders', description: 'Production orders', path: '/production' },
   { code: 'goods_receipts', name: 'Goods Receipts', description: 'Receive inventory', path: '/goods-receipts' },
   { code: 'goods_issues', name: 'Goods Issues', description: 'Issue inventory', path: '/goods-issues' },
   { code: 'locations', name: 'Locations', description: 'Warehouses & stores', path: '/locations' },
