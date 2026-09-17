@@ -67,6 +67,8 @@ import Agreements from "./pages/Agreements";
 import Accounting from "./pages/Accounting";
 import Assets from "./pages/Assets";
 import OperandAI from "./pages/OperandAI";
+import Documentation from "./pages/Documentation";
+import PlatformAdmin from "./pages/PlatformAdmin";
 
 const queryClient = new QueryClient();
 
@@ -135,6 +137,8 @@ const App = () => (
                   <Route path="/transportation" element={<ProtectedRoute><Transportation /></ProtectedRoute>} />
                   <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
                   <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+                  <Route path="/documentation" element={<ProtectedRoute><Documentation /></ProtectedRoute>} />
+                  <Route path="/platform-admin" element={<PlatformAdmin />} />
                   <Route path="/go" element={<ProtectedRoute><Go /></ProtectedRoute>} />
                   <Route path="/hr" element={<ProtectedRoute><HR /></ProtectedRoute>} />
                   <Route path="/developers" element={<ProtectedRoute><Developers /></ProtectedRoute>} />

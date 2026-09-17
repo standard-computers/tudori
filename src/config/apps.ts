@@ -96,6 +96,7 @@ export const defaultApps: AppTile[] = [
   { name: 'Transportation', icon: Truck, color: 'text-amber-500', description: 'Carriers & logistics', path: '/transportation' },
   { name: 'Assignments', icon: Users, color: 'text-violet-500', description: 'Vendor & source assignments', path: '/assignments' },
   { name: 'Developers', icon: Key, color: 'text-amber-500', description: 'API keys & webhooks', path: '/developers' },
+  { name: 'Documentation', icon: BookOpen, color: 'text-sky-500', description: 'Platform documentation', path: '/documentation' },
   { name: 'Help', icon: HelpCircle, color: 'text-blue-500', description: 'Documentation & guides', path: '/help' },
   { name: 'Logout', icon: LogOut, color: 'text-destructive', description: 'Sign out of your account', path: null },
 ];
