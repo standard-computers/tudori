@@ -1278,7 +1278,18 @@ const Planning = () => {
                       filterValue={shortfallsFilters['currentStock'] || ''}
                       onFilter={(value) => setShortfallsFilter('currentStock', value)}
                       className="w-24 text-right"
+                     />
+                    <SortableTableHead
+                      label="On Order"
+                      sortKey="onOrder"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['onOrder'] || ''}
+                      onFilter={(value) => setShortfallsFilter('onOrder', value)}
+                      className="w-24 text-right"
                     />
+
                     <SortableTableHead
                       label="Shortfall"
                       sortKey="shortfall"
