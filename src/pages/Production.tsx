@@ -204,6 +204,16 @@ const ProductionOrderTable = ({
                 className="w-32"
               />
               <SortableTableHead
+                label="BoM ID"
+                sortKey="bom.bom_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['bom.bom_id']}
+                onFilter={(value) => setFilter('bom.bom_id', value)}
+                className="w-28"
+              />
+              <SortableTableHead
                 label="BoM"
                 sortKey="bom.name"
                 currentSortKey={sortConfig.key}
@@ -211,6 +221,16 @@ const ProductionOrderTable = ({
                 onSort={handleSort}
                 filterValue={filters['bom.name']}
                 onFilter={(value) => setFilter('bom.name', value)}
+              />
+              <SortableTableHead
+                label="Output Product ID"
+                sortKey="product.product_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['product.product_id']}
+                onFilter={(value) => setFilter('product.product_id', value)}
+                className="w-32"
               />
               <SortableTableHead
                 label="Output Product"
