@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin, Maximize2, Minimize2 } from 'lucide-react';
+import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin, Maximize2, Minimize2, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
@@ -83,6 +83,11 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // AutoMake state
   const [suggestions, setSuggestions] = useState<SuggestedSafetyStock[]>([]);
