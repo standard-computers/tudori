@@ -211,6 +211,7 @@ const ProductionOrderTable = ({
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
+              {isColumnVisible('order_number') && (
               <SortableTableHead
                 label="Order #"
                 sortKey="order_number"
@@ -221,6 +222,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('order_number', value)}
                 className="w-32"
               />
+              )}
+              {isColumnVisible('bom_id') && (
               <SortableTableHead
                 label="BoM ID"
                 sortKey="bom.bom_id"
@@ -231,6 +234,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('bom.bom_id', value)}
                 className="w-28"
               />
+              )}
+              {isColumnVisible('bom_name') && (
               <SortableTableHead
                 label="BoM"
                 sortKey="bom.name"
@@ -240,6 +245,8 @@ const ProductionOrderTable = ({
                 filterValue={filters['bom.name']}
                 onFilter={(value) => setFilter('bom.name', value)}
               />
+              )}
+              {isColumnVisible('product_id') && (
               <SortableTableHead
                 label="Output Product ID"
                 sortKey="product.product_id"
@@ -250,6 +257,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('product.product_id', value)}
                 className="w-32"
               />
+              )}
+              {isColumnVisible('product_name') && (
               <SortableTableHead
                 label="Output Product"
                 sortKey="product.name"
@@ -259,6 +268,8 @@ const ProductionOrderTable = ({
                 filterValue={filters['product.name']}
                 onFilter={(value) => setFilter('product.name', value)}
               />
+              )}
+              {isColumnVisible('quantity') && (
               <SortableTableHead
                 label="Quantity"
                 sortKey="quantity"
@@ -269,6 +280,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('quantity', value)}
                 className="w-24"
               />
+              )}
+              {isColumnVisible('status') && (
               <SortableTableHead
                 label="Status"
                 sortKey="status"
@@ -279,6 +292,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('status', value)}
                 className="w-32"
               />
+              )}
+              {isColumnVisible('duration') && (
               <SortableTableHead
                 label="Duration"
                 sortKey="total_duration"
@@ -289,6 +304,8 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('total_duration', value)}
                 className="w-28"
               />
+              )}
+              {isColumnVisible('assigned_to') && (
               <SortableTableHead
                 label="Assigned To"
                 sortKey="assigned_employee.last_name"
@@ -298,6 +315,8 @@ const ProductionOrderTable = ({
                 filterValue={filters['assigned_employee.last_name']}
                 onFilter={(value) => setFilter('assigned_employee.last_name', value)}
               />
+              )}
+              {isColumnVisible('scheduled') && (
               <SortableTableHead
                 label="Scheduled"
                 sortKey="scheduled_date"
@@ -308,6 +327,7 @@ const ProductionOrderTable = ({
                 onFilter={(value) => setFilter('scheduled_date', value)}
                 className="w-32"
               />
+              )}
               <SortableTableHead
                 label="Actions"
                 sortKey=""
