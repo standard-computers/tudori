@@ -668,6 +668,7 @@ const Products = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [nextProductId, setNextProductId] = useState("0001");
   const [activeTab, setActiveTab] = useState("general");
   const [uoms, setUoms] = useState<ProductUom[]>([]);
