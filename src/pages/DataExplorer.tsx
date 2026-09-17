@@ -758,6 +758,13 @@ export default function DataExplorer() {
                 >
                   <TableIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="max-w-[120px] truncate">{tab.tableName}</span>
+                  {tab.isLoading ? (
+                    <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums">
+                      {tab.recordCount.toLocaleString()}
+                    </span>
+                  )}
                   <button
                     onClick={(e) => closeTab(tab.id, e)}
                     className="ml-1 hover:bg-muted rounded p-0.5"
