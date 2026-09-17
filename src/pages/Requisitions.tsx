@@ -1652,8 +1652,13 @@ const Requisitions = () => {
               </div>
             </div>
 
-            <Button onClick={generateSuggestions} variant="outline" className="w-full">
-              Generate Suggested Items
+            <Button
+              onClick={generateSuggestions}
+              variant="outline"
+              className="w-full"
+              disabled={generatingSuggestions || !runFormData.location_id}
+            >
+              {generatingSuggestions ? 'Checking safety stock…' : 'Generate Suggested Items'}
             </Button>
 
             {suggestedItems.length > 0 && (
