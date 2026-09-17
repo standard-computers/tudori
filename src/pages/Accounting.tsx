@@ -119,6 +119,7 @@ const Accounting = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   useTransaction('acct');
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [kpi, setKpi] = useState<KpiData | null>(null);
