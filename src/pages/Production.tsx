@@ -185,6 +185,7 @@ const ProductionOrderTable = ({
   } = useTableSort(orders, 'order_number', 'desc');
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColCount = PRODUCTION_ORDER_COLUMNS.filter((c) => isColumnVisible(c.key)).length;
 
   return (
     <div className="space-y-2">
@@ -534,6 +535,16 @@ const Production = () => {
   const [importProcessed, setImportProcessed] = useState(0);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportComplete, setIsImportComplete] = useState(false);
+
+  // Column visibility
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility('production_orders', PRODUCTION_ORDER_COLUMNS);
 
   const [formData, setFormData] = useState({
     order_number: '',
