@@ -162,6 +162,7 @@ const ProductionOrderTable = ({
   onConfirm,
   onCompleteForeground,
   onAssignEmployee,
+  isColumnVisible,
 }: {
   orders: ProductionOrder[];
   onView: (order: ProductionOrder) => void;
@@ -172,6 +173,7 @@ const ProductionOrderTable = ({
   onConfirm: (order: ProductionOrder) => void;
   onCompleteForeground: (order: ProductionOrder) => void;
   onAssignEmployee: (order: ProductionOrder) => void;
+  isColumnVisible: (key: string) => boolean;
 }) => {
   const {
     sortConfig,
