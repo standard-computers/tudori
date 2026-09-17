@@ -1419,6 +1419,14 @@ const Production = () => {
                 </SelectContent>
               </Select>
             </div>
+            <ColumnToggle
+              columns={PRODUCTION_ORDER_COLUMNS}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <ImportExportButtons
               importEnabled={isImportEnabled('production_order')}
               exportEnabled={isExportEnabled('production_order')}
@@ -1446,6 +1454,7 @@ const Production = () => {
           onConfirm={handleConfirm}
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
+          isColumnVisible={isColumnVisible}
         />
       </main>
 
