@@ -490,7 +490,7 @@ const Employees = () => {
       .from("time_punches")
       .select("id")
       .eq("employee_id", id)
-      .is("clock_out", null)
+      .is("punch_out", null)
       .limit(1);
     if (punchError) {
       toast.error("Could not verify clock status; deletion cancelled");
