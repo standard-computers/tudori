@@ -54,6 +54,7 @@ export default function Developers() {
   const [deleteTarget, setDeleteTarget] = useState<DeveloperKey | null>(null);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState('api_key');
+  const [icDialogOpen, setIcDialogOpen] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
