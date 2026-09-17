@@ -746,32 +746,94 @@ const Requisitions = () => {
   useKeyboardShortcut('n', handleRunClick);
   useTransactionAction('new', handleRunClick);
 
-  const generateSuggestions = () => {
-    // Filter products by selected vendor if one is selected
-    let eligibleProducts = products;
-    if (runFormData.vendor_id) {
-      const parsed = parseVendorValue(runFormData.vendor_id);
-      if (parsed?.type === 'vendor') {
-        eligibleProducts = products.filter(p => p.vendor_id === parsed.id);
+  const [generatingSuggestions, setGeneratingSuggestions] = useState(false);
+
+  const generateSuggestions = async () => {
+    if (!runFormData.location_id) {
+      toast.error('Please select a destination location first');
+      return;
+    }
+
+    setGeneratingSuggestions(true);
+    try {
+      // Filter products by selected vendor if one is selected
+      let eligibleProducts = products;
+      if (runFormData.vendor_id) {
+        const parsed = parseVendorValue(runFormData.vendor_id);
+        if (parsed?.type === 'vendor') {
+          eligibleProducts = products.filter(p => p.vendor_id === parsed.id);
+        }
       }
+
+      // Only include products that have a vendor assigned — requisitions must
+      // always be tied to a specific vendor, never "All Vendors".
+      const withVendor = eligibleProducts.filter(p => !!p.vendor_id);
+      const skipped = eligibleProducts.length - withVendor.length;
+      if (skipped > 0) {
+        toast.warning(`${skipped} product(s) skipped — no vendor assigned`);
+      }
+
+      // Safety stock levels set for this destination location
+      const { data: safetyStocks, error: ssError } = await supabase
+        .from('product_safety_stock')
+        .select('product_id, safety_stock_quantity')
+        .eq('location_id', runFormData.location_id);
+
+      if (ssError) {
+        console.error('Error fetching safety stock:', ssError);
+        toast.error('Failed to load safety stock levels');
+        return;
+      }
+
+      const safetyStockMap = new Map<string, number>();
+      (safetyStocks || []).forEach(ss => {
+        safetyStockMap.set(ss.product_id, Number(ss.safety_stock_quantity) || 0);
+      });
+
+      if (safetyStockMap.size === 0) {
+        setSuggestedItems([]);
+        toast.warning('No safety stock levels are set for this location');
+        return;
+      }
+
+      // Current on-hand inventory at this location
+      const { data: inventoryRows, error: invError } = await supabase
+        .from('inventory')
+        .select('product_id, quantity')
+        .eq('location_id', runFormData.location_id);
+
+      if (invError) {
+        console.error('Error fetching inventory:', invError);
+        toast.error('Failed to load inventory levels');
+        return;
+      }
+
+      const onHandMap = new Map<string, number>();
+      (inventoryRows || []).forEach(row => {
+        onHandMap.set(row.product_id, (onHandMap.get(row.product_id) || 0) + (Number(row.quantity) || 0));
+      });
+
+      // Suggest only the shortfall against the set safety stock
+      const suggestions = withVendor
+        .map(product => {
+          const safety = safetyStockMap.get(product.id);
+          if (safety === undefined) return null;
+          const shortfall = safety - (onHandMap.get(product.id) || 0);
+          if (shortfall <= 0) return null;
+          return { product, quantity: shortfall };
+        })
+        .filter((s): s is { product: Product; quantity: number } => s !== null);
+
+      setSuggestedItems(suggestions);
+
+      if (suggestions.length === 0) {
+        toast.info('All products are at or above their safety stock levels');
+      } else {
+        toast.success(`${suggestions.length} product(s) below safety stock`);
+      }
+    } finally {
+      setGeneratingSuggestions(false);
     }
-
-    // Only include products that have a vendor assigned — requisitions must
-    // always be tied to a specific vendor, never "All Vendors".
-    const withVendor = eligibleProducts.filter(p => !!p.vendor_id);
-    const skipped = eligibleProducts.length - withVendor.length;
-    if (skipped > 0) {
-      toast.warning(`${skipped} product(s) skipped — no vendor assigned`);
-    }
-
-    // Generate suggested items (in a real app, this would be based on inventory levels, reorder points, etc.)
-    // For now, suggest all eligible products with a random quantity between 1-10
-    const suggestions = withVendor.map(product => ({
-      product,
-      quantity: Math.floor(Math.random() * 10) + 1,
-    }));
-
-    setSuggestedItems(suggestions);
   };
 
 
