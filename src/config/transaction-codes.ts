@@ -49,6 +49,7 @@ export const TRANSACTION_CODES: TransactionCode[] = [
   { code: 'transportation', name: 'Transportation', description: 'Carriers & logistics', path: '/transportation' },
   { code: 'assignments', name: 'Assignments', description: 'Vendor & source assignments', path: '/assignments' },
   { code: 'developers', name: 'Developers', description: 'API keys & webhooks', path: '/developers' },
+  { code: 'documentation', name: 'Documentation', description: 'Platform documentation', path: '/documentation' },
 ];
 
 // Map app names to transaction codes
