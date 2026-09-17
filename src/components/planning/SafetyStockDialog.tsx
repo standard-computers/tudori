@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin, Maximize2, Minimize2 } from 'lucide-react';
+import { Plus, Trash2, Wand2, Loader2, Check, X, Package, MapPin, Maximize2, Minimize2, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
@@ -83,6 +83,11 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // AutoMake state
   const [suggestions, setSuggestions] = useState<SuggestedSafetyStock[]>([]);
@@ -204,6 +209,39 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
       fetchSafetyStocks();
     }
     setIsCreating(false);
+  };
+
+  const startEdit = (ss: SafetyStock) => {
+    setEditingId(ss.id);
+    setEditingQuantity(String(ss.safety_stock_quantity));
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingQuantity('');
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    const qty = parseInt(editingQuantity);
+    if (isNaN(qty) || qty < 0) {
+      toast.error('Please enter a valid quantity');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    const { error } = await supabase
+      .from('product_safety_stock')
+      .update({ safety_stock_quantity: qty })
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to update safety stock');
+    } else {
+      toast.success('Safety stock updated');
+      cancelEdit();
+      fetchSafetyStocks();
+    }
+    setIsSavingEdit(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -510,20 +548,79 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {ss.safety_stock_quantity.toLocaleString()}
+                            {editingId === ss.id ? (
+                              <Input
+                                type="number"
+                                min="0"
+                                value={editingQuantity}
+                                onChange={(e) => setEditingQuantity(e.target.value)}
+                                className="w-24 text-right h-8 ml-auto"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveEdit(ss.id);
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                              />
+                            ) : (
+                              ss.safety_stock_quantity.toLocaleString()
+                            )}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => handleDelete(ss.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              {editingId === ss.id ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleSaveEdit(ss.id)}
+                                    disabled={isSavingEdit}
+                                  >
+                                    {isSavingEdit ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={cancelEdit}
+                                    disabled={isSavingEdit}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => startEdit(ss)}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => handleDelete(ss.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
+                      <TableRow className="bg-muted/50 font-semibold border-t-2">
+                        <TableCell colSpan={2}>Total ({sortedSafetyStocks.length} records)</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {sortedSafetyStocks.reduce((sum, ss) => sum + ss.safety_stock_quantity, 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
                     </TableBody>
                   </Table>
                 </div>
