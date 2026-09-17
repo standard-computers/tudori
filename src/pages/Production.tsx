@@ -317,6 +317,17 @@ const ProductionOrderTable = ({
                   >
                     {order.order_number}
                   </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {order.bom?.bom_id ? (
+                      <Link
+                        to={`/bill-of-materials?ref=${encodeURIComponent(order.bom.bom_id)}`}
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.bom.bom_id}
+                      </Link>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>
                     {order.bom ? (
                       <Link
@@ -324,25 +335,22 @@ const ProductionOrderTable = ({
                         className="text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {order.bom.bom_id} - {order.bom.name}
+                        {order.bom.name}
                       </Link>
                     ) : '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="font-mono text-sm">
                     {order.product?.product_id ? (
-                      <span>
-                        <Link
-                          to={`/products?ref=${encodeURIComponent(order.product.product_id)}`}
-                          className="text-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {order.product.product_id}
-                        </Link>
-                        {' - '}
-                        {order.product.name}
-                      </span>
-                    ) : (order.product?.name || '-')}
+                      <Link
+                        to={`/products?ref=${encodeURIComponent(order.product.product_id)}`}
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.product.product_id}
+                      </Link>
+                    ) : '-'}
                   </TableCell>
+                  <TableCell>{order.product?.name || '-'}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
