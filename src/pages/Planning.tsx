@@ -1320,7 +1320,7 @@ const Planning = () => {
                         {item.vendorName || <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {item.totalRequired} {item.unit || ''}
+                        {item.requiredTotal} {item.unit || ''}
                       </TableCell>
                       <TableCell className="text-right font-mono text-muted-foreground">
                         {item.productionRequired > 0 ? `${item.productionRequired} ${item.unit || ''}` : '-'}
@@ -1333,6 +1333,9 @@ const Planning = () => {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {item.currentStock} {item.unit || ''}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {item.onOrder > 0 ? `${item.onOrder} ${item.unit || ''}` : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Badge variant="destructive" className="font-mono">
