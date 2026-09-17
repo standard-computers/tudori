@@ -340,21 +340,24 @@ const ProductionOrderTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedAndFilteredData.length === 0 ? (
+              {sortedAndFilteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={visibleColCount} className="text-center py-8 text-muted-foreground">
                   No production orders found
                 </TableCell>
               </TableRow>
             ) : (
               sortedAndFilteredData.map((order) => (
                 <TableRow key={order.id} className="whitespace-nowrap">
+                  {isColumnVisible('order_number') && (
                   <TableCell
                     className="font-mono text-sm text-primary cursor-pointer hover:underline"
                     onClick={() => onView(order)}
                   >
                     {order.order_number}
                   </TableCell>
+                  )}
+                  {isColumnVisible('bom_id') && (
                   <TableCell className="font-mono text-sm">
                     {order.bom?.bom_id ? (
                       <Link
@@ -366,6 +369,8 @@ const ProductionOrderTable = ({
                       </Link>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('bom_name') && (
                   <TableCell>
                     {order.bom ? (
                       <Link
@@ -377,6 +382,8 @@ const ProductionOrderTable = ({
                       </Link>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('product_id') && (
                   <TableCell className="font-mono text-sm">
                     {order.product?.product_id ? (
                       <Link
@@ -388,13 +395,21 @@ const ProductionOrderTable = ({
                       </Link>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('product_name') && (
                   <TableCell>{order.product?.name || '-'}</TableCell>
+                  )}
+                  {isColumnVisible('quantity') && (
                   <TableCell>{order.quantity}</TableCell>
+                  )}
+                  {isColumnVisible('status') && (
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
                       {order.status.replace('_', ' ')}
                     </Badge>
                   </TableCell>
+                  )}
+                  {isColumnVisible('duration') && (
                   <TableCell>
                     {order.total_duration ? (
                       <div className="flex items-center gap-1 text-muted-foreground">
@@ -403,14 +418,19 @@ const ProductionOrderTable = ({
                       </div>
                     ) : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('assigned_to') && (
                   <TableCell>
                     {order.assigned_employee 
                       ? `${order.assigned_employee.first_name} ${order.assigned_employee.last_name}`
                       : '-'}
                   </TableCell>
+                  )}
+                  {isColumnVisible('scheduled') && (
                   <TableCell>
                     {order.scheduled_date ? format(parseISO(order.scheduled_date), 'MMM d, yyyy') : '-'}
                   </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => onView(order)}>
