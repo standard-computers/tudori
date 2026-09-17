@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { toast } from "@/lib/toast";
-import { DocsTree, type DocFolder, type PlatformDoc } from "@/components/documentation/DocsTree";
+import { DocsTree, flattenDocOrder, type DocFolder, type PlatformDoc } from "@/components/documentation/DocsTree";
 
 const Documentation = () => {
   const navigate = useNavigate();
@@ -27,8 +27,8 @@ const Documentation = () => {
   useEffect(() => {
     const load = async () => {
       const [foldersRes, docsRes] = await Promise.all([
-        supabase.from('platform_doc_folders').select('*').order('name'),
-        supabase.from('platform_documents').select('*').order('title'),
+        supabase.from('platform_doc_folders').select('*').order('sort_order').order('name'),
+        supabase.from('platform_documents').select('*').order('sort_order').order('title'),
       ]);
       if (foldersRes.data) setFolders(foldersRes.data as DocFolder[]);
       if (docsRes.data) setDocuments(docsRes.data as PlatformDoc[]);
@@ -58,6 +58,14 @@ const Documentation = () => {
     URL.revokeObjectURL(url);
     toast.success('Exported as Markdown');
   };
+
+  const orderedDocs = flattenDocOrder(folders, documents);
+  const currentIndex = selectedDocument
+    ? orderedDocs.findIndex((d) => d.id === selectedDocument.id)
+    : -1;
+  const prevDoc = currentIndex > 0 ? orderedDocs[currentIndex - 1] : null;
+  const nextDoc =
+    currentIndex >= 0 && currentIndex < orderedDocs.length - 1 ? orderedDocs[currentIndex + 1] : null;
 
   const matches = documents.filter((doc) =>
     doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
