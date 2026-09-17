@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useTransaction } from '@/contexts/StatusBarContext';
 import { useTableSort, ColumnFilterConfig } from '@/hooks/use-table-sort';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { Kbd } from '@/components/ui/kbd';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +121,7 @@ const Accounting = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   useTransaction('acct');
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [kpi, setKpi] = useState<KpiData | null>(null);
@@ -263,8 +266,9 @@ const Accounting = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
             <ArrowLeft className="w-4 h-4" />
+            <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
           </Button>
           <div className="flex items-center gap-2">
             <Scale className="w-5 h-5 text-primary" />
