@@ -141,6 +141,29 @@ const Documentation = () => {
                   <ReactMarkdown>{selectedDocument.content}</ReactMarkdown>
                 </article>
               </div>
+              <div className="border-t p-3 flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!prevDoc}
+                  onClick={() => prevDoc && setSelectedDocument(prevDoc)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {prevDoc ? prevDoc.title : "Previous"}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {currentIndex >= 0 ? `${currentIndex + 1} of ${orderedDocs.length}` : ""}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!nextDoc}
+                  onClick={() => nextDoc && setSelectedDocument(nextDoc)}
+                >
+                  {nextDoc ? nextDoc.title : "Next"}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6">
