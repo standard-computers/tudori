@@ -9,7 +9,7 @@ import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -497,6 +497,7 @@ const SortableStepRow = ({
 
 const BillOfMaterials = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const { setTransaction } = useStatusBar();
   const formRef = useRef<HTMLFormElement>(null);
@@ -946,6 +947,20 @@ const BillOfMaterials = () => {
     setActiveTab('components');
     setIsDialogOpen(true);
   };
+
+  // Deep link: open the view window for a BOM referenced via ?ref=<bom_id>
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (!ref || boms.length === 0 || isDialogOpen) return;
+    const target = boms.find(b => b.bom_id === ref);
+    setSearchParams({}, { replace: true });
+    if (target) {
+      handleView(target);
+    } else {
+      toast.error(`Bill of Materials ${ref} not found`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, boms]);
 
   const handleEdit = async (bom: BillOfMaterial) => {
     setFormData({
