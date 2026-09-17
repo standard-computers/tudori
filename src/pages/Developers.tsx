@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { InterconnectsTab } from '@/components/developers/InterconnectsTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusMessage } from '@/hooks/use-status-message';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
