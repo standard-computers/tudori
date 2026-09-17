@@ -598,12 +598,12 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
               />
               <SortableTableHead
                 label="Required"
-                sortKey="totalRequired"
+                sortKey="requiredTotal"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['totalRequired'] || ''}
-                onFilter={(value) => setFilter('totalRequired', value)}
+                filterValue={filters['requiredTotal'] || ''}
+                onFilter={(value) => setFilter('requiredTotal', value)}
                 className="w-24 text-right"
               />
               <SortableTableHead
@@ -646,6 +646,17 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 className="w-24 text-right"
               />
               <SortableTableHead
+                label="On Order"
+                sortKey="onOrder"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['onOrder'] || ''}
+                onFilter={(value) => setFilter('onOrder', value)}
+                className="w-24 text-right"
+              />
+
+              <SortableTableHead
                 label="Shortfall"
                 sortKey="shortfall"
                 currentSortKey={sortConfig.key}
@@ -684,7 +695,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                   {item.vendorName || <span className="text-muted-foreground">-</span>}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {item.totalRequired} {item.unit || ''}
+                  {item.requiredTotal} {item.unit || ''}
                 </TableCell>
                 <TableCell className="text-right font-mono text-muted-foreground">
                   {item.productionRequired > 0 ? `${item.productionRequired} ${item.unit || ''}` : '-'}
@@ -697,6 +708,9 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {item.currentStock} {item.unit || ''}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {item.onOrder > 0 ? `${item.onOrder} ${item.unit || ''}` : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <Badge variant="destructive" className="font-mono">
