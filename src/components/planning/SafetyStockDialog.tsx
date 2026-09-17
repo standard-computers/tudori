@@ -211,6 +211,39 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
     setIsCreating(false);
   };
 
+  const startEdit = (ss: SafetyStock) => {
+    setEditingId(ss.id);
+    setEditingQuantity(String(ss.safety_stock_quantity));
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingQuantity('');
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    const qty = parseInt(editingQuantity);
+    if (isNaN(qty) || qty < 0) {
+      toast.error('Please enter a valid quantity');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    const { error } = await supabase
+      .from('product_safety_stock')
+      .update({ safety_stock_quantity: qty })
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to update safety stock');
+    } else {
+      toast.success('Safety stock updated');
+      cancelEdit();
+      fetchSafetyStocks();
+    }
+    setIsSavingEdit(false);
+  };
+
   const handleDelete = async (id: string) => {
     const { error } = await supabase
       .from('product_safety_stock')
