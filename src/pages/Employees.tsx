@@ -485,6 +485,22 @@ const Employees = () => {
   };
 
   const handleDelete = async (id: string) => {
+    // Block deletion while the employee has an open time punch (clocked in)
+    const { data: activePunches, error: punchError } = await supabase
+      .from("time_punches")
+      .select("id")
+      .eq("employee_id", id)
+      .is("punch_out", null)
+      .limit(1);
+    if (punchError) {
+      toast.error("Could not verify clock status; deletion cancelled");
+      return;
+    }
+    if (activePunches && activePunches.length > 0) {
+      toast.error("Employee is currently clocked in and cannot be deleted");
+      return;
+    }
+
     const { error } = await supabase.from("employees").delete().eq("id", id);
     if (error) {
       toast.error("Failed to delete employee");
