@@ -497,6 +497,7 @@ const SortableStepRow = ({
 
 const BillOfMaterials = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const { setTransaction } = useStatusBar();
   const formRef = useRef<HTMLFormElement>(null);
