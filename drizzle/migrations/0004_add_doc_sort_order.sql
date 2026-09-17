@@ -1,0 +1,2 @@
+ALTER TABLE public.platform_doc_folders ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
+ALTER TABLE public.platform_documents ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
