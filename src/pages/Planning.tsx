@@ -74,10 +74,12 @@ interface InventoryShortfall {
   vendorName: string | null;
   unitPrice: number | null;
   totalRequired: number;
+  requiredTotal: number;
   productionRequired: number;
   requisitionDemand: number;
   safetyStock: number;
   currentStock: number;
+  onOrder: number;
   shortfall: number;
   salesOrders: string[];
   productionOrders: string[];
@@ -280,6 +282,44 @@ const Planning = () => {
       .eq('company_id', companyId!)
       .in('status', ['draft', 'pending', 'approved']);
 
+    // Get open purchase orders (incoming supply per destination location)
+    const { data: openPOsByLoc } = await supabase
+      .from('purchase_orders')
+      .select('id, location_id, purchase_order_items(product_id, quantity)')
+      .eq('company_id', companyId!)
+      .in('status', ['draft', 'pending', 'approved', 'confirmed', 'shipped', 'partial', 'in_transit']);
+
+    const openPoIdList = (openPOsByLoc || []).map((po: any) => po.id);
+    const poLocationById = new Map<string, string>();
+    openPOsByLoc?.forEach((po: any) => { if (po.location_id) poLocationById.set(po.id, po.location_id); });
+
+    const onOrderByLocProduct = new Map<string, number>();
+    openPOsByLoc?.forEach((po: any) => {
+      if (!po.location_id) return;
+      (po.purchase_order_items as any[])?.forEach((item: any) => {
+        const key = `${po.location_id}::${item.product_id}`;
+        onOrderByLocProduct.set(key, (onOrderByLocProduct.get(key) || 0) + (item.quantity || 0));
+      });
+    });
+
+    if (openPoIdList.length > 0) {
+      const { data: receiptsForOpenPOs } = await supabase
+        .from('goods_receipts')
+        .select('purchase_order_id, goods_receipt_items(product_id, quantity)')
+        .in('purchase_order_id', openPoIdList);
+      receiptsForOpenPOs?.forEach((gr: any) => {
+        const locId = gr.purchase_order_id ? poLocationById.get(gr.purchase_order_id) : null;
+        if (!locId) return;
+        (gr.goods_receipt_items as any[])?.forEach((item: any) => {
+          const key = `${locId}::${item.product_id}`;
+          const remaining = (onOrderByLocProduct.get(key) || 0) - (item.quantity || 0);
+          onOrderByLocProduct.set(key, Math.max(0, remaining));
+        });
+      });
+    }
+
+
+
     // Build inventory map by location and product
     const inventoryByLocProduct = new Map<string, number>();
     inventoryData?.forEach(inv => {
@@ -364,7 +404,8 @@ const Planning = () => {
         const safety = safetyByLocProduct.get(key) || 0;
         const stock = inventoryByLocProduct.get(key) || 0;
         const requisitioned = requisitionedByLocProduct.get(key) || 0;
-        const shortfall = demand + safety - stock - requisitioned;
+        const onOrder = onOrderByLocProduct.get(key) || 0;
+        const shortfall = demand + safety - stock - requisitioned - onOrder;
         if (shortfall > 0) {
           totalShortfall += shortfall;
           shortfallCount++;
@@ -494,6 +535,40 @@ const Planning = () => {
         .from('inventory')
         .select('product_id, quantity')
         .eq('location_id', locationId);
+
+      // Get open purchase orders for this location (incoming supply not yet received)
+      const { data: openPOs } = await supabase
+        .from('purchase_orders')
+        .select('id, status, purchase_order_items(product_id, quantity)')
+        .eq('company_id', companyId!)
+        .eq('location_id', locationId)
+        .in('status', ['draft', 'pending', 'approved', 'confirmed', 'shipped', 'partial', 'in_transit']);
+
+      const openPoIds = (openPOs || []).map((po: any) => po.id);
+      let receivedByProduct = new Map<string, number>();
+      if (openPoIds.length > 0) {
+        const { data: receipts } = await supabase
+          .from('goods_receipts')
+          .select('purchase_order_id, goods_receipt_items(product_id, quantity)')
+          .in('purchase_order_id', openPoIds);
+        receipts?.forEach((gr: any) => {
+          (gr.goods_receipt_items as any[])?.forEach((item: any) => {
+            receivedByProduct.set(item.product_id, (receivedByProduct.get(item.product_id) || 0) + (item.quantity || 0));
+          });
+        });
+      }
+
+      // Incoming = ordered on open POs minus what has already been received against them
+      const onOrderMap = new Map<string, number>();
+      openPOs?.forEach((po: any) => {
+        (po.purchase_order_items as any[])?.forEach((item: any) => {
+          onOrderMap.set(item.product_id, (onOrderMap.get(item.product_id) || 0) + (item.quantity || 0));
+        });
+      });
+      receivedByProduct.forEach((received, productId) => {
+        const ordered = onOrderMap.get(productId) || 0;
+        onOrderMap.set(productId, Math.max(0, ordered - received));
+      });
 
       // Get outstanding requisitions for this location (draft, pending, approved - not yet converted to PO)
       const { data: outstandingReqs } = await supabase
@@ -736,18 +811,21 @@ const Planning = () => {
         }
       });
 
-      // Calculate shortfalls (including safety stock, minus already requisitioned)
+      // Calculate shortfalls: (demand + safety stock) - stock - already requisitioned - on order
       const shortfallList: InventoryShortfall[] = [];
       requirementMap.forEach((req) => {
         const currentStock = inventoryMap.get(req.productId) || 0;
         const alreadyRequisitioned = requisitionedMap.get(req.productId) || 0;
-        // Shortfall = required + safety stock - current stock - already requisitioned
-        const shortfall = req.totalRequired + req.safetyStock - currentStock - alreadyRequisitioned;
-        
+        const onOrder = onOrderMap.get(req.productId) || 0;
+        const requiredTotal = req.totalRequired + req.safetyStock;
+        const shortfall = requiredTotal - currentStock - alreadyRequisitioned - onOrder;
+
         if (shortfall > 0) {
           shortfallList.push({
             ...req,
+            requiredTotal,
             currentStock,
+            onOrder,
             shortfall,
           });
         }
@@ -1193,12 +1271,12 @@ const Planning = () => {
                     />
                     <SortableTableHead
                       label="Required"
-                      sortKey="totalRequired"
+                      sortKey="requiredTotal"
                       currentSortKey={shortfallsSortConfig.key}
                       currentSortDirection={shortfallsSortConfig.direction}
                       onSort={handleShortfallsSort}
-                      filterValue={shortfallsFilters['totalRequired'] || ''}
-                      onFilter={(value) => setShortfallsFilter('totalRequired', value)}
+                      filterValue={shortfallsFilters['requiredTotal'] || ''}
+                      onFilter={(value) => setShortfallsFilter('requiredTotal', value)}
                       className="w-24 text-right"
                     />
                     <SortableTableHead
@@ -1239,7 +1317,18 @@ const Planning = () => {
                       filterValue={shortfallsFilters['currentStock'] || ''}
                       onFilter={(value) => setShortfallsFilter('currentStock', value)}
                       className="w-24 text-right"
+                     />
+                    <SortableTableHead
+                      label="On Order"
+                      sortKey="onOrder"
+                      currentSortKey={shortfallsSortConfig.key}
+                      currentSortDirection={shortfallsSortConfig.direction}
+                      onSort={handleShortfallsSort}
+                      filterValue={shortfallsFilters['onOrder'] || ''}
+                      onFilter={(value) => setShortfallsFilter('onOrder', value)}
+                      className="w-24 text-right"
                     />
+
                     <SortableTableHead
                       label="Shortfall"
                       sortKey="shortfall"
@@ -1270,7 +1359,7 @@ const Planning = () => {
                         {item.vendorName || <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {item.totalRequired} {item.unit || ''}
+                        {item.requiredTotal} {item.unit || ''}
                       </TableCell>
                       <TableCell className="text-right font-mono text-muted-foreground">
                         {item.productionRequired > 0 ? `${item.productionRequired} ${item.unit || ''}` : '-'}
@@ -1283,6 +1372,9 @@ const Planning = () => {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {item.currentStock} {item.unit || ''}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {item.onOrder > 0 ? `${item.onOrder} ${item.unit || ''}` : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Badge variant="destructive" className="font-mono">

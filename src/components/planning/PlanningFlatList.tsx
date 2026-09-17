@@ -44,10 +44,12 @@ interface FlatShortfall {
   vendorName: string | null;
   unitPrice: number | null;
   totalRequired: number;
+  requiredTotal: number;
   productionRequired: number;
   requisitionDemand: number;
   safetyStock: number;
   currentStock: number;
+  onOrder: number;
   shortfall: number;
   salesOrders: string[];
   productionOrders: string[];
@@ -167,6 +169,42 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
           .not('source_location_id', 'is', null)
           .in('status', ['draft', 'pending', 'approved']),
       ]);
+
+      // Open purchase orders = incoming supply already on the way per location
+      const { data: openPOs } = await supabase
+        .from('purchase_orders')
+        .select('id, location_id, purchase_order_items(product_id, quantity)')
+        .eq('company_id', companyId)
+        .in('status', ['draft', 'pending', 'approved', 'confirmed', 'shipped', 'partial', 'in_transit']);
+
+      const onOrderMap = new Map<string, number>();
+      const poLocationById = new Map<string, string>();
+      openPOs?.forEach((po: any) => {
+        if (!po.location_id) return;
+        poLocationById.set(po.id, po.location_id);
+        (po.purchase_order_items as any[])?.forEach((item: any) => {
+          const key = `${po.location_id}::${item.product_id}`;
+          onOrderMap.set(key, (onOrderMap.get(key) || 0) + (item.quantity || 0));
+        });
+      });
+
+      const openPoIds = Array.from(poLocationById.keys());
+      if (openPoIds.length > 0) {
+        const { data: receipts } = await supabase
+          .from('goods_receipts')
+          .select('purchase_order_id, goods_receipt_items(product_id, quantity)')
+          .in('purchase_order_id', openPoIds);
+        receipts?.forEach((gr: any) => {
+          const locId = gr.purchase_order_id ? poLocationById.get(gr.purchase_order_id) : null;
+          if (!locId) return;
+          (gr.goods_receipt_items as any[])?.forEach((item: any) => {
+            const key = `${locId}::${item.product_id}`;
+            onOrderMap.set(key, Math.max(0, (onOrderMap.get(key) || 0) - (item.quantity || 0)));
+          });
+        });
+      }
+
+
 
       // Fetch routes and assignments if enforceRouteRecords
       let routesByDest = new Map<string, { vendorId: string; vendorName: string }>();
@@ -345,7 +383,9 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
         const [locId] = key.split('::');
         const currentStock = inventoryMap.get(key) || 0;
         const alreadyRequisitioned = requisitionedMap.get(key) || 0;
-        const shortfall = req.totalRequired + req.safetyStock - currentStock - alreadyRequisitioned;
+        const onOrder = onOrderMap.get(key) || 0;
+        const requiredTotal = req.totalRequired + req.safetyStock;
+        const shortfall = requiredTotal - currentStock - alreadyRequisitioned - onOrder;
 
         if (shortfall > 0) {
           const loc = locationLookup.get(locId);
@@ -362,10 +402,12 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
             vendorName: req.vendorName,
             unitPrice: req.unitPrice,
             totalRequired: req.totalRequired,
+            requiredTotal,
             productionRequired: req.productionRequired,
             requisitionDemand: req.requisitionDemand,
             safetyStock: req.safetyStock,
             currentStock,
+            onOrder,
             shortfall,
             salesOrders: req.salesOrders,
             productionOrders: req.productionOrders,
@@ -596,12 +638,12 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
               />
               <SortableTableHead
                 label="Required"
-                sortKey="totalRequired"
+                sortKey="requiredTotal"
                 currentSortKey={sortConfig.key}
                 currentSortDirection={sortConfig.direction}
                 onSort={handleSort}
-                filterValue={filters['totalRequired'] || ''}
-                onFilter={(value) => setFilter('totalRequired', value)}
+                filterValue={filters['requiredTotal'] || ''}
+                onFilter={(value) => setFilter('requiredTotal', value)}
                 className="w-24 text-right"
               />
               <SortableTableHead
@@ -644,6 +686,17 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 className="w-24 text-right"
               />
               <SortableTableHead
+                label="On Order"
+                sortKey="onOrder"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters['onOrder'] || ''}
+                onFilter={(value) => setFilter('onOrder', value)}
+                className="w-24 text-right"
+              />
+
+              <SortableTableHead
                 label="Shortfall"
                 sortKey="shortfall"
                 currentSortKey={sortConfig.key}
@@ -682,7 +735,7 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                   {item.vendorName || <span className="text-muted-foreground">-</span>}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {item.totalRequired} {item.unit || ''}
+                  {item.requiredTotal} {item.unit || ''}
                 </TableCell>
                 <TableCell className="text-right font-mono text-muted-foreground">
                   {item.productionRequired > 0 ? `${item.productionRequired} ${item.unit || ''}` : '-'}
@@ -695,6 +748,9 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {item.currentStock} {item.unit || ''}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {item.onOrder > 0 ? `${item.onOrder} ${item.unit || ''}` : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <Badge variant="destructive" className="font-mono">
