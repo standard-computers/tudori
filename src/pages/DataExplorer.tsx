@@ -909,6 +909,14 @@ export default function DataExplorer() {
         isComplete={deleteComplete}
       />
 
+      <DatabaseOptionsDialog
+        open={dbOptionsOpen}
+        onOpenChange={setDbOptionsOpen}
+        tables={AVAILABLE_TABLES}
+        canPurge={hasITRole && allowMassDeletion}
+        onPurged={() => tabs.forEach(t => refreshTab(t.id))}
+      />
+
       {/* Extended Search Dialog */}
       <Dialog open={extOpen} onOpenChange={setExtOpen}>
         <DialogContent className="!w-screen !h-screen !max-w-none !max-h-none flex flex-col">
