@@ -759,6 +759,36 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
                 </TableCell>
               </TableRow>
             ))}
+            {sortedShortfalls.length > 0 && (
+              <TableRow className="bg-muted/50 font-semibold border-t-2">
+                <TableCell colSpan={5}>
+                  Total ({sortedShortfalls.length} {sortedShortfalls.length === 1 ? 'item' : 'items'})
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {sortedShortfalls.reduce((sum, i) => sum + i.requiredTotal, 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {sortedShortfalls.reduce((sum, i) => sum + i.productionRequired, 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {sortedShortfalls.reduce((sum, i) => sum + i.requisitionDemand, 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {sortedShortfalls.reduce((sum, i) => sum + i.safetyStock, 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {sortedShortfalls.reduce((sum, i) => sum + i.currentStock, 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {sortedShortfalls.reduce((sum, i) => sum + i.onOrder, 0).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge variant="destructive" className="font-mono">
+                    -{sortedShortfalls.reduce((sum, i) => sum + i.shortfall, 0).toLocaleString()}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
