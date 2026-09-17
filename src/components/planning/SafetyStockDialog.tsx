@@ -548,20 +548,79 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {ss.safety_stock_quantity.toLocaleString()}
+                            {editingId === ss.id ? (
+                              <Input
+                                type="number"
+                                min="0"
+                                value={editingQuantity}
+                                onChange={(e) => setEditingQuantity(e.target.value)}
+                                className="w-24 text-right h-8 ml-auto"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveEdit(ss.id);
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                              />
+                            ) : (
+                              ss.safety_stock_quantity.toLocaleString()
+                            )}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => handleDelete(ss.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              {editingId === ss.id ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleSaveEdit(ss.id)}
+                                    disabled={isSavingEdit}
+                                  >
+                                    {isSavingEdit ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={cancelEdit}
+                                    disabled={isSavingEdit}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => startEdit(ss)}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => handleDelete(ss.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
+                      <TableRow className="bg-muted/50 font-semibold border-t-2">
+                        <TableCell colSpan={2}>Total ({sortedSafetyStocks.length} records)</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {sortedSafetyStocks.reduce((sum, ss) => sum + ss.safety_stock_quantity, 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
                     </TableBody>
                   </Table>
                 </div>
