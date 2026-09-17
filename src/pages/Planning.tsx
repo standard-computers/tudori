@@ -282,6 +282,44 @@ const Planning = () => {
       .eq('company_id', companyId!)
       .in('status', ['draft', 'pending', 'approved']);
 
+    // Get open purchase orders (incoming supply per destination location)
+    const { data: openPOsByLoc } = await supabase
+      .from('purchase_orders')
+      .select('id, location_id, purchase_order_items(product_id, quantity)')
+      .eq('company_id', companyId!)
+      .in('status', ['draft', 'pending', 'approved', 'confirmed', 'shipped', 'partial', 'in_transit']);
+
+    const openPoIdList = (openPOsByLoc || []).map((po: any) => po.id);
+    const poLocationById = new Map<string, string>();
+    openPOsByLoc?.forEach((po: any) => { if (po.location_id) poLocationById.set(po.id, po.location_id); });
+
+    const onOrderByLocProduct = new Map<string, number>();
+    openPOsByLoc?.forEach((po: any) => {
+      if (!po.location_id) return;
+      (po.purchase_order_items as any[])?.forEach((item: any) => {
+        const key = `${po.location_id}::${item.product_id}`;
+        onOrderByLocProduct.set(key, (onOrderByLocProduct.get(key) || 0) + (item.quantity || 0));
+      });
+    });
+
+    if (openPoIdList.length > 0) {
+      const { data: receiptsForOpenPOs } = await supabase
+        .from('goods_receipts')
+        .select('purchase_order_id, goods_receipt_items(product_id, quantity)')
+        .in('purchase_order_id', openPoIdList);
+      receiptsForOpenPOs?.forEach((gr: any) => {
+        const locId = gr.purchase_order_id ? poLocationById.get(gr.purchase_order_id) : null;
+        if (!locId) return;
+        (gr.goods_receipt_items as any[])?.forEach((item: any) => {
+          const key = `${locId}::${item.product_id}`;
+          const remaining = (onOrderByLocProduct.get(key) || 0) - (item.quantity || 0);
+          onOrderByLocProduct.set(key, Math.max(0, remaining));
+        });
+      });
+    }
+
+
+
     // Build inventory map by location and product
     const inventoryByLocProduct = new Map<string, number>();
     inventoryData?.forEach(inv => {
