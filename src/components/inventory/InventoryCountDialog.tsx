@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -20,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from '@/lib/toast';
-import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, ClipboardCheck, CheckCircle2, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { AreaBinSelector } from '@/components/inventory/AreaBinSelector';
 import PostProgressDialog, { type PostProgressStep } from '@/components/inventory/PostProgressDialog';
@@ -91,6 +92,7 @@ export const InventoryCountDialog = ({
 }: InventoryCountDialogProps) => {
   const { user } = useAuth();
   const [view, setView] = useState<View>('list');
+  const [isMaximized, setIsMaximized] = useMaximizedState();
   const [counts, setCounts] = useState<CountSession[]>([]);
   const [selectedCount, setSelectedCount] = useState<CountSession | null>(null);
   const [countItems, setCountItems] = useState<CountItem[]>([]);
@@ -619,7 +621,14 @@ export const InventoryCountDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'sm:max-w-[900px] h-[85vh]'}`}>
+        <button
+          type="button"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="absolute right-10 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+        >
+          {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
         <DialogHeader>
           <div className="flex items-center gap-2">
             {(view === 'detail' || view === 'select_scope') && (
