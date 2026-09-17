@@ -170,6 +170,42 @@ export const PlanningFlatList = ({ companyId, enforceRouteRecords, userId }: Pla
           .in('status', ['draft', 'pending', 'approved']),
       ]);
 
+      // Open purchase orders = incoming supply already on the way per location
+      const { data: openPOs } = await supabase
+        .from('purchase_orders')
+        .select('id, location_id, purchase_order_items(product_id, quantity)')
+        .eq('company_id', companyId)
+        .in('status', ['draft', 'pending', 'approved', 'confirmed', 'shipped', 'partial', 'in_transit']);
+
+      const onOrderMap = new Map<string, number>();
+      const poLocationById = new Map<string, string>();
+      openPOs?.forEach((po: any) => {
+        if (!po.location_id) return;
+        poLocationById.set(po.id, po.location_id);
+        (po.purchase_order_items as any[])?.forEach((item: any) => {
+          const key = `${po.location_id}::${item.product_id}`;
+          onOrderMap.set(key, (onOrderMap.get(key) || 0) + (item.quantity || 0));
+        });
+      });
+
+      const openPoIds = Array.from(poLocationById.keys());
+      if (openPoIds.length > 0) {
+        const { data: receipts } = await supabase
+          .from('goods_receipts')
+          .select('purchase_order_id, goods_receipt_items(product_id, quantity)')
+          .in('purchase_order_id', openPoIds);
+        receipts?.forEach((gr: any) => {
+          const locId = gr.purchase_order_id ? poLocationById.get(gr.purchase_order_id) : null;
+          if (!locId) return;
+          (gr.goods_receipt_items as any[])?.forEach((item: any) => {
+            const key = `${locId}::${item.product_id}`;
+            onOrderMap.set(key, Math.max(0, (onOrderMap.get(key) || 0) - (item.quantity || 0)));
+          });
+        });
+      }
+
+
+
       // Fetch routes and assignments if enforceRouteRecords
       let routesByDest = new Map<string, { vendorId: string; vendorName: string }>();
       let assignmentsByDestProduct = new Map<string, { vendorId: string | null; vendorName: string | null }>();
