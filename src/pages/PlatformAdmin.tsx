@@ -442,6 +442,14 @@ const PlatformAdmin = () => {
                   onAddDocument={(folderId) => { setParentFolderId(folderId); setNewDocTitle(""); setDocumentDialogOpen(true); }}
                   onRenameFolder={(folder) => { setEditingFolder(folder); setNewFolderName(folder.name); setFolderDialogOpen(true); }}
                   onDeleteFolder={(folder) => { setDeletingFolder(folder); setDeleteFolderOpen(true); }}
+                  onMoveFolder={(folder, direction, siblings) => {
+                    const ids = moveItem(siblings, folder.id, direction);
+                    if (ids) persistOrder("platform_doc_folders", ids);
+                  }}
+                  onMoveDocument={(doc, direction, siblings) => {
+                    const ids = moveItem(siblings, doc.id, direction);
+                    if (ids) persistOrder("platform_documents", ids);
+                  }}
                 />
                 {folders.length === 0 && documents.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-8">
@@ -528,6 +536,29 @@ const PlatformAdmin = () => {
                     <ReactMarkdown>{selectedDocument.content}</ReactMarkdown>
                   </article>
                 )}
+              </div>
+              <div className="border-t p-3 flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!prevDoc}
+                  onClick={() => { if (prevDoc) { setSelectedDocument(prevDoc); setIsEditing(false); } }}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {prevDoc ? prevDoc.title : "Previous"}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {currentIndex >= 0 ? `${currentIndex + 1} of ${orderedDocs.length}` : ""}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!nextDoc}
+                  onClick={() => { if (nextDoc) { setSelectedDocument(nextDoc); setIsEditing(false); } }}
+                >
+                  {nextDoc ? nextDoc.title : "Next"}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
               </div>
             </>
           ) : (
