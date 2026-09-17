@@ -3,7 +3,7 @@ import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -297,7 +297,17 @@ const ProductionOrderTable = ({
                   >
                     {order.order_number}
                   </TableCell>
-                  <TableCell>{order.bom?.name || '-'}</TableCell>
+                  <TableCell>
+                    {order.bom ? (
+                      <Link
+                        to={`/bill-of-materials?ref=${encodeURIComponent(order.bom.bom_id)}`}
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.bom.name}
+                      </Link>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>{order.product?.name || '-'}</TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>
@@ -1276,7 +1286,7 @@ const Production = () => {
           </Button>
           <div className="flex items-center gap-2">
             <Factory className="w-5 h-5 text-indigo-500" />
-            <h1 className="font-semibold">Production</h1>
+            <h1 className="font-semibold">Production Orders</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="flex items-center gap-2">
