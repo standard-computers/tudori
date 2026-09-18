@@ -213,7 +213,9 @@ const PlatformAdmin = () => {
         .insert({
           parent_folder_id: parentFolderId,
           name: newFolderName,
-          sort_order: folders.filter((f) => f.parent_folder_id === parentFolderId).length,
+          sort_order:
+            folders.filter((f) => f.parent_folder_id === parentFolderId).length +
+            documents.filter((d) => d.folder_id === parentFolderId).length,
         });
       if (error) toast.error("Failed to create folder");
       else toast.success("Folder created");
