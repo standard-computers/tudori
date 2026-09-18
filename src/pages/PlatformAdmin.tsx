@@ -106,23 +106,28 @@ const PlatformAdmin = () => {
   const nextDoc =
     currentIndex >= 0 && currentIndex < orderedDocs.length - 1 ? orderedDocs[currentIndex + 1] : null;
 
-  const persistOrder = async (
-    table: "platform_doc_folders" | "platform_documents",
-    ids: string[],
+  const handleRelocate = async (
+    dragged: TreeRef,
+    newParentId: string | null,
+    ordered: TreeRef[],
   ) => {
-    await Promise.all(
-      ids.map((id, i) => sb.from(table).update({ sort_order: i }).eq("id", id)),
-    );
-    fetchData();
-  };
-
-  const moveItem = <T extends { id: string }>(items: T[], id: string, direction: -1 | 1) => {
-    const idx = items.findIndex((i) => i.id === id);
-    const target = idx + direction;
-    if (idx < 0 || target < 0 || target >= items.length) return null;
-    const next = [...items];
-    [next[idx], next[target]] = [next[target], next[idx]];
-    return next.map((i) => i.id);
+    const updates = ordered.map((item, i) => {
+      const isDragged = item.kind === dragged.kind && item.id === dragged.id;
+      if (item.kind === "folder") {
+        return sb
+          .from("platform_doc_folders")
+          .update(isDragged ? { sort_order: i, parent_folder_id: newParentId } : { sort_order: i })
+          .eq("id", item.id);
+      }
+      return sb
+        .from("platform_documents")
+        .update(isDragged ? { sort_order: i, folder_id: newParentId } : { sort_order: i })
+        .eq("id", item.id);
+    });
+    const results = await Promise.all(updates);
+    if (results.some((r) => r.error)) toast.error("Failed to save new order");
+    if (newParentId) setExpandedFolders((prev) => new Set(prev).add(newParentId));
+    await fetchData();
   };
 
   useEffect(() => { if (isAdmin) fetchData(); }, [isAdmin, fetchData]);
