@@ -41,7 +41,7 @@ import {
   Upload,
   LogOut,
 } from "lucide-react";
-import { DocsTree, flattenDocOrder, type DocFolder, type PlatformDoc } from "@/components/documentation/DocsTree";
+import { DocsTree, flattenDocOrder, type DocFolder, type PlatformDoc, type TreeRef } from "@/components/documentation/DocsTree";
 
 const PlatformAdmin = () => {
   const [checking, setChecking] = useState(true);
