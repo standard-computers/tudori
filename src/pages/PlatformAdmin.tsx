@@ -238,7 +238,9 @@ const PlatformAdmin = () => {
         content: "# " + newDocTitle + "\n\nStart writing here...",
         created_by: user?.id ?? null,
         updated_by: user?.id ?? null,
-        sort_order: documents.filter((d) => d.folder_id === parentFolderId).length,
+        sort_order:
+          folders.filter((f) => f.parent_folder_id === parentFolderId).length +
+          documents.filter((d) => d.folder_id === parentFolderId).length,
       })
       .select()
       .single();
