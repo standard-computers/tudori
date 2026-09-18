@@ -447,14 +447,7 @@ const PlatformAdmin = () => {
                   onAddDocument={(folderId) => { setParentFolderId(folderId); setNewDocTitle(""); setDocumentDialogOpen(true); }}
                   onRenameFolder={(folder) => { setEditingFolder(folder); setNewFolderName(folder.name); setFolderDialogOpen(true); }}
                   onDeleteFolder={(folder) => { setDeletingFolder(folder); setDeleteFolderOpen(true); }}
-                  onMoveFolder={(folder, direction, siblings) => {
-                    const ids = moveItem(siblings, folder.id, direction);
-                    if (ids) persistOrder("platform_doc_folders", ids);
-                  }}
-                  onMoveDocument={(doc, direction, siblings) => {
-                    const ids = moveItem(siblings, doc.id, direction);
-                    if (ids) persistOrder("platform_documents", ids);
-                  }}
+                  onRelocate={handleRelocate}
                 />
                 {folders.length === 0 && documents.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-8">
