@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTransaction, useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
+import { useChangeHistorySettings } from "@/hooks/use-change-history-settings";
 import { useExcel } from "@/hooks/use-excel";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ import {
   X,
   Eye,
   MoreHorizontal,
-  History,
+  MapPin,
   Maximize2,
   Minimize2,
 } from "lucide-react";
@@ -407,6 +408,8 @@ const Vendors = () => {
   const [isMaximized, setIsMaximized] = useMaximizedState();
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingVendor, setViewingVendor] = useState<Vendor | null>(null);
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapLoading, setMapLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingVendor, setDeletingVendor] = useState<{ id: string; name: string } | null>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
@@ -431,6 +434,7 @@ const Vendors = () => {
 
   // Import/Export settings
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
+  const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const { exportToExcel, readExcel } = useExcel();
 
   const VENDOR_TEMPLATE_COLUMNS = [
@@ -673,6 +677,34 @@ const Vendors = () => {
     }
 
     setVendors(data || []);
+  };
+
+  const handleViewVendor = async (vendor: Vendor) => {
+    setViewingVendor(vendor);
+    setMapCoords(null);
+    setMapLoading(true);
+    setIsViewDialogOpen(true);
+
+    const addressQuery = [vendor.address_line1, vendor.city, vendor.state, vendor.postal_code, vendor.country]
+      .filter(Boolean)
+      .join(", ");
+
+    if (addressQuery) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`,
+          { headers: { "Accept-Language": "en", "User-Agent": "OperandApp/1.0" } },
+        );
+        const data = await response.json();
+        if (data?.[0]) {
+          setMapCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+        }
+      } catch {
+        // The vendor details remain available if map lookup fails.
+      }
+    }
+
+    setMapLoading(false);
   };
 
   const handleQueryDialogSearch = async (filters: Record<string, string>) => {
@@ -1357,10 +1389,7 @@ const Vendors = () => {
         ) : (
           <VendorTable
             vendors={vendors}
-            onView={(vendor) => {
-              setViewingVendor(vendor);
-              setIsViewDialogOpen(true);
-            }}
+            onView={handleViewVendor}
             onEdit={handleEdit}
             onDelete={handleDeleteRequest}
             isColumnVisible={isColumnVisible}
@@ -1371,7 +1400,7 @@ const Vendors = () => {
       {/* View Vendor Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent
-          className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[550px]"}`}
+          className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? "!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]" : "sm:max-w-[900px] max-h-[85vh]"}`}
         >
           <div className="absolute right-10 top-4 z-10 flex items-center gap-2">
             <button
@@ -1400,18 +1429,16 @@ const Vendors = () => {
             </DialogDescription>
           </DialogHeader>
           {viewingVendor && (
-            <Tabs defaultValue="details" className="w-full px-6 py-4">
-              <TabsList className="grid w-full grid-cols-4 mb-4">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="products">Products</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center gap-1">
-                  <History className="w-3.5 h-3.5" /> History
-                </TabsTrigger>
-              </TabsList>
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              <Tabs defaultValue="details" className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="products">Products</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="details">
-                <div className="space-y-4">
+                <TabsContent value="details">
+                  <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label className="text-muted-foreground text-xs">Vendor ID</Label>
@@ -1482,43 +1509,91 @@ const Vendors = () => {
                       )}
                     </p>
                   </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="products">
+                  <VendorProductsTab vendorId={viewingVendor.id} />
+                </TabsContent>
+
+                <TabsContent value="notes">
+                  <div className="space-y-4">
+                    <p className="whitespace-pre-wrap">{viewingVendor.notes || "No notes."}</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <aside className="w-[338px] shrink-0 border-l border-border flex flex-col overflow-y-auto">
+                <div className="p-3 border-b border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    Vendor Location
+                  </p>
+                  <div className="rounded-lg overflow-hidden border border-border h-44 bg-muted">
+                    {mapLoading ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground text-xs gap-2">
+                        <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                        Loading map…
+                      </div>
+                    ) : mapCoords ? (
+                      <iframe
+                        title="Vendor Location"
+                        className="w-full h-full"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoords.lon - 0.01},${mapCoords.lat - 0.008},${mapCoords.lon + 0.01},${mapCoords.lat + 0.008}&layer=mapnik&marker=${mapCoords.lat},${mapCoords.lon}`}
+                        style={{ border: 0 }}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+                        Address not found on map
+                      </div>
+                    )}
+                  </div>
+                  {mapCoords && (
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${mapCoords.lat}&mlon=${mapCoords.lon}#map=15/${mapCoords.lat}/${mapCoords.lon}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1 mt-2"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      Open in OpenStreetMap
+                    </a>
+                  )}
                 </div>
-              </TabsContent>
 
-              <TabsContent value="products">
-                <VendorProductsTab vendorId={viewingVendor.id} />
-              </TabsContent>
-
-              <TabsContent value="notes">
-                <div className="space-y-4">
-                  <p className="whitespace-pre-wrap">{viewingVendor.notes || "No notes."}</p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="history">
-                <AuditHistoryTab
-                  tableName="vendors"
-                  recordId={viewingVendor.id}
-                  fieldLabels={{
-                    status: "Status",
-                    name: "Name",
-                    type: "Type",
-                    contact_name: "Contact Name",
-                    email: "Email",
-                    phone: "Phone",
-                    website: "Website",
-                    address_line1: "Address Line 1",
-                    address_line2: "Address Line 2",
-                    city: "City",
-                    state: "State",
-                    postal_code: "Postal Code",
-                    country: "Country",
-                    notes: "Notes",
-                    payment_terms: "Payment Terms",
-                  }}
-                />
-              </TabsContent>
-            </Tabs>
+                {isHistoryEnabled("vendor") && (
+                  <div className="flex-1 flex flex-col min-h-0 border-t border-border">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 pt-3 pb-2">
+                      Change History
+                    </p>
+                    <div className="flex-1 overflow-y-auto px-3 pb-3">
+                      <AuditHistoryTab
+                        tableName="vendors"
+                        recordId={viewingVendor.id}
+                        fieldLabels={{
+                          status: "Status",
+                          name: "Name",
+                          type: "Type",
+                          contact_name: "Contact Name",
+                          email: "Email",
+                          phone: "Phone",
+                          website: "Website",
+                          address_line1: "Address Line 1",
+                          address_line2: "Address Line 2",
+                          city: "City",
+                          state: "State",
+                          postal_code: "Postal Code",
+                          country: "Country",
+                          notes: "Notes",
+                          payment_terms: "Payment Terms",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </aside>
+            </div>
           )}
         </DialogContent>
       </Dialog>
