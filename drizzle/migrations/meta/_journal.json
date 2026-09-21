@@ -36,6 +36,13 @@
       "when": 1789677604819,
       "tag": "0004_add_doc_sort_order",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790028191571,
+      "tag": "0005_add_recoverable_to_tax_rates",
+      "breakpoints": true
     }
   ]
 }

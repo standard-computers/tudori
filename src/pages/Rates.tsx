@@ -67,6 +67,7 @@ interface TaxRate {
   description: string | null;
   is_default: boolean;
   is_active: boolean;
+  recoverable: boolean;
   created_at: string;
   address_street: string | null;
   address_city: string | null;
@@ -143,6 +144,7 @@ const Rates = () => {
     description: "",
     is_default: false,
     is_active: true,
+    recoverable: false,
     address_street: "",
     address_city: "",
     address_county: "",
@@ -214,6 +216,7 @@ const Rates = () => {
       description: "",
       is_default: false,
       is_active: true,
+      recoverable: false,
       address_street: "",
       address_city: "",
       address_county: "",
@@ -238,6 +241,7 @@ const Rates = () => {
       description: rate.description || "",
       is_default: rate.is_default,
       is_active: rate.is_active,
+      recoverable: rate.recoverable ?? false,
       address_street: rate.address_street || "",
       address_city: rate.address_city || "",
       address_county: rate.address_county || "",
@@ -288,6 +292,7 @@ const Rates = () => {
             description: formData.description.trim() || null,
             is_default: formData.is_default,
             is_active: formData.is_active,
+            recoverable: formData.recoverable,
             address_street: formData.address_street.trim() || null,
             address_city: formData.address_city.trim() || null,
             address_county: formData.address_county.trim() || null,
@@ -310,6 +315,7 @@ const Rates = () => {
           description: formData.description.trim() || null,
           is_default: formData.is_default,
           is_active: formData.is_active,
+          recoverable: formData.recoverable,
           address_street: formData.address_street.trim() || null,
           address_city: formData.address_city.trim() || null,
           address_county: formData.address_county.trim() || null,
@@ -860,6 +866,18 @@ const Rates = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
+                    <Label htmlFor="recoverable">Recoverable</Label>
+                    <p className="text-sm text-muted-foreground">Charged amounts can be recovered</p>
+                  </div>
+                  <Switch
+                    id="recoverable"
+                    checked={formData.recoverable}
+                    onCheckedChange={(checked) => setFormData({ ...formData, recoverable: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
                     <Label htmlFor="is_active">Active</Label>
                     <p className="text-sm text-muted-foreground">Available for use in orders</p>
                   </div>
@@ -980,6 +998,7 @@ const Rates = () => {
                       {viewingRate.is_active ? "Active" : "Inactive"}
                     </Badge>
                     {viewingRate.is_default && <Badge variant="secondary" className="ml-2">Default</Badge>}
+                    {viewingRate.recoverable && <Badge variant="secondary" className="ml-2">Recoverable</Badge>}
                   </div>
                 </div>
                 <div className="col-span-2">

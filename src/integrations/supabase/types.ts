@@ -5225,6 +5225,7 @@ export type Database = {
           rate: number
           rate_id: string
           rate_type: string
+          recoverable: boolean | null
           updated_at: string
         }
         Insert: {
@@ -5244,6 +5245,7 @@ export type Database = {
           rate?: number
           rate_id: string
           rate_type?: string
+          recoverable?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -5263,6 +5265,7 @@ export type Database = {
           rate?: number
           rate_id?: string
           rate_type?: string
+          recoverable?: boolean | null
           updated_at?: string
         }
         Relationships: [
