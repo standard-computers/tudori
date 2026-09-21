@@ -866,6 +866,18 @@ const Rates = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
+                    <Label htmlFor="recoverable">Recoverable</Label>
+                    <p className="text-sm text-muted-foreground">Charged amounts can be recovered</p>
+                  </div>
+                  <Switch
+                    id="recoverable"
+                    checked={formData.recoverable}
+                    onCheckedChange={(checked) => setFormData({ ...formData, recoverable: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
                     <Label htmlFor="is_active">Active</Label>
                     <p className="text-sm text-muted-foreground">Available for use in orders</p>
                   </div>
@@ -986,6 +998,7 @@ const Rates = () => {
                       {viewingRate.is_active ? "Active" : "Inactive"}
                     </Badge>
                     {viewingRate.is_default && <Badge variant="secondary" className="ml-2">Default</Badge>}
+                    {viewingRate.recoverable && <Badge variant="secondary" className="ml-2">Recoverable</Badge>}
                   </div>
                 </div>
                 <div className="col-span-2">
