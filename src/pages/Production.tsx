@@ -175,6 +175,7 @@ const ProductionOrderTable = ({
   onConfirm: (order: ProductionOrder) => void;
   onCompleteForeground: (order: ProductionOrder) => void;
   onAssignEmployee: (order: ProductionOrder) => void;
+  onPrint: (order: ProductionOrder) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
   const {
