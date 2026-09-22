@@ -43,7 +43,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SortableTableHead } from '@/components/SortableTableHead';
-import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle, CheckCircle, Maximize2, Minimize2, User } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, MoreHorizontal, Pencil, Trash2, X, Factory, MapPin, Clock, Check, Play, PlayCircle, CheckCircle, Maximize2, Minimize2, User, Printer } from 'lucide-react';
+import { printProductionOrder } from '@/lib/print-production-order';
 import { SearchableSelect } from '@/components/SearchableSelect';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/lib/toast';
@@ -162,6 +163,7 @@ const ProductionOrderTable = ({
   onConfirm,
   onCompleteForeground,
   onAssignEmployee,
+  onPrint,
   isColumnVisible,
 }: {
   orders: ProductionOrder[];
@@ -173,6 +175,7 @@ const ProductionOrderTable = ({
   onConfirm: (order: ProductionOrder) => void;
   onCompleteForeground: (order: ProductionOrder) => void;
   onAssignEmployee: (order: ProductionOrder) => void;
+  onPrint: (order: ProductionOrder) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
   const {
@@ -436,6 +439,9 @@ const ProductionOrderTable = ({
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => onView(order)}>
                         <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Print production order" onClick={() => onPrint(order)}>
+                        <Printer className="w-4 h-4" />
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -851,6 +857,42 @@ const Production = () => {
       await fetchBomItems(order.bom_id);
     }
     setIsDialogOpen(true);
+  };
+
+  const handlePrintOrder = async (order: ProductionOrder) => {
+    let components: { productId: string; productName: string; quantity: number }[] = [];
+    if (order.bom_id) {
+      const { data } = await supabase
+        .from('bom_items')
+        .select('id, product_id, quantity, product:products(name, product_id)')
+        .eq('bom_id', order.bom_id);
+      const outputQty = order.bom?.output_quantity || 1;
+      const multiplier = outputQty > 0 ? order.quantity / outputQty : 1;
+      components = ((data as unknown as BomItem[]) || []).map((item) => ({
+        productId: item.product?.product_id || '',
+        productName: item.product?.name || '',
+        quantity: Math.round(item.quantity * multiplier * 1000) / 1000,
+      }));
+    }
+
+    printProductionOrder({
+      orderNumber: order.order_number,
+      status: order.status,
+      bomId: order.bom?.bom_id || null,
+      bomName: order.bom?.name || null,
+      outputProductId: order.product?.product_id || null,
+      outputProductName: order.product?.name || null,
+      quantity: order.quantity,
+      locationName: order.location?.name || null,
+      scheduledDate: order.scheduled_date ? format(parseISO(order.scheduled_date), 'MMM d, yyyy') : null,
+      completedDate: order.completed_date ? format(parseISO(order.completed_date), 'MMM d, yyyy') : null,
+      assignedTo: order.assigned_employee
+        ? `${order.assigned_employee.first_name} ${order.assigned_employee.last_name}`
+        : null,
+      duration: order.total_duration ? formatDuration(order.total_duration) : null,
+      notes: order.notes || null,
+      components,
+    });
   };
 
   const handleEdit = async (order: ProductionOrder) => {
@@ -1454,6 +1496,7 @@ const Production = () => {
           onConfirm={handleConfirm}
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
+          onPrint={handlePrintOrder}
           isColumnVisible={isColumnVisible}
         />
       </main>
@@ -1744,14 +1787,27 @@ const Production = () => {
               </div>
             </Tabs>
 
-            {!isViewMode && (
-              <DialogFooter className="shrink-0 px-6 pb-6">
+            <DialogFooter className="shrink-0 px-6 pb-6">
+              {editingId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const order = orders.find((o) => o.id === editingId);
+                    if (order) handlePrintOrder(order);
+                  }}
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print
+                </Button>
+              )}
+              {!isViewMode && (
                 <Button type="submit">
                   {isEditing ? 'Update' : 'Create'}
                   <Kbd>⌘S</Kbd>
                 </Button>
-              </DialogFooter>
-            )}
+              )}
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
