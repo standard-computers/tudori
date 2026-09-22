@@ -151,7 +151,22 @@ export const AutoMakeInvoicesDialog = ({
     let created = 0;
 
     try {
+      // Resolve the account's own ledger first — it supersedes the PO ledger
+      const { data: acctData } = await supabase
+        .from('accounts' as any)
+        .select('ledger_id')
+        .eq('id', accountId)
+        .maybeSingle();
+      const accountLedgerId = (acctData as any)?.ledger_id || null;
+
+      // Fallback to the account location's inventory ledger
+      let fallbackLedgerId: string | null = accountLedgerId;
+      if (!fallbackLedgerId && accountLocationId) {
+        fallbackLedgerId = await getInventoryLedgerId(accountLocationId, companyId);
+      }
+
       for (const po of selectedPOs) {
+        const ledgerId = accountLedgerId || po.ledger_id || fallbackLedgerId;
         setProgress({ current: created + 1, total: selectedPOs.length });
 
         // Get next invoice number
