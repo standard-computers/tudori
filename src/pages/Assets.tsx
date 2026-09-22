@@ -333,6 +333,7 @@ const Assets = () => {
       "Useful Life Years": a.useful_life_years ?? "",
       "Salvage Value": a.salvage_value,
       Location: locations.find((l) => l.id === a.location_id)?.name || "",
+      "Assigned Employee": a.employee_id ? employeeLabel(a.employee_id).replace("-", "") : "",
       Status: a.status,
       "Book Value": Math.round(currentBookValue(a) * 100) / 100,
       Notes: a.notes || "",
