@@ -36,6 +36,8 @@ import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { useExcel } from "@/hooks/use-excel";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
+import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { ColumnToggle } from "@/components/ColumnToggle";
 
 interface CreditMemo {
   id: string;
@@ -78,6 +80,17 @@ interface Product {
   product_id: string;
   base_price?: number;
 }
+
+const CREDIT_MEMO_COLUMNS: ColumnDefinition[] = [
+  { key: "memo_number", label: "Memo #", defaultVisible: true },
+  { key: "memo_date", label: "Date", defaultVisible: true },
+  { key: "account", label: "Account", defaultVisible: true },
+  { key: "invoice", label: "Invoice", defaultVisible: true },
+  { key: "amount", label: "Amount", defaultVisible: true },
+  { key: "ledger", label: "Ledger", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "actions", label: "Actions", alwaysVisible: true },
+];
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500",
@@ -141,6 +154,17 @@ const CreditMemos = () => {
 
   const { sortConfig, filters, sortedAndFilteredData, handleSort, setFilter, clearAllFilters } =
     useTableSort<CreditMemo>(memos, "memo_number", "desc");
+
+  const {
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+    visibleColumns,
+  } = useColumnVisibility("credit_memos", CREDIT_MEMO_COLUMNS);
+
+  const visibleColCount = CREDIT_MEMO_COLUMNS.filter((column) => isColumnVisible(column.key)).length;
 
   useEffect(() => {
     if (isCreateDialogOpen) {
@@ -505,6 +529,14 @@ const CreditMemos = () => {
             <h1 className="text-2xl font-bold">Credit Memos</h1>
           </div>
           <div className="flex items-center gap-2">
+            <ColumnToggle
+              columns={CREDIT_MEMO_COLUMNS}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <ImportExportButtons
               importEnabled={isImportEnabled('credit_memo')}
               exportEnabled={isExportEnabled('credit_memo')}
@@ -547,35 +579,37 @@ const CreditMemos = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead label="Memo #" sortKey="memo_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["memo_number"]} onFilter={(value) => setFilter("memo_number", value)} />
-              <SortableTableHead label="Date" sortKey="memo_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-              <SortableTableHead label="Account" sortKey="account.name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["account.name"]} onFilter={(value) => setFilter("account.name", value)} />
-              <SortableTableHead label="Invoice" sortKey="invoice.invoice_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["invoice.invoice_number"]} onFilter={(value) => setFilter("invoice.invoice_number", value)} />
-              <SortableTableHead label="Amount" sortKey="amount" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-              <SortableTableHead label="Ledger" sortKey="ledger.name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["ledger.name"]} onFilter={(value) => setFilter("ledger.name", value)} />
-              <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["status"]} onFilter={(value) => setFilter("status", value)} />
+              {isColumnVisible("memo_number") && <SortableTableHead label="Memo #" sortKey="memo_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["memo_number"]} onFilter={(value) => setFilter("memo_number", value)} />}
+              {isColumnVisible("memo_date") && <SortableTableHead label="Date" sortKey="memo_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+              {isColumnVisible("account") && <SortableTableHead label="Account" sortKey="account.name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["account.name"]} onFilter={(value) => setFilter("account.name", value)} />}
+              {isColumnVisible("invoice") && <SortableTableHead label="Invoice" sortKey="invoice.invoice_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["invoice.invoice_number"]} onFilter={(value) => setFilter("invoice.invoice_number", value)} />}
+              {isColumnVisible("amount") && <SortableTableHead label="Amount" sortKey="amount" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+              {isColumnVisible("ledger") && <SortableTableHead label="Ledger" sortKey="ledger.name" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["ledger.name"]} onFilter={(value) => setFilter("ledger.name", value)} />}
+              {isColumnVisible("status") && <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterValue={filters["status"]} onFilter={(value) => setFilter("status", value)} />}
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredMemos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={visibleColCount} className="text-center text-muted-foreground py-8">
                   {memos.length === 0 ? "No credit memos found. Create your first credit memo to get started." : "No memos match your filters"}
                 </TableCell>
               </TableRow>
             ) : (
               filteredMemos.map((memo) => (
                 <TableRow key={memo.id}>
-                  <TableCell className="font-mono cursor-pointer hover:underline" onClick={() => handleView(memo)}>{memo.memo_number}</TableCell>
-                  <TableCell>{format(parseISO(memo.memo_date), "MMM d, yyyy")}</TableCell>
-                  <TableCell>{memo.account?.name || "-"}</TableCell>
-                  <TableCell>{memo.invoice?.invoice_number || "-"}</TableCell>
-                  <TableCell className="font-medium text-green-600">-${memo.amount.toFixed(2)}</TableCell>
-                  <TableCell>{memo.ledger?.name || "-"}</TableCell>
-                  <TableCell>
-                    <Badge className={`${statusColors[memo.status]} text-white`}>{memo.status}</Badge>
-                  </TableCell>
+                  {isColumnVisible("memo_number") && <TableCell className="font-mono cursor-pointer hover:underline" onClick={() => handleView(memo)}>{memo.memo_number}</TableCell>}
+                  {isColumnVisible("memo_date") && <TableCell>{format(parseISO(memo.memo_date), "MMM d, yyyy")}</TableCell>}
+                  {isColumnVisible("account") && <TableCell>{memo.account?.name || "-"}</TableCell>}
+                  {isColumnVisible("invoice") && <TableCell>{memo.invoice?.invoice_number || "-"}</TableCell>}
+                  {isColumnVisible("amount") && <TableCell className="font-medium text-green-600">-${memo.amount.toFixed(2)}</TableCell>}
+                  {isColumnVisible("ledger") && <TableCell>{memo.ledger?.name || "-"}</TableCell>}
+                  {isColumnVisible("status") && (
+                    <TableCell>
+                      <Badge className={`${statusColors[memo.status]} text-white`}>{memo.status}</Badge>
+                    </TableCell>
+                  )}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
