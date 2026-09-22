@@ -543,6 +543,10 @@ const Tasks = () => {
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
+                <ArrowLeft className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
+              </Button>
               <NavLink to="/dashboard">Dashboard</NavLink>
               <span className="text-muted-foreground">/</span>
               <h1 className="text-lg font-semibold">Tasks</h1>
@@ -564,6 +568,7 @@ const Tasks = () => {
               </Button>
               <Button onClick={() => handleAddTask()} size="icon" className="relative">
                 <Plus className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
               </Button>
             </div>
           </div>
