@@ -164,6 +164,7 @@ export const CreateInvoiceDialog = ({
       fetchSalesOrders();
       fetchProducts();
       fetchTaxRates();
+      fetchLedgers();
     }
   }, [companyId]);
 
@@ -176,6 +177,7 @@ export const CreateInvoiceDialog = ({
         reference_type: 'purchase_order',
         purchase_order_id: '',
         sales_order_id: '',
+        ledger_id: '',
         invoice_date: format(new Date(), 'yyyy-MM-dd'),
         due_date: '',
         notes: '',
@@ -202,12 +204,23 @@ export const CreateInvoiceDialog = ({
   const fetchAccounts = async () => {
     const { data } = await supabase
       .from('accounts' as any)
-      .select('id, name, account_id, type')
+      .select('id, name, account_id, type, ledger_id')
       .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name');
     setAccounts((data as any) || []);
   };
+
+  const fetchLedgers = async () => {
+    const { data } = await supabase
+      .from('ledgers' as any)
+      .select('id, ledger_id, name')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('ledger_id');
+    setLedgers((data as any) || []);
+  };
+
 
   const fetchPurchaseOrders = async () => {
     const { data } = await supabase
