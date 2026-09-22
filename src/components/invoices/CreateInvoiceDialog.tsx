@@ -517,6 +517,20 @@ export const CreateInvoiceDialog = ({
         ledgerId = so?.ledger_id || null;
       }
 
+      // Fall back to the account's ledger, then its location's inventory ledger
+      if (!ledgerId && formData.account_id) {
+        const { data: acctData } = await supabase
+          .from('accounts' as any)
+          .select('ledger_id, location_id')
+          .eq('id', formData.account_id)
+          .maybeSingle();
+        ledgerId = (acctData as any)?.ledger_id || null;
+        if (!ledgerId && (acctData as any)?.location_id) {
+          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+          ledgerId = await getInventoryLedgerId((acctData as any).location_id, companyId || undefined);
+        }
+      }
+
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices' as any)
         .insert({
@@ -567,19 +581,6 @@ export const CreateInvoiceDialog = ({
         if (taxError) throw taxError;
       }
 
-      // Resolve ledger: prefer PO/SO ledger, fallback to account's ledger
-      if (!ledgerId && formData.account_id) {
-        const { data: acctData } = await supabase
-          .from('accounts' as any)
-          .select('ledger_id, location_id')
-          .eq('id', formData.account_id)
-          .maybeSingle();
-        ledgerId = (acctData as any)?.ledger_id || null;
-        if (!ledgerId && (acctData as any)?.location_id) {
-          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
-          ledgerId = await getInventoryLedgerId((acctData as any).location_id, companyId || undefined);
-        }
-      }
 
       if (ledgerId) {
         const referenceNumber =
