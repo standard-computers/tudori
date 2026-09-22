@@ -1787,14 +1787,27 @@ const Production = () => {
               </div>
             </Tabs>
 
-            {!isViewMode && (
-              <DialogFooter className="shrink-0 px-6 pb-6">
+            <DialogFooter className="shrink-0 px-6 pb-6">
+              {editingId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const order = orders.find((o) => o.id === editingId);
+                    if (order) handlePrintOrder(order);
+                  }}
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print
+                </Button>
+              )}
+              {!isViewMode && (
                 <Button type="submit">
                   {isEditing ? 'Update' : 'Create'}
                   <Kbd>⌘S</Kbd>
                 </Button>
-              </DialogFooter>
-            )}
+              )}
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
