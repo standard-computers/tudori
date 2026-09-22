@@ -387,6 +387,14 @@ const Assets = () => {
                 l.location_id?.toLowerCase() === locName.toLowerCase(),
             )
           : null;
+        const empRaw = row["Assigned Employee"]?.toString()?.trim();
+        const emp = empRaw
+          ? employees.find(
+              (e) =>
+                e.employee_id?.toLowerCase() === empRaw.toLowerCase() ||
+                `${e.first_name} ${e.last_name}`.trim().toLowerCase() === empRaw.toLowerCase(),
+            )
+          : null;
         const statusRaw = row["Status"]?.toString()?.trim()?.toLowerCase();
         const num = (v: any) => (v === null || v === undefined || v === "" ? null : Number(v));
         const dateRaw = row["Procurement Date"];
