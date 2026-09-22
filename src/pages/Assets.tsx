@@ -143,6 +143,7 @@ const Assets = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationOpt[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const historyEnabled = isHistoryEnabled("asset");
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
