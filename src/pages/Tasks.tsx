@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NavLink } from "@/components/NavLink";
-import { Plus, GripVertical, Calendar, MapPin, User, Package, Trash2, RefreshCw } from "lucide-react";
+import { Plus, GripVertical, Calendar, MapPin, User, Package, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { toast } from '@/lib/toast';
 import {
   DndContext,
@@ -423,6 +425,8 @@ const Tasks = () => {
   };
 
   useTransactionAction('new', () => handleAddTask());
+  useKeyboardShortcut('n', () => handleAddTask());
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
@@ -539,6 +543,10 @@ const Tasks = () => {
         <div className="px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="relative">
+                <ArrowLeft className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
+              </Button>
               <NavLink to="/dashboard">Dashboard</NavLink>
               <span className="text-muted-foreground">/</span>
               <h1 className="text-lg font-semibold">Tasks</h1>
@@ -560,6 +568,7 @@ const Tasks = () => {
               </Button>
               <Button onClick={() => handleAddTask()} size="icon" className="relative">
                 <Plus className="w-4 h-4" />
+                <Kbd className="absolute -bottom-1 -right-1 scale-75">N</Kbd>
               </Button>
             </div>
           </div>
