@@ -236,8 +236,9 @@ const Assets = () => {
       name: a.name, asset_tag: a.asset_tag || "", description: a.description || "",
       procurement_value: a.procurement_value, procurement_date: a.procurement_date,
       depreciation_rate: a.depreciation_rate, useful_life_years: a.useful_life_years,
-      salvage_value: a.salvage_value, location_id: a.location_id, status: a.status,
-      notes: a.notes || "",
+      salvage_value: a.salvage_value, location_id: a.location_id,
+      employee_id: a.employee_id ?? null, status: a.status,
+
     });
     setIsDialogOpen(true);
   };
