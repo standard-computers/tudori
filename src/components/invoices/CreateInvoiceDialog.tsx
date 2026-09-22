@@ -506,8 +506,22 @@ export const CreateInvoiceDialog = ({
         p_company_id: companyId,
       });
 
-      // Manually assigned ledger wins, then the PO/SO ledger
-      let ledgerId: string | null = formData.ledger_id || null;
+      // The account's own ledger always wins, then the manual selection,
+      // then the PO/SO ledger, then the account location's inventory ledger
+      let ledgerId: string | null = null;
+      let accountLocationId: string | null = null;
+
+      if (formData.account_id) {
+        const { data: acctData } = await supabase
+          .from('accounts' as any)
+          .select('ledger_id, location_id')
+          .eq('id', formData.account_id)
+          .maybeSingle();
+        ledgerId = (acctData as any)?.ledger_id || null;
+        accountLocationId = (acctData as any)?.location_id || null;
+      }
+
+      if (!ledgerId) ledgerId = formData.ledger_id || null;
 
       if (!ledgerId && formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
         const po = purchaseOrders.find((p) => p.id === formData.purchase_order_id);
@@ -517,19 +531,11 @@ export const CreateInvoiceDialog = ({
         ledgerId = so?.ledger_id || null;
       }
 
-      // Fall back to the account's ledger, then its location's inventory ledger
-      if (!ledgerId && formData.account_id) {
-        const { data: acctData } = await supabase
-          .from('accounts' as any)
-          .select('ledger_id, location_id')
-          .eq('id', formData.account_id)
-          .maybeSingle();
-        ledgerId = (acctData as any)?.ledger_id || null;
-        if (!ledgerId && (acctData as any)?.location_id) {
-          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
-          ledgerId = await getInventoryLedgerId((acctData as any).location_id, companyId || undefined);
-        }
+      if (!ledgerId && accountLocationId) {
+        const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+        ledgerId = await getInventoryLedgerId(accountLocationId, companyId || undefined);
       }
+
 
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices' as any)
@@ -692,19 +698,26 @@ export const CreateInvoiceDialog = ({
               <Label>Ledger</Label>
               <SearchableSelect
                 options={ledgerOptions}
-                value={formData.ledger_id}
+                value={accountHasLedger ? (selectedAccount?.ledger_id || '') : formData.ledger_id}
                 onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
                 placeholder="Auto (from order or account)"
                 allowClear
                 clearLabel="Auto (from order or account)"
+                disabled={accountHasLedger}
               />
-              {formData.account_id && !accountHasLedger && !formData.ledger_id && (
+              {accountHasLedger ? (
+                <p className="text-xs text-muted-foreground">
+                  This invoice posts to the account's assigned ledger.
+                </p>
+              ) : formData.account_id && !formData.ledger_id ? (
                 <p className="text-xs text-muted-foreground">
                   This account has no ledger — select one to post this invoice.
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
+
+
 
           {/* Second Row Header Fields */}
           <div className="grid grid-cols-3 gap-4 py-4 border-b px-6">
