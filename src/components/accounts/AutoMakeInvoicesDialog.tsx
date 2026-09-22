@@ -188,7 +188,7 @@ export const AutoMakeInvoicesDialog = ({
             invoice_number: invoiceNumber,
             account_id: accountId,
             purchase_order_id: po.id,
-            ledger_id: po.ledger_id,
+            ledger_id: ledgerId,
             invoice_date: format(new Date(), 'yyyy-MM-dd'),
             due_date: format(dueDate, 'yyyy-MM-dd'),
             subtotal: po.remaining_amount,
@@ -250,9 +250,9 @@ export const AutoMakeInvoicesDialog = ({
         }
 
         // Create ledger transaction if ledger exists
-        if (po.ledger_id) {
+        if (ledgerId) {
           await supabase.from('ledger_transactions' as any).insert({
-            ledger_id: po.ledger_id,
+            ledger_id: ledgerId,
             transaction_type: 'invoice',
             reference_id: (invoice as any).id,
             reference_number: invoiceNumber,
