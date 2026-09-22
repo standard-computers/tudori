@@ -640,6 +640,21 @@ const Assets = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Assigned Employee</Label>
+                  <SearchableSelect
+                    options={employees.map(e => ({
+                      value: e.id,
+                      label: `${e.first_name} ${e.last_name}`.trim(),
+                      sublabel: e.employee_id || undefined,
+                    }))}
+                    value={form.employee_id || ""}
+                    onValueChange={(v) => setForm({ ...form, employee_id: v || null })}
+                    placeholder="Unassigned (optional)"
+                    allowClear
+                    clearLabel="Unassigned"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" value={form.description || ""}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
