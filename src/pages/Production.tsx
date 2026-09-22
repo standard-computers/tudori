@@ -859,6 +859,42 @@ const Production = () => {
     setIsDialogOpen(true);
   };
 
+  const handlePrintOrder = async (order: ProductionOrder) => {
+    let components: { productId: string; productName: string; quantity: number }[] = [];
+    if (order.bom_id) {
+      const { data } = await supabase
+        .from('bom_items')
+        .select('id, product_id, quantity, product:products(name, product_id)')
+        .eq('bom_id', order.bom_id);
+      const outputQty = order.bom?.output_quantity || 1;
+      const multiplier = outputQty > 0 ? order.quantity / outputQty : 1;
+      components = ((data as unknown as BomItem[]) || []).map((item) => ({
+        productId: item.product?.product_id || '',
+        productName: item.product?.name || '',
+        quantity: Math.round(item.quantity * multiplier * 1000) / 1000,
+      }));
+    }
+
+    printProductionOrder({
+      orderNumber: order.order_number,
+      status: order.status,
+      bomId: order.bom?.bom_id || null,
+      bomName: order.bom?.name || null,
+      outputProductId: order.product?.product_id || null,
+      outputProductName: order.product?.name || null,
+      quantity: order.quantity,
+      locationName: order.location?.name || null,
+      scheduledDate: order.scheduled_date ? format(parseISO(order.scheduled_date), 'MMM d, yyyy') : null,
+      completedDate: order.completed_date ? format(parseISO(order.completed_date), 'MMM d, yyyy') : null,
+      assignedTo: order.assigned_employee
+        ? `${order.assigned_employee.first_name} ${order.assigned_employee.last_name}`
+        : null,
+      duration: order.total_duration ? formatDuration(order.total_duration) : null,
+      notes: order.notes || null,
+      components,
+    });
+  };
+
   const handleEdit = async (order: ProductionOrder) => {
     setFormData({
       order_number: order.order_number,
