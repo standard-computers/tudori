@@ -481,6 +481,7 @@ export type Database = {
           created_at: string
           depreciation_rate: number
           description: string | null
+          employee_id: string | null
           id: string
           location_id: string | null
           name: string
@@ -498,6 +499,7 @@ export type Database = {
           created_at?: string
           depreciation_rate?: number
           description?: string | null
+          employee_id?: string | null
           id?: string
           location_id?: string | null
           name: string
@@ -515,6 +517,7 @@ export type Database = {
           created_at?: string
           depreciation_rate?: number
           description?: string | null
+          employee_id?: string | null
           id?: string
           location_id?: string | null
           name?: string
@@ -526,7 +529,15 @@ export type Database = {
           updated_at?: string
           useful_life_years?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       assignments: {
         Row: {

@@ -43,6 +43,13 @@
       "when": 1790028191571,
       "tag": "0005_add_recoverable_to_tax_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790094289492,
+      "tag": "0006_add_employee_to_assets",
+      "breakpoints": true
     }
   ]
 }
