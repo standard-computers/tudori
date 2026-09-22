@@ -313,6 +313,7 @@ const Assets = () => {
       "Useful Life Years": 5,
       "Salvage Value": 1000,
       Location: locations[0]?.name || "",
+      "Assigned Employee": "",
       Status: "active",
       Notes: "",
     };
