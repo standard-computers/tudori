@@ -791,6 +791,10 @@ const Assets = () => {
                       <p className="text-sm">{locationLabel(viewingAsset.location_id)}</p>
                     </div>
                     <div>
+                      <Label className="text-muted-foreground text-xs">Assigned Employee</Label>
+                      <p className="text-sm">{employeeLabel(viewingAsset.employee_id)}</p>
+                    </div>
+                    <div>
                       <Label className="text-muted-foreground text-xs">Procurement Date</Label>
                       <p className="text-sm">{format(parseISO(viewingAsset.procurement_date), "MMM d, yyyy")}</p>
                     </div>
