@@ -59,6 +59,13 @@ interface Account {
   name: string;
   account_id: string;
   type: string;
+  ledger_id: string | null;
+}
+
+interface Ledger {
+  id: string;
+  ledger_id: string;
+  name: string;
 }
 
 interface PurchaseOrder {
@@ -117,6 +124,7 @@ export const CreateInvoiceDialog = ({
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMaximized, setIsMaximized] = useMaximizedState();
@@ -128,6 +136,7 @@ export const CreateInvoiceDialog = ({
     reference_type: 'purchase_order' as 'purchase_order' | 'sales_order',
     purchase_order_id: '',
     sales_order_id: '',
+    ledger_id: '',
     invoice_date: format(new Date(), 'yyyy-MM-dd'),
     due_date: '',
     notes: '',
