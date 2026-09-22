@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
+import { getInventoryLedgerId } from '@/lib/inventory-account';
 
 interface PurchaseOrderWithInvoiceStatus {
   id: string;
