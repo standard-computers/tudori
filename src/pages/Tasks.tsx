@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NavLink } from "@/components/NavLink";
-import { Plus, GripVertical, Calendar, MapPin, User, Package, Trash2, RefreshCw } from "lucide-react";
+import { Plus, GripVertical, Calendar, MapPin, User, Package, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { toast } from '@/lib/toast';
 import {
   DndContext,
@@ -423,6 +425,8 @@ const Tasks = () => {
   };
 
   useTransactionAction('new', () => handleAddTask());
+  useKeyboardShortcut('n', () => handleAddTask());
+  useKeyboardShortcut('F1', () => navigate(-1));
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
