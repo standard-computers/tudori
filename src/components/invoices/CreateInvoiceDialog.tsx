@@ -59,6 +59,13 @@ interface Account {
   name: string;
   account_id: string;
   type: string;
+  ledger_id: string | null;
+}
+
+interface Ledger {
+  id: string;
+  ledger_id: string;
+  name: string;
 }
 
 interface PurchaseOrder {
@@ -117,6 +124,7 @@ export const CreateInvoiceDialog = ({
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMaximized, setIsMaximized] = useMaximizedState();
@@ -128,6 +136,7 @@ export const CreateInvoiceDialog = ({
     reference_type: 'purchase_order' as 'purchase_order' | 'sales_order',
     purchase_order_id: '',
     sales_order_id: '',
+    ledger_id: '',
     invoice_date: format(new Date(), 'yyyy-MM-dd'),
     due_date: '',
     notes: '',
@@ -155,6 +164,7 @@ export const CreateInvoiceDialog = ({
       fetchSalesOrders();
       fetchProducts();
       fetchTaxRates();
+      fetchLedgers();
     }
   }, [companyId]);
 
@@ -167,6 +177,7 @@ export const CreateInvoiceDialog = ({
         reference_type: 'purchase_order',
         purchase_order_id: '',
         sales_order_id: '',
+        ledger_id: '',
         invoice_date: format(new Date(), 'yyyy-MM-dd'),
         due_date: '',
         notes: '',
@@ -193,12 +204,23 @@ export const CreateInvoiceDialog = ({
   const fetchAccounts = async () => {
     const { data } = await supabase
       .from('accounts' as any)
-      .select('id, name, account_id, type')
+      .select('id, name, account_id, type, ledger_id')
       .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name');
     setAccounts((data as any) || []);
   };
+
+  const fetchLedgers = async () => {
+    const { data } = await supabase
+      .from('ledgers' as any)
+      .select('id, ledger_id, name')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('ledger_id');
+    setLedgers((data as any) || []);
+  };
+
 
   const fetchPurchaseOrders = async () => {
     const { data } = await supabase
@@ -354,6 +376,20 @@ export const CreateInvoiceDialog = ({
     }));
   }, [accounts]);
 
+  const ledgerOptions: SearchableSelectOption[] = useMemo(() => {
+    return ledgers.map((l) => ({
+      value: l.id,
+      label: l.name,
+      sublabel: l.ledger_id,
+    }));
+  }, [ledgers]);
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === formData.account_id) || null,
+    [accounts, formData.account_id]
+  );
+  const accountHasLedger = !!selectedAccount?.ledger_id;
+
   const poOptions: SearchableSelectOption[] = useMemo(() => {
     return purchaseOrders.map((po) => ({
       value: po.id,
@@ -470,14 +506,29 @@ export const CreateInvoiceDialog = ({
         p_company_id: companyId,
       });
 
-      let ledgerId: string | null = null;
+      // Manually assigned ledger wins, then the PO/SO ledger
+      let ledgerId: string | null = formData.ledger_id || null;
 
-      if (formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
+      if (!ledgerId && formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
         const po = purchaseOrders.find((p) => p.id === formData.purchase_order_id);
         ledgerId = po?.ledger_id || null;
-      } else if (formData.reference_type === 'sales_order' && formData.sales_order_id) {
+      } else if (!ledgerId && formData.reference_type === 'sales_order' && formData.sales_order_id) {
         const so = salesOrders.find((s) => s.id === formData.sales_order_id);
         ledgerId = so?.ledger_id || null;
+      }
+
+      // Fall back to the account's ledger, then its location's inventory ledger
+      if (!ledgerId && formData.account_id) {
+        const { data: acctData } = await supabase
+          .from('accounts' as any)
+          .select('ledger_id, location_id')
+          .eq('id', formData.account_id)
+          .maybeSingle();
+        ledgerId = (acctData as any)?.ledger_id || null;
+        if (!ledgerId && (acctData as any)?.location_id) {
+          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+          ledgerId = await getInventoryLedgerId((acctData as any).location_id, companyId || undefined);
+        }
       }
 
       const { data: invoice, error: invoiceError } = await supabase
@@ -530,19 +581,6 @@ export const CreateInvoiceDialog = ({
         if (taxError) throw taxError;
       }
 
-      // Resolve ledger: prefer PO/SO ledger, fallback to account's ledger
-      if (!ledgerId && formData.account_id) {
-        const { data: acctData } = await supabase
-          .from('accounts' as any)
-          .select('ledger_id, location_id')
-          .eq('id', formData.account_id)
-          .maybeSingle();
-        ledgerId = (acctData as any)?.ledger_id || null;
-        if (!ledgerId && (acctData as any)?.location_id) {
-          const { getInventoryLedgerId } = await import('@/lib/inventory-account');
-          ledgerId = await getInventoryLedgerId((acctData as any).location_id, companyId || undefined);
-        }
-      }
 
       if (ledgerId) {
         const referenceNumber =
