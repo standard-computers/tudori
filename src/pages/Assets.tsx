@@ -238,7 +238,7 @@ const Assets = () => {
       depreciation_rate: a.depreciation_rate, useful_life_years: a.useful_life_years,
       salvage_value: a.salvage_value, location_id: a.location_id,
       employee_id: a.employee_id ?? null, status: a.status,
-
+      notes: a.notes || "",
     });
     setIsDialogOpen(true);
   };
