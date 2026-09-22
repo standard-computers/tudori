@@ -297,6 +297,7 @@ const Assets = () => {
     { header: "Useful Life Years", key: "Useful Life Years", width: 18 },
     { header: "Salvage Value", key: "Salvage Value", width: 16 },
     { header: "Location", key: "Location", width: 20 },
+    { header: "Assigned Employee", key: "Assigned Employee", width: 22 },
     { header: "Status", key: "Status", width: 14 },
     { header: "Notes", key: "Notes", width: 30 },
   ];
