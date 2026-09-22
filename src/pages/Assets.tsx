@@ -498,6 +498,9 @@ const Assets = () => {
                   {isColumnVisible("location") && (
                     <SortableTableHead label="Location" sortKey="location_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("location_id")} onFilterConfig={handleFilterConfig} filterKey="location_id" />
                   )}
+                  {isColumnVisible("employee") && (
+                    <SortableTableHead label="Assigned To" sortKey="employee_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("employee_id")} onFilterConfig={handleFilterConfig} filterKey="employee_id" />
+                  )}
                   {isColumnVisible("procurement_value") && (
                     <SortableTableHead label="Procurement Value" sortKey="procurement_value" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("procurement_value")} onFilterConfig={handleFilterConfig} filterKey="procurement_value" className="text-right" />
                   )}
