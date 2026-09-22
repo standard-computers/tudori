@@ -210,6 +210,15 @@ const Assets = () => {
     setLocations((data || []) as any);
   }
 
+  async function fetchEmployees() {
+    const { data } = await supabase
+      .from("employees").select("id, employee_id, first_name, last_name")
+      .eq("company_id", companyId!).order("first_name");
+    setEmployees((data || []) as any);
+  }
+
+
+
   const handleAddClick = async () => {
     setEditingAsset(null);
     let nextTag = "";
