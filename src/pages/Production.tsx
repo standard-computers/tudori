@@ -1496,6 +1496,7 @@ const Production = () => {
           onConfirm={handleConfirm}
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
+          onPrint={handlePrintOrder}
           isColumnVisible={isColumnVisible}
         />
       </main>
