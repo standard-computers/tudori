@@ -413,6 +413,7 @@ const Assets = () => {
           useful_life_years: num(row["Useful Life Years"]),
           salvage_value: num(row["Salvage Value"]) ?? 0,
           location_id: loc?.id || null,
+          employee_id: emp?.id || null,
           status: STATUSES.includes(statusRaw || "") ? statusRaw : "active",
           notes: row["Notes"]?.toString()?.trim() || null,
         });
