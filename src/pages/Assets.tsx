@@ -56,11 +56,13 @@ interface Asset {
   useful_life_years: number | null;
   salvage_value: number;
   location_id: string | null;
+  employee_id: string | null;
   status: string;
   notes: string | null;
 }
 
 interface LocationOpt { id: string; name: string; location_id: string }
+interface EmployeeOpt { id: string; employee_id: string | null; first_name: string; last_name: string }
 
 const STATUSES = ["active", "in_repair", "retired", "disposed"];
 
@@ -68,6 +70,7 @@ const ASSET_COLUMNS: ColumnDefinition[] = [
   { key: "asset_tag", label: "Tag", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "location", label: "Location", defaultVisible: true },
+  { key: "employee", label: "Assigned To", defaultVisible: true },
   { key: "procurement_value", label: "Procurement Value", defaultVisible: true },
   { key: "procurement_date", label: "Procurement Date", defaultVisible: true },
   { key: "depreciation_rate", label: "Depr. %", defaultVisible: true },
@@ -80,8 +83,9 @@ const emptyForm = (): Omit<Asset, "id"> => ({
   name: "", asset_tag: "", description: "",
   procurement_value: 0, procurement_date: format(new Date(), "yyyy-MM-dd"),
   depreciation_rate: 20, useful_life_years: 5, salvage_value: 0,
-  location_id: null, status: "active", notes: "",
+  location_id: null, employee_id: null, status: "active", notes: "",
 });
+
 
 function computeSchedule(a: Pick<Asset, "procurement_value" | "procurement_date" | "depreciation_rate" | "salvage_value" | "useful_life_years">) {
   const start = parseISO(a.procurement_date);
