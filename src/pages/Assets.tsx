@@ -56,11 +56,13 @@ interface Asset {
   useful_life_years: number | null;
   salvage_value: number;
   location_id: string | null;
+  employee_id: string | null;
   status: string;
   notes: string | null;
 }
 
 interface LocationOpt { id: string; name: string; location_id: string }
+interface EmployeeOpt { id: string; employee_id: string | null; first_name: string; last_name: string }
 
 const STATUSES = ["active", "in_repair", "retired", "disposed"];
 
@@ -68,6 +70,7 @@ const ASSET_COLUMNS: ColumnDefinition[] = [
   { key: "asset_tag", label: "Tag", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "location", label: "Location", defaultVisible: true },
+  { key: "employee", label: "Assigned To", defaultVisible: true },
   { key: "procurement_value", label: "Procurement Value", defaultVisible: true },
   { key: "procurement_date", label: "Procurement Date", defaultVisible: true },
   { key: "depreciation_rate", label: "Depr. %", defaultVisible: true },
@@ -80,8 +83,9 @@ const emptyForm = (): Omit<Asset, "id"> => ({
   name: "", asset_tag: "", description: "",
   procurement_value: 0, procurement_date: format(new Date(), "yyyy-MM-dd"),
   depreciation_rate: 20, useful_life_years: 5, salvage_value: 0,
-  location_id: null, status: "active", notes: "",
+  location_id: null, employee_id: null, status: "active", notes: "",
 });
+
 
 function computeSchedule(a: Pick<Asset, "procurement_value" | "procurement_date" | "depreciation_rate" | "salvage_value" | "useful_life_years">) {
   const start = parseISO(a.procurement_date);
@@ -139,6 +143,7 @@ const Assets = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationOpt[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOpt[]>([]);
   const { isHistoryEnabled } = useChangeHistorySettings(companyId);
   const historyEnabled = isHistoryEnabled("asset");
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -180,7 +185,7 @@ const Assets = () => {
   }, [user]);
 
   useEffect(() => {
-    if (companyId) { void fetchAssets(); void fetchLocations(); }
+    if (companyId) { void fetchAssets(); void fetchLocations(); void fetchEmployees(); }
   }, [companyId]);
 
   useEffect(() => {
@@ -205,6 +210,15 @@ const Assets = () => {
     setLocations((data || []) as any);
   }
 
+  async function fetchEmployees() {
+    const { data } = await supabase
+      .from("employees").select("id, employee_id, first_name, last_name")
+      .eq("company_id", companyId!).order("first_name");
+    setEmployees((data || []) as any);
+  }
+
+
+
   const handleAddClick = async () => {
     setEditingAsset(null);
     let nextTag = "";
@@ -222,7 +236,8 @@ const Assets = () => {
       name: a.name, asset_tag: a.asset_tag || "", description: a.description || "",
       procurement_value: a.procurement_value, procurement_date: a.procurement_date,
       depreciation_rate: a.depreciation_rate, useful_life_years: a.useful_life_years,
-      salvage_value: a.salvage_value, location_id: a.location_id, status: a.status,
+      salvage_value: a.salvage_value, location_id: a.location_id,
+      employee_id: a.employee_id ?? null, status: a.status,
       notes: a.notes || "",
     });
     setIsDialogOpen(true);
@@ -243,6 +258,7 @@ const Assets = () => {
         description: form.description?.trim() || null,
         notes: form.notes?.trim() || null,
         location_id: form.location_id || null,
+        employee_id: form.employee_id || null,
         useful_life_years: form.useful_life_years || null,
       };
       const q = editingAsset
@@ -281,6 +297,7 @@ const Assets = () => {
     { header: "Useful Life Years", key: "Useful Life Years", width: 18 },
     { header: "Salvage Value", key: "Salvage Value", width: 16 },
     { header: "Location", key: "Location", width: 20 },
+    { header: "Assigned Employee", key: "Assigned Employee", width: 22 },
     { header: "Status", key: "Status", width: 14 },
     { header: "Notes", key: "Notes", width: 30 },
   ];
@@ -296,6 +313,7 @@ const Assets = () => {
       "Useful Life Years": 5,
       "Salvage Value": 1000,
       Location: locations[0]?.name || "",
+      "Assigned Employee": "",
       Status: "active",
       Notes: "",
     };
@@ -315,6 +333,10 @@ const Assets = () => {
       "Useful Life Years": a.useful_life_years ?? "",
       "Salvage Value": a.salvage_value,
       Location: locations.find((l) => l.id === a.location_id)?.name || "",
+      "Assigned Employee": (() => {
+        const e = employees.find((emp) => emp.id === a.employee_id);
+        return e ? `${e.first_name} ${e.last_name}`.trim() : "";
+      })(),
       Status: a.status,
       "Book Value": Math.round(currentBookValue(a) * 100) / 100,
       Notes: a.notes || "",
@@ -365,6 +387,14 @@ const Assets = () => {
                 l.location_id?.toLowerCase() === locName.toLowerCase(),
             )
           : null;
+        const empRaw = row["Assigned Employee"]?.toString()?.trim();
+        const emp = empRaw
+          ? employees.find(
+              (e) =>
+                e.employee_id?.toLowerCase() === empRaw.toLowerCase() ||
+                `${e.first_name} ${e.last_name}`.trim().toLowerCase() === empRaw.toLowerCase(),
+            )
+          : null;
         const statusRaw = row["Status"]?.toString()?.trim()?.toLowerCase();
         const num = (v: any) => (v === null || v === undefined || v === "" ? null : Number(v));
         const dateRaw = row["Procurement Date"];
@@ -383,6 +413,7 @@ const Assets = () => {
           useful_life_years: num(row["Useful Life Years"]),
           salvage_value: num(row["Salvage Value"]) ?? 0,
           location_id: loc?.id || null,
+          employee_id: emp?.id || null,
           status: STATUSES.includes(statusRaw || "") ? statusRaw : "active",
           notes: row["Notes"]?.toString()?.trim() || null,
         });
@@ -401,6 +432,11 @@ const Assets = () => {
 
   const locationLabel = (id: string | null) =>
     locations.find(l => l.id === id)?.name || "-";
+
+  const employeeLabel = (id: string | null | undefined) => {
+    const e = employees.find(emp => emp.id === id);
+    return e ? `${e.first_name} ${e.last_name}`.trim() : "-";
+  };
 
   if (authLoading || loading) {
     return (
@@ -478,6 +514,9 @@ const Assets = () => {
                   {isColumnVisible("location") && (
                     <SortableTableHead label="Location" sortKey="location_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("location_id")} onFilterConfig={handleFilterConfig} filterKey="location_id" />
                   )}
+                  {isColumnVisible("employee") && (
+                    <SortableTableHead label="Assigned To" sortKey="employee_id" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("employee_id")} onFilterConfig={handleFilterConfig} filterKey="employee_id" />
+                  )}
                   {isColumnVisible("procurement_value") && (
                     <SortableTableHead label="Procurement Value" sortKey="procurement_value" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterConfig={getFilterConfig("procurement_value")} onFilterConfig={handleFilterConfig} filterKey="procurement_value" className="text-right" />
                   )}
@@ -515,6 +554,9 @@ const Assets = () => {
                     )}
                     {isColumnVisible("location") && (
                       <TableCell className="text-muted-foreground">{locationLabel(a.location_id)}</TableCell>
+                    )}
+                    {isColumnVisible("employee") && (
+                      <TableCell className="text-muted-foreground">{employeeLabel(a.employee_id)}</TableCell>
                     )}
                     {isColumnVisible("procurement_value") && (
                       <TableCell className="text-right font-mono">${a.procurement_value.toFixed(2)}</TableCell>
@@ -611,6 +653,21 @@ const Assets = () => {
                     onValueChange={(v) => setForm({ ...form, location_id: v || null })}
                     placeholder="Select location"
                     allowClear
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Assigned Employee</Label>
+                  <SearchableSelect
+                    options={employees.map(e => ({
+                      value: e.id,
+                      label: `${e.first_name} ${e.last_name}`.trim(),
+                      sublabel: e.employee_id || undefined,
+                    }))}
+                    value={form.employee_id || ""}
+                    onValueChange={(v) => setForm({ ...form, employee_id: v || null })}
+                    placeholder="Unassigned (optional)"
+                    allowClear
+                    clearLabel="Unassigned"
                   />
                 </div>
                 <div className="space-y-2">
@@ -748,6 +805,10 @@ const Assets = () => {
                     <div>
                       <Label className="text-muted-foreground text-xs">Location</Label>
                       <p className="text-sm">{locationLabel(viewingAsset.location_id)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Assigned Employee</Label>
+                      <p className="text-sm">{employeeLabel(viewingAsset.employee_id)}</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Procurement Date</Label>
