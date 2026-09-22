@@ -440,6 +440,9 @@ const ProductionOrderTable = ({
                       <Button variant="ghost" size="icon" onClick={() => onView(order)}>
                         <Eye className="w-4 h-4" />
                       </Button>
+                      <Button variant="ghost" size="icon" title="Print production order" onClick={() => onPrint(order)}>
+                        <Printer className="w-4 h-4" />
+                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
