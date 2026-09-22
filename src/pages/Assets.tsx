@@ -417,6 +417,11 @@ const Assets = () => {
   const locationLabel = (id: string | null) =>
     locations.find(l => l.id === id)?.name || "-";
 
+  const employeeLabel = (id: string | null | undefined) => {
+    const e = employees.find(emp => emp.id === id);
+    return e ? `${e.first_name} ${e.last_name}`.trim() : "-";
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
