@@ -687,6 +687,23 @@ export const CreateInvoiceDialog = ({
                 />
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label>Ledger</Label>
+              <SearchableSelect
+                options={ledgerOptions}
+                value={formData.ledger_id}
+                onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
+                placeholder="Auto (from order or account)"
+                allowClear
+                clearLabel="Auto (from order or account)"
+              />
+              {formData.account_id && !accountHasLedger && !formData.ledger_id && (
+                <p className="text-xs text-muted-foreground">
+                  This account has no ledger — select one to post this invoice.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Second Row Header Fields */}
