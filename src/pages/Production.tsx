@@ -163,6 +163,7 @@ const ProductionOrderTable = ({
   onConfirm,
   onCompleteForeground,
   onAssignEmployee,
+  onPrint,
   isColumnVisible,
 }: {
   orders: ProductionOrder[];
