@@ -506,12 +506,13 @@ export const CreateInvoiceDialog = ({
         p_company_id: companyId,
       });
 
-      let ledgerId: string | null = null;
+      // Manually assigned ledger wins, then the PO/SO ledger
+      let ledgerId: string | null = formData.ledger_id || null;
 
-      if (formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
+      if (!ledgerId && formData.reference_type === 'purchase_order' && formData.purchase_order_id) {
         const po = purchaseOrders.find((p) => p.id === formData.purchase_order_id);
         ledgerId = po?.ledger_id || null;
-      } else if (formData.reference_type === 'sales_order' && formData.sales_order_id) {
+      } else if (!ledgerId && formData.reference_type === 'sales_order' && formData.sales_order_id) {
         const so = salesOrders.find((s) => s.id === formData.sales_order_id);
         ledgerId = so?.ledger_id || null;
       }
