@@ -258,6 +258,7 @@ const Assets = () => {
         description: form.description?.trim() || null,
         notes: form.notes?.trim() || null,
         location_id: form.location_id || null,
+        employee_id: form.employee_id || null,
         useful_life_years: form.useful_life_years || null,
       };
       const q = editingAsset
