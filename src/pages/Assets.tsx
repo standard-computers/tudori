@@ -185,7 +185,7 @@ const Assets = () => {
   }, [user]);
 
   useEffect(() => {
-    if (companyId) { void fetchAssets(); void fetchLocations(); }
+    if (companyId) { void fetchAssets(); void fetchLocations(); void fetchEmployees(); }
   }, [companyId]);
 
   useEffect(() => {
