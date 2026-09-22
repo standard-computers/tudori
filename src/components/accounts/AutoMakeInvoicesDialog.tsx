@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { format } from 'date-fns';
+import { getInventoryLedgerId } from '@/lib/inventory-account';
 
 interface PurchaseOrderWithInvoiceStatus {
   id: string;
@@ -151,7 +152,22 @@ export const AutoMakeInvoicesDialog = ({
     let created = 0;
 
     try {
+      // Resolve the account's own ledger first — it supersedes the PO ledger
+      const { data: acctData } = await supabase
+        .from('accounts' as any)
+        .select('ledger_id')
+        .eq('id', accountId)
+        .maybeSingle();
+      const accountLedgerId = (acctData as any)?.ledger_id || null;
+
+      // Fallback to the account location's inventory ledger
+      let fallbackLedgerId: string | null = accountLedgerId;
+      if (!fallbackLedgerId && accountLocationId) {
+        fallbackLedgerId = await getInventoryLedgerId(accountLocationId, companyId);
+      }
+
       for (const po of selectedPOs) {
+        const ledgerId = accountLedgerId || po.ledger_id || fallbackLedgerId;
         setProgress({ current: created + 1, total: selectedPOs.length });
 
         // Get next invoice number
@@ -172,7 +188,7 @@ export const AutoMakeInvoicesDialog = ({
             invoice_number: invoiceNumber,
             account_id: accountId,
             purchase_order_id: po.id,
-            ledger_id: po.ledger_id,
+            ledger_id: ledgerId,
             invoice_date: format(new Date(), 'yyyy-MM-dd'),
             due_date: format(dueDate, 'yyyy-MM-dd'),
             subtotal: po.remaining_amount,
@@ -234,9 +250,9 @@ export const AutoMakeInvoicesDialog = ({
         }
 
         // Create ledger transaction if ledger exists
-        if (po.ledger_id) {
+        if (ledgerId) {
           await supabase.from('ledger_transactions' as any).insert({
-            ledger_id: po.ledger_id,
+            ledger_id: ledgerId,
             transaction_type: 'invoice',
             reference_id: (invoice as any).id,
             reference_number: invoiceNumber,
