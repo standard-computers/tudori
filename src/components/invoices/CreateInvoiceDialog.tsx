@@ -698,11 +698,6 @@ export const CreateInvoiceDialog = ({
               <Label>Ledger</Label>
               <SearchableSelect
                 options={ledgerOptions}
-                value={formData.ledger_id}
-            <div className="space-y-2">
-              <Label>Ledger</Label>
-              <SearchableSelect
-                options={ledgerOptions}
                 value={accountHasLedger ? (selectedAccount?.ledger_id || '') : formData.ledger_id}
                 onValueChange={(value) => setFormData({ ...formData, ledger_id: value })}
                 placeholder="Auto (from order or account)"
@@ -722,7 +717,7 @@ export const CreateInvoiceDialog = ({
             </div>
           </div>
 
-          </div>
+
 
           {/* Second Row Header Fields */}
           <div className="grid grid-cols-3 gap-4 py-4 border-b px-6">
