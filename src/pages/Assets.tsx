@@ -536,6 +536,9 @@ const Assets = () => {
                     {isColumnVisible("location") && (
                       <TableCell className="text-muted-foreground">{locationLabel(a.location_id)}</TableCell>
                     )}
+                    {isColumnVisible("employee") && (
+                      <TableCell className="text-muted-foreground">{employeeLabel(a.employee_id)}</TableCell>
+                    )}
                     {isColumnVisible("procurement_value") && (
                       <TableCell className="text-right font-mono">${a.procurement_value.toFixed(2)}</TableCell>
                     )}
