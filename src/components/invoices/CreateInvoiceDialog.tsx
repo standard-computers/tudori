@@ -376,6 +376,20 @@ export const CreateInvoiceDialog = ({
     }));
   }, [accounts]);
 
+  const ledgerOptions: SearchableSelectOption[] = useMemo(() => {
+    return ledgers.map((l) => ({
+      value: l.id,
+      label: l.name,
+      sublabel: l.ledger_id,
+    }));
+  }, [ledgers]);
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === formData.account_id) || null,
+    [accounts, formData.account_id]
+  );
+  const accountHasLedger = !!selectedAccount?.ledger_id;
+
   const poOptions: SearchableSelectOption[] = useMemo(() => {
     return purchaseOrders.map((po) => ({
       value: po.id,
