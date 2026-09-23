@@ -155,6 +155,7 @@ interface ProductComponent {
     name: string;
     price: number | null;
     unit: string | null;
+    is_consumable?: boolean;
   };
 }
 
@@ -1115,7 +1116,7 @@ const Products = () => {
     const { data, error } = await supabase
       .from("product_components")
       .select(
-        "id, component_product_id, quantity, uom_id, uom_name, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
+        "id, component_product_id, quantity, uom_id, uom_name, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit, is_consumable)",
       )
       .eq("parent_product_id", productId);
 
@@ -1475,7 +1476,7 @@ const Products = () => {
     // Fetch the product details
     const { data: productData } = await supabase
       .from("products")
-      .select("product_id, name, price, unit")
+      .select("product_id, name, price, unit, is_consumable")
       .eq("id", newComponent.product_id)
       .single();
 
@@ -2841,8 +2842,8 @@ const Products = () => {
                                           <TableCell className="text-right">
                                             <Input
                                               type="number"
-                                              step="0.01"
-                                              min="0.01"
+                                              step={comp.product?.is_consumable ? "any" : "0.01"}
+                                              min={comp.product?.is_consumable ? "0" : "0.01"}
                                               value={comp.quantity}
                                               onChange={(e) => {
                                                 const updated = [...components];
