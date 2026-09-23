@@ -155,6 +155,7 @@ interface ProductComponent {
     name: string;
     price: number | null;
     unit: string | null;
+    is_consumable?: boolean;
   };
 }
 
@@ -731,6 +732,7 @@ const Products = () => {
     return result;
   };
   const [newComponentBaseUnit, setNewComponentBaseUnit] = useState<string>("");
+  const [newComponentConsumable, setNewComponentConsumable] = useState<boolean>(false);
   const [availableComponents, setAvailableComponents] = useState<SearchableSelectOption[]>([]);
   const [formData, setFormData] = useState({
     product_id: "",
@@ -1115,7 +1117,7 @@ const Products = () => {
     const { data, error } = await supabase
       .from("product_components")
       .select(
-        "id, component_product_id, quantity, uom_id, uom_name, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit)",
+        "id, component_product_id, quantity, uom_id, uom_name, component_product:products!product_components_component_product_id_fkey(product_id, name, price, unit, is_consumable)",
       )
       .eq("parent_product_id", productId);
 
@@ -1475,7 +1477,7 @@ const Products = () => {
     // Fetch the product details
     const { data: productData } = await supabase
       .from("products")
-      .select("product_id, name, price, unit")
+      .select("product_id, name, price, unit, is_consumable")
       .eq("id", newComponent.product_id)
       .single();
 
@@ -1494,6 +1496,7 @@ const Products = () => {
     setNewComponent({ product_id: "", quantity: "1", uom_id: "" });
     setNewComponentUoms([]);
     setNewComponentBaseUnit("");
+    setNewComponentConsumable(false);
   };
 
   const handleRemoveComponent = (index: number) => {
@@ -2841,8 +2844,8 @@ const Products = () => {
                                           <TableCell className="text-right">
                                             <Input
                                               type="number"
-                                              step="0.01"
-                                              min="0.01"
+                                              step={comp.product?.is_consumable ? "any" : "0.01"}
+                                              min={comp.product?.is_consumable ? "0" : "0.01"}
                                               value={comp.quantity}
                                               onChange={(e) => {
                                                 const updated = [...components];
@@ -2933,16 +2936,18 @@ const Products = () => {
                                             .eq("product_id", value),
                                           supabase
                                             .from("products")
-                                            .select("unit")
+                                            .select("unit, is_consumable")
                                             .eq("id", value)
                                             .single(),
                                         ]);
                                         const baseUnit = prodData?.unit || "";
                                         setNewComponentUoms(deriveAllUoms(uomData || [], baseUnit));
                                         setNewComponentBaseUnit(baseUnit);
+                                        setNewComponentConsumable(!!prodData?.is_consumable);
                                       } else {
                                         setNewComponentUoms([]);
                                         setNewComponentBaseUnit("");
+                                        setNewComponentConsumable(false);
                                       }
                                     }}
                                     placeholder="Select component product..."
@@ -2956,8 +2961,8 @@ const Products = () => {
                                   <Input
                                     id="component_qty"
                                     type="number"
-                                    step="0.01"
-                                    min="0.01"
+                                    step={newComponentConsumable ? "any" : "0.01"}
+                                    min={newComponentConsumable ? "0" : "0.01"}
                                     value={newComponent.quantity}
                                     onChange={(e) => setNewComponent({ ...newComponent, quantity: e.target.value })}
                                     placeholder="e.g., 2"
