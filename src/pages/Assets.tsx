@@ -233,6 +233,7 @@ const Assets = () => {
   };
 
   useKeyboardShortcut("n", handleAddClick);
+  useKeyboardShortcut("F1", () => navigate(-1));
   useTransactionAction("new", handleAddClick);
 
   const handleSubmit = async () => {
