@@ -108,6 +108,7 @@ interface Product {
   upc: string | null;
   name: string;
   description: string | null;
+  link: string | null;
   category: string | null;
   price: number | null;
   unit: string | null;
@@ -720,6 +721,7 @@ const Products = () => {
     upc: "",
     name: "",
     description: "",
+    link: "",
     category: "",
     price: "",
     unit: "EA",
@@ -1184,6 +1186,7 @@ const Products = () => {
     upc: "",
     name: "",
       description: "",
+      link: "",
       category: "",
       price: "",
       unit: "EA",
@@ -1245,6 +1248,7 @@ const Products = () => {
       upc: product.upc || "",
       name: product.name,
       description: product.description || "",
+      link: product.link || "",
       category: product.category || "",
       price: product.price?.toString() || "",
       unit: product.unit || "each",
@@ -1654,6 +1658,7 @@ const Products = () => {
           upc: formData.upc || null,
           name: formData.name,
           description: formData.description || null,
+          link: formData.link || null,
           category: formData.category || null,
           price: formData.price ? parseFloat(formData.price) : null,
           unit: formData.unit || null,
@@ -1701,6 +1706,7 @@ const Products = () => {
           upc: formData.upc || null,
           name: formData.name,
           description: formData.description || null,
+          link: formData.link || null,
           category: formData.category || null,
           price: formData.price ? parseFloat(formData.price) : null,
           unit: formData.unit || null,
@@ -2004,6 +2010,7 @@ const Products = () => {
                             upc: "", // Don't copy UPC as it should be unique
                             name: product.name,
                             description: product.description || "",
+                            link: product.link || "",
                             category: product.category || "",
                             price: product.price?.toString() || "",
                             unit: product.unit || "each",
@@ -2321,6 +2328,16 @@ const Products = () => {
                               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                               placeholder="Product description..."
                               rows={3}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="link">Link</Label>
+                            <Input
+                              id="link"
+                              type="url"
+                              value={formData.link}
+                              onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                              placeholder="https://..."
                             />
                           </div>
                         </TabsContent>
