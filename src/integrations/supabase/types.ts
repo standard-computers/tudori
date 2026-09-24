@@ -3196,6 +3196,7 @@ export type Database = {
           location_id: string
           name: string
           payment_terms: number | null
+          pos_count: number
           postal_code: string
           state: string
           status: string
@@ -3216,6 +3217,7 @@ export type Database = {
           location_id: string
           name: string
           payment_terms?: number | null
+          pos_count?: number
           postal_code: string
           state: string
           status?: string
@@ -3236,6 +3238,7 @@ export type Database = {
           location_id?: string
           name?: string
           payment_terms?: number | null
+          pos_count?: number
           postal_code?: string
           state?: string
           status?: string
@@ -3805,6 +3808,48 @@ export type Database = {
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "platform_doc_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_assignments: {
+        Row: {
+          assigned_at: string
+          company_id: string
+          id: string
+          location_id: string
+          pos_number: number
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          company_id: string
+          id?: string
+          location_id: string
+          pos_number: number
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          company_id?: string
+          id?: string
+          location_id?: string
+          pos_number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_assignments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_assignments_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]
