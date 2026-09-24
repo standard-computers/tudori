@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { Check, ChevronsUpDown, Percent, X } from 'lucide-react';
 import {
   Command,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { toast } from '@/lib/toast';
 
 interface Rate {
@@ -92,6 +94,8 @@ const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
       setSaving(false);
     }
   };
+
+  useSaveShortcut(handleSave);
 
   const formatRate = (rate: Rate) => {
     if (rate.rate_type === 'flat') return `$${Number(rate.rate).toFixed(2)}`;
@@ -184,9 +188,12 @@ const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
       )}
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving || loading}>
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
+        <div className="relative">
+          <Button onClick={handleSave} disabled={saving || loading}>
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+          <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘S</Kbd>
+        </div>
       </div>
     </div>
   );
