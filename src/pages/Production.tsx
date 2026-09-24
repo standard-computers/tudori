@@ -1574,6 +1574,33 @@ const Production = () => {
               <Copy className="h-4 w-4" />
             </button>
           )}
+          {!isViewMode && !isEditing && !isAssignMode && (
+            <CopyFromIdDialog<any>
+              idLabel="Order ID"
+              className="absolute right-[4.5rem] top-4 z-10"
+              onFetch={async (lookup) => {
+                const { data } = await supabase
+                  .from('production_orders')
+                  .select('*')
+                  .eq('company_id', companyId!)
+                  .ilike('order_number', lookup)
+                  .maybeSingle();
+                return data || null;
+              }}
+              onApply={(data) => {
+                setFormData(prev => ({
+                  ...prev,
+                  bom_id: data.bom_id || '',
+                  location_id: data.location_id,
+                  quantity: data.quantity,
+                  scheduled_date: data.scheduled_date || '',
+                  notes: data.notes || '',
+                  assigned_employee_id: '',
+                }));
+                if (data.bom_id) fetchBomItems(data.bom_id);
+              }}
+            />
+          )}
           <button
             type="button"
             onClick={() => setIsMaximized(!isMaximized)}
@@ -1613,36 +1640,6 @@ const Production = () => {
 
               <div className="flex-1 overflow-y-auto px-6 pb-6">
                 <TabsContent value="details" className="mt-4 space-y-4">
-                  {!isViewMode && !isEditing && !isAssignMode && (
-                    <div className="space-y-2">
-                      <Label>Copy from Order ID</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={copyFromId}
-                          onChange={(e) => setCopyFromId(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleCopyFromId();
-                            }
-                          }}
-                          placeholder="e.g. PRO-0007"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleCopyFromId}
-                          disabled={copyFromLoading || !copyFromId.trim()}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          {copyFromLoading ? 'Loading...' : 'Copy'}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Paste an existing production order ID to pre-fill this form with its details.
-                      </p>
-                    </div>
-                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Order Number</Label>
