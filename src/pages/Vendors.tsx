@@ -77,6 +77,7 @@ const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: "postal_code", label: "Postal Code", defaultVisible: true },
   { key: "country", label: "Country", defaultVisible: true },
   { key: "website", label: "Website", defaultVisible: true },
+  { key: "payment_terms", label: "Payment Terms", defaultVisible: true },
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
@@ -304,6 +305,17 @@ const VendorTable = ({
                   onFilter={(value) => setFilter("website", value)}
                 />
               )}
+              {isColumnVisible("payment_terms") && (
+                <SortableTableHead
+                  label="Payment Terms"
+                  sortKey="payment_terms"
+                  currentSortKey={sortConfig.key}
+                  currentSortDirection={sortConfig.direction}
+                  onSort={handleSort}
+                  filterValue={filters["payment_terms"]}
+                  onFilter={(value) => setFilter("payment_terms", value)}
+                />
+              )}
               {isColumnVisible("actions") && (
                 <SortableTableHead
                   label="Actions"
@@ -358,6 +370,9 @@ const VendorTable = ({
                   {isColumnVisible("postal_code") && <TableCell>{vendor.postal_code || "-"}</TableCell>}
                   {isColumnVisible("country") && <TableCell>{vendor.country || "-"}</TableCell>}
                   {isColumnVisible("website") && <TableCell>{vendor.website || "-"}</TableCell>}
+                  {isColumnVisible("payment_terms") && (
+                    <TableCell>{vendor.payment_terms ? `${vendor.payment_terms} days` : "-"}</TableCell>
+                  )}
                   {isColumnVisible("actions") && (
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -1508,6 +1523,12 @@ const Vendors = () => {
                         </>
                       )}
                     </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Payment Terms</Label>
+                      <p>{viewingVendor.payment_terms ? `${viewingVendor.payment_terms} days` : "-"}</p>
+                    </div>
                   </div>
                   </div>
                 </TabsContent>
