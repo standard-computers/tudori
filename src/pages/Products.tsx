@@ -4,6 +4,7 @@ import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-short
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { PRODUCT_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useVendorSources } from "@/hooks/use-vendor-sources";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
@@ -228,29 +229,6 @@ const WEIGHT_UOMS = [
 ];
 
 // Column definitions for Products table
-const PRODUCT_COLUMNS: ColumnDefinition[] = [
-  { key: "product_id", label: "ID", defaultVisible: true },
-  { key: "name", label: "Name", defaultVisible: true },
-  { key: "sku", label: "SKU", defaultVisible: true },
-  { key: "upc", label: "UPC", defaultVisible: false },
-  { key: "category", label: "Category", defaultVisible: true },
-  { key: "vendor_id", label: "Vendor ID", defaultVisible: true },
-  { key: "vendor", label: "Vendor", defaultVisible: true },
-  { key: "vendor_part_number", label: "Vendor Part #", defaultVisible: false },
-  { key: "price", label: "Price", defaultVisible: true },
-  { key: "unit", label: "Unit", defaultVisible: true },
-  { key: "width", label: "Width", defaultVisible: true },
-  { key: "length", label: "Length", defaultVisible: true },
-  { key: "height", label: "Height", defaultVisible: true },
-  { key: "weight", label: "Weight", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "serialized", label: "Serialized", defaultVisible: false },
-  { key: "is_batched", label: "Batched", defaultVisible: false },
-  { key: "hazardous", label: "Hazardous", defaultVisible: false },
-  { key: "keep_inventory", label: "Keep Inventory", defaultVisible: false },
-  { key: "is_consumable", label: "Consumable", defaultVisible: false },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
 
 // Separated table component with sorting/filtering
 const ProductTable = ({

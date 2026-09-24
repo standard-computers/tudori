@@ -8,6 +8,7 @@ import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-short
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { VENDOR_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -63,23 +64,6 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { toast } from "@/lib/toast";
 
-const VENDOR_COLUMNS: ColumnDefinition[] = [
-  { key: "vendor_id", label: "ID", defaultVisible: true },
-  { key: "name", label: "Name", defaultVisible: true },
-  { key: "type", label: "Type", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "contact_name", label: "Contact", defaultVisible: true },
-  { key: "email", label: "Email", defaultVisible: true },
-  { key: "phone", label: "Phone", defaultVisible: true },
-  { key: "address_line1", label: "Address", defaultVisible: true },
-  { key: "city", label: "City", defaultVisible: true },
-  { key: "state", label: "State", defaultVisible: true },
-  { key: "postal_code", label: "Postal Code", defaultVisible: true },
-  { key: "country", label: "Country", defaultVisible: true },
-  { key: "website", label: "Website", defaultVisible: true },
-  { key: "payment_terms", label: "Payment Terms", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
 
 interface Vendor {
   id: string;

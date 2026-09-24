@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStatusBar } from '@/contexts/StatusBarContext';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { INVENTORY_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -69,18 +70,6 @@ interface InventoryItem {
 
 
 // Column definitions for Inventory table
-const INVENTORY_COLUMNS: ColumnDefinition[] = [
-  { key: 'product_id', label: 'Product ID', defaultVisible: true },
-  { key: 'product_name', label: 'Product Name', defaultVisible: true },
-  { key: 'sku', label: 'SKU', defaultVisible: true },
-  { key: 'category', label: 'Category', defaultVisible: true },
-  { key: 'area', label: 'Area', defaultVisible: true },
-  { key: 'bin', label: 'Bin', defaultVisible: true },
-  { key: 'quantity', label: 'Quantity', defaultVisible: true },
-  { key: 'unit', label: 'Unit', defaultVisible: true },
-  { key: 'min', label: 'Min', defaultVisible: true },
-  { key: 'max', label: 'Max', defaultVisible: true },
-];
 
 // Separated table component with sorting/filtering
 const InventoryTable = ({

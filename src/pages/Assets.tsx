@@ -6,6 +6,7 @@ import { useStatusBar } from "@/contexts/StatusBarContext";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { ASSET_COLUMNS } from '@/config/column-layouts';
 import { useTableSort, ColumnFilterConfig } from "@/hooks/use-table-sort";
 import { useMaximizedState } from "@/hooks/use-maximize-preference";
 import { ColumnToggle } from "@/components/ColumnToggle";
@@ -66,18 +67,6 @@ interface EmployeeOpt { id: string; employee_id: string | null; first_name: stri
 
 const STATUSES = ["active", "in_repair", "retired", "disposed"];
 
-const ASSET_COLUMNS: ColumnDefinition[] = [
-  { key: "asset_tag", label: "Tag", defaultVisible: true },
-  { key: "name", label: "Name", defaultVisible: true },
-  { key: "location", label: "Location", defaultVisible: true },
-  { key: "employee", label: "Assigned To", defaultVisible: true },
-  { key: "procurement_value", label: "Procurement Value", defaultVisible: true },
-  { key: "procurement_date", label: "Procurement Date", defaultVisible: true },
-  { key: "depreciation_rate", label: "Depr. %", defaultVisible: true },
-  { key: "book_value", label: "Book Value", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
 
 const emptyForm = (): Omit<Asset, "id"> => ({
   name: "", asset_tag: "", description: "",

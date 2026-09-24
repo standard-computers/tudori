@@ -3,6 +3,7 @@ import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-short
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { ACCOUNT_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
@@ -108,20 +109,6 @@ interface Location {
 }
 
 // Column definitions for Accounts table
-const ACCOUNT_COLUMNS: ColumnDefinition[] = [
-  { key: 'account_id', label: 'ID', defaultVisible: true },
-  { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'type', label: 'Type', defaultVisible: true },
-  { key: 'parent_account', label: 'Parent Account', defaultVisible: true },
-  { key: 'linked_to', label: 'Linked To', defaultVisible: true },
-  { key: 'location_id', label: 'Location', defaultVisible: true },
-  { key: 'ledger_id_display', label: 'Ledger ID', defaultVisible: true },
-  { key: 'ledger_name_display', label: 'Ledger', defaultVisible: true },
-  { key: 'balance', label: 'Balance', defaultVisible: true },
-  { key: 'outstanding_invoices', label: 'Outstanding Invoices', defaultVisible: true },
-  { key: 'is_active', label: 'Active', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
 
 const Accounts = () => {
   const navigate = useNavigate();

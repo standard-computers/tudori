@@ -6,6 +6,7 @@ import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-short
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { CUSTOMER_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
@@ -81,21 +82,6 @@ interface Customer {
 const CUSTOMER_TYPES = ['Business', 'Individual', 'Government', 'Non-Profit', 'Educational', 'Reseller'];
 
 // Column definitions for Customers table
-const CUSTOMER_COLUMNS: ColumnDefinition[] = [
-  { key: 'customer_id', label: 'ID', defaultVisible: true },
-  { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'type', label: 'Type', defaultVisible: true },
-  { key: 'contact_name', label: 'Contact', defaultVisible: true },
-  { key: 'email', label: 'Email', defaultVisible: true },
-  { key: 'phone', label: 'Phone', defaultVisible: true },
-  { key: 'address_line1', label: 'Address', defaultVisible: true },
-  { key: 'city', label: 'City', defaultVisible: true },
-  { key: 'state', label: 'State', defaultVisible: true },
-  { key: 'postal_code', label: 'Postal Code', defaultVisible: true },
-  { key: 'country', label: 'Country', defaultVisible: true },
-  { key: 'website', label: 'Website', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
 
 // Separated table component with sorting/filtering
 const CustomerTable = ({
