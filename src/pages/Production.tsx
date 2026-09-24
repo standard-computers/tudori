@@ -525,6 +525,8 @@ const Production = () => {
   const [isForegroundDialogOpen, setIsForegroundDialogOpen] = useState(false);
   const [locationEmployees, setLocationEmployees] = useState<LocationEmployee[]>([]);
   const [isAssignMode, setIsAssignMode] = useState(false);
+  const [copyFromId, setCopyFromId] = useState('');
+  const [copyFromLoading, setCopyFromLoading] = useState(false);
 
   // Import/Export
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -1559,6 +1561,7 @@ const Production = () => {
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
           onPrint={handlePrintOrder}
+          onDuplicate={handleDuplicate}
           isColumnVisible={isColumnVisible}
         />
       </main>
