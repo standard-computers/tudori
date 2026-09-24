@@ -126,6 +126,52 @@ export const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
+export const ACCOUNT_TRANSACTION_COLUMNS: ColumnDefinition[] = [
+  { key: 'id', label: 'Record ID', defaultVisible: false },
+  { key: 'invoice_id', label: 'Invoice ID', defaultVisible: false },
+  { key: 'date', label: 'Date', defaultVisible: true },
+  { key: 'type', label: 'Type', defaultVisible: true },
+  { key: 'reference', label: 'Reference', defaultVisible: true },
+  { key: 'description', label: 'Description', defaultVisible: true },
+  { key: 'amount', label: 'Amount', defaultVisible: true },
+];
+
+export const ACCOUNT_INVOICE_COLUMNS: ColumnDefinition[] = [
+  { key: 'id', label: 'Record ID', defaultVisible: false },
+  { key: 'invoice_number', label: 'Invoice #', defaultVisible: true },
+  { key: 'account_id', label: 'Account ID', defaultVisible: false },
+  { key: 'invoice_date', label: 'Date', defaultVisible: true },
+  { key: 'purchase_order_id', label: 'Purchase Order ID', defaultVisible: false },
+  { key: 'sales_order_id', label: 'Sales Order ID', defaultVisible: false },
+  { key: 'reference', label: 'Reference', defaultVisible: true },
+  { key: 'pay_to', label: 'Pay To', defaultVisible: true },
+  { key: 'pay_to_id', label: 'Pay To ID', defaultVisible: false },
+  { key: 'location', label: 'Location', defaultVisible: true },
+  { key: 'location_id', label: 'Location ID', defaultVisible: true },
+  { key: 'amount', label: 'Amount', defaultVisible: true },
+  { key: 'ledger', label: 'Ledger', defaultVisible: true },
+  { key: 'ledger_id', label: 'Ledger ID', defaultVisible: false },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'due_date', label: 'Due Date', defaultVisible: true },
+  { key: 'notes', label: 'Notes', defaultVisible: false },
+  { key: 'created_at', label: 'Created', defaultVisible: false },
+  { key: 'actions', label: 'Actions', alwaysVisible: true },
+];
+
+export const ACCOUNT_PAYMENT_COLUMNS: ColumnDefinition[] = [
+  { key: 'id', label: 'Record ID', defaultVisible: false },
+  { key: 'payment_number', label: 'Payment #', defaultVisible: true },
+  { key: 'account_id', label: 'Account ID', defaultVisible: false },
+  { key: 'payment_date', label: 'Date', defaultVisible: true },
+  { key: 'invoice', label: 'Invoice', defaultVisible: true },
+  { key: 'invoice_id', label: 'Invoice ID', defaultVisible: false },
+  { key: 'amount', label: 'Amount', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'processed_by', label: 'Processed By', defaultVisible: false },
+  { key: 'notes', label: 'Notes', defaultVisible: false },
+  { key: 'created_at', label: 'Created', defaultVisible: false },
+];
+
 export const BOM_COLUMNS: ColumnDefinition[] = [
   { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
@@ -236,6 +282,9 @@ export interface LayoutRegistryEntry { storageKey: string; label: string; column
 
 export const LAYOUT_REGISTRY: LayoutRegistryEntry[] = [
   { storageKey: 'accounts', label: 'Accounts', columns: ACCOUNT_COLUMNS },
+  { storageKey: 'account_transactions', label: 'Account View — Transactions', columns: ACCOUNT_TRANSACTION_COLUMNS },
+  { storageKey: 'account_invoices', label: 'Account View — Invoices', columns: ACCOUNT_INVOICE_COLUMNS },
+  { storageKey: 'account_payments', label: 'Account View — Payments', columns: ACCOUNT_PAYMENT_COLUMNS },
   { storageKey: 'assets', label: 'Assets', columns: ASSET_COLUMNS },
   { storageKey: 'bom', label: 'Bill of Materials', columns: BOM_COLUMNS },
   { storageKey: 'credit_memos', label: 'Credit Memos', columns: CREDIT_MEMO_COLUMNS },

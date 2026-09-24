@@ -43,6 +43,13 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
+import { useColumnVisibility } from '@/hooks/use-column-visibility';
+import { ColumnToggle } from '@/components/ColumnToggle';
+import {
+  ACCOUNT_INVOICE_COLUMNS,
+  ACCOUNT_PAYMENT_COLUMNS,
+  ACCOUNT_TRANSACTION_COLUMNS,
+} from '@/config/column-layouts';
 
 interface Account {
   id: string;
@@ -161,6 +168,12 @@ const AccountDetail = () => {
   const { sortConfig, sortedAndFilteredData, handleSort } = useTableSort<Invoice>(invoices);
   const { sortConfig: paymentSortConfig, sortedAndFilteredData: sortedPayments, handleSort: handlePaymentSort } = useTableSort<Payment>(payments);
   const { exportToExcel } = useExcel();
+  const transactionLayout = useColumnVisibility('account_transactions', ACCOUNT_TRANSACTION_COLUMNS);
+  const invoiceLayout = useColumnVisibility('account_invoices', ACCOUNT_INVOICE_COLUMNS);
+  const paymentLayout = useColumnVisibility('account_payments', ACCOUNT_PAYMENT_COLUMNS);
+  const transactionColumnCount = ACCOUNT_TRANSACTION_COLUMNS.filter((column) => transactionLayout.isColumnVisible(column.key)).length;
+  const invoiceColumnCount = ACCOUNT_INVOICE_COLUMNS.filter((column) => invoiceLayout.isColumnVisible(column.key)).length;
+  const paymentColumnCount = ACCOUNT_PAYMENT_COLUMNS.filter((column) => paymentLayout.isColumnVisible(column.key)).length;
 
   useKeyboardShortcut('n', () => {
     if (canCreateInvoice) setIsCreateInvoiceDialogOpen(true);
@@ -599,16 +612,26 @@ const AccountDetail = () => {
                 <Button variant="outline" size="icon" onClick={handleExportTransactions} title="Export to XLSX">
                   <Download className="h-4 w-4" />
                 </Button>
+                <ColumnToggle
+                  columns={ACCOUNT_TRANSACTION_COLUMNS}
+                  visibleColumns={transactionLayout.visibleColumns}
+                  onToggleColumn={transactionLayout.toggleColumn}
+                  onResetToDefaults={transactionLayout.resetToDefaults}
+                  onShowAll={transactionLayout.showAll}
+                  onHideAll={transactionLayout.hideAll}
+                />
               </div>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
+                  {transactionLayout.isColumnVisible('id') && <TableHead>Record ID</TableHead>}
+                  {transactionLayout.isColumnVisible('invoice_id') && <TableHead>Invoice ID</TableHead>}
+                  {transactionLayout.isColumnVisible('date') && <TableHead>Date</TableHead>}
+                  {transactionLayout.isColumnVisible('type') && <TableHead>Type</TableHead>}
+                  {transactionLayout.isColumnVisible('reference') && <TableHead>Reference</TableHead>}
+                  {transactionLayout.isColumnVisible('description') && <TableHead>Description</TableHead>}
+                  {transactionLayout.isColumnVisible('amount') && <TableHead>Amount</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -677,7 +700,7 @@ const AccountDetail = () => {
 
                   if (groups.length === 0) return (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={Math.max(transactionColumnCount, 1)} className="text-center text-muted-foreground py-8">
                         No transactions found
                       </TableCell>
                     </TableRow>
@@ -686,25 +709,25 @@ const AccountDetail = () => {
                   return groups.flatMap((group, gi) => {
                     const rowEls = group.rows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell>{format(parseISO(row.date), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>
+                        {transactionLayout.isColumnVisible('id') && <TableCell className="font-mono text-sm">{row.id.replace(/^(pay|inv)-/, '')}</TableCell>}
+                        {transactionLayout.isColumnVisible('invoice_id') && <TableCell className="font-mono text-sm">{row.invoiceId || '-'}</TableCell>}
+                        {transactionLayout.isColumnVisible('date') && <TableCell>{format(parseISO(row.date), 'MMM d, yyyy')}</TableCell>}
+                        {transactionLayout.isColumnVisible('type') && <TableCell>
                           <Badge variant="outline" className="capitalize">{row.type.replace(/_/g, ' ')}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{row.reference || '-'}</TableCell>
-                        <TableCell className="max-w-[300px] truncate">{row.description || '-'}</TableCell>
-                        <TableCell className={`font-medium ${row.amount < 0 ? 'text-destructive' : ''}`}>
+                        </TableCell>}
+                        {transactionLayout.isColumnVisible('reference') && <TableCell className="font-mono text-sm">{row.reference || '-'}</TableCell>}
+                        {transactionLayout.isColumnVisible('description') && <TableCell className="max-w-[300px] truncate">{row.description || '-'}</TableCell>}
+                        {transactionLayout.isColumnVisible('amount') && <TableCell className={`font-medium ${row.amount < 0 ? 'text-destructive' : ''}`}>
                           {row.amount < 0 ? '-' : ''}${Math.abs(row.amount).toFixed(2)}
-                        </TableCell>
+                        </TableCell>}
                       </TableRow>
                     ));
                     const subtotalEl = group.rows.length > 1 ? (
                       <TableRow key={`sub-${gi}`} className="bg-muted/40 border-t border-border/60">
-                        <TableCell colSpan={4} className="text-right text-xs text-muted-foreground font-medium uppercase tracking-wide pr-4">
-                          Group Subtotal
-                        </TableCell>
-                        <TableCell className={`font-semibold text-sm ${group.subtotal < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                          {group.subtotal < 0 ? '-' : ''}${Math.abs(group.subtotal).toFixed(2)}
-                        </TableCell>
+                        {transactionLayout.isColumnVisible('amount') ? <>
+                          {transactionColumnCount > 1 && <TableCell colSpan={transactionColumnCount - 1} className="text-right text-xs text-muted-foreground font-medium uppercase tracking-wide pr-4">Group Subtotal</TableCell>}
+                          <TableCell className={`font-semibold text-sm ${group.subtotal < 0 ? 'text-destructive' : 'text-foreground'}`}>{group.subtotal < 0 ? '-' : ''}${Math.abs(group.subtotal).toFixed(2)}</TableCell>
+                        </> : <TableCell colSpan={Math.max(transactionColumnCount, 1)} className="text-right text-xs text-muted-foreground font-medium uppercase tracking-wide pr-4">Group Subtotal: {group.subtotal < 0 ? '-' : ''}${Math.abs(group.subtotal).toFixed(2)}</TableCell>}
                       </TableRow>
                     ) : null;
                     return subtotalEl ? [...rowEls, subtotalEl] : rowEls;
@@ -730,46 +753,66 @@ const AccountDetail = () => {
                 <Button variant="outline" size="icon" onClick={handleExportInvoices} title="Export to XLSX">
                   <Download className="h-4 w-4" />
                 </Button>
+                <ColumnToggle
+                  columns={ACCOUNT_INVOICE_COLUMNS}
+                  visibleColumns={invoiceLayout.visibleColumns}
+                  onToggleColumn={invoiceLayout.toggleColumn}
+                  onResetToDefaults={invoiceLayout.resetToDefaults}
+                  onShowAll={invoiceLayout.showAll}
+                  onHideAll={invoiceLayout.hideAll}
+                />
               </div>
             </div>
 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableTableHead label="Invoice #" sortKey="invoice_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-                  <SortableTableHead label="Date" sortKey="invoice_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Pay To</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Location ID</TableHead>
-                  <SortableTableHead label="Amount" sortKey="amount" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-                  <TableHead>Ledger</TableHead>
-                  <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-                  <SortableTableHead label="Due Date" sortKey="due_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />
-                  <TableHead className="w-[50px]"></TableHead>
+                  {invoiceLayout.isColumnVisible('id') && <TableHead>Record ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('invoice_number') && <SortableTableHead label="Invoice #" sortKey="invoice_number" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+                  {invoiceLayout.isColumnVisible('account_id') && <TableHead>Account ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('invoice_date') && <SortableTableHead label="Date" sortKey="invoice_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+                  {invoiceLayout.isColumnVisible('purchase_order_id') && <TableHead>Purchase Order ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('sales_order_id') && <TableHead>Sales Order ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('reference') && <TableHead>Reference</TableHead>}
+                  {invoiceLayout.isColumnVisible('pay_to') && <TableHead>Pay To</TableHead>}
+                  {invoiceLayout.isColumnVisible('pay_to_id') && <TableHead>Pay To ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('location') && <TableHead>Location</TableHead>}
+                  {invoiceLayout.isColumnVisible('location_id') && <TableHead>Location ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('amount') && <SortableTableHead label="Amount" sortKey="amount" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+                  {invoiceLayout.isColumnVisible('ledger') && <TableHead>Ledger</TableHead>}
+                  {invoiceLayout.isColumnVisible('ledger_id') && <TableHead>Ledger ID</TableHead>}
+                  {invoiceLayout.isColumnVisible('status') && <SortableTableHead label="Status" sortKey="status" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+                  {invoiceLayout.isColumnVisible('due_date') && <SortableTableHead label="Due Date" sortKey="due_date" currentSortKey={sortConfig.key} currentSortDirection={sortConfig.direction} onSort={handleSort} filterable={false} />}
+                  {invoiceLayout.isColumnVisible('notes') && <TableHead>Notes</TableHead>}
+                  {invoiceLayout.isColumnVisible('created_at') && <TableHead>Created</TableHead>}
+                  {invoiceLayout.isColumnVisible('actions') && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={Math.max(invoiceColumnCount, 1)} className="text-center text-muted-foreground py-8">
                       No invoices found for this account.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-mono">
+                      {invoiceLayout.isColumnVisible('id') && <TableCell className="font-mono text-sm">{invoice.id}</TableCell>}
+                      {invoiceLayout.isColumnVisible('invoice_number') && <TableCell className="font-mono">
                         <button onClick={() => handleViewInvoice(invoice)} className="text-primary hover:underline cursor-pointer">
                           {invoice.invoice_number}
                         </button>
-                      </TableCell>
-                      <TableCell>{format(parseISO(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell>
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('account_id') && <TableCell className="font-mono text-sm">{invoice.account_id}</TableCell>}
+                      {invoiceLayout.isColumnVisible('invoice_date') && <TableCell>{format(parseISO(invoice.invoice_date), 'MMM d, yyyy')}</TableCell>}
+                      {invoiceLayout.isColumnVisible('purchase_order_id') && <TableCell className="font-mono text-sm">{invoice.purchase_order_id || '-'}</TableCell>}
+                      {invoiceLayout.isColumnVisible('sales_order_id') && <TableCell className="font-mono text-sm">{invoice.sales_order_id || '-'}</TableCell>}
+                      {invoiceLayout.isColumnVisible('reference') && <TableCell>
                         {invoice.purchase_order && <Badge variant="outline">PO: {invoice.purchase_order.po_number}</Badge>}
                         {invoice.sales_order && <Badge variant="outline">SO: {invoice.sales_order.so_number}</Badge>}
-                      </TableCell>
-                      <TableCell>
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('pay_to') && <TableCell>
                         {invoice.purchase_order?.vendor && (
                           <div>
                             <p className="font-medium">{invoice.purchase_order.vendor.name}</p>
@@ -783,24 +826,28 @@ const AccountDetail = () => {
                           </div>
                         )}
                         {!invoice.purchase_order?.vendor && !invoice.sales_order?.customer && '-'}
-                      </TableCell>
-                      <TableCell>
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('pay_to_id') && <TableCell className="font-mono text-sm">{invoice.purchase_order?.vendor?.vendor_id || invoice.sales_order?.customer?.customer_id || '-'}</TableCell>}
+                      {invoiceLayout.isColumnVisible('location') && <TableCell>
                         {invoice.purchase_order?.location?.name || invoice.sales_order?.location?.name || '-'}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('location_id') && <TableCell className="font-mono text-sm">
                         {invoice.purchase_order?.location?.location_id || invoice.sales_order?.location?.location_id || '-'}
-                      </TableCell>
-                      <TableCell className="font-medium">${invoice.amount.toFixed(2)}</TableCell>
-                      <TableCell>{invoice.ledger?.name || '-'}</TableCell>
-                      <TableCell>
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('amount') && <TableCell className="font-medium">${invoice.amount.toFixed(2)}</TableCell>}
+                      {invoiceLayout.isColumnVisible('ledger') && <TableCell>{invoice.ledger?.name || '-'}</TableCell>}
+                      {invoiceLayout.isColumnVisible('ledger_id') && <TableCell className="font-mono text-sm">{invoice.ledger_id || '-'}</TableCell>}
+                      {invoiceLayout.isColumnVisible('status') && <TableCell>
                         <Badge className={`${statusColors[invoice.status]} text-white`}>
                           {invoice.status}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('due_date') && <TableCell>
                         {invoice.due_date ? format(parseISO(invoice.due_date), 'MMM d, yyyy') : '-'}
-                      </TableCell>
-                      <TableCell>
+                      </TableCell>}
+                      {invoiceLayout.isColumnVisible('notes') && <TableCell className="max-w-[300px] truncate">{invoice.notes || '-'}</TableCell>}
+                      {invoiceLayout.isColumnVisible('created_at') && <TableCell>{format(parseISO(invoice.created_at), 'MMM d, yyyy h:mm a')}</TableCell>}
+                      {invoiceLayout.isColumnVisible('actions') && <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -828,7 +875,7 @@ const AccountDetail = () => {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   ))
                 )}
@@ -852,38 +899,58 @@ const AccountDetail = () => {
                 <Button variant="outline" size="icon" onClick={handleExportPayments} title="Export to XLSX">
                   <Download className="h-4 w-4" />
                 </Button>
+                <ColumnToggle
+                  columns={ACCOUNT_PAYMENT_COLUMNS}
+                  visibleColumns={paymentLayout.visibleColumns}
+                  onToggleColumn={paymentLayout.toggleColumn}
+                  onResetToDefaults={paymentLayout.resetToDefaults}
+                  onShowAll={paymentLayout.showAll}
+                  onHideAll={paymentLayout.hideAll}
+                />
               </div>
             </div>
 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableTableHead label="Payment #" sortKey="payment_number" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
-                  <SortableTableHead label="Date" sortKey="payment_date" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
-                  <TableHead>Invoice</TableHead>
-                  <SortableTableHead label="Amount" sortKey="amount" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
-                  <SortableTableHead label="Status" sortKey="status" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />
+                  {paymentLayout.isColumnVisible('id') && <TableHead>Record ID</TableHead>}
+                  {paymentLayout.isColumnVisible('payment_number') && <SortableTableHead label="Payment #" sortKey="payment_number" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />}
+                  {paymentLayout.isColumnVisible('account_id') && <TableHead>Account ID</TableHead>}
+                  {paymentLayout.isColumnVisible('payment_date') && <SortableTableHead label="Date" sortKey="payment_date" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />}
+                  {paymentLayout.isColumnVisible('invoice') && <TableHead>Invoice</TableHead>}
+                  {paymentLayout.isColumnVisible('invoice_id') && <TableHead>Invoice ID</TableHead>}
+                  {paymentLayout.isColumnVisible('amount') && <SortableTableHead label="Amount" sortKey="amount" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />}
+                  {paymentLayout.isColumnVisible('status') && <SortableTableHead label="Status" sortKey="status" currentSortKey={paymentSortConfig.key} currentSortDirection={paymentSortConfig.direction} onSort={handlePaymentSort} filterable={false} />}
+                  {paymentLayout.isColumnVisible('processed_by') && <TableHead>Processed By</TableHead>}
+                  {paymentLayout.isColumnVisible('notes') && <TableHead>Notes</TableHead>}
+                  {paymentLayout.isColumnVisible('created_at') && <TableHead>Created</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPayments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={Math.max(paymentColumnCount, 1)} className="text-center text-muted-foreground py-8">
                       No payments found for this account.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell className="font-mono">{payment.payment_number}</TableCell>
-                      <TableCell>{format(parseISO(payment.payment_date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell className="font-mono">{payment.invoice?.invoice_number || '-'}</TableCell>
-                      <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>
-                      <TableCell>
+                      {paymentLayout.isColumnVisible('id') && <TableCell className="font-mono text-sm">{payment.id}</TableCell>}
+                      {paymentLayout.isColumnVisible('payment_number') && <TableCell className="font-mono">{payment.payment_number}</TableCell>}
+                      {paymentLayout.isColumnVisible('account_id') && <TableCell className="font-mono text-sm">{payment.account_id}</TableCell>}
+                      {paymentLayout.isColumnVisible('payment_date') && <TableCell>{format(parseISO(payment.payment_date), 'MMM d, yyyy')}</TableCell>}
+                      {paymentLayout.isColumnVisible('invoice') && <TableCell className="font-mono">{payment.invoice?.invoice_number || '-'}</TableCell>}
+                      {paymentLayout.isColumnVisible('invoice_id') && <TableCell className="font-mono text-sm">{payment.invoice_id || '-'}</TableCell>}
+                      {paymentLayout.isColumnVisible('amount') && <TableCell className="font-medium">${Number(payment.amount).toFixed(2)}</TableCell>}
+                      {paymentLayout.isColumnVisible('status') && <TableCell>
                         <Badge className={`${statusColors[payment.status] || 'bg-slate-500'} text-white`}>
                           {payment.status}
                         </Badge>
-                      </TableCell>
+                      </TableCell>}
+                      {paymentLayout.isColumnVisible('processed_by') && <TableCell className="font-mono text-sm">{payment.processed_by || '-'}</TableCell>}
+                      {paymentLayout.isColumnVisible('notes') && <TableCell className="max-w-[300px] truncate">{payment.notes || '-'}</TableCell>}
+                      {paymentLayout.isColumnVisible('created_at') && <TableCell>{format(parseISO(payment.created_at), 'MMM d, yyyy h:mm a')}</TableCell>}
                     </TableRow>
                   ))
                 )}
