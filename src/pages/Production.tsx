@@ -1556,7 +1556,6 @@ const Production = () => {
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
           onPrint={handlePrintOrder}
-          onDuplicate={handleDuplicate}
           isColumnVisible={isColumnVisible}
         />
       </main>
