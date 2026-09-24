@@ -26,18 +26,24 @@ const POSAssignmentsSection = ({ locationId, onSaved }: Props) => {
   const load = async () => {
     const [{ data: loc }, { data: asg }] = await Promise.all([
       supabase.from('locations').select('pos_count').eq('id', locationId).maybeSingle(),
-      supabase.from('pos_assignments').select('id, pos_number, user_id').eq('location_id', locationId).order('pos_number'),
+      supabase.from('pos_assignments').select('id, pos_number, user_id, employee_id').eq('location_id', locationId).order('pos_number'),
     ]);
     setCount(String(loc?.pos_count ?? 1));
     const rows = (asg || []) as Assignment[];
-    const ids = rows.map(r => r.user_id);
-    if (ids.length) {
-      const { data: profs } = await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', ids);
-      rows.forEach(r => {
-        const p = profs?.find(x => x.user_id === r.user_id);
-        r.name = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : 'User';
-      });
-    }
+    const empIds = rows.map(r => r.employee_id).filter(Boolean) as string[];
+    const { data: profs } = rows.length
+      ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', rows.map(r => r.user_id))
+      : { data: [] };
+    const { data: emps } = empIds.length
+      ? await supabase.from('employees').select('id, first_name, last_name').in('id', empIds)
+      : { data: [] };
+    rows.forEach(r => {
+      const emp = emps?.find(e => e.id === r.employee_id);
+      const p = profs?.find(x => x.user_id === r.user_id);
+      r.name = emp
+        ? `${emp.first_name} ${emp.last_name}`.trim()
+        : p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : 'User';
+    });
     setAssignments(rows);
   };
 
