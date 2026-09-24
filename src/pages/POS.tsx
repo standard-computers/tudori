@@ -135,6 +135,11 @@ const POS = () => {
       .select('id, user_id, first_name, last_name, employee_id')
       .eq('company_id', companyId)
       .in('user_id', userIds);
+    const empIds = (emps || []).map(e => e.id);
+    const { data: openPunches } = empIds.length
+      ? await supabase.from('time_punches').select('employee_id').in('employee_id', empIds).is('punch_out', null)
+      : { data: [] as { employee_id: string }[] };
+    const clocked = new Set((openPunches || []).map(p => p.employee_id));
     setLocationEmployees(
       (emps || [])
         .filter(e => e.user_id)
@@ -142,6 +147,8 @@ const POS = () => {
           id: e.id,
           user_id: e.user_id as string,
           name: `${e.first_name} ${e.last_name}`.trim() + (e.employee_id ? ` (${e.employee_id})` : ''),
+          fullName: `${e.first_name} ${e.last_name}`.trim(),
+          clockedIn: clocked.has(e.id),
         }))
     );
   };
@@ -151,6 +158,7 @@ const POS = () => {
     const employee = locationEmployees.find(e => e.id === assignEmployeeId);
     const n = Number(assignPosNumber);
     if (!employee) { toast.error('Select an employee to assign'); return; }
+    if (!employee.clockedIn) { toast.error(`${employee.fullName} must be clocked in to be assigned`); return; }
     if (!n) { toast.error('Select a POS number'); return; }
     const { error } = await supabase.from('pos_assignments').insert({
       company_id: companyId, location_id: selectedLocationId, pos_number: n,
@@ -175,7 +183,11 @@ const POS = () => {
     fetchPosAssignments();
   };
 
-  const myPos = posAssignments.find(a => a.user_id === user?.id)?.pos_number ?? null;
+  const myAssignment = posAssignments.find(a => a.user_id === user?.id);
+  const myPos = myAssignment?.pos_number ?? null;
+  const myEmployeeName = myAssignment
+    ? (locationEmployees.find(e => e.id === myAssignment.employee_id || e.user_id === myAssignment.user_id)?.fullName ?? '')
+    : '';
 
   // Check if user is admin for selected location & fetch POS product assignments
   useEffect(() => {
@@ -450,7 +462,7 @@ const POS = () => {
               {selectedLocationId && (
                 myPos !== null ? (
                   <Button variant="outline" onClick={() => setUnassignConfirmOpen(true)} title="Unassign from this POS">
-                    <MonitorOff className="w-4 h-4 mr-2" /> POS {myPos} · Unassign
+                    <MonitorOff className="w-4 h-4 mr-2" /> POS {myPos} · {myEmployeeName ? `${myEmployeeName} · ` : ''}Unassign
                   </Button>
                 ) : (
                   <Button variant="outline" onClick={() => setAssignDialogOpen(true)}>
@@ -641,11 +653,11 @@ const POS = () => {
       {selectedLocationId && companyId && (
         <>
         <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-          <DialogContent className="sm:max-w-[400px]">
+          <DialogContent className="sm:max-w-[400px] p-6">
             <DialogHeader>
               <DialogTitle>Assign POS</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 px-1 py-4">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Select value={assignEmployeeId} onValueChange={setAssignEmployeeId}>
@@ -659,8 +671,8 @@ const POS = () => {
                       locationEmployees.map(e => {
                         const taken = posAssignments.some(a => a.user_id === e.user_id);
                         return (
-                          <SelectItem key={e.id} value={e.id} disabled={taken}>
-                            {e.name}{taken ? ' (assigned)' : ''}
+                          <SelectItem key={e.id} value={e.id} disabled={taken || !e.clockedIn}>
+                            {e.name}{taken ? ' (assigned)' : !e.clockedIn ? ' (not clocked in)' : ''}
                           </SelectItem>
                         );
                       })
@@ -687,7 +699,7 @@ const POS = () => {
                 </Select>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button onClick={assignPos} disabled={!assignEmployeeId || !assignPosNumber}>Assign</Button>
             </DialogFooter>
           </DialogContent>
