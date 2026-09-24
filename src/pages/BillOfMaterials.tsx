@@ -666,7 +666,7 @@ const BillOfMaterials = () => {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('id, product_id, name, unit')
+      .select('id, product_id, name, unit, category')
       .eq('company_id', companyId!)
       .eq('status', 'active')
       .order('name');
