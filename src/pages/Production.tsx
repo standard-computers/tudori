@@ -152,7 +152,6 @@ const ProductionOrderTable = ({
   onCompleteForeground,
   onAssignEmployee,
   onPrint,
-  onDuplicate,
   isColumnVisible,
 }: {
   orders: ProductionOrder[];
@@ -165,7 +164,6 @@ const ProductionOrderTable = ({
   onCompleteForeground: (order: ProductionOrder) => void;
   onAssignEmployee: (order: ProductionOrder) => void;
   onPrint: (order: ProductionOrder) => void;
-  onDuplicate: (order: ProductionOrder) => void;
   isColumnVisible: (key: string) => boolean;
 }) => {
   const {
@@ -432,9 +430,6 @@ const ProductionOrderTable = ({
                       </Button>
                       <Button variant="ghost" size="icon" title="Print production order" onClick={() => onPrint(order)}>
                         <Printer className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="Duplicate production order" onClick={() => onDuplicate(order)}>
-                        <Copy className="w-4 h-4" />
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -931,33 +926,35 @@ const Production = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDuplicate = async (order: ProductionOrder) => {
+  const handleCopyFromView = async () => {
+    const order = orders.find(o => o.id === editingId);
+    if (!order) return;
     try {
       const { data: nextId, error: idError } = await supabase.rpc('get_next_production_order_number', {
         p_company_id: companyId!,
       });
       if (idError) throw idError;
 
-      const { error } = await supabase
-        .from('production_orders')
-        .insert({
-          company_id: companyId!,
-          order_number: nextId || order.order_number,
-          bom_id: order.bom_id,
-          product_id: order.product_id,
-          location_id: order.location_id,
-          quantity: order.quantity,
-          status: 'pending',
-          scheduled_date: order.scheduled_date,
-          notes: order.notes,
-        });
-
-      if (error) throw error;
-      toast.success(`Duplicated ${order.order_number} as ${nextId || 'new order'}`);
-      fetchOrders();
-      fetchNextOrderNumber();
+      setFormData({
+        order_number: nextId || nextOrderNumber,
+        bom_id: order.bom_id || '',
+        location_id: order.location_id,
+        quantity: order.quantity,
+        status: 'pending',
+        scheduled_date: order.scheduled_date || '',
+        notes: order.notes || '',
+        assigned_employee_id: '',
+      });
+      setIsViewMode(false);
+      setIsEditing(false);
+      setIsAssignMode(false);
+      setEditingId(null);
+      if (order.bom_id) {
+        await fetchBomItems(order.bom_id);
+      }
+      toast.success(`New order pre-filled from ${order.order_number}`);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to duplicate production order');
+      toast.error(err.message || 'Failed to copy production order');
     }
   };
 
@@ -1561,13 +1558,22 @@ const Production = () => {
           onCompleteForeground={handleCompleteForeground}
           onAssignEmployee={handleAssignEmployee}
           onPrint={handlePrintOrder}
-          onDuplicate={handleDuplicate}
           isColumnVisible={isColumnVisible}
         />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          {isViewMode && editingId && (
+            <button
+              type="button"
+              onClick={handleCopyFromView}
+              title="Copy this order into a new production order"
+              className="absolute right-[4.5rem] top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsMaximized(!isMaximized)}
