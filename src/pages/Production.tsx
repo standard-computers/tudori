@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { CopyFromIdDialog } from '@/components/CopyFromIdDialog';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useTransactionAction } from '@/hooks/use-transaction-action';
@@ -474,7 +475,7 @@ const ProductionOrderTable = ({
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => onDelete(order.id)}
+                                onClick={() => setDeleteTarget(order)}
                                 className="text-destructive"
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -517,6 +518,7 @@ const Production = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nextOrderNumber, setNextOrderNumber] = useState('PRO-0001');
+  const [deleteTarget, setDeleteTarget] = useState<ProductionOrder | null>(null);
   const [foregroundOrder, setForegroundOrder] = useState<ProductionOrder | null>(null);
   const [isForegroundDialogOpen, setIsForegroundDialogOpen] = useState(false);
   const [locationEmployees, setLocationEmployees] = useState<LocationEmployee[]>([]);
@@ -1925,6 +1927,18 @@ const Production = () => {
           onComplete={handleForegroundComplete}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Delete Production Order"
+        description={`Are you sure you want to delete production order ${deleteTarget?.order_number ?? ''}? This action cannot be undone.`}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await handleDelete(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
 
       <ImportProgressDialog
         open={isImportDialogOpen}
