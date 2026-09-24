@@ -4396,6 +4396,7 @@ export type Database = {
           lead_time_days: number | null
           length: number | null
           length_uom: string | null
+          link: string | null
           manufacture_time_days: number | null
           min_shelf_life_days: number | null
           name: string
@@ -4435,6 +4436,7 @@ export type Database = {
           lead_time_days?: number | null
           length?: number | null
           length_uom?: string | null
+          link?: string | null
           manufacture_time_days?: number | null
           min_shelf_life_days?: number | null
           name: string
@@ -4474,6 +4476,7 @@ export type Database = {
           lead_time_days?: number | null
           length?: number | null
           length_uom?: string | null
+          link?: string | null
           manufacture_time_days?: number | null
           min_shelf_life_days?: number | null
           name?: string

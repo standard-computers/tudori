@@ -57,6 +57,13 @@
       "when": 1790285387511,
       "tag": "0007_pos_terminal_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790285551213,
+      "tag": "0008_add_link_to_products",
+      "breakpoints": true
     }
   ]
 }
