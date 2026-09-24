@@ -1,0 +1,2 @@
+ALTER TABLE public.goods_issues ADD COLUMN IF NOT EXISTS production_order_id uuid REFERENCES public.production_orders(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_goods_issues_production_order ON public.goods_issues(production_order_id);

@@ -2154,6 +2154,7 @@ export type Database = {
           location_id: string
           notes: string | null
           outbound_delivery_id: string | null
+          production_order_id: string | null
           sales_order_id: string | null
           status: string
           updated_at: string
@@ -2168,6 +2169,7 @@ export type Database = {
           location_id: string
           notes?: string | null
           outbound_delivery_id?: string | null
+          production_order_id?: string | null
           sales_order_id?: string | null
           status?: string
           updated_at?: string
@@ -2182,6 +2184,7 @@ export type Database = {
           location_id?: string
           notes?: string | null
           outbound_delivery_id?: string | null
+          production_order_id?: string | null
           sales_order_id?: string | null
           status?: string
           updated_at?: string
@@ -2220,6 +2223,13 @@ export type Database = {
             columns: ["outbound_delivery_id"]
             isOneToOne: false
             referencedRelation: "outbound_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_issues_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
             referencedColumns: ["id"]
           },
           {

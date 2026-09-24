@@ -71,6 +71,13 @@
       "when": 1790285923678,
       "tag": "0009_add_employee_to_pos_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790287227305,
+      "tag": "0010_add_production_order_to_goods_issues",
+      "breakpoints": true
     }
   ]
 }
