@@ -5,6 +5,7 @@ import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-short
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { SALES_ORDER_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { useExcel } from "@/hooks/use-excel";
@@ -224,15 +225,6 @@ const statusColors: Record<string, string> = {
 };
 
 // Column definitions for Sales Orders table
-const SALES_ORDER_COLUMNS: ColumnDefinition[] = [
-  { key: "so_number", label: "SO #", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "customer", label: "Customer", defaultVisible: true },
-  { key: "location", label: "Ship From", defaultVisible: true },
-  { key: "total_amount", label: "Total", defaultVisible: true },
-  { key: "order_date", label: "Date", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
 
 const SalesOrders = () => {
   const navigate = useNavigate();

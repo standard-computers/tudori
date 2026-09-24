@@ -9,6 +9,7 @@ import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { postGoodsIssue } from '@/lib/inventory-posting';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { GOODS_ISSUE_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,17 +107,6 @@ interface Customer {
 const ISSUE_STATUSES = ['pending', 'posted', 'cancelled', 'reversed'];
 
 // Column definitions for Goods Issues table
-const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
-  { key: 'issue_number', label: 'Issue #', defaultVisible: true },
-  { key: 'issue_date', label: 'Date', defaultVisible: true },
-  { key: 'location', label: 'Location', defaultVisible: true },
-  { key: 'customer', label: 'Customer', defaultVisible: true },
-  { key: 'sales_order', label: 'SO', defaultVisible: true },
-  { key: 'outbound_delivery', label: 'Outbound Del.', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'items', label: 'Items', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
 
 const getStatusColor = (status: string) => {
   switch (status) {

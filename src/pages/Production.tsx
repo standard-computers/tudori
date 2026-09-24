@@ -56,21 +56,9 @@ import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { PRODUCTION_ORDER_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 
-const PRODUCTION_ORDER_COLUMNS: ColumnDefinition[] = [
-  { key: 'order_number', label: 'Order #', defaultVisible: true },
-  { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
-  { key: 'bom_name', label: 'BoM', defaultVisible: true },
-  { key: 'product_id', label: 'Output Product ID', defaultVisible: true },
-  { key: 'product_name', label: 'Output Product', defaultVisible: true },
-  { key: 'quantity', label: 'Quantity', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'duration', label: 'Duration', defaultVisible: true },
-  { key: 'assigned_to', label: 'Assigned To', defaultVisible: true },
-  { key: 'scheduled', label: 'Scheduled', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
 
 interface ProductionOrder {
   id: string;

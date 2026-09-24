@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { RATE_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { useTableSort, ColumnFilterConfig } from "@/hooks/use-table-sort";
@@ -42,21 +43,6 @@ import { toast } from '@/lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const RATE_COLUMNS: ColumnDefinition[] = [
-  { key: "rate_id", label: "Rate ID", defaultVisible: true },
-  { key: "name", label: "Name", defaultVisible: true },
-  { key: "type", label: "Type", defaultVisible: true },
-  { key: "rate", label: "Rate/Amount", defaultVisible: true },
-  { key: "description", label: "Description", defaultVisible: true },
-  { key: "address_street", label: "Street", defaultVisible: false },
-  { key: "address_city", label: "City", defaultVisible: false },
-  { key: "address_county", label: "County", defaultVisible: false },
-  { key: "address_state", label: "State", defaultVisible: false },
-  { key: "address_postal_code", label: "Postal Code", defaultVisible: false },
-  { key: "address_country", label: "Country", defaultVisible: false },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
 
 interface TaxRate {
   id: string;

@@ -4,6 +4,7 @@ import { useKeyboardShortcut, useSaveShortcut } from '@/hooks/use-keyboard-short
 import { useTransactionAction } from '@/hooks/use-transaction-action';
 import { useTableSort } from '@/hooks/use-table-sort';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { BOM_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 import { useImportExportSettings } from '@/hooks/use-import-export-settings';
 import { useExcel } from '@/hooks/use-excel';
@@ -125,16 +126,6 @@ interface Bin {
 const STATUSES = ['active', 'inactive'];
 
 // Column definitions for Bill of Materials table
-const BOM_COLUMNS: ColumnDefinition[] = [
-  { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
-  { key: 'name', label: 'Name', defaultVisible: true },
-  { key: 'product', label: 'Output Product', defaultVisible: true },
-  { key: 'output_quantity', label: 'Output Qty', defaultVisible: true },
-  { key: 'steps_count', label: 'Steps', defaultVisible: true },
-  { key: 'total_duration', label: 'Duration', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
 
 const getStatusColor = (status: string) => {
   switch (status) {

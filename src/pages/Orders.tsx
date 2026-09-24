@@ -5,6 +5,7 @@ import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-short
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { ORDER_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { useVendorSources } from "@/hooks/use-vendor-sources";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -325,23 +326,6 @@ interface Company {
 }
 
 // Column definitions for Purchase Orders table
-const ORDER_COLUMNS: ColumnDefinition[] = [
-  { key: "select", label: "Select", alwaysVisible: true },
-  { key: "po_number", label: "PO #", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "vendor_id", label: "Vendor ID", defaultVisible: true },
-  { key: "vendor_name", label: "Vendor Name", defaultVisible: true },
-  { key: "ship_to_id", label: "Ship To ID", defaultVisible: true },
-  { key: "ship_to_name", label: "Ship To Name", defaultVisible: true },
-  { key: "bill_to_id", label: "Bill To ID", defaultVisible: true },
-  { key: "bill_to_name", label: "Bill To Name", defaultVisible: true },
-  { key: "item_count", label: "Items", defaultVisible: true },
-  { key: "total_amount", label: "Total", defaultVisible: true },
-  { key: "created_by", label: "Created By", defaultVisible: true },
-  { key: "date", label: "Date", defaultVisible: true },
-  { key: "time", label: "Time", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
 
 const Orders = () => {
   const navigate = useNavigate();

@@ -37,6 +37,7 @@ import { useExcel } from '@/hooks/use-excel';
 import { ImportExportButtons } from '@/components/ImportExportButtons';
 import { ImportProgressDialog, ImportResult } from '@/components/ImportProgressDialog';
 import { useColumnVisibility, ColumnDefinition } from '@/hooks/use-column-visibility';
+import { DEBIT_MEMO_COLUMNS } from '@/config/column-layouts';
 import { ColumnToggle } from '@/components/ColumnToggle';
 
 interface DebitMemo {
@@ -81,16 +82,6 @@ interface Product {
   base_price?: number;
 }
 
-const DEBIT_MEMO_COLUMNS: ColumnDefinition[] = [
-  { key: 'memo_number', label: 'Memo #', defaultVisible: true },
-  { key: 'memo_date', label: 'Date', defaultVisible: true },
-  { key: 'account', label: 'Account', defaultVisible: true },
-  { key: 'invoice', label: 'Invoice', defaultVisible: true },
-  { key: 'amount', label: 'Amount', defaultVisible: true },
-  { key: 'ledger', label: 'Ledger', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'actions', label: 'Actions', alwaysVisible: true },
-];
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500',
