@@ -1564,6 +1564,16 @@ const Production = () => {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className={`flex flex-col overflow-hidden transition-all duration-200 ${isMaximized ? '!max-w-none !w-screen !h-screen !max-h-screen !rounded-none !translate-x-[-50%] !translate-y-[-50%]' : 'max-w-2xl max-h-[85vh]'}`}>
+          {isViewMode && editingId && (
+            <button
+              type="button"
+              onClick={handleCopyFromView}
+              title="Copy this order into a new production order"
+              className="absolute right-[4.5rem] top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsMaximized(!isMaximized)}
