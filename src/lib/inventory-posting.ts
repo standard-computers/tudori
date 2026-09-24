@@ -32,7 +32,7 @@ export async function postGoodsReceipt(receiptId: string, locationId: string): P
       const batchId = item.batch_id || null;
       const uomId = item.uom_id || null;
       const binId = item.bin_id || null;
-      const qty = Math.round(item.quantity);
+      const qty = item.quantity;
       if (!qty) continue;
 
       let query = supabase
@@ -168,7 +168,7 @@ export async function postGoodsIssue(issueId: string, locationId: string): Promi
     // Deduct each item from inventory — match same UoM if specified, otherwise any
     for (const item of items as any[]) {
       const uomId = item.uom_id || null;
-      const qty = Math.round(item.quantity);
+      const qty = item.quantity;
 
       if (item.pu_id) {
         const { data: puInventory } = await supabase
