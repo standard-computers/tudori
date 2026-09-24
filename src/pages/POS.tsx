@@ -637,6 +637,58 @@ const POS = () => {
         </div>
       </main>
       {selectedLocationId && companyId && (
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Assign POS</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Employee</Label>
+                <Select value={assignEmployeeId} onValueChange={setAssignEmployeeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locationEmployees.length === 0 ? (
+                      <SelectItem value="__none" disabled>No employees at this location</SelectItem>
+                    ) : (
+                      locationEmployees.map(e => {
+                        const taken = posAssignments.some(a => a.user_id === e.user_id);
+                        return (
+                          <SelectItem key={e.id} value={e.id} disabled={taken}>
+                            {e.name}{taken ? ' (assigned)' : ''}
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>POS</Label>
+                <Select value={assignPosNumber} onValueChange={setAssignPosNumber}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select POS" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: posCount }, (_, i) => i + 1).map(n => {
+                      const taken = posAssignments.some(a => a.pos_number === n);
+                      return (
+                        <SelectItem key={n} value={String(n)} disabled={taken}>
+                          POS {n}{taken ? ' (in use)' : ''}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={assignPos} disabled={!assignEmployeeId || !assignPosNumber}>Assign</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <POSSettingsDialog
           open={showSettings}
           onOpenChange={setShowSettings}

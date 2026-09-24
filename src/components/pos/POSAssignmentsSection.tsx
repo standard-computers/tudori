@@ -15,6 +15,7 @@ interface Assignment {
   id: string;
   pos_number: number;
   user_id: string;
+  employee_id: string | null;
   name?: string;
 }
 
