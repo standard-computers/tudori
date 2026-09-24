@@ -465,7 +465,7 @@ const POS = () => {
                     <MonitorOff className="w-4 h-4 mr-2" /> POS {myPos} · {myEmployeeName ? `${myEmployeeName} · ` : ''}Unassign
                   </Button>
                 ) : (
-                  <Button variant="outline" onClick={() => setAssignDialogOpen(true)}>
+                  <Button variant="outline" onClick={() => { fetchLocationEmployees(); setAssignDialogOpen(true); }}>
                     <Monitor className="w-4 h-4 mr-2" /> Assign POS
                   </Button>
                 )
