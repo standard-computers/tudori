@@ -706,7 +706,7 @@ const Locations = () => {
     if (addressQuery) {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`, {
-          headers: { 'Accept-Language': 'en', 'User-Agent': 'OperandApp/1.0' }
+          headers: { 'Accept-Language': 'en', 'User-Agent': 'TudoriApp/1.0' }
         });
         const data = await res.json();
         if (data && data[0]) {

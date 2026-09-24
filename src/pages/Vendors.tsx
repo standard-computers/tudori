@@ -692,7 +692,7 @@ const Vendors = () => {
       try {
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`,
-          { headers: { "Accept-Language": "en", "User-Agent": "OperandApp/1.0" } },
+          { headers: { "Accept-Language": "en", "User-Agent": "TudoriApp/1.0" } },
         );
         const data = await response.json();
         if (data?.[0]) {

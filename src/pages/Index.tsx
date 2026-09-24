@@ -71,7 +71,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Building2 className="w-7 h-7 text-primary" />
-            <span className="text-xl font-display font-bold text-foreground tracking-tight">Operand</span>
+            <span className="text-xl font-display font-bold text-foreground tracking-tight">Tudori</span>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" asChild>
@@ -103,7 +103,7 @@ const Index = () => {
               <span className="gradient-text">from one platform</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              Operand unifies inventory, procurement, sales, production, logistics, finance, and workforce management into a single, powerful system — so nothing falls through the cracks.
+              Tudori unifies inventory, procurement, sales, production, logistics, finance, and workforce management into a single, powerful system — so nothing falls through the cracks.
             </p>
             <div className="flex items-center justify-center gap-4">
               <Button size="lg" asChild className="text-base px-8 h-12">
@@ -225,7 +225,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
-            <span className="font-display font-semibold">Operand</span>
+            <span className="font-display font-semibold">Tudori</span>
           </div>
           <span>© {new Date().getFullYear()} All rights reserved.</span>
         </div>

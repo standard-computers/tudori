@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { defaultApps } from '@/config/apps';
 
-const APP_NAME = 'Operand';
+const APP_NAME = 'Tudori';
 
 export function usePageTitle() {
   const location = useLocation();
