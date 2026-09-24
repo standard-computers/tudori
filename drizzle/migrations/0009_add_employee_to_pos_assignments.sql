@@ -1,0 +1,2 @@
+ALTER TABLE public.pos_assignments ADD COLUMN IF NOT EXISTS employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_pos_assignments_employee_id ON public.pos_assignments(employee_id);

@@ -64,6 +64,13 @@
       "when": 1790285551213,
       "tag": "0008_add_link_to_products",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790285923678,
+      "tag": "0009_add_employee_to_pos_assignments",
+      "breakpoints": true
     }
   ]
 }

@@ -3816,6 +3816,7 @@ export type Database = {
         Row: {
           assigned_at: string
           company_id: string
+          employee_id: string | null
           id: string
           location_id: string
           pos_number: number
@@ -3824,6 +3825,7 @@ export type Database = {
         Insert: {
           assigned_at?: string
           company_id: string
+          employee_id?: string | null
           id?: string
           location_id: string
           pos_number: number
@@ -3832,6 +3834,7 @@ export type Database = {
         Update: {
           assigned_at?: string
           company_id?: string
+          employee_id?: string | null
           id?: string
           location_id?: string
           pos_number?: number
@@ -3843,6 +3846,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {

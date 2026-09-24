@@ -22,6 +22,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard, Settings, Monitor, MonitorOff } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
@@ -72,7 +80,11 @@ const POS = () => {
   const [showProductImagesOnTiles, setShowProductImagesOnTiles] = useState(true);
   const [locationRates, setLocationRates] = useState<LocationRate[]>([]);
   const [posCount, setPosCount] = useState(1);
-  const [posAssignments, setPosAssignments] = useState<{ pos_number: number; user_id: string }[]>([]);
+  const [posAssignments, setPosAssignments] = useState<{ pos_number: number; user_id: string; employee_id: string | null }[]>([]);
+  const [locationEmployees, setLocationEmployees] = useState<{ id: string; user_id: string; name: string }[]>([]);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignEmployeeId, setAssignEmployeeId] = useState('');
+  const [assignPosNumber, setAssignPosNumber] = useState('');
 
   useEffect(() => {
     setTransaction('pos');
@@ -101,19 +113,54 @@ const POS = () => {
     if (!selectedLocationId) return;
     const [{ data: loc }, { data: asg }] = await Promise.all([
       supabase.from('locations').select('pos_count').eq('id', selectedLocationId).maybeSingle(),
-      supabase.from('pos_assignments').select('pos_number, user_id').eq('location_id', selectedLocationId),
+      supabase.from('pos_assignments').select('pos_number, user_id, employee_id').eq('location_id', selectedLocationId),
     ]);
     setPosCount(loc?.pos_count ?? 1);
     setPosAssignments(asg || []);
+    fetchLocationEmployees();
   };
 
-  const assignPos = async (n: number) => {
+  const fetchLocationEmployees = async () => {
+    if (!selectedLocationId || !companyId) return;
+    const { data: locUsers } = await supabase
+      .from('location_users')
+      .select('user_id')
+      .eq('location_id', selectedLocationId);
+    const userIds = (locUsers || []).map(lu => lu.user_id);
+    if (!userIds.length) { setLocationEmployees([]); return; }
+    const { data: emps } = await supabase
+      .from('employees')
+      .select('id, user_id, first_name, last_name, employee_id')
+      .eq('company_id', companyId)
+      .in('user_id', userIds);
+    setLocationEmployees(
+      (emps || [])
+        .filter(e => e.user_id)
+        .map(e => ({
+          id: e.id,
+          user_id: e.user_id as string,
+          name: `${e.first_name} ${e.last_name}`.trim() + (e.employee_id ? ` (${e.employee_id})` : ''),
+        }))
+    );
+  };
+
+  const assignPos = async () => {
     if (!user || !companyId) return;
+    const employee = locationEmployees.find(e => e.id === assignEmployeeId);
+    const n = Number(assignPosNumber);
+    if (!employee) { toast.error('Select an employee to assign'); return; }
+    if (!n) { toast.error('Select a POS number'); return; }
     const { error } = await supabase.from('pos_assignments').insert({
-      company_id: companyId, location_id: selectedLocationId, pos_number: n, user_id: user.id,
+      company_id: companyId, location_id: selectedLocationId, pos_number: n,
+      user_id: employee.user_id, employee_id: employee.id,
     });
     if (error) toast.error('That POS is no longer available');
-    else toast.success(`Assigned to POS ${n}`);
+    else {
+      toast.success(`${employee.name} assigned to POS ${n}`);
+      setAssignDialogOpen(false);
+      setAssignEmployeeId('');
+      setAssignPosNumber('');
+    }
     fetchPosAssignments();
   };
 
@@ -404,22 +451,9 @@ const POS = () => {
                     <MonitorOff className="w-4 h-4 mr-2" /> POS {myPos} · Unassign
                   </Button>
                 ) : (
-                  <Select value="" onValueChange={(v) => assignPos(Number(v))}>
-                    <SelectTrigger className="w-40">
-                      <Monitor className="w-4 h-4 mr-2" />
-                      <SelectValue placeholder="Assign POS" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: posCount }, (_, i) => i + 1).map(n => {
-                        const taken = posAssignments.some(a => a.pos_number === n);
-                        return (
-                          <SelectItem key={n} value={String(n)} disabled={taken}>
-                            POS {n}{taken ? ' (in use)' : ''}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <Button variant="outline" onClick={() => setAssignDialogOpen(true)}>
+                    <Monitor className="w-4 h-4 mr-2" /> Assign POS
+                  </Button>
                 )
               )}
               <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
@@ -603,6 +637,59 @@ const POS = () => {
         </div>
       </main>
       {selectedLocationId && companyId && (
+        <>
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Assign POS</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Employee</Label>
+                <Select value={assignEmployeeId} onValueChange={setAssignEmployeeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locationEmployees.length === 0 ? (
+                      <SelectItem value="__none" disabled>No employees at this location</SelectItem>
+                    ) : (
+                      locationEmployees.map(e => {
+                        const taken = posAssignments.some(a => a.user_id === e.user_id);
+                        return (
+                          <SelectItem key={e.id} value={e.id} disabled={taken}>
+                            {e.name}{taken ? ' (assigned)' : ''}
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>POS</Label>
+                <Select value={assignPosNumber} onValueChange={setAssignPosNumber}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select POS" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: posCount }, (_, i) => i + 1).map(n => {
+                      const taken = posAssignments.some(a => a.pos_number === n);
+                      return (
+                        <SelectItem key={n} value={String(n)} disabled={taken}>
+                          POS {n}{taken ? ' (in use)' : ''}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={assignPos} disabled={!assignEmployeeId || !assignPosNumber}>Assign</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <POSSettingsDialog
           open={showSettings}
           onOpenChange={setShowSettings}
@@ -621,6 +708,7 @@ const POS = () => {
             localStorage.setItem(`pos-show-images-${selectedLocationId}`, String(val));
           }}
         />
+        </>
       )}
     </div>
   );
