@@ -697,6 +697,7 @@ const POS = () => {
           onOpenChange={setUnassignConfirmOpen}
           title="Unassign POS"
           description={`Are you sure you want to unassign from POS ${myPos ?? ''}? You will no longer be able to process sales on this terminal until assigned again.`}
+          confirmLabel="Unassign"
           onConfirm={() => { setUnassignConfirmOpen(false); unassignPos(); }}
         />
         <POSSettingsDialog

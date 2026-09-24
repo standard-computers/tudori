@@ -103,6 +103,7 @@ const POSAssignmentsSection = ({ locationId, onSaved }: Props) => {
         description={unassignTarget
           ? `Are you sure you want to unassign ${unassignTarget.name || 'this user'} from POS ${unassignTarget.pos_number}? They will lose access to this terminal until assigned again.`
           : ''}
+        confirmLabel="Unassign"
         onConfirm={() => {
           const target = unassignTarget;
           setUnassignTarget(null);
