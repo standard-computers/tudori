@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard, Settings } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard, Settings, Monitor, MonitorOff } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
 import POSSettingsDialog from '@/components/pos/POSSettingsDialog';
@@ -71,6 +71,8 @@ const POS = () => {
   const [showProductIdsOnTiles, setShowProductIdsOnTiles] = useState(false);
   const [showProductImagesOnTiles, setShowProductImagesOnTiles] = useState(true);
   const [locationRates, setLocationRates] = useState<LocationRate[]>([]);
+  const [posCount, setPosCount] = useState(1);
+  const [posAssignments, setPosAssignments] = useState<{ pos_number: number; user_id: string }[]>([]);
 
   useEffect(() => {
     setTransaction('pos');
@@ -95,12 +97,44 @@ const POS = () => {
     }
   }, [companyId]);
 
+  const fetchPosAssignments = async () => {
+    if (!selectedLocationId) return;
+    const [{ data: loc }, { data: asg }] = await Promise.all([
+      supabase.from('locations').select('pos_count').eq('id', selectedLocationId).maybeSingle(),
+      supabase.from('pos_assignments').select('pos_number, user_id').eq('location_id', selectedLocationId),
+    ]);
+    setPosCount(loc?.pos_count ?? 1);
+    setPosAssignments(asg || []);
+  };
+
+  const assignPos = async (n: number) => {
+    if (!user || !companyId) return;
+    const { error } = await supabase.from('pos_assignments').insert({
+      company_id: companyId, location_id: selectedLocationId, pos_number: n, user_id: user.id,
+    });
+    if (error) toast.error('That POS is no longer available');
+    else toast.success(`Assigned to POS ${n}`);
+    fetchPosAssignments();
+  };
+
+  const unassignPos = async () => {
+    if (!user) return;
+    const { error } = await supabase.from('pos_assignments').delete()
+      .eq('location_id', selectedLocationId).eq('user_id', user.id);
+    if (error) toast.error('Failed to unassign POS');
+    else toast.success('Unassigned from POS');
+    fetchPosAssignments();
+  };
+
+  const myPos = posAssignments.find(a => a.user_id === user?.id)?.pos_number ?? null;
+
   // Check if user is admin for selected location & fetch POS product assignments
   useEffect(() => {
     if (selectedLocationId && user) {
       checkLocationAdmin();
       fetchPosProducts();
       fetchLocationRates();
+      fetchPosAssignments();
       // Load show product IDs preference
       const stored = localStorage.getItem(`pos-show-ids-${selectedLocationId}`);
       setShowProductIdsOnTiles(stored === 'true');
@@ -364,6 +398,30 @@ const POS = () => {
                   <Settings className="w-5 h-5" />
                 </Button>
               )}
+              {selectedLocationId && (
+                myPos !== null ? (
+                  <Button variant="outline" onClick={unassignPos} title="Unassign from this POS">
+                    <MonitorOff className="w-4 h-4 mr-2" /> POS {myPos} · Unassign
+                  </Button>
+                ) : (
+                  <Select value="" onValueChange={(v) => assignPos(Number(v))}>
+                    <SelectTrigger className="w-40">
+                      <Monitor className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Assign POS" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: posCount }, (_, i) => i + 1).map(n => {
+                        const taken = posAssignments.some(a => a.pos_number === n);
+                        return (
+                          <SelectItem key={n} value={String(n)} disabled={taken}>
+                            POS {n}{taken ? ' (in use)' : ''}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )
+              )}
               <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Select location" />
@@ -551,7 +609,7 @@ const POS = () => {
           locationId={selectedLocationId}
           locationName={locations.find(l => l.id === selectedLocationId)?.name || ''}
           companyId={companyId}
-          onSaved={() => { fetchPosProducts(); fetchLocationRates(); }}
+          onSaved={() => { fetchPosProducts(); fetchLocationRates(); fetchPosAssignments(); }}
           showProductIds={showProductIdsOnTiles}
           onShowProductIdsChange={(val) => {
             setShowProductIdsOnTiles(val);
