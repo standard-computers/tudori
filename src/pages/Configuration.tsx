@@ -475,6 +475,25 @@ const Configuration = () => {
         }
       }
 
+      // Save production order GI control (merged into process controls)
+      {
+        const { data: pc } = await supabase
+          .from('company_settings')
+          .select('id, setting_value')
+          .eq('company_id', companyId)
+          .eq('setting_key', 'process_controls')
+          .maybeSingle();
+        const merged = {
+          ...((pc?.setting_value as Record<string, unknown>) || {}),
+          perform_production_order_gi: processControls.perform_production_order_gi,
+        };
+        if (pc) {
+          await supabase.from('company_settings').update({ setting_value: merged as any }).eq('id', pc.id);
+        } else {
+          await supabase.from('company_settings').insert([{ company_id: companyId, setting_key: 'process_controls', setting_value: merged as any }]);
+        }
+      }
+
       // Save import/export settings
       const { data: existingImportExport } = await supabase
         .from('company_settings')
