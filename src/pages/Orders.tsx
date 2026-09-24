@@ -2946,7 +2946,14 @@ const Orders = () => {
                 <SearchableSelect
                   options={locationOptions}
                   value={formData.bill_to_location_id}
-                  onValueChange={(value) => setFormData({ ...formData, bill_to_location_id: value })}
+                  onValueChange={(value) => {
+                    const locLedger = value ? ledgers.find((l) => l.location_id === value) : undefined;
+                    const autoLedger =
+                      locLedger?.id ||
+                      (ledgers.length === 1 ? ledgers[0].id : ledgers.find((l) => !l.location_id)?.id) ||
+                      formData.ledger_id;
+                    setFormData({ ...formData, bill_to_location_id: value, ledger_id: autoLedger || "" });
+                  }}
                   placeholder="Select location"
                   allowClear
                   clearLabel="No location (general ledger)"
@@ -3397,6 +3404,8 @@ const Orders = () => {
                   vendor_id: vendorValue,
                   location_id: route.destination_location_id,
                   bill_to_location_id: route.destination_location_id,
+                  ledger_id:
+                    ledgers.find((l) => l.location_id === route.destination_location_id)?.id || prev.ledger_id,
                 }));
                 setOrderItems([]);
                 setIsRoutePickerOpen(false);
