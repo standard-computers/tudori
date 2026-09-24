@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Kbd } from '@/components/ui/kbd';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { Search, Package } from 'lucide-react';
 import { toast } from '@/lib/toast';
 

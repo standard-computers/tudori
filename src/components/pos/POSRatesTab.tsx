@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { Check, ChevronsUpDown, Percent, X } from 'lucide-react';
 import {
   Command,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useSaveShortcut } from '@/hooks/use-keyboard-shortcut';
 import { toast } from '@/lib/toast';
 
 interface Rate {
