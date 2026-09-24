@@ -475,7 +475,7 @@ const ProductionOrderTable = ({
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => setDeleteTarget(order)}
+                                onClick={() => onDelete(order.id)}
                                 className="text-destructive"
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
