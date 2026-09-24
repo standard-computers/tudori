@@ -637,6 +637,7 @@ const POS = () => {
         </div>
       </main>
       {selectedLocationId && companyId && (
+        <>
         <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
