@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       content: (m.parts || []).map((p: any) => (p.type === "text" ? p.text : "")).join("\n"),
     }));
 
-    const systemPrompt = `You are Operand AI, an assistant embedded in an ERP application. When a user describes an operation they want to perform, you propose a concrete plan of documents/transactions to create. The user reviews each step individually and clicks Approve before it executes. NEVER claim you executed anything — you only propose.
+    const systemPrompt = `You are Tudori AI, an assistant embedded in an ERP application. When a user describes an operation they want to perform, you propose a concrete plan of documents/transactions to create. The user reviews each step individually and clicks Approve before it executes. NEVER claim you executed anything — you only propose.
 
 RESPOND with STRICT JSON of the shape:
 {

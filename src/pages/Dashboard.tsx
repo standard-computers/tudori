@@ -226,7 +226,7 @@ const Dashboard = () => {
                 <>
                   <Building2 className="w-8 h-8 text-primary" />
                   <div>
-                    <span className="text-lg font-display font-bold text-foreground">EnterpriseHub</span>
+                    <span className="text-lg font-display font-bold text-foreground">Tudori</span>
                     {company && <p className="text-xs text-muted-foreground">{company.name}</p>}
                   </div>
                 </>

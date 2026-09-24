@@ -173,7 +173,7 @@ const CompleteProfile = () => {
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
             <Building2 className="w-7 h-7 text-primary-foreground" />
           </div>
-          <span className="text-2xl font-display font-bold text-foreground">EnterpriseHub</span>
+          <span className="text-2xl font-display font-bold text-foreground">Tudori</span>
         </div>
 
         <Card className="glass-card">

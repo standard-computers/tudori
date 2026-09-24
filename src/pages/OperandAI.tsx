@@ -170,9 +170,9 @@ export default function OperandAI() {
             <ArrowLeft className="h-4 w-4" />
             <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
           </Button>
-          <img src={logo} alt="Operand AI" width={32} height={32} className="h-8 w-8" loading="lazy" />
+          <img src={logo} alt="Tudori AI" width={32} height={32} className="h-8 w-8" loading="lazy" />
           <div>
-            <h1 className="text-lg font-semibold">Operand AI</h1>
+            <h1 className="text-lg font-semibold">Tudori AI</h1>
             <p className="text-xs text-muted-foreground">Describe an action — approve each step before it runs</p>
           </div>
         </div>
@@ -295,7 +295,7 @@ export default function OperandAI() {
               </PromptInput>
               <p className="mt-1 text-center text-[11px] text-muted-foreground">
                 <MessageSquare className="mr-1 inline h-3 w-3" />
-                Operand AI proposes steps — nothing runs until you approve each one.
+                Tudori AI proposes steps — nothing runs until you approve each one.
               </p>
             </div>
           </div>
