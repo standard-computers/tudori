@@ -929,6 +929,75 @@ const Production = () => {
     setIsDialogOpen(true);
   };
 
+  const handleDuplicate = async (order: ProductionOrder) => {
+    try {
+      const { data: nextId, error: idError } = await supabase.rpc('get_next_production_order_number', {
+        p_company_id: companyId!,
+      });
+      if (idError) throw idError;
+
+      const { error } = await supabase
+        .from('production_orders')
+        .insert({
+          company_id: companyId!,
+          order_number: nextId || order.order_number,
+          bom_id: order.bom_id,
+          product_id: order.product_id,
+          location_id: order.location_id,
+          quantity: order.quantity,
+          status: 'pending',
+          scheduled_date: order.scheduled_date,
+          notes: order.notes,
+        });
+
+      if (error) throw error;
+      toast.success(`Duplicated ${order.order_number} as ${nextId || 'new order'}`);
+      fetchOrders();
+      fetchNextOrderNumber();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to duplicate production order');
+    }
+  };
+
+  const handleCopyFromId = async () => {
+    const lookup = copyFromId.trim();
+    if (!lookup) return;
+    setCopyFromLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('production_orders')
+        .select('*')
+        .eq('company_id', companyId!)
+        .ilike('order_number', lookup)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.error(`Production order "${lookup}" not found`);
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        bom_id: data.bom_id || '',
+        location_id: data.location_id,
+        quantity: data.quantity,
+        scheduled_date: data.scheduled_date || '',
+        notes: data.notes || '',
+        assigned_employee_id: '',
+      }));
+      if (data.bom_id) {
+        await fetchBomItems(data.bom_id);
+      }
+      toast.success(`Copied details from ${data.order_number}`);
+      setCopyFromId('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load production order');
+    } finally {
+      setCopyFromLoading(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     const { error } = await supabase
       .from('production_orders')
