@@ -21,7 +21,8 @@ import { ArrowLeft, GripVertical, Eye, EyeOff, RotateCcw, User, LayoutGrid, Load
  import { designSystems, applyDesignSystem, buildCustomDesignSystem } from '@/config/design-systems';
 import { setMaximizePreferenceCache } from '@/hooks/use-maximize-preference';
 import { setAppMenuPreferenceCache } from '@/hooks/use-app-menu-preference';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, Columns3 } from 'lucide-react';
+import { LayoutsTab } from '@/components/settings/LayoutsTab';
 import {
   DndContext,
   closestCenter,
@@ -571,6 +572,10 @@ const UserSettings = () => {
               <LayoutGrid className="w-4 h-4" />
               Apps
             </TabsTrigger>
+            <TabsTrigger value="layouts" className="flex items-center gap-2">
+              <Columns3 className="w-4 h-4" />
+              Layouts
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
@@ -918,6 +923,9 @@ const UserSettings = () => {
                 </DndContext>
               </CardContent>
             </Card>
+          </TabsContent>
+          <TabsContent value="layouts">
+            <LayoutsTab />
           </TabsContent>
         </Tabs>
       </main>
