@@ -1554,7 +1554,7 @@ const Production = () => {
           orders={filteredOrders}
           onView={handleView}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDelete={(id) => setDeleteTarget(orders.find((o) => o.id === id) ?? null)}
           onStart={handleStart}
           onStartForeground={handleStartForeground}
           onConfirm={handleConfirm}
