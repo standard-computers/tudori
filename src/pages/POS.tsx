@@ -708,6 +708,7 @@ const POS = () => {
             localStorage.setItem(`pos-show-images-${selectedLocationId}`, String(val));
           }}
         />
+        </>
       )}
     </div>
   );
