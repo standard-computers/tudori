@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import POSProductsTab from './POSProductsTab';
 import POSRatesTab from './POSRatesTab';
+import POSAssignmentsSection from './POSAssignmentsSection';
 
 interface POSSettingsDialogProps {
   open: boolean;
@@ -69,6 +70,8 @@ const POSSettingsDialog = ({
                 onCheckedChange={(checked) => onShowProductImagesChange?.(checked)}
               />
             </div>
+
+            <POSAssignmentsSection locationId={locationId} onSaved={onSaved} />
 
             <Tabs defaultValue="products">
               <TabsList className="w-full">
