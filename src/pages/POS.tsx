@@ -34,6 +34,7 @@ import { ArrowLeft, ShoppingCart, Plus, Minus, Trash2, Search, CreditCard, Setti
 import { Kbd } from '@/components/ui/kbd';
 import { toast } from '@/lib/toast';
 import POSSettingsDialog from '@/components/pos/POSSettingsDialog';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 
 interface Location {
   id: string;
@@ -85,6 +86,7 @@ const POS = () => {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignEmployeeId, setAssignEmployeeId] = useState('');
   const [assignPosNumber, setAssignPosNumber] = useState('');
+  const [unassignConfirmOpen, setUnassignConfirmOpen] = useState(false);
 
   useEffect(() => {
     setTransaction('pos');
@@ -447,7 +449,7 @@ const POS = () => {
               )}
               {selectedLocationId && (
                 myPos !== null ? (
-                  <Button variant="outline" onClick={unassignPos} title="Unassign from this POS">
+                  <Button variant="outline" onClick={() => setUnassignConfirmOpen(true)} title="Unassign from this POS">
                     <MonitorOff className="w-4 h-4 mr-2" /> POS {myPos} · Unassign
                   </Button>
                 ) : (
@@ -690,6 +692,13 @@ const POS = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <ConfirmDeleteDialog
+          open={unassignConfirmOpen}
+          onOpenChange={setUnassignConfirmOpen}
+          title="Unassign POS"
+          description={`Are you sure you want to unassign from POS ${myPos ?? ''}? You will no longer be able to process sales on this terminal until assigned again.`}
+          onConfirm={() => { setUnassignConfirmOpen(false); unassignPos(); }}
+        />
         <POSSettingsDialog
           open={showSettings}
           onOpenChange={setShowSettings}
