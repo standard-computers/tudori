@@ -95,6 +95,8 @@ const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
     }
   };
 
+  useSaveShortcut(handleSave);
+
   const formatRate = (rate: Rate) => {
     if (rate.rate_type === 'flat') return `$${Number(rate.rate).toFixed(2)}`;
     return `${Number(rate.rate).toFixed(2)}%`;
@@ -186,9 +188,12 @@ const POSRatesTab = ({ locationId, companyId, onSaved }: POSRatesTabProps) => {
       )}
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving || loading}>
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
+        <div className="relative">
+          <Button onClick={handleSave} disabled={saving || loading}>
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+          <Kbd className="absolute -bottom-1 -right-1 scale-75">⌘S</Kbd>
+        </div>
       </div>
     </div>
   );
