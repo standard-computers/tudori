@@ -107,6 +107,7 @@ interface Product {
   product_id: string;
   name: string;
   unit: string | null;
+  category: string | null;
 }
 
 interface Location {
@@ -1324,11 +1325,13 @@ const BillOfMaterials = () => {
     }
   };
 
-  // Output product options for searchable select
-  const outputProductOptions: SearchableSelectOption[] = products.map(p => ({
-    value: p.id,
-    label: `${p.product_id} - ${p.name}`,
-  }));
+  // Output product options for searchable select — restricted to Finished Goods
+  const outputProductOptions: SearchableSelectOption[] = products
+    .filter(p => p.category?.trim().toLowerCase() === 'finished goods')
+    .map(p => ({
+      value: p.id,
+      label: `${p.product_id} - ${p.name}`,
+    }));
 
   // Component options for searchable select
   const componentOptions: SearchableSelectOption[] = products
