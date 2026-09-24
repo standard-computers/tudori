@@ -1,6 +1,6 @@
 import type { ColumnDefinition } from '@/hooks/use-column-visibility';
 
-export export const VENDOR_COLUMNS: ColumnDefinition[] = [
+export const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: "vendor_id", label: "ID", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "type", label: "Type", defaultVisible: true },
@@ -18,7 +18,7 @@ export export const VENDOR_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const SALES_ORDER_COLUMNS: ColumnDefinition[] = [
+export const SALES_ORDER_COLUMNS: ColumnDefinition[] = [
   { key: "so_number", label: "SO #", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
   { key: "customer", label: "Customer", defaultVisible: true },
@@ -28,7 +28,7 @@ export export const SALES_ORDER_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const RATE_COLUMNS: ColumnDefinition[] = [
+export const RATE_COLUMNS: ColumnDefinition[] = [
   { key: "rate_id", label: "Rate ID", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "type", label: "Type", defaultVisible: true },
@@ -44,7 +44,7 @@ export export const RATE_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const DEBIT_MEMO_COLUMNS: ColumnDefinition[] = [
+export const DEBIT_MEMO_COLUMNS: ColumnDefinition[] = [
   { key: 'memo_number', label: 'Memo #', defaultVisible: true },
   { key: 'memo_date', label: 'Date', defaultVisible: true },
   { key: 'account', label: 'Account', defaultVisible: true },
@@ -55,7 +55,7 @@ export export const DEBIT_MEMO_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const PRODUCT_COLUMNS: ColumnDefinition[] = [
+export const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: "product_id", label: "ID", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "sku", label: "SKU", defaultVisible: true },
@@ -79,7 +79,7 @@ export export const PRODUCT_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const PRODUCTION_ORDER_COLUMNS: ColumnDefinition[] = [
+export const PRODUCTION_ORDER_COLUMNS: ColumnDefinition[] = [
   { key: 'order_number', label: 'Order #', defaultVisible: true },
   { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
   { key: 'bom_name', label: 'BoM', defaultVisible: true },
@@ -93,7 +93,7 @@ export export const PRODUCTION_ORDER_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const ORDER_COLUMNS: ColumnDefinition[] = [
+export const ORDER_COLUMNS: ColumnDefinition[] = [
   { key: "select", label: "Select", alwaysVisible: true },
   { key: "po_number", label: "PO #", defaultVisible: true },
   { key: "status", label: "Status", defaultVisible: true },
@@ -111,7 +111,7 @@ export export const ORDER_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const ACCOUNT_COLUMNS: ColumnDefinition[] = [
+export const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'account_id', label: 'ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'type', label: 'Type', defaultVisible: true },
@@ -126,7 +126,7 @@ export export const ACCOUNT_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const BOM_COLUMNS: ColumnDefinition[] = [
+export const BOM_COLUMNS: ColumnDefinition[] = [
   { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'product', label: 'Output Product', defaultVisible: true },
@@ -137,7 +137,7 @@ export export const BOM_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
+export const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
   { key: 'issue_number', label: 'Issue #', defaultVisible: true },
   { key: 'issue_date', label: 'Date', defaultVisible: true },
   { key: 'location', label: 'Location', defaultVisible: true },
@@ -149,7 +149,7 @@ export export const GOODS_ISSUE_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const CUSTOMER_COLUMNS: ColumnDefinition[] = [
+export const CUSTOMER_COLUMNS: ColumnDefinition[] = [
   { key: 'customer_id', label: 'ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
   { key: 'type', label: 'Type', defaultVisible: true },
@@ -165,7 +165,7 @@ export export const CUSTOMER_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const GOODS_RECEIPT_COLUMNS: ColumnDefinition[] = [
+export const GOODS_RECEIPT_COLUMNS: ColumnDefinition[] = [
   { key: 'receipt_number', label: 'Receipt #', defaultVisible: true },
   { key: 'delivery', label: 'Delivery', defaultVisible: true },
   { key: 'receipt_date', label: 'Date', defaultVisible: true },
@@ -177,7 +177,7 @@ export export const GOODS_RECEIPT_COLUMNS: ColumnDefinition[] = [
   { key: 'actions', label: 'Actions', alwaysVisible: true },
 ];
 
-export export const CREDIT_MEMO_COLUMNS: ColumnDefinition[] = [
+export const CREDIT_MEMO_COLUMNS: ColumnDefinition[] = [
   { key: "memo_number", label: "Memo #", defaultVisible: true },
   { key: "memo_date", label: "Date", defaultVisible: true },
   { key: "account", label: "Account", defaultVisible: true },
@@ -188,7 +188,7 @@ export export const CREDIT_MEMO_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const ASSET_COLUMNS: ColumnDefinition[] = [
+export const ASSET_COLUMNS: ColumnDefinition[] = [
   { key: "asset_tag", label: "Tag", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "location", label: "Location", defaultVisible: true },
@@ -201,7 +201,7 @@ export export const ASSET_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
-export export const INVENTORY_COLUMNS: ColumnDefinition[] = [
+export const INVENTORY_COLUMNS: ColumnDefinition[] = [
   { key: 'product_id', label: 'Product ID', defaultVisible: true },
   { key: 'product_name', label: 'Product Name', defaultVisible: true },
   { key: 'sku', label: 'SKU', defaultVisible: true },
@@ -214,7 +214,7 @@ export export const INVENTORY_COLUMNS: ColumnDefinition[] = [
   { key: 'max', label: 'Max', defaultVisible: true },
 ];
 
-export export const LOCATION_COLUMNS: ColumnDefinition[] = [
+export const LOCATION_COLUMNS: ColumnDefinition[] = [
   { key: "location_id", label: "ID", defaultVisible: true },
   { key: "name", label: "Name", defaultVisible: true },
   { key: "type", label: "Type", defaultVisible: true },
