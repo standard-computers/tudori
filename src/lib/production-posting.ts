@@ -75,12 +75,9 @@ export async function createProductionGoodsIssue(params: {
     const giItems = items.map(item => ({
       goods_issue_id: issueId,
       product_id: item.productId,
-      // GI item quantities are whole numbers; round fractional consumption up
-      quantity: Math.ceil(item.quantity - 1e-9),
+      quantity: item.quantity,
       bin_id: item.binId,
-      notes: Number.isInteger(item.quantity)
-        ? `Production consumption for ${orderNumber}`
-        : `Production consumption for ${orderNumber} (actual ${item.quantity})`,
+      notes: `Production consumption for ${orderNumber}`,
     }));
 
     const { error: itemsError } = await supabase.from('goods_issue_items' as any).insert(giItems);
