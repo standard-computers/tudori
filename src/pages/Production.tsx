@@ -926,33 +926,35 @@ const Production = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDuplicate = async (order: ProductionOrder) => {
+  const handleCopyFromView = async () => {
+    const order = orders.find(o => o.id === editingId);
+    if (!order) return;
     try {
       const { data: nextId, error: idError } = await supabase.rpc('get_next_production_order_number', {
         p_company_id: companyId!,
       });
       if (idError) throw idError;
 
-      const { error } = await supabase
-        .from('production_orders')
-        .insert({
-          company_id: companyId!,
-          order_number: nextId || order.order_number,
-          bom_id: order.bom_id,
-          product_id: order.product_id,
-          location_id: order.location_id,
-          quantity: order.quantity,
-          status: 'pending',
-          scheduled_date: order.scheduled_date,
-          notes: order.notes,
-        });
-
-      if (error) throw error;
-      toast.success(`Duplicated ${order.order_number} as ${nextId || 'new order'}`);
-      fetchOrders();
-      fetchNextOrderNumber();
+      setFormData({
+        order_number: nextId || nextOrderNumber,
+        bom_id: order.bom_id || '',
+        location_id: order.location_id,
+        quantity: order.quantity,
+        status: 'pending',
+        scheduled_date: order.scheduled_date || '',
+        notes: order.notes || '',
+        assigned_employee_id: '',
+      });
+      setIsViewMode(false);
+      setIsEditing(false);
+      setIsAssignMode(false);
+      setEditingId(null);
+      if (order.bom_id) {
+        await fetchBomItems(order.bom_id);
+      }
+      toast.success(`New order pre-filled from ${order.order_number}`);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to duplicate production order');
+      toast.error(err.message || 'Failed to copy production order');
     }
   };
 
