@@ -82,7 +82,7 @@ const POS = () => {
   const [locationRates, setLocationRates] = useState<LocationRate[]>([]);
   const [posCount, setPosCount] = useState(1);
   const [posAssignments, setPosAssignments] = useState<{ pos_number: number; user_id: string; employee_id: string | null }[]>([]);
-  const [locationEmployees, setLocationEmployees] = useState<{ id: string; user_id: string; name: string }[]>([]);
+  const [locationEmployees, setLocationEmployees] = useState<{ id: string; user_id: string; name: string; fullName: string; clockedIn: boolean }[]>([]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignEmployeeId, setAssignEmployeeId] = useState('');
   const [assignPosNumber, setAssignPosNumber] = useState('');
