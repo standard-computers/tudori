@@ -34,7 +34,8 @@ import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { AutoMakeInvoicesDialog } from '@/components/accounts/AutoMakeInvoicesDialog';
 import { CreateCreditMemoDialog } from '@/components/accounts/CreateCreditMemoDialog';
 import { CreateDebitMemoDialog } from '@/components/accounts/CreateDebitMemoDialog';
-import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote, Info, Download } from 'lucide-react';
+import { ArrowLeft, Users, Loader2, FileText, MoreHorizontal, DollarSign, Plus, Minus, Wand2, Eye, Maximize2, Minimize2, StickyNote, Info, Download, Undo2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format, parseISO } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { useExcel } from '@/hooks/use-excel';
@@ -131,6 +132,7 @@ const AccountDetail = () => {
   // Dialog states
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -467,6 +469,62 @@ const AccountDetail = () => {
     } catch (error: any) {
       console.error('Error accepting payment:', error);
       toast.error(error.message || 'Failed to accept payment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRefundPayment = async () => {
+    if (!refundTarget || !companyId) return;
+    setIsSubmitting(true);
+    try {
+      const original = refundTarget;
+      const amount = Math.abs(Number(original.amount));
+      const { data: refundNumber } = await supabase.rpc('get_next_payment_number', { p_company_id: companyId });
+      const today = new Date().toISOString().split('T')[0];
+
+      const { error: refundError } = await supabase.from('payments' as any).insert({
+        payment_number: refundNumber,
+        company_id: companyId,
+        account_id: original.account_id,
+        invoice_id: original.invoice_id,
+        amount: -amount,
+        payment_date: today,
+        processed_by: user?.id,
+        status: 'refund',
+        notes: `Refund of payment ${original.payment_number}`,
+      } as any);
+      if (refundError) throw refundError;
+
+      const { error: updError } = await supabase.from('payments' as any)
+        .update({ status: 'refunded' }).eq('id', original.id);
+      if (updError) throw updError;
+
+      const inv = invoices.find(i => i.id === original.invoice_id);
+      let ledgerId = inv?.ledger_id || account?.ledger_id || null;
+      if (!ledgerId && account?.location_id) {
+        const { getInventoryLedgerId } = await import('@/lib/inventory-account');
+        ledgerId = await getInventoryLedgerId(account.location_id, companyId);
+      }
+      if (ledgerId) {
+        const { error: ledgerError } = await supabase.from('ledger_transactions' as any).insert({
+          ledger_id: ledgerId,
+          transaction_type: 'refund',
+          reference_id: original.invoice_id,
+          reference_number: refundNumber,
+          amount: -amount,
+          description: `Refund ${refundNumber} of Payment ${original.payment_number}`,
+          transaction_date: today,
+        } as any);
+        if (ledgerError) throw new Error(`Ledger posting failed: ${ledgerError.message}`);
+      }
+
+      toast.success(`Payment ${original.payment_number} refunded`);
+      setRefundTarget(null);
+      fetchAccountAndInvoices();
+    } catch (error: any) {
+      console.error('Error refunding payment:', error);
+      toast.error(error.message || 'Failed to refund payment');
     } finally {
       setIsSubmitting(false);
     }
@@ -924,12 +982,13 @@ const AccountDetail = () => {
                   {paymentLayout.isColumnVisible('processed_by') && <TableHead>Processed By</TableHead>}
                   {paymentLayout.isColumnVisible('notes') && <TableHead>Notes</TableHead>}
                   {paymentLayout.isColumnVisible('created_at') && <TableHead>Created</TableHead>}
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPayments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={Math.max(paymentColumnCount, 1)} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={paymentColumnCount + 1} className="text-center text-muted-foreground py-8">
                       No payments found for this account.
                     </TableCell>
                   </TableRow>
@@ -951,6 +1010,13 @@ const AccountDetail = () => {
                       {paymentLayout.isColumnVisible('processed_by') && <TableCell className="font-mono text-sm">{payment.processed_by || '-'}</TableCell>}
                       {paymentLayout.isColumnVisible('notes') && <TableCell className="max-w-[300px] truncate">{payment.notes || '-'}</TableCell>}
                       {paymentLayout.isColumnVisible('created_at') && <TableCell>{format(parseISO(payment.created_at), 'MMM d, yyyy h:mm a')}</TableCell>}
+                      <TableCell className="w-10">
+                        {Number(payment.amount) > 0 && payment.status !== 'refunded' && (
+                          <Button variant="ghost" size="icon" title="Refund payment" onClick={() => setRefundTarget(payment)}>
+                            <Undo2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -959,6 +1025,23 @@ const AccountDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={!!refundTarget} onOpenChange={(o) => !o && !isSubmitting && setRefundTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Refund payment {refundTarget?.payment_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A separate refund line of -${Number(refundTarget?.amount || 0).toFixed(2)} will be added to this account and posted to the ledger.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={isSubmitting} onClick={(e) => { e.preventDefault(); handleRefundPayment(); }}>
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Refund
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Accept Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
