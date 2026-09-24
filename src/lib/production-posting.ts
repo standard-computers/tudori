@@ -1,6 +1,20 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * Whether production consumption should post a Goods Issue (default: enabled)
+ */
+export async function isProductionGIEnabled(companyId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('company_settings')
+    .select('setting_value')
+    .eq('company_id', companyId)
+    .eq('setting_key', 'process_controls')
+    .maybeSingle();
+  const val = data?.setting_value as Record<string, unknown> | null;
+  return typeof val?.perform_production_order_gi === 'boolean' ? val.perform_production_order_gi : true;
+}
+
+/**
  * Create a Goods Issue for production component consumption
  */
 export async function createProductionGoodsIssue(params: {
@@ -14,9 +28,19 @@ export async function createProductionGoodsIssue(params: {
     binId: string | null;
   }>;
 }): Promise<string | null> {
-  const { companyId, locationId, orderId, orderNumber, items } = params;
+  const { companyId, locationId, orderId, orderNumber } = params;
+  // Merge duplicate product/bin lines and drop zero quantities
+  const merged = new Map<string, { productId: string; quantity: number; binId: string | null }>();
+  for (const it of params.items) {
+    if (!it.quantity || it.quantity <= 0) continue;
+    const key = `${it.productId}|${it.binId ?? ''}`;
+    const ex = merged.get(key);
+    if (ex) ex.quantity += it.quantity; else merged.set(key, { ...it });
+  }
+  const items = Array.from(merged.values());
 
   if (items.length === 0) return null;
+  if (!(await isProductionGIEnabled(companyId))) return null;
 
   try {
     // Generate GI number
@@ -34,6 +58,7 @@ export async function createProductionGoodsIssue(params: {
         company_id: companyId,
         location_id: locationId,
         status: 'posted',
+        production_order_id: orderId,
         notes: `Production consumption for ${orderNumber}`,
       })
       .select('id')
@@ -50,12 +75,20 @@ export async function createProductionGoodsIssue(params: {
     const giItems = items.map(item => ({
       goods_issue_id: issueId,
       product_id: item.productId,
-      quantity: item.quantity,
+      // GI item quantities are whole numbers; round fractional consumption up
+      quantity: Math.ceil(item.quantity - 1e-9),
       bin_id: item.binId,
-      notes: `Production consumption for ${orderNumber}`,
+      notes: Number.isInteger(item.quantity)
+        ? `Production consumption for ${orderNumber}`
+        : `Production consumption for ${orderNumber} (actual ${item.quantity})`,
     }));
 
-    await supabase.from('goods_issue_items' as any).insert(giItems);
+    const { error: itemsError } = await supabase.from('goods_issue_items' as any).insert(giItems);
+    if (itemsError) {
+      console.error('Failed to create production goods issue items:', itemsError);
+      await supabase.from('goods_issues' as any).delete().eq('id', issueId);
+      return null;
+    }
 
     return issueId;
   } catch (error) {

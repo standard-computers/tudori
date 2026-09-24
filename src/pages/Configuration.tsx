@@ -46,6 +46,7 @@ const DOCUMENT_TYPES = [
   { value: 'location', label: 'Location', prefix_placeholder: 'LOC-', icon: MapPin },
   { value: 'outbound_delivery', label: 'Outbound Delivery', prefix_placeholder: 'OD', icon: Truck },
   { value: 'packaging_unit', label: 'Packaging Unit', prefix_placeholder: 'PU-', icon: Boxes },
+  { value: 'production_order', label: 'Production Order', prefix_placeholder: 'PRO-', icon: ClipboardList },
   { value: 'product', label: 'Product', prefix_placeholder: 'PRD-', icon: Package },
   { value: 'purchase_order', label: 'Purchase Order', prefix_placeholder: 'PO-', icon: ShoppingCart },
   { value: 'requisition', label: 'Requisition', prefix_placeholder: 'REQ-', icon: FileText },
@@ -77,6 +78,7 @@ interface ProcessControlSettings {
    allow_requisition_editing: boolean;
    auto_allocate_rates: boolean;
    allow_agreement_pricing_edits: boolean;
+  perform_production_order_gi: boolean;
 }
 
 interface ImportExportSettings {
@@ -148,6 +150,7 @@ const Configuration = () => {
      allow_requisition_editing: true,
      auto_allocate_rates: false,
      allow_agreement_pricing_edits: false,
+    perform_production_order_gi: true,
    });
   const [importExportSettings, setImportExportSettings] = useState<ImportExportSettings>(DEFAULT_IMPORT_EXPORT_SETTINGS);
   const [changeHistorySettings, setChangeHistorySettings] = useState<ChangeHistorySettings>(DEFAULT_CHANGE_HISTORY_SETTINGS);
@@ -319,6 +322,7 @@ const Configuration = () => {
            allow_requisition_editing: (val.allow_requisition_editing as boolean) ?? true,
            auto_allocate_rates: (val.auto_allocate_rates as boolean) ?? false,
            allow_agreement_pricing_edits: (val.allow_agreement_pricing_edits as boolean) ?? false,
+          perform_production_order_gi: (val.perform_production_order_gi as boolean) ?? true,
          });
       }
     } catch (error) {
@@ -552,6 +556,7 @@ const Configuration = () => {
          allow_requisition_editing: processControls.allow_requisition_editing,
          auto_allocate_rates: processControls.auto_allocate_rates,
          allow_agreement_pricing_edits: processControls.allow_agreement_pricing_edits,
+        perform_production_order_gi: processControls.perform_production_order_gi,
        };
 
       if (existing) {
@@ -913,6 +918,29 @@ const Configuration = () => {
                             />
                           </div>
                         </div>
+
+                        {docType.value === 'production_order' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Posting Settings</h4>
+                              <p className="text-xs text-muted-foreground">Control inventory documents created by production</p>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Perform Production Order GI</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Create a Goods Issue with the consumed quantities when components are consumed by a production order
+                                </p>
+                              </div>
+                              <Switch
+                                checked={processControls.perform_production_order_gi}
+                                onCheckedChange={(checked) =>
+                                  setProcessControls(prev => ({ ...prev, perform_production_order_gi: checked }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
 
                         {docType.value === 'product' && (
                           <div className="space-y-4 pt-4 border-t">
