@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { UserMinus } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 
 interface Props {
   locationId: string;
@@ -22,6 +23,7 @@ interface Assignment {
 const POSAssignmentsSection = ({ locationId, onSaved }: Props) => {
   const [count, setCount] = useState<string>('1');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [unassignTarget, setUnassignTarget] = useState<Assignment | null>(null);
 
   const load = async () => {
     const [{ data: loc }, { data: asg }] = await Promise.all([
@@ -87,13 +89,27 @@ const POSAssignmentsSection = ({ locationId, onSaved }: Props) => {
           {assignments.map(a => (
             <div key={a.id} className="flex items-center justify-between text-sm">
               <span>POS {a.pos_number} — {a.name}</span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" title="Unassign" onClick={() => unassign(a.id)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" title="Unassign" onClick={() => setUnassignTarget(a)}>
                 <UserMinus className="w-4 h-4 text-destructive" />
               </Button>
             </div>
           ))}
         </div>
       )}
+      <ConfirmDeleteDialog
+        open={!!unassignTarget}
+        onOpenChange={(open) => { if (!open) setUnassignTarget(null); }}
+        title="Unassign POS"
+        description={unassignTarget
+          ? `Are you sure you want to unassign ${unassignTarget.name || 'this user'} from POS ${unassignTarget.pos_number}? They will lose access to this terminal until assigned again.`
+          : ''}
+        confirmLabel="Unassign"
+        onConfirm={() => {
+          const target = unassignTarget;
+          setUnassignTarget(null);
+          if (target) unassign(target.id);
+        }}
+      />
     </div>
   );
 };
