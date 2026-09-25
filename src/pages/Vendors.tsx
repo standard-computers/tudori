@@ -1587,6 +1587,19 @@ const Vendors = () => {
                       <Label className="text-muted-foreground text-xs">Payment Terms</Label>
                       <p>{viewingVendor.payment_terms ? `${viewingVendor.payment_terms} days` : "-"}</p>
                     </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Interconnect</Label>
+                      {(viewingVendor as any).interconnect_id ? (
+                        <p className="flex items-center gap-1.5">
+                          <Plug className="w-3.5 h-3.5 text-violet-500" />
+                          {partnerFor((viewingVendor as any).interconnect_id)
+                            ? `${partnerFor((viewingVendor as any).interconnect_id)!.name} (${partnerFor((viewingVendor as any).interconnect_id)!.interconnect_code})`
+                            : "Linked"}
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground">Not linked</p>
+                      )}
+                    </div>
                   </div>
                   </div>
                 </TabsContent>
