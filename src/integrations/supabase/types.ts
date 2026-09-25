@@ -5846,6 +5846,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          interconnect_id: string | null
           name: string
           notes: string | null
           payment_terms: number | null
@@ -5868,6 +5869,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          interconnect_id?: string | null
           name: string
           notes?: string | null
           payment_terms?: number | null
@@ -5890,6 +5892,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          interconnect_id?: string | null
           name?: string
           notes?: string | null
           payment_terms?: number | null
@@ -5908,6 +5911,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendors_interconnect_id_fkey"
+            columns: ["interconnect_id"]
+            isOneToOne: false
+            referencedRelation: "interconnects"
             referencedColumns: ["id"]
           },
         ]
@@ -6239,6 +6249,24 @@ export type Database = {
           id: string
           social_id: string
           wage: number
+        }[]
+      }
+      list_interconnect_partners: {
+        Args: never
+        Returns: {
+          address_line1: string
+          address_line2: string
+          city: string
+          country: string
+          interconnect_code: string
+          interconnect_name: string
+          interconnect_uuid: string
+          name: string
+          partner_company_id: string
+          phone: string
+          postal_code: string
+          state: string
+          website: string
         }[]
       }
       upsert_employee_sensitive: {
