@@ -40,7 +40,7 @@ export function InterconnectVendorPicker({ companyId, currentId, onSelect }: Pro
       const usedIds = new Set((used || []).map((v: any) => v.interconnect_id));
       setPartners(((data as InterconnectPartner[]) || []).filter(p => !usedIds.has(p.interconnect_uuid) || p.interconnect_uuid === currentId));
     })();
-  }, [companyId]);
+  }, [companyId, currentId]);
 
   if (partners.length === 0) return null;
 

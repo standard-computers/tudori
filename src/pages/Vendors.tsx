@@ -49,6 +49,8 @@ import {
   MapPin,
   Maximize2,
   Minimize2,
+  Plug,
+  Unlink,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,7 +62,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
-import { InterconnectVendorPicker } from "@/components/vendors/InterconnectVendorPicker";
+import { InterconnectVendorPicker, InterconnectPartner } from "@/components/vendors/InterconnectVendorPicker";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { toast } from "@/lib/toast";
