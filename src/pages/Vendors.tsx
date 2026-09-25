@@ -595,6 +595,17 @@ const Vendors = () => {
     interconnect_id: "",
   });
 
+  // Interconnected companies (for indicator/label resolution)
+  const [partners, setPartners] = useState<InterconnectPartner[]>([]);
+  useEffect(() => {
+    if (!companyId) return;
+    (async () => {
+      const { data } = await supabase.rpc('list_interconnect_partners' as any);
+      setPartners((data as InterconnectPartner[]) || []);
+    })();
+  }, [companyId]);
+  const partnerFor = (uuid?: string | null) => partners.find(p => p.interconnect_uuid === uuid) || null;
+
   // Set transaction based on dialog state
   useEffect(() => {
     if (isDialogOpen) {
