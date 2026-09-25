@@ -49,6 +49,8 @@ import {
   MapPin,
   Maximize2,
   Minimize2,
+  Plug,
+  Unlink,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,7 +62,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
-import { InterconnectVendorPicker } from "@/components/vendors/InterconnectVendorPicker";
+import { InterconnectVendorPicker, InterconnectPartner } from "@/components/vendors/InterconnectVendorPicker";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { toast } from "@/lib/toast";
@@ -592,6 +594,17 @@ const Vendors = () => {
     payment_terms: "",
     interconnect_id: "",
   });
+
+  // Interconnected companies (for indicator/label resolution)
+  const [partners, setPartners] = useState<InterconnectPartner[]>([]);
+  useEffect(() => {
+    if (!companyId) return;
+    (async () => {
+      const { data } = await supabase.rpc('list_interconnect_partners' as any);
+      setPartners((data as InterconnectPartner[]) || []);
+    })();
+  }, [companyId]);
+  const partnerFor = (uuid?: string | null) => partners.find(p => p.interconnect_uuid === uuid) || null;
 
   // Set transaction based on dialog state
   useEffect(() => {
@@ -1355,6 +1368,41 @@ const Vendors = () => {
                             />
                           </div>
                         </div>
+                        <div className="space-y-2">
+                          <Label>Interconnect</Label>
+                          <div className="flex items-center gap-2 h-10">
+                            {formData.interconnect_id ? (
+                              <>
+                                <Badge variant="outline" className="gap-1.5 font-normal">
+                                  <Plug className="w-3 h-3 text-violet-500" />
+                                  {partnerFor(formData.interconnect_id)
+                                    ? `${partnerFor(formData.interconnect_id)!.name} (${partnerFor(formData.interconnect_id)!.interconnect_code})`
+                                    : "Linked to an interconnect"}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground"
+                                  title="Unlink interconnect"
+                                  onClick={() => setFormData({ ...formData, interconnect_id: "" })}
+                                >
+                                  <Unlink className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Not linked</span>
+                            )}
+                            <InterconnectVendorPicker
+                              companyId={companyId}
+                              currentId={formData.interconnect_id || null}
+                              onSelect={(p) => {
+                                setFormData((prev) => ({ ...prev, interconnect_id: p.interconnect_uuid }));
+                                addMessage(`Linked to interconnect ${p.interconnect_code}`, "success");
+                              }}
+                            />
+                          </div>
+                        </div>
                       </TabsContent>
 
                       <TabsContent value="notes" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0">
@@ -1538,6 +1586,19 @@ const Vendors = () => {
                     <div>
                       <Label className="text-muted-foreground text-xs">Payment Terms</Label>
                       <p>{viewingVendor.payment_terms ? `${viewingVendor.payment_terms} days` : "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Interconnect</Label>
+                      {(viewingVendor as any).interconnect_id ? (
+                        <p className="flex items-center gap-1.5">
+                          <Plug className="w-3.5 h-3.5 text-violet-500" />
+                          {partnerFor((viewingVendor as any).interconnect_id)
+                            ? `${partnerFor((viewingVendor as any).interconnect_id)!.name} (${partnerFor((viewingVendor as any).interconnect_id)!.interconnect_code})`
+                            : "Linked"}
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground">Not linked</p>
+                      )}
                     </div>
                   </div>
                   </div>

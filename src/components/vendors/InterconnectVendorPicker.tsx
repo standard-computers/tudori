@@ -22,10 +22,11 @@ export interface InterconnectPartner {
 
 interface Props {
   companyId?: string;
+  currentId?: string | null;
   onSelect: (p: InterconnectPartner) => void;
 }
 
-export function InterconnectVendorPicker({ companyId, onSelect }: Props) {
+export function InterconnectVendorPicker({ companyId, currentId, onSelect }: Props) {
   const [partners, setPartners] = useState<InterconnectPartner[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -37,9 +38,9 @@ export function InterconnectVendorPicker({ companyId, onSelect }: Props) {
         supabase.from('vendors').select('interconnect_id').eq('company_id', companyId).not('interconnect_id', 'is', null),
       ]);
       const usedIds = new Set((used || []).map((v: any) => v.interconnect_id));
-      setPartners(((data as InterconnectPartner[]) || []).filter(p => !usedIds.has(p.interconnect_uuid)));
+      setPartners(((data as InterconnectPartner[]) || []).filter(p => !usedIds.has(p.interconnect_uuid) || p.interconnect_uuid === currentId));
     })();
-  }, [companyId]);
+  }, [companyId, currentId]);
 
   if (partners.length === 0) return null;
 
