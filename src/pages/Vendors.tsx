@@ -60,6 +60,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
+import { InterconnectVendorPicker } from "@/components/vendors/InterconnectVendorPicker";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { AuditHistoryTab } from "@/components/AuditHistoryTab";
 import { toast } from "@/lib/toast";
@@ -589,6 +590,7 @@ const Vendors = () => {
     website: "",
     notes: "",
     payment_terms: "",
+    interconnect_id: "",
   });
 
   // Set transaction based on dialog state
@@ -748,6 +750,7 @@ const Vendors = () => {
       website: "",
       notes: "",
       payment_terms: "",
+      interconnect_id: "",
     });
     setIsEditing(false);
     setEditingId(null);
@@ -790,6 +793,7 @@ const Vendors = () => {
       website: vendor.website || "",
       notes: vendor.notes || "",
       payment_terms: vendor.payment_terms?.toString() || "",
+      interconnect_id: (vendor as any).interconnect_id || "",
     });
     setIsEditing(true);
     setEditingId(vendor.id);
@@ -935,6 +939,7 @@ const Vendors = () => {
         website: formData.website || null,
         notes: formData.notes || null,
         payment_terms: formData.payment_terms ? parseInt(formData.payment_terms, 10) : null,
+        interconnect_id: formData.interconnect_id || null,
       });
 
       if (error) {
@@ -1104,6 +1109,27 @@ const Vendors = () => {
                             payment_terms: vendor.payment_terms?.toString() || "",
                             notes: vendor.notes || "",
                           }));
+                        }}
+                      />
+                    )}
+                    {!isEditing && isDialogOpen && (
+                      <InterconnectVendorPicker
+                        companyId={companyId}
+                        onSelect={(p) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            name: p.name,
+                            phone: p.phone || "",
+                            website: p.website || "",
+                            address_line1: p.address_line1 || "",
+                            address_line2: p.address_line2 || "",
+                            city: p.city || "",
+                            state: p.state || "",
+                            postal_code: p.postal_code || "",
+                            country: p.country || prev.country,
+                            interconnect_id: p.interconnect_uuid,
+                          }));
+                          addMessage(`Filled from interconnect ${p.interconnect_code}`, "success");
                         }}
                       />
                     )}
