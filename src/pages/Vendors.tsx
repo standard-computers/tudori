@@ -1368,6 +1368,41 @@ const Vendors = () => {
                             />
                           </div>
                         </div>
+                        <div className="space-y-2">
+                          <Label>Interconnect</Label>
+                          <div className="flex items-center gap-2 h-10">
+                            {formData.interconnect_id ? (
+                              <>
+                                <Badge variant="outline" className="gap-1.5 font-normal">
+                                  <Plug className="w-3 h-3 text-violet-500" />
+                                  {partnerFor(formData.interconnect_id)
+                                    ? `${partnerFor(formData.interconnect_id)!.name} (${partnerFor(formData.interconnect_id)!.interconnect_code})`
+                                    : "Linked to an interconnect"}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground"
+                                  title="Unlink interconnect"
+                                  onClick={() => setFormData({ ...formData, interconnect_id: "" })}
+                                >
+                                  <Unlink className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Not linked</span>
+                            )}
+                            <InterconnectVendorPicker
+                              companyId={companyId}
+                              currentId={formData.interconnect_id || null}
+                              onSelect={(p) => {
+                                setFormData((prev) => ({ ...prev, interconnect_id: p.interconnect_uuid }));
+                                addMessage(`Linked to interconnect ${p.interconnect_code}`, "success");
+                              }}
+                            />
+                          </div>
+                        </div>
                       </TabsContent>
 
                       <TabsContent value="notes" className="flex-1 overflow-y-auto px-6 py-4 pb-6 mt-0">
