@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils";
 import { Kbd } from "@/components/ui/kbd";
 import { Badge } from "@/components/ui/badge";
 import { CopyFromIdDialog } from "@/components/CopyFromIdDialog";
+import { InterconnectProductPicker } from "@/components/products/InterconnectProductPicker";
 import { SafetyStockTab } from "@/components/products/SafetyStockTab";
 import { toast } from '@/lib/toast';
 import { useExcel } from "@/hooks/use-excel";
@@ -749,6 +750,7 @@ const Products = () => {
     restrict_modifications: false,
     restricted_products: [] as { product_id: string; quantity: string; uom_id: string }[],
   });
+  const [interconnectLink, setInterconnectLink] = useState<{ id: string; productId: string | null; label: string } | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -1217,6 +1219,7 @@ const Products = () => {
     setImageFile(null);
     setImagePreview(null);
     setUoms([]);
+    setInterconnectLink(null);
     setNewUom({ name: "", abbreviation: "", conversion_factor: "1" });
     setComponents([]);
     setNewComponent({ product_id: "", quantity: "1", uom_id: "" });
@@ -1240,6 +1243,21 @@ const Products = () => {
   useTransactionAction('new', handleOpenDialog);
 
   const handleEdit = async (product: Product) => {
+    const icId = (product as any).interconnect_id as string | null;
+    if (icId) {
+      const { data: ic } = await supabase
+        .from("interconnects")
+        .select("interconnect_id, name")
+        .eq("id", icId)
+        .maybeSingle();
+      setInterconnectLink({
+        id: icId,
+        productId: (product as any).interconnect_product_id || null,
+        label: ic ? `${ic.name || ""} · ${ic.interconnect_id}` : "Linked",
+      });
+    } else {
+      setInterconnectLink(null);
+    }
     setFormData({
       product_id: product.product_id,
       vendor_id: product.vendor_id || "",
@@ -1733,6 +1751,8 @@ const Products = () => {
           allow_modifications: formData.allow_modifications,
           restrict_modifications: formData.restrict_modifications,
           restricted_products: formData.restricted_products,
+          interconnect_id: interconnectLink?.id || null,
+          interconnect_product_id: interconnectLink?.productId || null,
         } as any)
         .select("id")
         .single();
@@ -2065,6 +2085,54 @@ const Products = () => {
                           }
                         }}
                       />
+                      <InterconnectProductPicker
+                        companyId={companyId}
+                        onSelect={(p) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            vendor_id: p.vendor_id,
+                            vendor_part_number: p.product_code,
+                            name: p.name,
+                            description: p.description || "",
+                            link: p.link || "",
+                            category: p.category || "",
+                            price: p.price?.toString() || "",
+                            unit: p.unit || prev.unit,
+                            is_batched: p.is_batched ?? false,
+                            min_shelf_life_days: p.min_shelf_life_days?.toString() || "",
+                            keep_inventory: p.keep_inventory ?? true,
+                            is_consumable: p.is_consumable ?? false,
+                            width: p.width?.toString() || "",
+                            length: p.length?.toString() || "",
+                            height: p.height?.toString() || "",
+                            weight: p.weight?.toString() || "",
+                            width_uom: p.width_uom || "in",
+                            length_uom: p.length_uom || "in",
+                            height_uom: p.height_uom || "in",
+                            weight_uom: p.weight_uom || "lb",
+                            transport_time_days: p.transport_time_days?.toString() || "",
+                            manufacture_time_days: p.manufacture_time_days?.toString() || "",
+                            lead_time_days: p.lead_time_days?.toString() || "",
+                            hazardous: p.hazardous ?? false,
+                            serialized: p.serialized ?? false,
+                            is_pos_available: p.is_pos_available ?? true,
+                          }));
+                          setUoms(
+                            (p.uoms || []).map((u) => ({
+                              name: u.name,
+                              abbreviation: u.abbreviation || "",
+                              conversion_factor: u.conversion_factor?.toString() || "1",
+                              lower_uom: u.lower_uom || "",
+                            })),
+                          );
+                          setInterconnectLink({
+                            id: p.interconnect_uuid,
+                            productId: p.source_product_id,
+                            label: `${p.vendor_name} · ${p.product_code}`,
+                          });
+                          toast.success("Filled from interconnected vendor product");
+                        }}
+                      />
                     </div>
                   )}
                   <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
@@ -2203,6 +2271,20 @@ const Products = () => {
                               placeholder="Widget Pro 3000"
                               required
                             />
+                          </div>
+                          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Plug className={`w-4 h-4 ${interconnectLink ? "text-primary" : "text-muted-foreground"}`} />
+                              <span className="font-medium">Interconnect</span>
+                              <span className="text-muted-foreground">
+                                {interconnectLink ? interconnectLink.label : "Not linked"}
+                              </span>
+                            </div>
+                            {interconnectLink && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setInterconnectLink(null)}>
+                                Unlink
+                              </Button>
+                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
