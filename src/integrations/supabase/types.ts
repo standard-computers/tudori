@@ -4413,6 +4413,7 @@ export type Database = {
           interconnect_product_id: string | null
           is_batched: boolean
           is_consumable: boolean
+          is_interconnect_available: boolean
           is_pos_available: boolean
           keep_inventory: boolean
           lead_time_days: number | null
@@ -4455,6 +4456,7 @@ export type Database = {
           interconnect_product_id?: string | null
           is_batched?: boolean
           is_consumable?: boolean
+          is_interconnect_available?: boolean
           is_pos_available?: boolean
           keep_inventory?: boolean
           lead_time_days?: number | null
@@ -4497,6 +4499,7 @@ export type Database = {
           interconnect_product_id?: string | null
           is_batched?: boolean
           is_consumable?: boolean
+          is_interconnect_available?: boolean
           is_pos_available?: boolean
           keep_inventory?: boolean
           lead_time_days?: number | null
