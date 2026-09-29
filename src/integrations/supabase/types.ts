@@ -4409,6 +4409,8 @@ export type Database = {
           height_uom: string | null
           id: string
           image_url: string | null
+          interconnect_id: string | null
+          interconnect_product_id: string | null
           is_batched: boolean
           is_consumable: boolean
           is_pos_available: boolean
@@ -4449,6 +4451,8 @@ export type Database = {
           height_uom?: string | null
           id?: string
           image_url?: string | null
+          interconnect_id?: string | null
+          interconnect_product_id?: string | null
           is_batched?: boolean
           is_consumable?: boolean
           is_pos_available?: boolean
@@ -4489,6 +4493,8 @@ export type Database = {
           height_uom?: string | null
           id?: string
           image_url?: string | null
+          interconnect_id?: string | null
+          interconnect_product_id?: string | null
           is_batched?: boolean
           is_consumable?: boolean
           is_pos_available?: boolean
@@ -4524,6 +4530,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_interconnect_id_fkey"
+            columns: ["interconnect_id"]
+            isOneToOne: false
+            referencedRelation: "interconnects"
             referencedColumns: ["id"]
           },
           {
@@ -6267,6 +6280,42 @@ export type Database = {
           postal_code: string
           state: string
           website: string
+        }[]
+      }
+      list_interconnect_products: {
+        Args: never
+        Returns: {
+          category: string
+          description: string
+          hazardous: boolean
+          height: number
+          height_uom: string
+          interconnect_code: string
+          interconnect_uuid: string
+          is_batched: boolean
+          is_consumable: boolean
+          is_pos_available: boolean
+          keep_inventory: boolean
+          lead_time_days: number
+          length: number
+          length_uom: string
+          link: string
+          manufacture_time_days: number
+          min_shelf_life_days: number
+          name: string
+          price: number
+          product_code: string
+          serialized: boolean
+          source_product_id: string
+          transport_time_days: number
+          unit: string
+          uoms: Json
+          vendor_id: string
+          vendor_name: string
+          weight: number
+          weight_uom: string
+          width: number
+          width_uom: string
         }[]
       }
       upsert_employee_sensitive: {
