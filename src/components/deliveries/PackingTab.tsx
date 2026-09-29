@@ -350,6 +350,10 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
   const handleSplitItem = async (item: DeliveryItem, divisor: number) => {
     const each = Number(item.quantity) / divisor;
     if (!divisor || divisor < 2 || !Number.isFinite(each) || each <= 0) return;
+    if (Math.abs(each - Math.round(each)) > 1e-9) {
+      toast.error('Quantity is not evenly divisible by that split');
+      return;
+    }
 
     const { data: full, error: fetchError } = await supabase
       .from('delivery_items')
