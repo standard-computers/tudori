@@ -53,6 +53,7 @@ import {
   Search,
   Printer,
 } from "lucide-react";
+import { Plug } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -1704,6 +1705,8 @@ const Products = () => {
           allow_modifications: formData.allow_modifications,
           restrict_modifications: formData.restrict_modifications,
           restricted_products: formData.restricted_products,
+          interconnect_id: interconnectLink?.id || null,
+          interconnect_product_id: interconnectLink?.productId || null,
         } as any)
         .eq("id", editingId);
 
