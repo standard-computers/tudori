@@ -164,7 +164,9 @@ const POS = () => {
       company_id: companyId, location_id: selectedLocationId, pos_number: n,
       user_id: employee.user_id, employee_id: employee.id,
     });
-    if (error) toast.error('That POS is no longer available');
+    if (error) {
+      toast.error(error.code === '23505' ? 'That POS is already assigned' : `Failed to assign POS: ${error.message}`);
+    }
     else {
       toast.success(`${employee.name} assigned to POS ${n}`);
       setAssignDialogOpen(false);
