@@ -92,6 +92,13 @@
       "when": 1790708368567,
       "tag": "0012_add_interconnect_to_products",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790711134383,
+      "tag": "0013_allow_company_members_assign_pos",
+      "breakpoints": true
     }
   ]
 }

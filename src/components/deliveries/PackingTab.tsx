@@ -75,9 +75,10 @@ function DraggableItem({
   }
 
   const parsed = parseInt(divisor, 10);
+  const eachQty = parsed > 1 ? Number(item.quantity) / parsed : NaN;
   const canSplit =
     !!parsed && parsed > 1 && Number(item.quantity) > 0 &&
-    Math.abs((Number(item.quantity) / parsed) - Math.round((Number(item.quantity) / parsed) * 1e6) / 1e6) < 1e-9;
+    Number.isFinite(eachQty) && Math.abs(eachQty - Math.round(eachQty)) < 1e-9;
 
   return (
     <div
