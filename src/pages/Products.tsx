@@ -747,6 +747,7 @@ const Products = () => {
     hazardous: false,
     serialized: false,
     is_pos_available: true,
+    is_interconnect_available: false,
     allow_modifications: false,
     restrict_modifications: false,
     restricted_products: [] as { product_id: string; quantity: string; uom_id: string }[],
@@ -1213,6 +1214,7 @@ const Products = () => {
       hazardous: false,
       serialized: false,
       is_pos_available: true,
+      is_interconnect_available: false,
       allow_modifications: false,
       restrict_modifications: false,
       restricted_products: [],
@@ -1291,6 +1293,7 @@ const Products = () => {
       hazardous: (product as any).hazardous || false,
       serialized: (product as any).serialized || false,
       is_pos_available: (product as any).is_pos_available !== false,
+      is_interconnect_available: (product as any).is_interconnect_available || false,
       allow_modifications: (product as any).allow_modifications || false,
       restrict_modifications: (product as any).restrict_modifications || false,
       restricted_products: (product as any).restricted_products || [],
@@ -1702,6 +1705,7 @@ const Products = () => {
           hazardous: formData.hazardous,
           serialized: formData.serialized,
           is_pos_available: formData.is_pos_available,
+          is_interconnect_available: formData.is_interconnect_available,
           allow_modifications: formData.allow_modifications,
           restrict_modifications: formData.restrict_modifications,
           restricted_products: formData.restricted_products,
@@ -1751,6 +1755,7 @@ const Products = () => {
           hazardous: formData.hazardous,
           serialized: formData.serialized,
           is_pos_available: formData.is_pos_available,
+          is_interconnect_available: formData.is_interconnect_available,
           allow_modifications: formData.allow_modifications,
           restrict_modifications: formData.restrict_modifications,
           restricted_products: formData.restricted_products,
@@ -3416,6 +3421,30 @@ const Products = () => {
                             {!formData.is_pos_available && (
                               <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
                                 This product will be hidden from all POS terminals regardless of location settings.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="border rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label htmlFor="is_interconnect_available" className="text-base">
+                                  Available in Interconnect
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Let interconnected companies add this product from their side
+                                </p>
+                              </div>
+                              <Switch
+                                id="is_interconnect_available"
+                                checked={formData.is_interconnect_available}
+                                onCheckedChange={(checked) => setFormData({ ...formData, is_interconnect_available: checked })}
+                              />
+                            </div>
+
+                            {!formData.is_interconnect_available && (
+                              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                                This product will not appear in interconnect product searches for connected companies.
                               </p>
                             )}
                           </div>
