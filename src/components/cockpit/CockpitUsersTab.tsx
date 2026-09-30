@@ -38,7 +38,7 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
     const [usersRes, locationUsersRes] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, user_id, first_name, last_name')
+        .select('id, user_id, first_name, last_name, profile_id')
         .eq('company_id', companyId),
       supabase
         .from('location_users')

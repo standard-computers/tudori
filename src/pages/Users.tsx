@@ -313,6 +313,7 @@ const Users = () => {
         first_name: p.first_name,
         last_name: p.last_name,
         email: p.email || undefined,
+        profile_id: p.profile_id || undefined,
         role: rolesMap.get(p.user_id) || 'member',
       }));
 
