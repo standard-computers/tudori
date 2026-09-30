@@ -148,7 +148,7 @@ const InvitationRow = ({ invitation, canManageUsers, canResetPasswords, onCancel
 };
 
 
-const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword, title, description }: { 
+export const CreatedPasswordDialog = ({ open, onOpenChange, email, tempPassword, title, description }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void; 
   email: string; 

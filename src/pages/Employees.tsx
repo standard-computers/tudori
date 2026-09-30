@@ -37,6 +37,7 @@ import { useImportExportSettings } from "@/hooks/use-import-export-settings";
 import { useExcel } from "@/hooks/use-excel";
 import { ImportExportButtons } from "@/components/ImportExportButtons";
 import { ImportProgressDialog, ImportResult } from "@/components/ImportProgressDialog";
+import { CreatedPasswordDialog } from "@/pages/Users";
 
 interface Employee {
   id: string;
@@ -279,6 +280,9 @@ const Employees = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [createUserAccount, setCreateUserAccount] = useState(false);
   const [userRole, setUserRole] = useState<'member' | 'admin' | 'viewer' | 'it'>('member');
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [createdPasswordEmail, setCreatedPasswordEmail] = useState('');
+  const [createdTempPassword, setCreatedTempPassword] = useState('');
 
   // Import/Export
   const { isImportEnabled, isExportEnabled } = useImportExportSettings(companyId);
@@ -595,48 +599,49 @@ const Employees = () => {
         }
       }
 
-      // Create user invitation if requested
-      if (createUserAccount && formData.email && !formData.user_id) {
+      // Create the user account directly if requested
+      if (createUserAccount && formData.email && !formData.user_id && employeeId) {
         try {
           const email = formData.email.toLowerCase().trim();
-          const { data: existing } = await supabase
+          // Clear any stale, unaccepted invitation so the new account gets a fresh record
+          await supabase
             .from("invitations")
-            .select("id, accepted_at")
+            .delete()
             .eq("company_id", companyId!)
             .eq("email", email)
-            .maybeSingle();
+            .is("accepted_at", null);
 
-          let inviteError: any = null;
-          if (existing?.accepted_at) {
-            toast.error("This email already accepted an invitation — link the existing user instead");
-          } else if (existing) {
-            // Refresh the existing (possibly expired) invitation instead of failing on the unique constraint
-            const { error } = await supabase
-              .from("invitations")
-              .update({
-                role: userRole,
-                invited_by: user!.id,
-                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              })
-              .eq("id", existing.id);
-            inviteError = error;
-          } else {
-            const { error } = await supabase.from("invitations").insert({
+          const { data, error: fnError } = await supabase.functions.invoke("create-invited-user", {
+            body: {
               email,
-              company_id: companyId!,
               role: userRole,
-              invited_by: user!.id,
-            });
-            inviteError = error;
+              company_id: companyId,
+              first_name: formData.first_name.trim(),
+              last_name: formData.last_name.trim(),
+              send_invite: false,
+            },
+          });
+          let errMsg: string | null = data?.error || null;
+          if (fnError && !errMsg) {
+            try {
+              const body = await (fnError as any).context?.json?.();
+              errMsg = body?.error || fnError.message;
+            } catch {
+              errMsg = fnError.message;
+            }
           }
-          if (inviteError) {
-            console.error("Invitation error:", inviteError);
-            toast.error(`Employee saved but invitation failed: ${inviteError.message}`);
-          } else if (!existing?.accepted_at) {
-            toast.success(`Invitation sent to ${formData.email}`);
+          if (errMsg) {
+            toast.error(`Employee saved but user was not created: ${errMsg}`);
+          } else if (data?.user_id) {
+            await supabase.from("employees").update({ user_id: data.user_id }).eq("id", employeeId);
+            toast.success(`User created for ${email}`);
+            setCreatedPasswordEmail(email);
+            setCreatedTempPassword(data.temp_password);
+            setShowPasswordDialog(true);
           }
-        } catch (invErr) {
-          console.error("Invitation error:", invErr);
+        } catch (err: any) {
+          console.error("Create user error:", err);
+          toast.error(`Employee saved but user was not created: ${err.message}`);
         }
       }
 
@@ -1043,7 +1048,7 @@ const Employees = () => {
                             </Select>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            An invitation will be sent to the employee's email. They can sign up to access the system.
+                            A user account will be created on save and a one-time password will be shown.
                           </p>
                         </div>
                       )}
@@ -1305,6 +1310,12 @@ const Employees = () => {
           </DialogBody>
         </DialogContent>
       </Dialog>
+      <CreatedPasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        email={createdPasswordEmail}
+        tempPassword={createdTempPassword}
+      />
 
       <ImportProgressDialog
         open={isImportDialogOpen}
