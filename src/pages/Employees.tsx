@@ -1048,7 +1048,7 @@ const Employees = () => {
                             </Select>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            An invitation will be sent to the employee's email. They can sign up to access the system.
+                            A user account will be created on save and a one-time password will be shown.
                           </p>
                         </div>
                       )}
@@ -1310,6 +1310,12 @@ const Employees = () => {
           </DialogBody>
         </DialogContent>
       </Dialog>
+      <CreatedPasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        email={createdPasswordEmail}
+        tempPassword={createdTempPassword}
+      />
 
       <ImportProgressDialog
         open={isImportDialogOpen}
