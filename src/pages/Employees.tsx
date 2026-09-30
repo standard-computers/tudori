@@ -596,20 +596,41 @@ const Employees = () => {
       // Create user invitation if requested
       if (createUserAccount && formData.email && !formData.user_id) {
         try {
-          const { error: inviteError } = await supabase.from("invitations").insert({
-            email: formData.email.toLowerCase(),
-            company_id: companyId!,
-            role: userRole,
-            invited_by: user!.id,
-          });
-          if (inviteError) {
-            if (inviteError.code === '23505') {
-              toast.error("This email already has a pending invitation");
-            } else {
-              console.error("Invitation error:", inviteError);
-              toast.error("Employee saved but invitation failed to send");
-            }
+          const email = formData.email.toLowerCase().trim();
+          const { data: existing } = await supabase
+            .from("invitations")
+            .select("id, accepted_at")
+            .eq("company_id", companyId!)
+            .eq("email", email)
+            .maybeSingle();
+
+          let inviteError: any = null;
+          if (existing?.accepted_at) {
+            toast.error("This email already accepted an invitation — link the existing user instead");
+          } else if (existing) {
+            // Refresh the existing (possibly expired) invitation instead of failing on the unique constraint
+            const { error } = await supabase
+              .from("invitations")
+              .update({
+                role: userRole,
+                invited_by: user!.id,
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              })
+              .eq("id", existing.id);
+            inviteError = error;
           } else {
+            const { error } = await supabase.from("invitations").insert({
+              email,
+              company_id: companyId!,
+              role: userRole,
+              invited_by: user!.id,
+            });
+            inviteError = error;
+          }
+          if (inviteError) {
+            console.error("Invitation error:", inviteError);
+            toast.error(`Employee saved but invitation failed: ${inviteError.message}`);
+          } else if (!existing?.accepted_at) {
             toast.success(`Invitation sent to ${formData.email}`);
           }
         } catch (invErr) {
