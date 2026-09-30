@@ -98,6 +98,7 @@ const DEFAULT_CHANGE_HISTORY_SETTINGS: ChangeHistorySettings = Object.fromEntrie
 
 const DEFAULT_IMPORT_EXPORT_SETTINGS: ImportExportSettings = {
   purchase_order: { import_enabled: false, export_enabled: true },
+  employee: { import_enabled: false, export_enabled: true },
   sales_order: { import_enabled: false, export_enabled: true },
   requisition: { import_enabled: false, export_enabled: true },
   delivery: { import_enabled: false, export_enabled: true },
