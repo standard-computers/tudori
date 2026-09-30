@@ -106,6 +106,13 @@
       "when": 1790724928342,
       "tag": "0014_add_interconnect_availability_to_products",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790793590725,
+      "tag": "0015_auto_assign_profile_id",
+      "breakpoints": true
     }
   ]
 }
