@@ -551,7 +551,9 @@ const Employees = () => {
       let employeeId = editingId;
 
       if (isEditing && editingId) {
-        const { error } = await supabase.from("employees").update(employeeData).eq("id", editingId);
+        // company_id is not updatable (column-level grant) — omit it on edit
+        const { company_id: _omit, ...updateData } = employeeData;
+        const { error } = await supabase.from("employees").update(updateData).eq("id", editingId);
         if (error) throw error;
         toast.success("Employee updated");
       } else {
