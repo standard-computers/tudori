@@ -224,7 +224,7 @@ const CockpitUsersTab = ({ locationId, companyId }: CockpitUsersTabProps) => {
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        {companyUser.first_name} {companyUser.last_name}
+                        {companyUser.first_name} {companyUser.last_name}{(companyUser as any).profile_id && <span className="ml-2 text-xs text-muted-foreground font-mono">{(companyUser as any).profile_id}</span>}
                       </span>
                       <span className="text-xs text-muted-foreground font-mono">
                         ({companyUser.id})
