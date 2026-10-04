@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.platform-admin-bootstrap]
 verify_jwt = false
+
+[functions.platform-admin-orgs]
+verify_jwt = false

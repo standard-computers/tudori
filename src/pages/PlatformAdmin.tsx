@@ -41,6 +41,7 @@ import {
   Upload,
   LogOut,
 } from "lucide-react";
+import { CustomersPanel } from "@/components/platform-admin/CustomersPanel";
 import { DocsTree, flattenDocOrder, type DocFolder, type PlatformDoc, type TreeRef } from "@/components/documentation/DocsTree";
 
 const PlatformAdmin = () => {
@@ -70,6 +71,7 @@ const PlatformAdmin = () => {
   const [deletingFolder, setDeletingFolder] = useState<DocFolder | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [section, setSection] = useState<"docs" | "customers">("docs");
 
   const verifySession = useCallback(async () => {
     const { data: { user } } = await sb.auth.getUser();
@@ -391,7 +393,11 @@ const PlatformAdmin = () => {
         <div className="flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Platform Admin — Documentation</h1>
+            <h1 className="text-lg font-semibold">Platform Admin</h1>
+            <div className="flex gap-1 ml-4">
+              <Button size="sm" variant={section === "docs" ? "secondary" : "ghost"} onClick={() => setSection("docs")}>Documentation</Button>
+              <Button size="sm" variant={section === "customers" ? "secondary" : "ghost"} onClick={() => setSection("customers")}>Customers</Button>
+            </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleSignOut}>
             <LogOut className="h-4 w-4 mr-1" />
@@ -400,7 +406,8 @@ const PlatformAdmin = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      {section === "customers" && <CustomersPanel />}
+      <div className={cn("flex flex-1 overflow-hidden", section !== "docs" && "hidden")}>
         <div
           className={cn(
             "border-r bg-muted/30 flex flex-col transition-all duration-200",
