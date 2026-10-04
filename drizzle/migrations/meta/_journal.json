@@ -113,6 +113,13 @@
       "when": 1790793590725,
       "tag": "0015_auto_assign_profile_id",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791076271191,
+      "tag": "0016_platform_admin_delete_company",
+      "breakpoints": true
     }
   ]
 }
