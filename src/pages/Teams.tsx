@@ -34,6 +34,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { TeamEmployeesTab } from '@/components/teams/TeamEmployeesTab';
+import { TeamPositionsTab } from '@/components/teams/TeamPositionsTab';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, Users2, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
@@ -700,9 +701,10 @@ const Teams = () => {
           <DialogBody>
             {viewingTeam && companyId && (
               <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="employees">Employees</TabsTrigger>
+                  <TabsTrigger value="positions">Positions</TabsTrigger>
                 </TabsList>
                 <TabsContent value="details" className="space-y-4 mt-4">
                   <div>
@@ -717,6 +719,10 @@ const Teams = () => {
                     <p className="text-xs text-muted-foreground">Members</p>
                     <Badge variant="secondary">{viewingTeam.member_count || 0}</Badge>
                   </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Positions</p>
+                    <Badge variant="secondary">{viewingTeam.position_count || 0}</Badge>
+                  </div>
                 </TabsContent>
                 <TabsContent value="employees" className="mt-4">
                   <TeamEmployeesTab 
@@ -725,6 +731,9 @@ const Teams = () => {
                     companyId={companyId} 
                     onMemberChange={fetchTeams}
                   />
+                </TabsContent>
+                <TabsContent value="positions" className="mt-4">
+                  <TeamPositionsTab teamId={viewingTeam.id} />
                 </TabsContent>
               </Tabs>
             )}
