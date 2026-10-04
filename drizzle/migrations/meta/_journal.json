@@ -120,6 +120,13 @@
       "when": 1791076271191,
       "tag": "0016_platform_admin_delete_company",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791076467073,
+      "tag": "0017_platform_delete_company_location_users_first",
+      "breakpoints": true
     }
   ]
 }
