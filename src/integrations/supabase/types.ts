@@ -6321,6 +6321,7 @@ export type Database = {
           width_uom: string
         }[]
       }
+      platform_delete_company: { Args: { p_company_id: string }; Returns: Json }
       upsert_employee_sensitive: {
         Args: {
           p_employee_id: string
