@@ -34,6 +34,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SortableTableHead } from '@/components/SortableTableHead';
 import { TeamEmployeesTab } from '@/components/teams/TeamEmployeesTab';
+import { TeamPositionsTab } from '@/components/teams/TeamPositionsTab';
 import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2, X, Users2, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
@@ -55,6 +56,7 @@ interface Team {
   leader_employee_id: string | null;
   leader_name?: string;
   member_count?: number;
+  position_count?: number;
 }
 
 const TeamTable = ({
@@ -141,6 +143,14 @@ const TeamTable = ({
                 className="w-24"
               />
               <SortableTableHead
+                label="Positions"
+                sortKey="position_count"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                className="w-24"
+              />
+              <SortableTableHead
                 label="Actions"
                 sortKey=""
                 currentSortKey=""
@@ -166,6 +176,9 @@ const TeamTable = ({
                 <TableCell>
                   <Badge variant="secondary">{team.member_count || 0}</Badge>
                 </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{team.position_count || 0}</Badge>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onView(team)} title="View team">
@@ -185,7 +198,7 @@ const TeamTable = ({
             ))}
             {sortedAndFilteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   No teams found
                 </TableCell>
               </TableRow>
@@ -312,10 +325,24 @@ const Teams = () => {
       countMap.set(m.team_id, (countMap.get(m.team_id) || 0) + 1);
     });
 
+    // Get position counts
+    const { data: positionRows } = await supabase
+      .from('positions')
+      .select('team_id')
+      .eq('company_id', companyId);
+
+    const positionCountMap = new Map<string, number>();
+    positionRows?.forEach(p => {
+      if (p.team_id) {
+        positionCountMap.set(p.team_id, (positionCountMap.get(p.team_id) || 0) + 1);
+      }
+    });
+
     const teamsWithCounts = (data || []).map((t: any) => ({
       ...t,
       leader_name: t.leader ? `${t.leader.first_name} ${t.leader.last_name}` : null,
       member_count: countMap.get(t.id) || 0,
+      position_count: positionCountMap.get(t.id) || 0,
     }));
 
     setTeams(teamsWithCounts);
@@ -674,9 +701,10 @@ const Teams = () => {
           <DialogBody>
             {viewingTeam && companyId && (
               <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="employees">Employees</TabsTrigger>
+                  <TabsTrigger value="positions">Positions</TabsTrigger>
                 </TabsList>
                 <TabsContent value="details" className="space-y-4 mt-4">
                   <div>
@@ -691,6 +719,10 @@ const Teams = () => {
                     <p className="text-xs text-muted-foreground">Members</p>
                     <Badge variant="secondary">{viewingTeam.member_count || 0}</Badge>
                   </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Positions</p>
+                    <Badge variant="secondary">{viewingTeam.position_count || 0}</Badge>
+                  </div>
                 </TabsContent>
                 <TabsContent value="employees" className="mt-4">
                   <TeamEmployeesTab 
@@ -699,6 +731,9 @@ const Teams = () => {
                     companyId={companyId} 
                     onMemberChange={fetchTeams}
                   />
+                </TabsContent>
+                <TabsContent value="positions" className="mt-4">
+                  <TeamPositionsTab teamId={viewingTeam.id} />
                 </TabsContent>
               </Tabs>
             )}
