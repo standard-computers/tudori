@@ -469,21 +469,15 @@ const Users = () => {
       return;
     }
 
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', member.user_id)
-      .eq('company_id', companyId);
-
-    if (roleError) {
-      toast.error('Failed to remove user: ' + roleError.message);
+    const { data, error } = await supabase.functions.invoke('delete-company-user', {
+      body: { user_id: member.user_id, company_id: companyId },
+    });
+    if (error || data?.error) {
+      let msg = data?.error || error?.message;
+      try { msg = (await (error as any)?.context?.json())?.error || msg; } catch { /* ignore */ }
+      toast.error('Failed to remove user: ' + msg);
       return;
     }
-
-    await supabase
-      .from('profiles')
-      .update({ company_id: null })
-      .eq('user_id', member.user_id);
 
     toast.success(`${member.first_name} has been removed from the team`);
     fetchTeamData();
