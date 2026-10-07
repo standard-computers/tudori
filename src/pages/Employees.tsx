@@ -83,26 +83,14 @@ interface Team {
 
 const STATUSES = ["active", "inactive", "on_leave", "pip", "terminated"];
 
-// Column definitions for Employees table
-const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
-  { key: "employee_id", label: "ID", defaultVisible: true },
-  { key: "first_name", label: "First Name", defaultVisible: true },
-  { key: "last_name", label: "Last Name", defaultVisible: true },
-  { key: "email", label: "Email", defaultVisible: true },
-  { key: "phone", label: "Phone", defaultVisible: true },
-  { key: "department", label: "Department", defaultVisible: true },
-  { key: "job_title", label: "Job Title", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "wage", label: "Wage", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
-
 const EmployeeTable = ({
   employees,
+  users,
   onView,
   onEdit,
 }: {
   employees: Employee[];
+  users: UserProfile[];
   onView: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
 }) => {
@@ -111,11 +99,32 @@ const EmployeeTable = ({
     "employee_id",
     "asc",
   );
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility("employees", EMPLOYEE_COLUMNS);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColumnCount = EMPLOYEE_COLUMNS.filter((c) => c.alwaysVisible || isColumnVisible(c.key)).length;
+  const userIdFor = (employee: Employee) =>
+    employee.user_id ? users.find((u) => u.user_id === employee.user_id)?.profile_id || "—" : "—";
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end px-1">
+        <ColumnToggle
+          columns={EMPLOYEE_COLUMNS}
+          visibleColumns={visibleColumns}
+          onToggleColumn={toggleColumn}
+          onResetToDefaults={resetToDefaults}
+          onShowAll={showAll}
+          onHideAll={hideAll}
+        />
+      </div>
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-sm text-muted-foreground">
