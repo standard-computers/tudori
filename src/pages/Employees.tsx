@@ -302,7 +302,7 @@ const EmployeeTable = ({
             ))}
             {sortedAndFilteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="h-24 text-center text-muted-foreground">
                   No employees found
                 </TableCell>
               </TableRow>
@@ -836,7 +836,7 @@ const Employees = () => {
       </header>
 
       <main className="p-0">
-        <EmployeeTable employees={employees} onView={setViewingEmployee} onEdit={handleEdit} />
+        <EmployeeTable employees={employees} users={users} onView={setViewingEmployee} onEdit={handleEdit} />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
