@@ -278,6 +278,18 @@ export const LOCATION_COLUMNS: ColumnDefinition[] = [
   { key: "actions", label: "Actions", alwaysVisible: true },
 ];
 
+export const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
+  { key: "employee_id", label: "ID", defaultVisible: true },
+  { key: "first_name", label: "First Name", defaultVisible: true },
+  { key: "last_name", label: "Last Name", defaultVisible: true },
+  { key: "email", label: "Email", defaultVisible: true },
+  { key: "department", label: "Team", defaultVisible: true },
+  { key: "job_title", label: "Job Title", defaultVisible: true },
+  { key: "user_id", label: "User ID", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "actions", label: "Actions", alwaysVisible: true },
+];
+
 export interface LayoutRegistryEntry { storageKey: string; label: string; columns: ColumnDefinition[] }
 
 export const LAYOUT_REGISTRY: LayoutRegistryEntry[] = [
@@ -290,6 +302,7 @@ export const LAYOUT_REGISTRY: LayoutRegistryEntry[] = [
   { storageKey: 'credit_memos', label: 'Credit Memos', columns: CREDIT_MEMO_COLUMNS },
   { storageKey: 'customers', label: 'Customers', columns: CUSTOMER_COLUMNS },
   { storageKey: 'debit_memos', label: 'Debit Memos', columns: DEBIT_MEMO_COLUMNS },
+  { storageKey: 'employees', label: 'Employees', columns: EMPLOYEE_COLUMNS },
   { storageKey: 'goods_issues', label: 'Goods Issues', columns: GOODS_ISSUE_COLUMNS },
   { storageKey: 'goods_receipts', label: 'Goods Receipts', columns: GOODS_RECEIPT_COLUMNS },
   { storageKey: 'inventory', label: 'Inventory', columns: INVENTORY_COLUMNS },
