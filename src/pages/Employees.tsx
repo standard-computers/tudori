@@ -3,8 +3,9 @@ import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
-import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
+import { EMPLOYEE_COLUMNS } from "@/config/column-layouts";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -69,6 +70,7 @@ interface Employee {
 
 interface UserProfile {
   user_id: string;
+  profile_id: string | null;
   email: string | null;
   first_name: string;
   last_name: string;
@@ -81,26 +83,14 @@ interface Team {
 
 const STATUSES = ["active", "inactive", "on_leave", "pip", "terminated"];
 
-// Column definitions for Employees table
-const EMPLOYEE_COLUMNS: ColumnDefinition[] = [
-  { key: "employee_id", label: "ID", defaultVisible: true },
-  { key: "first_name", label: "First Name", defaultVisible: true },
-  { key: "last_name", label: "Last Name", defaultVisible: true },
-  { key: "email", label: "Email", defaultVisible: true },
-  { key: "phone", label: "Phone", defaultVisible: true },
-  { key: "department", label: "Department", defaultVisible: true },
-  { key: "job_title", label: "Job Title", defaultVisible: true },
-  { key: "status", label: "Status", defaultVisible: true },
-  { key: "wage", label: "Wage", defaultVisible: true },
-  { key: "actions", label: "Actions", alwaysVisible: true },
-];
-
 const EmployeeTable = ({
   employees,
+  users,
   onView,
   onEdit,
 }: {
   employees: Employee[];
+  users: UserProfile[];
   onView: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
 }) => {
@@ -109,11 +99,32 @@ const EmployeeTable = ({
     "employee_id",
     "asc",
   );
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility("employees", EMPLOYEE_COLUMNS);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const visibleColumnCount = EMPLOYEE_COLUMNS.filter((c) => c.alwaysVisible || isColumnVisible(c.key)).length;
+  const userIdFor = (employee: Employee) =>
+    employee.user_id ? users.find((u) => u.user_id === employee.user_id)?.profile_id || "—" : "—";
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end px-1">
+        <ColumnToggle
+          columns={EMPLOYEE_COLUMNS}
+          visibleColumns={visibleColumns}
+          onToggleColumn={toggleColumn}
+          onResetToDefaults={resetToDefaults}
+          onShowAll={showAll}
+          onHideAll={hideAll}
+        />
+      </div>
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-sm text-muted-foreground">
@@ -139,7 +150,8 @@ const EmployeeTable = ({
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+          <TableRow>
+              {isColumnVisible("employee_id") && (
               <SortableTableHead
                 label="ID"
                 sortKey="employee_id"
@@ -150,6 +162,8 @@ const EmployeeTable = ({
                 onFilter={(value) => setFilter("employee_id", value)}
                 className="w-24"
               />
+              )}
+              {isColumnVisible("first_name") && (
               <SortableTableHead
                 label="First Name"
                 sortKey="first_name"
@@ -159,6 +173,8 @@ const EmployeeTable = ({
                 filterValue={filters["first_name"]}
                 onFilter={(value) => setFilter("first_name", value)}
               />
+              )}
+              {isColumnVisible("last_name") && (
               <SortableTableHead
                 label="Last Name"
                 sortKey="last_name"
@@ -168,6 +184,8 @@ const EmployeeTable = ({
                 filterValue={filters["last_name"]}
                 onFilter={(value) => setFilter("last_name", value)}
               />
+              )}
+              {isColumnVisible("email") && (
               <SortableTableHead
                 label="Email"
                 sortKey="email"
@@ -177,6 +195,8 @@ const EmployeeTable = ({
                 filterValue={filters["email"]}
                 onFilter={(value) => setFilter("email", value)}
               />
+              )}
+              {isColumnVisible("department") && (
               <SortableTableHead
                 label="Team"
                 sortKey="department"
@@ -186,6 +206,8 @@ const EmployeeTable = ({
                 filterValue={filters["department"]}
                 onFilter={(value) => setFilter("department", value)}
               />
+              )}
+              {isColumnVisible("job_title") && (
               <SortableTableHead
                 label="Job Title"
                 sortKey="job_title"
@@ -195,6 +217,20 @@ const EmployeeTable = ({
                 filterValue={filters["job_title"]}
                 onFilter={(value) => setFilter("job_title", value)}
               />
+              )}
+              {isColumnVisible("user_id") && (
+              <SortableTableHead
+                label="User ID"
+                sortKey="user_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters["user_id"]}
+                onFilter={(value) => setFilter("user_id", value)}
+                className="w-28"
+              />
+              )}
+              {isColumnVisible("status") && (
               <SortableTableHead
                 label="Status"
                 sortKey="status"
@@ -205,6 +241,7 @@ const EmployeeTable = ({
                 onFilter={(value) => setFilter("status", value)}
                 className="w-24"
               />
+              )}
               <SortableTableHead
                 label="Actions"
                 sortKey=""
@@ -218,6 +255,7 @@ const EmployeeTable = ({
           <TableBody>
             {sortedAndFilteredData.map((employee) => (
               <TableRow key={employee.id}>
+                {isColumnVisible("employee_id") && (
                 <TableCell>
                   <button
                     className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
@@ -226,14 +264,30 @@ const EmployeeTable = ({
                     {employee.employee_id}
                   </button>
                 </TableCell>
+                )}
+                {isColumnVisible("first_name") && (
                 <TableCell className="font-medium">{employee.first_name}</TableCell>
+                )}
+                {isColumnVisible("last_name") && (
                 <TableCell className="font-medium">{employee.last_name}</TableCell>
+                )}
+                {isColumnVisible("email") && (
                 <TableCell>{employee.email || "-"}</TableCell>
+                )}
+                {isColumnVisible("department") && (
                 <TableCell>{employee.department || "-"}</TableCell>
+                )}
+                {isColumnVisible("job_title") && (
                 <TableCell>{employee.position_name || employee.job_title || "-"}</TableCell>
+                )}
+                {isColumnVisible("user_id") && (
+                <TableCell className="font-mono text-xs">{userIdFor(employee)}</TableCell>
+                )}
+                {isColumnVisible("status") && (
                 <TableCell>
                   <Badge variant={employee.status === "active" ? "default" : "secondary"}>{employee.status}</Badge>
                 </TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onView(employee)}>
@@ -248,7 +302,7 @@ const EmployeeTable = ({
             ))}
             {sortedAndFilteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={visibleColumnCount} className="h-24 text-center text-muted-foreground">
                   No employees found
                 </TableCell>
               </TableRow>
@@ -357,7 +411,7 @@ const Employees = () => {
   const fetchUsers = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("user_id, email, first_name, last_name")
+      .select("user_id, profile_id, email, first_name, last_name")
       .eq("company_id", companyId)
       .order("last_name");
 
@@ -782,7 +836,7 @@ const Employees = () => {
       </header>
 
       <main className="p-0">
-        <EmployeeTable employees={employees} onView={setViewingEmployee} onEdit={handleEdit} />
+        <EmployeeTable employees={employees} users={users} onView={setViewingEmployee} onEdit={handleEdit} />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
