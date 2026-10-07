@@ -819,6 +819,14 @@ const Employees = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ColumnToggle
+              columns={EMPLOYEE_COLUMNS}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <ImportExportButtons
               importEnabled={isImportEnabled('employee')}
               exportEnabled={isExportEnabled('employee')}
