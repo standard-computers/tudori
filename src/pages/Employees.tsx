@@ -150,7 +150,8 @@ const EmployeeTable = ({
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+          <TableRow>
+              {isColumnVisible("employee_id") && (
               <SortableTableHead
                 label="ID"
                 sortKey="employee_id"
@@ -161,6 +162,8 @@ const EmployeeTable = ({
                 onFilter={(value) => setFilter("employee_id", value)}
                 className="w-24"
               />
+              )}
+              {isColumnVisible("first_name") && (
               <SortableTableHead
                 label="First Name"
                 sortKey="first_name"
@@ -170,6 +173,8 @@ const EmployeeTable = ({
                 filterValue={filters["first_name"]}
                 onFilter={(value) => setFilter("first_name", value)}
               />
+              )}
+              {isColumnVisible("last_name") && (
               <SortableTableHead
                 label="Last Name"
                 sortKey="last_name"
@@ -179,6 +184,8 @@ const EmployeeTable = ({
                 filterValue={filters["last_name"]}
                 onFilter={(value) => setFilter("last_name", value)}
               />
+              )}
+              {isColumnVisible("email") && (
               <SortableTableHead
                 label="Email"
                 sortKey="email"
@@ -188,6 +195,8 @@ const EmployeeTable = ({
                 filterValue={filters["email"]}
                 onFilter={(value) => setFilter("email", value)}
               />
+              )}
+              {isColumnVisible("department") && (
               <SortableTableHead
                 label="Team"
                 sortKey="department"
@@ -197,6 +206,8 @@ const EmployeeTable = ({
                 filterValue={filters["department"]}
                 onFilter={(value) => setFilter("department", value)}
               />
+              )}
+              {isColumnVisible("job_title") && (
               <SortableTableHead
                 label="Job Title"
                 sortKey="job_title"
@@ -206,6 +217,20 @@ const EmployeeTable = ({
                 filterValue={filters["job_title"]}
                 onFilter={(value) => setFilter("job_title", value)}
               />
+              )}
+              {isColumnVisible("user_id") && (
+              <SortableTableHead
+                label="User ID"
+                sortKey="user_id"
+                currentSortKey={sortConfig.key}
+                currentSortDirection={sortConfig.direction}
+                onSort={handleSort}
+                filterValue={filters["user_id"]}
+                onFilter={(value) => setFilter("user_id", value)}
+                className="w-28"
+              />
+              )}
+              {isColumnVisible("status") && (
               <SortableTableHead
                 label="Status"
                 sortKey="status"
@@ -216,6 +241,7 @@ const EmployeeTable = ({
                 onFilter={(value) => setFilter("status", value)}
                 className="w-24"
               />
+              )}
               <SortableTableHead
                 label="Actions"
                 sortKey=""
