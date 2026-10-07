@@ -88,25 +88,29 @@ const EmployeeTable = ({
   users,
   onView,
   onEdit,
+  visibleColumns,
+  isColumnVisible,
+  toggleColumn,
+  resetToDefaults,
+  showAll,
+  hideAll,
 }: {
   employees: Employee[];
   users: UserProfile[];
   onView: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
+  visibleColumns: ColumnVisibilityState;
+  isColumnVisible: (key: string) => boolean;
+  toggleColumn: (key: string) => void;
+  resetToDefaults: () => void;
+  showAll: () => void;
+  hideAll: () => void;
 }) => {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     employees,
     "employee_id",
     "asc",
   );
-  const {
-    visibleColumns,
-    isColumnVisible,
-    toggleColumn,
-    resetToDefaults,
-    showAll,
-    hideAll,
-  } = useColumnVisibility("employees", EMPLOYEE_COLUMNS);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
   const visibleColumnCount = EMPLOYEE_COLUMNS.filter((c) => c.alwaysVisible || isColumnVisible(c.key)).length;
@@ -115,16 +119,6 @@ const EmployeeTable = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end px-1">
-        <ColumnToggle
-          columns={EMPLOYEE_COLUMNS}
-          visibleColumns={visibleColumns}
-          onToggleColumn={toggleColumn}
-          onResetToDefaults={resetToDefaults}
-          onShowAll={showAll}
-          onHideAll={hideAll}
-        />
-      </div>
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-sm text-muted-foreground">
