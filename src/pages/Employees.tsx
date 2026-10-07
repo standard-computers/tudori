@@ -3,7 +3,7 @@ import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
-import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { useColumnVisibility, ColumnVisibilityState } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { EMPLOYEE_COLUMNS } from "@/config/column-layouts";
 import { useNavigate } from "react-router-dom";
@@ -846,7 +846,18 @@ const Employees = () => {
       </header>
 
       <main className="p-0">
-        <EmployeeTable employees={employees} users={users} onView={setViewingEmployee} onEdit={handleEdit} />
+        <EmployeeTable
+          employees={employees}
+          users={users}
+          onView={setViewingEmployee}
+          onEdit={handleEdit}
+          visibleColumns={visibleColumns}
+          isColumnVisible={isColumnVisible}
+          toggleColumn={toggleColumn}
+          resetToDefaults={resetToDefaults}
+          showAll={showAll}
+          hideAll={hideAll}
+        />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
