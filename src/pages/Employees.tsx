@@ -3,8 +3,9 @@ import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
-import { useColumnVisibility, ColumnDefinition } from "@/hooks/use-column-visibility";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
+import { EMPLOYEE_COLUMNS } from "@/config/column-layouts";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
@@ -69,6 +70,7 @@ interface Employee {
 
 interface UserProfile {
   user_id: string;
+  profile_id: string | null;
   email: string | null;
   first_name: string;
   last_name: string;
@@ -357,7 +359,7 @@ const Employees = () => {
   const fetchUsers = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("user_id, email, first_name, last_name")
+      .select("user_id, profile_id, email, first_name, last_name")
       .eq("company_id", companyId)
       .order("last_name");
 
