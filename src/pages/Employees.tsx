@@ -255,6 +255,7 @@ const EmployeeTable = ({
           <TableBody>
             {sortedAndFilteredData.map((employee) => (
               <TableRow key={employee.id}>
+                {isColumnVisible("employee_id") && (
                 <TableCell>
                   <button
                     className="font-mono text-xs text-primary underline-offset-4 hover:underline cursor-pointer"
@@ -263,14 +264,30 @@ const EmployeeTable = ({
                     {employee.employee_id}
                   </button>
                 </TableCell>
+                )}
+                {isColumnVisible("first_name") && (
                 <TableCell className="font-medium">{employee.first_name}</TableCell>
+                )}
+                {isColumnVisible("last_name") && (
                 <TableCell className="font-medium">{employee.last_name}</TableCell>
+                )}
+                {isColumnVisible("email") && (
                 <TableCell>{employee.email || "-"}</TableCell>
+                )}
+                {isColumnVisible("department") && (
                 <TableCell>{employee.department || "-"}</TableCell>
+                )}
+                {isColumnVisible("job_title") && (
                 <TableCell>{employee.position_name || employee.job_title || "-"}</TableCell>
+                )}
+                {isColumnVisible("user_id") && (
+                <TableCell className="font-mono text-xs">{userIdFor(employee)}</TableCell>
+                )}
+                {isColumnVisible("status") && (
                 <TableCell>
                   <Badge variant={employee.status === "active" ? "default" : "secondary"}>{employee.status}</Badge>
                 </TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onView(employee)}>
