@@ -3,7 +3,7 @@ import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useKeyboardShortcut, useSaveShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useTransactionAction } from "@/hooks/use-transaction-action";
 import { useTableSort } from "@/hooks/use-table-sort";
-import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { useColumnVisibility, ColumnVisibilityState } from "@/hooks/use-column-visibility";
 import { ColumnToggle } from "@/components/ColumnToggle";
 import { EMPLOYEE_COLUMNS } from "@/config/column-layouts";
 import { useNavigate } from "react-router-dom";
@@ -88,25 +88,29 @@ const EmployeeTable = ({
   users,
   onView,
   onEdit,
+  visibleColumns,
+  isColumnVisible,
+  toggleColumn,
+  resetToDefaults,
+  showAll,
+  hideAll,
 }: {
   employees: Employee[];
   users: UserProfile[];
   onView: (employee: Employee) => void;
   onEdit: (employee: Employee) => void;
+  visibleColumns: ColumnVisibilityState;
+  isColumnVisible: (key: string) => boolean;
+  toggleColumn: (key: string) => void;
+  resetToDefaults: () => void;
+  showAll: () => void;
+  hideAll: () => void;
 }) => {
   const { sortConfig, filters, handleSort, setFilter, clearAllFilters, sortedAndFilteredData } = useTableSort(
     employees,
     "employee_id",
     "asc",
   );
-  const {
-    visibleColumns,
-    isColumnVisible,
-    toggleColumn,
-    resetToDefaults,
-    showAll,
-    hideAll,
-  } = useColumnVisibility("employees", EMPLOYEE_COLUMNS);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
   const visibleColumnCount = EMPLOYEE_COLUMNS.filter((c) => c.alwaysVisible || isColumnVisible(c.key)).length;
@@ -115,16 +119,6 @@ const EmployeeTable = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end px-1">
-        <ColumnToggle
-          columns={EMPLOYEE_COLUMNS}
-          visibleColumns={visibleColumns}
-          onToggleColumn={toggleColumn}
-          onResetToDefaults={resetToDefaults}
-          onShowAll={showAll}
-          onHideAll={hideAll}
-        />
-      </div>
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-sm text-muted-foreground">
@@ -329,6 +323,14 @@ const Employees = () => {
   const [nextEmployeeId, setNextEmployeeId] = useState("0001");
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility("employees", EMPLOYEE_COLUMNS);
   const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
   const [isFormMaximized, setIsFormMaximized] = useMaximizedState();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -819,6 +821,14 @@ const Employees = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ColumnToggle
+              columns={EMPLOYEE_COLUMNS}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumn}
+              onResetToDefaults={resetToDefaults}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
             <ImportExportButtons
               importEnabled={isImportEnabled('employee')}
               exportEnabled={isExportEnabled('employee')}
@@ -836,7 +846,18 @@ const Employees = () => {
       </header>
 
       <main className="p-0">
-        <EmployeeTable employees={employees} users={users} onView={setViewingEmployee} onEdit={handleEdit} />
+        <EmployeeTable
+          employees={employees}
+          users={users}
+          onView={setViewingEmployee}
+          onEdit={handleEdit}
+          visibleColumns={visibleColumns}
+          isColumnVisible={isColumnVisible}
+          toggleColumn={toggleColumn}
+          resetToDefaults={resetToDefaults}
+          showAll={showAll}
+          hideAll={hideAll}
+        />
       </main>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setIsFormMaximized(false); }}>
