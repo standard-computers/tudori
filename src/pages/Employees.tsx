@@ -329,6 +329,14 @@ const Employees = () => {
   const [nextEmployeeId, setNextEmployeeId] = useState("0001");
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const {
+    visibleColumns,
+    isColumnVisible,
+    toggleColumn,
+    resetToDefaults,
+    showAll,
+    hideAll,
+  } = useColumnVisibility("employees", EMPLOYEE_COLUMNS);
   const [isViewMaximized, setIsViewMaximized] = useMaximizedState();
   const [isFormMaximized, setIsFormMaximized] = useMaximizedState();
   const [teams, setTeams] = useState<Team[]>([]);
