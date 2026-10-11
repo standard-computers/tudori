@@ -1032,7 +1032,7 @@ const AccountDetail = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Refund payment {refundTarget?.payment_number}?</AlertDialogTitle>
             <AlertDialogDescription>
-              A separate refund line of -${Number(refundTarget?.amount || 0).toFixed(2)} will be added to this account and posted to the ledger.
+              A separate refund line of {account?.type === 'inventory' ? '' : '-'}${Math.abs(Number(refundTarget?.amount || 0)).toFixed(2)} will be added to this account and posted to the ledger.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
