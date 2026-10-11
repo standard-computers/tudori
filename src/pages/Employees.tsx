@@ -704,7 +704,8 @@ const Employees = () => {
       setIsDialogOpen(false);
       setCreateUserAccount(false);
       setUserRole('member');
-      fetchEmployees();
+      // Refresh both lists so a newly created/linked user shows immediately
+      await Promise.all([fetchEmployees(), fetchUsers()]);
       fetchNextEmployeeId();
     } catch (error: any) {
       toast.error(error.message || "Failed to save employee");
