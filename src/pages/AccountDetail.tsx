@@ -422,7 +422,7 @@ const AccountDetail = () => {
           company_id: companyId,
           account_id: selectedInvoice.account_id,
           invoice_id: selectedInvoice.id,
-          amount: selectedInvoice.amount,
+          amount: account?.type === 'inventory' ? -Math.abs(selectedInvoice.amount) : Math.abs(selectedInvoice.amount),
           payment_date: new Date().toISOString().split('T')[0],
           processed_by: user?.id,
           status: 'completed',
@@ -450,7 +450,7 @@ const AccountDetail = () => {
           transaction_type: 'payment',
           reference_id: selectedInvoice.id,
           reference_number: paymentNumber,
-          amount: Math.abs(selectedInvoice.amount),
+          amount: account?.type === 'inventory' ? -Math.abs(selectedInvoice.amount) : Math.abs(selectedInvoice.amount),
           description: `Payment ${paymentNumber} for Invoice ${selectedInvoice.invoice_number}`,
           transaction_date: new Date().toISOString().split('T')[0],
         } as any);
@@ -480,6 +480,7 @@ const AccountDetail = () => {
     try {
       const original = refundTarget;
       const amount = Math.abs(Number(original.amount));
+      const refundAmount = account?.type === 'inventory' ? amount : -amount;
       const { data: refundNumber } = await supabase.rpc('get_next_payment_number', { p_company_id: companyId });
       const today = new Date().toISOString().split('T')[0];
 
@@ -488,7 +489,7 @@ const AccountDetail = () => {
         company_id: companyId,
         account_id: original.account_id,
         invoice_id: original.invoice_id,
-        amount: -amount,
+        amount: refundAmount,
         payment_date: today,
         processed_by: user?.id,
         status: 'refund',
@@ -512,7 +513,7 @@ const AccountDetail = () => {
           transaction_type: 'refund',
           reference_id: original.invoice_id,
           reference_number: refundNumber,
-          amount: -amount,
+          amount: refundAmount,
           description: `Refund ${refundNumber} of Payment ${original.payment_number}`,
           transaction_date: today,
         } as any);
@@ -1031,7 +1032,7 @@ const AccountDetail = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Refund payment {refundTarget?.payment_number}?</AlertDialogTitle>
             <AlertDialogDescription>
-              A separate refund line of -${Number(refundTarget?.amount || 0).toFixed(2)} will be added to this account and posted to the ledger.
+              A separate refund line of {account?.type === 'inventory' ? '' : '-'}${Math.abs(Number(refundTarget?.amount || 0)).toFixed(2)} will be added to this account and posted to the ledger.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
