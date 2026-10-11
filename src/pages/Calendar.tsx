@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useMaximizedState } from '@/hooks/use-maximize-preference';
 import { useNavigate } from "react-router-dom";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusBar } from "@/contexts/StatusBarContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -310,6 +311,9 @@ const CalendarPage = () => {
     setDeleteId(null);
   };
 
+  // F1: go back, matching the rest of the platform
+  useKeyboardShortcut("F1", () => navigate(-1));
+
   // Keyboard shortcut for new event
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -343,8 +347,9 @@ const CalendarPage = () => {
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
+              <Kbd className="absolute -bottom-1 -right-1 scale-75">F1</Kbd>
             </Button>
             <h1 className="text-xl font-semibold">Calendar</h1>
           </div>
