@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X, KeyRound } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X, KeyRound, Briefcase } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { z } from 'zod';
@@ -227,6 +227,28 @@ const Users = () => {
   const [passwordDialogDescription, setPasswordDialogDescription] = useState<React.ReactNode | undefined>(undefined);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  // undefined = loading, null = no employee linked
+  const [viewingEmployee, setViewingEmployee] = useState<EmployeeLink | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!viewingMember) {
+      setViewingEmployee(null);
+      return;
+    }
+    let cancelled = false;
+    setViewingEmployee(undefined);
+    supabase
+      .from('employees')
+      .select('id, employee_id, first_name, last_name, job_title, status')
+      .eq('user_id', viewingMember.user_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setViewingEmployee((data as EmployeeLink) ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewingMember]);
 
   useEffect(() => {
     if (!authLoading && !user) {
