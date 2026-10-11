@@ -24,6 +24,15 @@ import { z } from 'zod';
 import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
 import { UserLocationsTab } from '@/components/users/UserLocationsTab';
 
+interface EmployeeLink {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  job_title: string | null;
+  status: string;
+}
+
 interface TeamMember {
   id: string;
   user_id: string;
