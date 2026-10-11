@@ -17,12 +17,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/lib/toast';
 import { Kbd } from '@/components/ui/kbd';
-import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X, KeyRound } from 'lucide-react';
+import { Building2, ArrowLeft, UserPlus, Shield, Loader2, Trash2, Edit2, Mail, Clock, Eye, Copy, Check, X, KeyRound, Briefcase } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { z } from 'zod';
 import { TransactionAccessTab } from '@/components/users/TransactionAccessTab';
 import { UserLocationsTab } from '@/components/users/UserLocationsTab';
+
+interface EmployeeLink {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  job_title: string | null;
+  status: string;
+}
 
 interface TeamMember {
   id: string;
@@ -227,6 +236,28 @@ const Users = () => {
   const [passwordDialogDescription, setPasswordDialogDescription] = useState<React.ReactNode | undefined>(undefined);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  // undefined = loading, null = no employee linked
+  const [viewingEmployee, setViewingEmployee] = useState<EmployeeLink | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!viewingMember) {
+      setViewingEmployee(null);
+      return;
+    }
+    let cancelled = false;
+    setViewingEmployee(undefined);
+    supabase
+      .from('employees')
+      .select('id, employee_id, first_name, last_name, job_title, status')
+      .eq('user_id', viewingMember.user_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setViewingEmployee((data as EmployeeLink) ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewingMember]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -982,6 +1013,36 @@ const Users = () => {
                     <p className="text-sm">
                       {viewingMember && roleDescriptions[viewingMember.role]}
                     </p>
+                  </div>
+                  <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      Employee
+                    </Label>
+                    {viewingEmployee === undefined ? (
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Checking for a linked employee...
+                      </p>
+                    ) : viewingEmployee ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {viewingEmployee.first_name} {viewingEmployee.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {viewingEmployee.employee_id}
+                            {viewingEmployee.job_title ? ` · ${viewingEmployee.job_title}` : ''}
+                            {` · ${viewingEmployee.status}`}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">{viewingEmployee.status}</Badge>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No employee record is linked to this user.
+                      </p>
+                    )}
                   </div>
                   {(() => {
                     const matchingInvitation = viewingMember && canManageUsers
