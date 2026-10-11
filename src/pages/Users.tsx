@@ -1014,6 +1014,36 @@ const Users = () => {
                       {viewingMember && roleDescriptions[viewingMember.role]}
                     </p>
                   </div>
+                  <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                    <Label className="text-muted-foreground flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      Employee
+                    </Label>
+                    {viewingEmployee === undefined ? (
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Checking for a linked employee...
+                      </p>
+                    ) : viewingEmployee ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {viewingEmployee.first_name} {viewingEmployee.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {viewingEmployee.employee_id}
+                            {viewingEmployee.job_title ? ` · ${viewingEmployee.job_title}` : ''}
+                            {` · ${viewingEmployee.status}`}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">{viewingEmployee.status}</Badge>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No employee record is linked to this user.
+                      </p>
+                    )}
+                  </div>
                   {(() => {
                     const matchingInvitation = viewingMember && canManageUsers
                       ? invitations.find((inv) => inv.email === viewingMember.email)
