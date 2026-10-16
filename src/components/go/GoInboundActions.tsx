@@ -1,0 +1,176 @@
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SearchableSelect } from '@/components/SearchableSelect';
+import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
+import { logMaterialMovement } from '@/lib/material-movements';
+import { toast } from '@/lib/toast';
+import { PackageCheck, ArrowDownToLine, Loader2, ChevronRight } from 'lucide-react';
+
+interface Props {
+  locationId: string;
+  companyId: string;
+  onDone: () => void;
+}
+
+interface DeliveryRow { id: string; delivery_id: string; purchase_order_id: string | null; status: string | null; expected_date: string | null }
+interface StockRow { id: string; product_id: string; quantity: number; bin_id: string; pu_id: string | null; uom_id: string | null; batch_id: string | null; product?: { name: string; product_id: string }; bin?: { bin_id: string; name: string } }
+
+export function GoInboundActions({ locationId, companyId, onDone }: Props) {
+  const [mode, setMode] = useState<'receive' | 'putaway' | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  const [receiving, setReceiving] = useState<DeliveryRow | null>(null);
+  const [stock, setStock] = useState<StockRow[]>([]);
+  const [bins, setBins] = useState<{ value: string; label: string; sublabel?: string }[]>([]);
+  const [selected, setSelected] = useState<StockRow | null>(null);
+  const [qty, setQty] = useState('');
+  const [destBin, setDestBin] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const openReceive = async () => {
+    setMode('receive');
+    setLoading(true);
+    const { data } = await supabase
+      .from('deliveries')
+      .select('id, delivery_id, purchase_order_id, status, expected_date')
+      .eq('location_id', locationId)
+      .not('status', 'in', '("delivered","canceled","cancelled")')
+      .order('expected_date', { ascending: true });
+    setDeliveries((data || []) as DeliveryRow[]);
+    setLoading(false);
+  };
+
+  const openPutAway = async () => {
+    setMode('putaway');
+    setSelected(null);
+    setLoading(true);
+    const { data: areas } = await supabase
+      .from('areas')
+      .select('id, is_goods_receipt_enabled, bins(id, bin_id, name, allow_put_away)')
+      .eq('location_id', locationId);
+    const grBinIds: string[] = [];
+    const dest: { value: string; label: string; sublabel?: string }[] = [];
+    (areas || []).forEach((a: any) => {
+      (a.bins || []).forEach((b: any) => {
+        if (a.is_goods_receipt_enabled) grBinIds.push(b.id);
+        else if (b.allow_put_away !== false) dest.push({ value: b.id, label: b.name, sublabel: b.bin_id });
+      });
+    });
+    setBins(dest);
+    if (grBinIds.length) {
+      const { data } = await supabase
+        .from('inventory')
+        .select('id, product_id, quantity, bin_id, pu_id, uom_id, batch_id, product:products(name, product_id), bin:bins(bin_id, name)')
+        .eq('location_id', locationId)
+        .in('bin_id', grBinIds)
+        .gt('quantity', 0);
+      setStock((data || []) as any);
+    } else setStock([]);
+    setLoading(false);
+  };
+
+  const doPutAway = async () => {
+    if (!selected || !destBin) return;
+    const q = Number(qty);
+    if (!(q > 0) || q > selected.quantity) { toast.error(`Enter a quantity between 0 and ${selected.quantity}`); return; }
+    setSaving(true);
+    try {
+      const remaining = selected.quantity - q;
+      const src = remaining === 0
+        ? await supabase.from('inventory').delete().eq('id', selected.id)
+        : await supabase.from('inventory').update({ quantity: remaining, updated_at: new Date().toISOString() }).eq('id', selected.id);
+      if (src.error) throw src.error;
+
+      let query = supabase.from('inventory').select('id, quantity').eq('location_id', locationId).eq('product_id', selected.product_id).eq('bin_id', destBin);
+      query = selected.pu_id ? query.eq('pu_id', selected.pu_id) : query.is('pu_id', null);
+      query = selected.uom_id ? query.eq('uom_id', selected.uom_id) : query.is('uom_id', null);
+      query = selected.batch_id ? query.eq('batch_id', selected.batch_id) : query.is('batch_id', null);
+      const { data: existing } = await query.limit(1).maybeSingle();
+      const dst = existing
+        ? await supabase.from('inventory').update({ quantity: existing.quantity + q, updated_at: new Date().toISOString() }).eq('id', existing.id)
+        : await supabase.from('inventory').insert({ location_id: locationId, product_id: selected.product_id, bin_id: destBin, quantity: q, pu_id: selected.pu_id, uom_id: selected.uom_id, batch_id: selected.batch_id } as any);
+      if (dst.error) throw dst.error;
+
+      await logMaterialMovement({
+        companyId, locationId, productId: selected.product_id, quantity: q, movementType: 'transfer',
+        puId: selected.pu_id, sourceBinId: selected.bin_id, destinationBinId: destBin,
+        referenceType: 'inventory_transfer', notes: 'Put away (Go)',
+      });
+      toast.success('Put away complete');
+      setSelected(null);
+      await openPutAway();
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message || 'Put away failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const Card = ({ icon: Icon, label, desc, onClick }: any) => (
+    <button onClick={onClick} className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/20 active:scale-[0.98] text-left transition-all">
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-primary" /></div>
+      <div className="flex-1 min-w-0"><div className="font-semibold text-sm">{label}</div><div className="text-xs text-muted-foreground">{desc}</div></div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </button>
+  );
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-2">
+        <Card icon={PackageCheck} label="Receive Delivery" desc="Receive an inbound delivery" onClick={openReceive} />
+        <Card icon={ArrowDownToLine} label="Put Away" desc="Move received stock into bins" onClick={openPutAway} />
+      </div>
+
+      <Dialog open={mode !== null && !receiving} onOpenChange={(o) => { if (!o && !saving) setMode(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : 'Put Away'}</DialogTitle></DialogHeader>
+          <div className="space-y-2 px-1 pb-2 max-h-[60vh] overflow-y-auto">
+            {loading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : mode === 'receive' ? (
+              deliveries.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No inbound deliveries to receive</p> :
+              deliveries.map((d) => (
+                <button key={d.id} onClick={() => setReceiving(d)} className="w-full flex justify-between items-center p-3 rounded-lg border hover:bg-muted/50 text-left">
+                  <span className="font-mono text-sm">{d.delivery_id}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{(d.status || '').replace(/_/g, ' ')}{d.expected_date ? ` · ${d.expected_date}` : ''}</span>
+                </button>
+              ))
+            ) : selected ? (
+              <div className="space-y-3">
+                <div className="text-sm"><div className="font-medium">{selected.product?.name}</div><div className="text-xs text-muted-foreground">From {selected.bin?.name} · {selected.quantity} available</div></div>
+                <Input type="number" step="any" min={0} max={selected.quantity} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Quantity" />
+                <SearchableSelect options={bins} value={destBin} onValueChange={setDestBin} placeholder="Destination bin" />
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setSelected(null)} disabled={saving}>Back</Button>
+                  <Button className="flex-1" onClick={doPutAway} disabled={saving || !destBin || !qty}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Put Away</Button>
+                </div>
+              </div>
+            ) : stock.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No stock waiting in goods receipt areas</p> :
+              stock.map((s) => (
+                <button key={s.id} onClick={() => { setSelected(s); setQty(String(s.quantity)); setDestBin(''); }} className="w-full flex justify-between items-center p-3 rounded-lg border hover:bg-muted/50 text-left">
+                  <div><div className="text-sm font-medium">{s.product?.name}</div><div className="text-xs text-muted-foreground">{s.bin?.name}</div></div>
+                  <span className="text-sm tabular-nums">{s.quantity}</span>
+                </button>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {receiving && (
+        <ReceiveDeliveryDialog
+          open={!!receiving}
+          onOpenChange={(o) => { if (!o) setReceiving(null); }}
+          deliveryId={receiving.id}
+          deliveryDisplayId={receiving.delivery_id}
+          purchaseOrderId={receiving.purchase_order_id}
+          locationId={locationId}
+          onReceived={() => { setReceiving(null); setMode(null); onDone(); }}
+        />
+      )}
+    </>
+  );
+}

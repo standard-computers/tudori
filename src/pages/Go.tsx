@@ -28,6 +28,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import { GoInboundActions } from '@/components/go/GoInboundActions';
 
 type ActivityType = 'inbound' | 'outbound' | 'internal' | null;
 type InternalSubType = 'replenishments' | 'production' | 'other' | 'performance' | null;
@@ -570,6 +571,15 @@ export default function Go() {
                 {tasks.length} task{tasks.length !== 1 ? 's' : ''}
               </span>
             </div>
+
+            {activity === 'inbound' && companyId && (
+              <GoInboundActions
+                locationId={selectedLocationId}
+                companyId={companyId}
+                onDone={() => { fetchTasks(); fetchCounts(); }}
+              />
+            )}
+
 
             {loadingTasks ? (
               <div className="flex items-center justify-center py-16">
