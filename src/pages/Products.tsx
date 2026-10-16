@@ -97,6 +97,7 @@ interface SafetyStock {
   location_name: string;
   location_code: string;
   safety_stock_quantity: number;
+  uom_id?: string | null;
 }
 
 type ProductStatus = "active" | "do_not_buy" | "discontinued";
@@ -1365,7 +1366,7 @@ const Products = () => {
   const fetchSafetyStocks = async (productId: string) => {
     const { data, error } = await supabase
       .from("product_safety_stock")
-      .select("id, location_id, safety_stock_quantity, location:locations(name, location_id)")
+      .select("id, location_id, safety_stock_quantity, uom_id, location:locations(name, location_id)")
       .eq("product_id", productId);
 
     if (error) {
@@ -1380,6 +1381,7 @@ const Products = () => {
         location_name: s.location?.name || "",
         location_code: s.location?.location_id || "",
         safety_stock_quantity: s.safety_stock_quantity,
+        uom_id: s.uom_id || null,
       })),
     );
   };
@@ -1845,6 +1847,7 @@ const Products = () => {
           product_id: productId,
           location_id: s.location_id,
           safety_stock_quantity: s.safety_stock_quantity,
+          uom_id: s.uom_id && uoms.some((u: any) => u.id === s.uom_id) ? s.uom_id : null,
         }));
 
         const { error: ssError } = await supabase.from("product_safety_stock").insert(safetyStockInserts);
@@ -3492,6 +3495,8 @@ const Products = () => {
                             isEditing={isEditing}
                             safetyStocks={safetyStocks}
                             setSafetyStocks={setSafetyStocks}
+                            baseUnit={formData.unit || "Base"}
+                            uoms={uoms.filter((u: any) => u.id).map((u: any) => ({ id: u.id, name: u.name, abbreviation: u.abbreviation }))}
                           />
                         </TabsContent>
                       </Tabs>
