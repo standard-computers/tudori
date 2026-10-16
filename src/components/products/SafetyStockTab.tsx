@@ -21,6 +21,7 @@ interface SafetyStock {
   location_name: string;
   location_code: string;
   safety_stock_quantity: number;
+  uom_id?: string | null;
 }
 
 interface SafetyStockTabProps {
@@ -29,6 +30,8 @@ interface SafetyStockTabProps {
   isEditing: boolean;
   safetyStocks: SafetyStock[];
   setSafetyStocks: (stocks: SafetyStock[]) => void;
+  baseUnit?: string;
+  uoms?: { id: string; name: string; abbreviation: string | null }[];
 }
 
 export const SafetyStockTab = ({
@@ -37,9 +40,18 @@ export const SafetyStockTab = ({
   isEditing,
   safetyStocks,
   setSafetyStocks,
+  baseUnit = 'Base',
+  uoms = [],
 }: SafetyStockTabProps) => {
+  const uomOptions: SearchableSelectOption[] = [
+    { value: '__base__', label: baseUnit, sublabel: 'Base unit' },
+    ...uoms.map((u) => ({ value: u.id, label: u.abbreviation || u.name, sublabel: u.name })),
+  ];
+  const handleUpdateUom = (locationId: string, value: string) => {
+    setSafetyStocks(safetyStocks.map((s) => s.location_id === locationId ? { ...s, uom_id: value === '__base__' || !value ? null : value } : s));
+  };
   const [locations, setLocations] = useState<SearchableSelectOption[]>([]);
-  const [newStock, setNewStock] = useState({ location_id: '', quantity: '' });
+  const [newStock, setNewStock] = useState({ location_id: '', quantity: '', uom_id: '__base__' });
 
   useEffect(() => {
     fetchLocations();
@@ -69,7 +81,7 @@ export const SafetyStockTab = ({
       return;
     }
 
-    const quantity = parseInt(newStock.quantity);
+    const quantity = parseFloat(newStock.quantity);
     if (isNaN(quantity) || quantity < 0) {
       toast.error('Please enter a valid quantity');
       return;
@@ -88,10 +100,11 @@ export const SafetyStockTab = ({
       location_name: location.label,
       location_code: location.sublabel || '',
       safety_stock_quantity: quantity,
+      uom_id: newStock.uom_id === '__base__' ? null : newStock.uom_id,
     };
 
     setSafetyStocks([...safetyStocks, newStockEntry]);
-    setNewStock({ location_id: '', quantity: '' });
+    setNewStock({ location_id: '', quantity: '', uom_id: '__base__' });
   };
 
   const handleRemoveSafetyStock = (locationId: string) => {
@@ -99,7 +112,7 @@ export const SafetyStockTab = ({
   };
 
   const handleUpdateQuantity = (locationId: string, quantity: string) => {
-    const qty = parseInt(quantity) || 0;
+    const qty = parseFloat(quantity) || 0;
     setSafetyStocks(
       safetyStocks.map((s) =>
         s.location_id === locationId
@@ -129,6 +142,7 @@ export const SafetyStockTab = ({
               <TableRow>
                 <TableHead>Location</TableHead>
                 <TableHead className="w-40 text-right">Safety Stock</TableHead>
+                <TableHead className="w-40">UoM</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
             </TableHeader>
@@ -150,11 +164,20 @@ export const SafetyStockTab = ({
                     <Input
                       type="number"
                       min="0"
+                      step="any"
                       value={stock.safety_stock_quantity}
                       onChange={(e) =>
                         handleUpdateQuantity(stock.location_id, e.target.value)
                       }
                       className="w-24 text-right ml-auto"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <SearchableSelect
+                      options={uomOptions}
+                      value={stock.uom_id || '__base__'}
+                      onValueChange={(v) => handleUpdateUom(stock.location_id, v)}
+                      placeholder="UoM"
                     />
                   </TableCell>
                   <TableCell>
@@ -184,7 +207,7 @@ export const SafetyStockTab = ({
 
       <div className="border rounded-lg p-4 space-y-4">
         <h4 className="font-medium text-sm">Add Safety Stock</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
             <Label htmlFor="safety_stock_location" className="text-xs">
               Location *
@@ -212,6 +235,15 @@ export const SafetyStockTab = ({
                 setNewStock({ ...newStock, quantity: e.target.value })
               }
               placeholder="e.g., 100"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">UoM</Label>
+            <SearchableSelect
+              options={uomOptions}
+              value={newStock.uom_id}
+              onValueChange={(v) => setNewStock({ ...newStock, uom_id: v || '__base__' })}
+              placeholder="UoM"
             />
           </div>
         </div>
