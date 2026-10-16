@@ -1,0 +1,1 @@
+ALTER TABLE public.product_safety_stock ADD COLUMN IF NOT EXISTS uom_id uuid REFERENCES public.product_uoms(id) ON DELETE SET NULL;

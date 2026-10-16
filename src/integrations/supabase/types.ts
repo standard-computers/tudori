@@ -4114,6 +4114,7 @@ export type Database = {
           location_id: string
           product_id: string
           safety_stock_quantity: number
+          uom_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4122,6 +4123,7 @@ export type Database = {
           location_id: string
           product_id: string
           safety_stock_quantity?: number
+          uom_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4130,6 +4132,7 @@ export type Database = {
           location_id?: string
           product_id?: string
           safety_stock_quantity?: number
+          uom_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4145,6 +4148,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_safety_stock_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "product_uoms"
             referencedColumns: ["id"]
           },
         ]
