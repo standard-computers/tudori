@@ -776,7 +776,7 @@ const Requisitions = () => {
       // Safety stock levels set for this destination location
       const { data: safetyStocks, error: ssError } = await supabase
         .from('product_safety_stock')
-        .select('product_id, safety_stock_quantity')
+        .select('product_id, safety_stock_quantity, uom:product_uoms(conversion_factor)')
         .eq('location_id', runFormData.location_id);
 
       if (ssError) {
@@ -787,7 +787,7 @@ const Requisitions = () => {
 
       const safetyStockMap = new Map<string, number>();
       (safetyStocks || []).forEach(ss => {
-        safetyStockMap.set(ss.product_id, Number(ss.safety_stock_quantity) || 0);
+        safetyStockMap.set(ss.product_id, (Number(ss.safety_stock_quantity) || 0) * (Number((ss as any).uom?.conversion_factor) || 1));
       });
 
       if (safetyStockMap.size === 0) {
