@@ -122,7 +122,8 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
         product_id,
         location_id,
         safety_stock_quantity,
-        product:products(product_id, name),
+        uom:product_uoms(name, abbreviation),
+        product:products(product_id, name, unit),
         location:locations(location_id, name)
       `)
       .order('created_at', { ascending: false });
@@ -562,7 +563,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
                                 }}
                               />
                             ) : (
-                              ss.safety_stock_quantity.toLocaleString()
+                              <>{ss.safety_stock_quantity.toLocaleString()} <span className="text-xs text-muted-foreground">{(ss as any).uom ? ((ss as any).uom.abbreviation || (ss as any).uom.name) : ((ss as any).product?.unit || '')}</span></>
                             )}
                           </TableCell>
                           <TableCell>

@@ -244,9 +244,10 @@ const Planning = () => {
       .in('status', ['pending', 'in_progress']);
 
     // Get safety stock items per location to check for shortfalls
-    const { data: safetyStocks } = await supabase
+    let { data: safetyStocks } = await supabase
       .from('product_safety_stock')
-      .select('location_id, product_id, safety_stock_quantity');
+      .select('location_id, product_id, safety_stock_quantity, uom:product_uoms(conversion_factor)');
+    safetyStocks = (safetyStocks || []).map((ss: any) => ({ ...ss, safety_stock_quantity: (Number(ss.safety_stock_quantity) || 0) * (Number(ss.uom?.conversion_factor) || 1) })) as any;
 
     // Get inventory levels to compare with safety stock
     const { data: inventoryData } = await supabase
@@ -626,10 +627,11 @@ const Planning = () => {
       }>();
 
       // Get safety stock levels for this location
-      const { data: safetyStocks } = await supabase
+      let { data: safetyStocks } = await supabase
         .from('product_safety_stock')
-        .select('product_id, safety_stock_quantity')
+        .select('product_id, safety_stock_quantity, uom:product_uoms(conversion_factor)')
         .eq('location_id', locationId);
+      safetyStocks = (safetyStocks || []).map((ss: any) => ({ ...ss, safety_stock_quantity: (Number(ss.safety_stock_quantity) || 0) * (Number(ss.uom?.conversion_factor) || 1) })) as any;
 
       const safetyStockMap = new Map<string, number>();
       safetyStocks?.forEach(ss => {
@@ -769,14 +771,16 @@ const Planning = () => {
 
       // Add safety stock items that aren't already in the requirement map
       // This handles products with safety stock but no outstanding orders
-      const { data: safetyStockProducts } = await supabase
+      let { data: safetyStockProducts } = await supabase
         .from('product_safety_stock')
         .select(`
           product_id,
           safety_stock_quantity,
+          uom:product_uoms(conversion_factor),
           product:products(product_id, name, unit, price, vendor_id, vendor:vendors(name))
         `)
         .eq('location_id', locationId);
+      safetyStockProducts = (safetyStockProducts || []).map((ss: any) => ({ ...ss, safety_stock_quantity: (Number(ss.safety_stock_quantity) || 0) * (Number(ss.uom?.conversion_factor) || 1) })) as any;
 
       safetyStockProducts?.forEach(ss => {
         const product = ss.product as any;
