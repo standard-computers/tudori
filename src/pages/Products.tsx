@@ -1457,6 +1457,7 @@ const Products = () => {
     setUoms([
       ...uoms,
       {
+        id: `tmp_${crypto.randomUUID()}`,
         name,
         abbreviation: newUom.abbreviation,
         conversion_factor: finalConversionFactor.toString(),
