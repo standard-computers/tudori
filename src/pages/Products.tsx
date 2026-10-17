@@ -1792,8 +1792,9 @@ const Products = () => {
     }
 
     // Save UOMs
+    const uomIdMap = new Map<string, string>();
     if (productId) {
-      // Delete existing UOMs and re-insert
+      // Delete existing UOMs and re-insert (ids change; keep old->new map)
       await supabase.from("product_uoms").delete().eq("product_id", productId);
 
       if (uoms.length > 0) {
@@ -1805,7 +1806,10 @@ const Products = () => {
           lower_uom: u.lower_uom || null,
         }));
 
-        const { error: uomError } = await supabase.from("product_uoms").insert(uomInserts);
+        const { data: insertedUoms, error: uomError } = await supabase.from("product_uoms").insert(uomInserts).select("id");
+        (insertedUoms || []).forEach((row: any, i: number) => {
+          if (uoms[i]) uomIdMap.set(String(uoms[i].id), row.id);
+        });
 
         if (uomError) {
           console.error("Failed to save UOMs:", uomError);
@@ -1847,7 +1851,7 @@ const Products = () => {
           product_id: productId,
           location_id: s.location_id,
           safety_stock_quantity: s.safety_stock_quantity,
-          uom_id: s.uom_id && uoms.some((u: any) => u.id === s.uom_id) ? s.uom_id : null,
+          uom_id: s.uom_id ? uomIdMap.get(String(s.uom_id)) || null : null,
         }));
 
         const { error: ssError } = await supabase.from("product_safety_stock").insert(safetyStockInserts);
