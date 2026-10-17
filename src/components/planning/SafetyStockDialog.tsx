@@ -36,7 +36,8 @@ interface SafetyStock {
   product_id: string;
   location_id: string;
   safety_stock_quantity: number;
-  product?: { product_id: string; name: string };
+  uom_id?: string | null;
+  product?: { product_id: string; name: string; unit?: string | null };
   location?: { location_id: string; name: string };
 }
 
@@ -44,7 +45,10 @@ interface Product {
   id: string;
   product_id: string;
   name: string;
+  unit?: string | null;
 }
+
+interface ProductUomRow { id: string; product_id: string; name: string; abbreviation: string | null }
 
 interface Location {
   id: string;
@@ -82,6 +86,9 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [selectedUomId, setSelectedUomId] = useState('__base__');
+  const [productUoms, setProductUoms] = useState<ProductUomRow[]>([]);
+  const [editingUomId, setEditingUomId] = useState('__base__');
   const [isCreating, setIsCreating] = useState(false);
 
   // Edit state
@@ -122,6 +129,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
         product_id,
         location_id,
         safety_stock_quantity,
+        uom_id,
         uom:product_uoms(name, abbreviation),
         product:products(product_id, name, unit),
         location:locations(location_id, name)
@@ -138,11 +146,15 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
     if (!companyId) return;
     const { data } = await supabase
       .from('products')
-      .select('id, product_id, name')
+      .select('id, product_id, name, unit')
       .eq('company_id', companyId)
       .eq('status', 'active')
       .order('product_id');
     setProducts(data || []);
+    const { data: uomData } = await supabase
+      .from('product_uoms')
+      .select('id, product_id, name, abbreviation');
+    setProductUoms((uomData || []) as ProductUomRow[]);
   };
 
   const fetchLocations = async () => {
@@ -170,13 +182,21 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
       sublabel: l.location_id,
     })), [locations]);
 
+  const uomOptionsFor = (productId: string, fallbackUnit?: string | null): SearchableSelectOption[] => {
+    const prod = products.find(p => p.id === productId);
+    return [
+      { value: '__base__', label: prod?.unit || fallbackUnit || 'Base', sublabel: 'Base unit' },
+      ...productUoms.filter(u => u.product_id === productId).map(u => ({ value: u.id, label: u.abbreviation || u.name, sublabel: u.name })),
+    ];
+  };
+
   const handleCreate = async () => {
     if (!selectedProductId || !selectedLocationId || !quantity) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    const qty = parseInt(quantity);
+    const qty = parseFloat(quantity);
     if (isNaN(qty) || qty < 0) {
       toast.error('Please enter a valid quantity');
       return;
@@ -198,6 +218,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
         product_id: selectedProductId,
         location_id: selectedLocationId,
         safety_stock_quantity: qty,
+        uom_id: selectedUomId === '__base__' ? null : selectedUomId,
       });
 
     if (error) {
@@ -207,6 +228,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
       setSelectedProductId('');
       setSelectedLocationId('');
       setQuantity('');
+      setSelectedUomId('__base__');
       fetchSafetyStocks();
     }
     setIsCreating(false);
@@ -215,6 +237,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
   const startEdit = (ss: SafetyStock) => {
     setEditingId(ss.id);
     setEditingQuantity(String(ss.safety_stock_quantity));
+    setEditingUomId(ss.uom_id || '__base__');
   };
 
   const cancelEdit = () => {
@@ -223,7 +246,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
   };
 
   const handleSaveEdit = async (id: string) => {
-    const qty = parseInt(editingQuantity);
+    const qty = parseFloat(editingQuantity);
     if (isNaN(qty) || qty < 0) {
       toast.error('Please enter a valid quantity');
       return;
@@ -232,7 +255,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
     setIsSavingEdit(true);
     const { error } = await supabase
       .from('product_safety_stock')
-      .update({ safety_stock_quantity: qty })
+      .update({ safety_stock_quantity: qty, uom_id: editingUomId === '__base__' ? null : editingUomId })
       .eq('id', id);
 
     if (error) {
@@ -550,18 +573,29 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {editingId === ss.id ? (
+                              <div className="flex items-center justify-end gap-2">
                               <Input
                                 type="number"
                                 min="0"
                                 value={editingQuantity}
                                 onChange={(e) => setEditingQuantity(e.target.value)}
-                                className="w-24 text-right h-8 ml-auto"
+                                className="w-24 text-right h-8"
                                 autoFocus
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') handleSaveEdit(ss.id);
                                   if (e.key === 'Escape') cancelEdit();
                                 }}
                               />
+                              <div className="w-32">
+                                <SearchableSelect
+                                  options={uomOptionsFor(ss.product_id, ss.product?.unit)}
+                                  value={editingUomId}
+                                  onValueChange={(v) => setEditingUomId(v || '__base__')}
+                                  placeholder="UoM"
+                                  className="h-8"
+                                />
+                              </div>
+                              </div>
                             ) : (
                               <>{ss.safety_stock_quantity.toLocaleString()} <span className="text-xs text-muted-foreground">{(ss as any).uom ? ((ss as any).uom.abbreviation || (ss as any).uom.name) : ((ss as any).product?.unit || '')}</span></>
                             )}
@@ -641,7 +675,7 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
                   <SearchableSelect
                     options={productOptions}
                     value={selectedProductId}
-                    onValueChange={setSelectedProductId}
+                    onValueChange={(v) => { setSelectedProductId(v); setSelectedUomId('__base__'); }}
                     placeholder="Select a product..."
                   />
                 </div>
@@ -664,6 +698,17 @@ export const SafetyStockDialog = ({ open, onOpenChange, companyId }: SafetyStock
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="Enter minimum stock level"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>UoM</Label>
+                  <SearchableSelect
+                    options={uomOptionsFor(selectedProductId)}
+                    value={selectedUomId}
+                    onValueChange={(v) => setSelectedUomId(v || '__base__')}
+                    placeholder="UoM"
+                    disabled={!selectedProductId}
                   />
                 </div>
 
