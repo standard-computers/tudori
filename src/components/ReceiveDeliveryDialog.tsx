@@ -65,6 +65,7 @@ interface ReceiveDeliveryDialogProps {
   locationId: string;
   onReceived: () => void;
   onFullyComplete?: () => void;
+  puFilterId?: string | null;
 }
 
 export const ReceiveDeliveryDialog = ({
@@ -76,6 +77,7 @@ export const ReceiveDeliveryDialog = ({
   locationId,
   onReceived,
   onFullyComplete,
+  puFilterId,
 }: ReceiveDeliveryDialogProps) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -262,7 +264,7 @@ export const ReceiveDeliveryDialog = ({
       conversion_factor: Number(item.uom?.conversion_factor) || 1,
     }));
 
-    setItems(receivedItems);
+    setItems(puFilterId ? receivedItems.filter(i => i.pu_id === puFilterId) : receivedItems);
     setLoading(false);
   };
 
