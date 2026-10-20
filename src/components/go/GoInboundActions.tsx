@@ -7,7 +7,7 @@ import { SearchableSelect } from '@/components/SearchableSelect';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { logMaterialMovement } from '@/lib/material-movements';
 import { toast } from '@/lib/toast';
-import { PackageCheck, ArrowDownToLine, Loader2, ChevronRight } from 'lucide-react';
+import { Boxes, PackageCheck, ArrowDownToLine, Loader2, ChevronRight } from 'lucide-react';
 
 interface Props {
   locationId: string;
@@ -19,10 +19,11 @@ interface DeliveryRow { id: string; delivery_id: string; purchase_order_id: stri
 interface StockRow { id: string; product_id: string; quantity: number; bin_id: string; pu_id: string | null; uom_id: string | null; batch_id: string | null; product?: { name: string; product_id: string }; bin?: { bin_id: string; name: string } }
 
 export function GoInboundActions({ locationId, companyId, onDone }: Props) {
-  const [mode, setMode] = useState<'receive' | 'putaway' | null>(null);
+  const [mode, setMode] = useState<'receive' | 'receivePu' | 'putaway' | null>(null);
   const [loading, setLoading] = useState(false);
-  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
   const [receiving, setReceiving] = useState<DeliveryRow | null>(null);
+  const [receivePuId, setReceivePuId] = useState<string | null>(null);
+  const [code, setCode] = useState('');
   const [stock, setStock] = useState<StockRow[]>([]);
   const [bins, setBins] = useState<{ value: string; label: string; sublabel?: string }[]>([]);
   const [selected, setSelected] = useState<StockRow | null>(null);
@@ -30,17 +31,35 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
   const [destBin, setDestBin] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const openReceive = async () => {
-    setMode('receive');
+  const openReceive = (m: 'receive' | 'receivePu') => { setMode(m); setCode(''); };
+
+  const lookup = async () => {
+    const value = code.trim();
+    if (!value) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('deliveries')
-      .select('id, delivery_id, purchase_order_id, status, expected_date')
-      .eq('location_id', locationId)
-      .not('status', 'in', '("delivered","canceled","cancelled")')
-      .order('expected_date', { ascending: true });
-    setDeliveries((data || []) as DeliveryRow[]);
-    setLoading(false);
+    try {
+      if (mode === 'receive') {
+        const { data } = await supabase.from('deliveries')
+          .select('id, delivery_id, purchase_order_id, status, expected_date')
+          .eq('location_id', locationId).ilike('delivery_id', value).limit(1).maybeSingle();
+        if (!data) { toast.error(`Delivery ${value} not found at this location`); return; }
+        if (['delivered', 'canceled', 'cancelled'].includes((data as any).status)) { toast.error(`Delivery ${value} is already ${(data as any).status}`); return; }
+        setReceivePuId(null);
+        setReceiving(data as DeliveryRow);
+      } else {
+        const { data: pu } = await supabase.from('packaging_units' as any)
+          .select('id, pu_number').eq('company_id', companyId).ilike('pu_number', value).limit(1).maybeSingle();
+        if (!pu) { toast.error(`PU ${value} not found`); return; }
+        const { data: item } = await supabase.from('delivery_items')
+          .select('delivery:deliveries!inner(id, delivery_id, purchase_order_id, status, expected_date, location_id)')
+          .eq('pu_id', (pu as any).id).eq('delivery.location_id', locationId)
+          .not('delivery.status', 'in', '("delivered","canceled","cancelled")').limit(1).maybeSingle();
+        const d = (item as any)?.delivery;
+        if (!d) { toast.error(`No open inbound delivery at this location contains PU ${value}`); return; }
+        setReceivePuId((pu as any).id);
+        setReceiving(d as DeliveryRow);
+      }
+    } finally { setLoading(false); }
   };
 
   const openPutAway = async () => {
@@ -121,24 +140,22 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
   return (
     <>
       <div className="grid grid-cols-1 gap-2">
-        <Card icon={PackageCheck} label="Receive Delivery" desc="Receive an inbound delivery" onClick={openReceive} />
+        <Card icon={PackageCheck} label="Receive Delivery" desc="Enter a delivery number to receive" onClick={() => openReceive('receive')} />
+        <Card icon={Boxes} label="Receive PU" desc="Enter a PU number to receive" onClick={() => openReceive('receivePu')} />
         <Card icon={ArrowDownToLine} label="Put Away" desc="Move received stock into bins" onClick={openPutAway} />
       </div>
 
       <Dialog open={mode !== null && !receiving} onOpenChange={(o) => { if (!o && !saving) setMode(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : 'Put Away'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : mode === 'receivePu' ? 'Receive PU' : 'Put Away'}</DialogTitle></DialogHeader>
           <div className="space-y-2 px-1 pb-2 max-h-[60vh] overflow-y-auto">
-            {loading ? (
+            {mode === 'receive' || mode === 'receivePu' ? (
+              <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); lookup(); }}>
+                <Input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={mode === 'receive' ? 'Delivery number' : 'PU number'} />
+                <Button type="submit" className="w-full" disabled={loading || !code.trim()}>{loading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Receive</Button>
+              </form>
+            ) : loading ? (
               <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-            ) : mode === 'receive' ? (
-              deliveries.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No inbound deliveries to receive</p> :
-              deliveries.map((d) => (
-                <button key={d.id} onClick={() => setReceiving(d)} className="w-full flex justify-between items-center p-3 rounded-lg border hover:bg-muted/50 text-left">
-                  <span className="font-mono text-sm">{d.delivery_id}</span>
-                  <span className="text-xs text-muted-foreground capitalize">{(d.status || '').replace(/_/g, ' ')}{d.expected_date ? ` · ${d.expected_date}` : ''}</span>
-                </button>
-              ))
             ) : selected ? (
               <div className="space-y-3">
                 <div className="text-sm"><div className="font-medium">{selected.product?.name}</div><div className="text-xs text-muted-foreground">From {selected.bin?.name} · {selected.quantity} available</div></div>
@@ -168,6 +185,7 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
           deliveryDisplayId={receiving.delivery_id}
           purchaseOrderId={receiving.purchase_order_id}
           locationId={locationId}
+          puFilterId={receivePuId}
           onReceived={() => { setReceiving(null); setMode(null); onDone(); }}
         />
       )}
