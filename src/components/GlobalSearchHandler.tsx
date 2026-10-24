@@ -26,6 +26,7 @@ const LIST_VIEW_ROUTES = [
   '/goods-receipts',
   '/goods-issues',
   '/credit-memos',
+  '/payments',
   '/debit-memos',
   '/employees',
   '/teams',

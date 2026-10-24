@@ -172,6 +172,19 @@ export const ACCOUNT_PAYMENT_COLUMNS: ColumnDefinition[] = [
   { key: 'created_at', label: 'Created', defaultVisible: false },
 ];
 
+export const PAYMENT_COLUMNS: ColumnDefinition[] = [
+  { key: 'payment_number', label: 'Payment #', defaultVisible: true },
+  { key: 'payment_date', label: 'Date', defaultVisible: true },
+  { key: 'account_id', label: 'Account ID', defaultVisible: true },
+  { key: 'account', label: 'Account', defaultVisible: true },
+  { key: 'account_type', label: 'Account Type', defaultVisible: false },
+  { key: 'invoice', label: 'Invoice', defaultVisible: true },
+  { key: 'amount', label: 'Amount', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'notes', label: 'Notes', defaultVisible: false },
+  { key: 'created_at', label: 'Created', defaultVisible: false },
+];
+
 export const BOM_COLUMNS: ColumnDefinition[] = [
   { key: 'bom_id', label: 'BoM ID', defaultVisible: true },
   { key: 'name', label: 'Name', defaultVisible: true },
@@ -307,6 +320,7 @@ export const LAYOUT_REGISTRY: LayoutRegistryEntry[] = [
   { storageKey: 'goods_receipts', label: 'Goods Receipts', columns: GOODS_RECEIPT_COLUMNS },
   { storageKey: 'inventory', label: 'Inventory', columns: INVENTORY_COLUMNS },
   { storageKey: 'locations', label: 'Locations', columns: LOCATION_COLUMNS },
+  { storageKey: 'payments', label: 'Payments', columns: PAYMENT_COLUMNS },
   { storageKey: 'production_orders', label: 'Production Orders', columns: PRODUCTION_ORDER_COLUMNS },
   { storageKey: 'products', label: 'Products', columns: PRODUCT_COLUMNS },
   { storageKey: 'orders', label: 'Purchase Orders', columns: ORDER_COLUMNS },
