@@ -27,6 +27,7 @@ export const TRANSACTION_CODES: TransactionCode[] = [
   { code: 'products', name: 'Products', description: 'Product catalog', path: '/products' },
   { code: 'analytics', name: 'Analytics', description: 'Reports & insights', path: '/analytics' },
   { code: 'invoices', name: 'Invoices', description: 'Billing & payments', path: '/invoices' },
+  { code: 'payments', name: 'Payments', description: 'All account payments', path: '/payments' },
   { code: 'credit_memos', name: 'Credit Memos', description: 'Account credits', path: '/credit-memos' },
   { code: 'debit_memos', name: 'Debit Memos', description: 'Account debits', path: '/debit-memos' },
   { code: 'accounts', name: 'Accounts', description: 'Customer & vendor accounts', path: '/accounts' },

@@ -38,6 +38,7 @@ import Accounts from "./pages/Accounts";
 import AccountDetail from "./pages/AccountDetail";
 import Invoices from "./pages/Invoices";
 import CreditMemos from "./pages/CreditMemos";
+import Payments from "./pages/Payments";
 import DebitMemos from "./pages/DebitMemos";
 import GoodsReceipts from "./pages/GoodsReceipts";
 import GoodsIssues from "./pages/GoodsIssues";
@@ -115,6 +116,7 @@ const App = () => (
                   <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
                   <Route path="/accounts/:id" element={<ProtectedRoute><AccountDetail /></ProtectedRoute>} />
                   <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+                  <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
                   <Route path="/credit-memos" element={<ProtectedRoute><CreditMemos /></ProtectedRoute>} />
                   <Route path="/debit-memos" element={<ProtectedRoute><DebitMemos /></ProtectedRoute>} />
                   <Route path="/goods-receipts" element={<ProtectedRoute><GoodsReceipts /></ProtectedRoute>} />
