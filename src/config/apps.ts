@@ -41,7 +41,7 @@ import {
   LogOut,
   Scale,
   Sparkles,
-  LucideIcon
+  LucideIcon,
   Banknote,
 } from 'lucide-react';
 
