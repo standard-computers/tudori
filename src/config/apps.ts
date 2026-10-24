@@ -42,6 +42,7 @@ import {
   Scale,
   Sparkles,
   LucideIcon
+  Banknote,
 } from 'lucide-react';
 
 export interface AppTile {
