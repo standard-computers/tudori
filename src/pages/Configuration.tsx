@@ -66,6 +66,8 @@ interface POAutomationSettings {
 }
 
 interface ProcessControlSettings {
+  require_carrier_inbound: boolean;
+  require_carrier_outbound: boolean;
   require_gr_on_delivery: boolean;
   require_delivery_receipt: boolean;
   track_bin_level_movements: boolean;
