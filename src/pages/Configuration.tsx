@@ -452,6 +452,19 @@ const Configuration = () => {
   const handleSaveConfigs = async () => {
     if (!companyId) return;
 
+    if (processControls.require_carrier_inbound || processControls.require_carrier_outbound) {
+      const { count } = await supabase
+        .from('carriers')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('is_default', true)
+        .eq('is_active', true);
+      if (!count) {
+        toast.error('Require Carrier needs at least one active carrier set as Default in Transportation');
+        return;
+      }
+    }
+
     setSavingConfig(true);
     try {
       // Save document ID configs
@@ -493,6 +506,8 @@ const Configuration = () => {
         const merged = {
           ...((pc?.setting_value as Record<string, unknown>) || {}),
           perform_production_order_gi: processControls.perform_production_order_gi,
+          require_carrier_inbound: processControls.require_carrier_inbound,
+          require_carrier_outbound: processControls.require_carrier_outbound,
         };
         if (pc) {
           await supabase.from('company_settings').update({ setting_value: merged as any }).eq('id', pc.id);
@@ -560,19 +575,6 @@ const Configuration = () => {
   const handleSaveControls = async () => {
     if (!companyId) return;
 
-    if (processControls.require_carrier_inbound || processControls.require_carrier_outbound) {
-      const { count } = await supabase
-        .from('carriers')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .eq('is_default', true)
-        .eq('is_active', true);
-      if (!count) {
-        toast.error('Require Carrier needs at least one active carrier set as Default in Transportation');
-        return;
-      }
-    }
-
     setSavingControls(true);
     try {
       const { data: existing } = await supabase
@@ -596,8 +598,6 @@ const Configuration = () => {
          auto_allocate_rates: processControls.auto_allocate_rates,
          allow_agreement_pricing_edits: processControls.allow_agreement_pricing_edits,
         perform_production_order_gi: processControls.perform_production_order_gi,
-        require_carrier_inbound: processControls.require_carrier_inbound,
-        require_carrier_outbound: processControls.require_carrier_outbound,
        };
 
       if (existing) {
@@ -960,6 +960,52 @@ const Configuration = () => {
                           </div>
                         </div>
 
+                        {docType.value === 'delivery' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Carrier Settings</h4>
+                              <p className="text-xs text-muted-foreground">Requires at least one active carrier marked as Default in Transportation</p>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Require Carrier</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Inbound deliveries in any status other than pending, canceled or deleted must have a carrier. The Default carrier is filled in when none is set.
+                                </p>
+                              </div>
+                              <Switch
+                                checked={processControls.require_carrier_inbound}
+                                onCheckedChange={(checked) =>
+                                  setProcessControls(prev => ({ ...prev, require_carrier_inbound: checked }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {docType.value === 'outbound_delivery' && (
+                          <div className="space-y-4 pt-4 border-t">
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Carrier Settings</h4>
+                              <p className="text-xs text-muted-foreground">Requires at least one active carrier marked as Default in Transportation</p>
+                            </div>
+                            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="space-y-0.5">
+                                <Label className="font-medium">Require Carrier</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Outbound deliveries in any status other than pending, canceled or deleted must have a carrier. The Default carrier is filled in when none is set.
+                                </p>
+                              </div>
+                              <Switch
+                                checked={processControls.require_carrier_outbound}
+                                onCheckedChange={(checked) =>
+                                  setProcessControls(prev => ({ ...prev, require_carrier_outbound: checked }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {docType.value === 'production_order' && (
                           <div className="space-y-4 pt-4 border-t">
                             <div>
@@ -1127,44 +1173,6 @@ const Configuration = () => {
                       checked={processControls.require_delivery_receipt}
                       onCheckedChange={(checked) => 
                         setProcessControls(prev => ({ ...prev, require_delivery_receipt: checked }))
-                      }
-                    />
-                  </div>
-                  )}
-                  {(!searchQuery || 'require carrier inbound'.includes(searchQuery.toLowerCase())) && (
-                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                    <div className="space-y-1">
-                      <Label className="font-medium text-base">Require Carrier (Inbound)</Label>
-                      <p className="text-sm text-muted-foreground">
-                        When enabled, inbound deliveries in any status other than pending, canceled or deleted must have a carrier. The Default carrier is filled in automatically when none is set.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Requires at least one active carrier marked as Default in Transportation.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={processControls.require_carrier_inbound}
-                      onCheckedChange={(checked) =>
-                        setProcessControls(prev => ({ ...prev, require_carrier_inbound: checked }))
-                      }
-                    />
-                  </div>
-                  )}
-                  {(!searchQuery || 'require carrier outbound'.includes(searchQuery.toLowerCase())) && (
-                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                    <div className="space-y-1">
-                      <Label className="font-medium text-base">Require Carrier (Outbound)</Label>
-                      <p className="text-sm text-muted-foreground">
-                        When enabled, outbound deliveries in any status other than pending, canceled or deleted must have a carrier. The Default carrier is filled in automatically when none is set.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Requires at least one active carrier marked as Default in Transportation.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={processControls.require_carrier_outbound}
-                      onCheckedChange={(checked) =>
-                        setProcessControls(prev => ({ ...prev, require_carrier_outbound: checked }))
                       }
                     />
                   </div>
