@@ -134,6 +134,13 @@
       "when": 1792177847948,
       "tag": "0018_add_uom_to_safety_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792892782003,
+      "tag": "0019_require_carrier_and_default_carrier",
+      "breakpoints": true
     }
   ]
 }

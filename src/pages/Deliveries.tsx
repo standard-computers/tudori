@@ -1049,7 +1049,7 @@ const Deliveries = () => {
         .eq('id', editingId);
 
       if (error) {
-        toast.error('Failed to update delivery');
+        toast.error(error.message || 'Failed to update delivery');
         return;
       }
 

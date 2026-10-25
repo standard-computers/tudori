@@ -230,7 +230,7 @@ export function OutboundDeliveriesTab({ companyId }: OutboundDeliveriesTabProps)
       .eq('id', editDelivery.id);
     setEditSaving(false);
     if (error) {
-      toast.error('Failed to update delivery');
+      toast.error(error.message || 'Failed to update delivery');
     } else {
       toast.success('Delivery updated');
       setIsEditOpen(false);

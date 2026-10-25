@@ -62,6 +62,7 @@ interface Carrier {
   country: string | null;
   notes: string | null;
   is_active: boolean;
+  is_default: boolean;
 }
 
 interface Location {
@@ -192,6 +193,7 @@ const Transportation = () => {
     country: 'USA',
     notes: '',
     is_active: true,
+    is_default: false,
   });
 
   // Route dialog state
@@ -455,6 +457,7 @@ const Transportation = () => {
       country: 'USA',
       notes: '',
       is_active: true,
+      is_default: false,
     });
     setEditingCarrier(null);
     setIsCarrierDialogOpen(true);
@@ -476,6 +479,7 @@ const Transportation = () => {
       country: carrier.country || 'USA',
       notes: carrier.notes || '',
       is_active: carrier.is_active,
+      is_default: carrier.is_default ?? false,
     });
     setEditingCarrier(carrier);
     setIsCarrierDialogOpen(true);
@@ -500,6 +504,7 @@ const Transportation = () => {
       country: carrierForm.country || null,
       notes: carrierForm.notes || null,
       is_active: carrierForm.is_active,
+      is_default: carrierForm.is_default,
     };
 
     if (editingCarrier) {
@@ -1248,6 +1253,7 @@ const Transportation = () => {
                     filterValue={filters['city'] || ''}
                     onFilter={(value) => setFilter('city', value)}
                   />
+                  <TableHead>Default</TableHead>
                   <TableHead>Active</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -1255,13 +1261,13 @@ const Transportation = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Loading...
                     </TableCell>
                   </TableRow>
                 ) : sortedCarriers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No carriers found. Create your first carrier to get started.
                     </TableCell>
                   </TableRow>
@@ -1276,6 +1282,9 @@ const Transportation = () => {
                       <TableCell>{carrier.city || '-'}</TableCell>
                       <TableCell>
                         <Checkbox checked={carrier.is_active} disabled />
+                      </TableCell>
+                      <TableCell>
+                        <Checkbox checked={carrier.is_default} disabled />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -1623,6 +1632,16 @@ const Transportation = () => {
                   }
                 />
                 <Label htmlFor="is_active">Active</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="is_default"
+                  checked={carrierForm.is_default}
+                  onCheckedChange={(checked) =>
+                    setCarrierForm({ ...carrierForm, is_default: checked as boolean })
+                  }
+                />
+                <Label htmlFor="is_default">Default</Label>
+              </div>
               </div>
             </div>
           </div>
