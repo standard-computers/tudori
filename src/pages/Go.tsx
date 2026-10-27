@@ -567,9 +567,11 @@ export default function Go() {
               <Badge variant="secondary" className="text-xs capitalize">
                 {activity}
               </Badge>
-              <span className="text-sm text-muted-foreground">
-                {tasks.length} task{tasks.length !== 1 ? 's' : ''}
-              </span>
+              {activity !== 'inbound' && (
+                <span className="text-sm text-muted-foreground">
+                  {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
 
             {activity === 'inbound' && companyId && (
@@ -581,7 +583,7 @@ export default function Go() {
             )}
 
 
-            {loadingTasks ? (
+            {activity === 'inbound' ? null : loadingTasks ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
