@@ -16,10 +16,10 @@ interface Props {
 }
 
 interface DeliveryRow { id: string; delivery_id: string; purchase_order_id: string | null; status: string | null; expected_date: string | null }
-interface StockRow { id: string; product_id: string; quantity: number; bin_id: string; pu_id: string | null; uom_id: string | null; batch_id: string | null; product?: { name: string; product_id: string }; bin?: { bin_id: string; name: string } }
+interface StockRow { pu_number?: string | null; id: string; product_id: string; quantity: number; bin_id: string; pu_id: string | null; uom_id: string | null; batch_id: string | null; product?: { name: string; product_id: string }; bin?: { bin_id: string; name: string } }
 
 export function GoInboundActions({ locationId, companyId, onDone }: Props) {
-  const [mode, setMode] = useState<'receive' | 'receivePu' | 'putaway' | null>(null);
+  const [mode, setMode] = useState<'receive' | 'receivePu' | 'putawayMenu' | 'putawayPu' | 'putaway' | null>(null);
   const [loading, setLoading] = useState(false);
   const [receiving, setReceiving] = useState<DeliveryRow | null>(null);
   const [receivePuId, setReceivePuId] = useState<string | null>(null);
@@ -30,6 +30,8 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
   const [qty, setQty] = useState('');
   const [destBin, setDestBin] = useState('');
   const [saving, setSaving] = useState(false);
+  const [puCode, setPuCode] = useState('');
+  const [puRows, setPuRows] = useState<StockRow[] | null>(null);
 
   const openReceive = (m: 'receive' | 'receivePu') => { setMode(m); setCode(''); };
 
@@ -65,7 +67,14 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
   const openPutAway = async () => {
     setMode('putaway');
     setSelected(null);
+    await loadStock();
+  };
+
+  const openPutAwayPu = () => { setMode('putawayPu'); setPuCode(''); setPuRows(null); setDestBin(''); };
+
+  const loadStock = async (): Promise<StockRow[]> => {
     setLoading(true);
+    let rows: StockRow[] = [];
     const { data: areas } = await supabase
       .from('areas')
       .select('id, is_goods_receipt_enabled, bins(id, bin_id, name, allow_put_away)')
@@ -86,9 +95,39 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
         .eq('location_id', locationId)
         .in('bin_id', grBinIds)
         .gt('quantity', 0);
-      setStock((data || []) as any);
-    } else setStock([]);
+      rows = (data || []) as any;
+      const puIds = [...new Set(rows.map((r) => r.pu_id).filter(Boolean))] as string[];
+      if (puIds.length) {
+        const { data: pus } = await supabase.from('packaging_units' as any).select('id, pu_number').in('id', puIds);
+        const m = new Map((pus || []).map((p: any) => [p.id, p.pu_number]));
+        rows = rows.map((r) => ({ ...r, pu_number: r.pu_id ? m.get(r.pu_id) ?? null : null }));
+      }
+    }
+    setStock(rows);
     setLoading(false);
+    return rows;
+  };
+
+  const lookupPu = async () => {
+    const value = puCode.trim();
+    if (!value) return;
+    const rows = await loadStock();
+    const match = rows.filter((r) => (r.pu_number || '').toLowerCase() === value.toLowerCase());
+    if (!match.length) { toast.error(`PU ${value} has no stock waiting for put away here`); setPuRows(null); return; }
+    setPuRows(match);
+  };
+
+  const doPutAwayPu = async () => {
+    if (!puRows?.length || !destBin) return;
+    setSaving(true);
+    try {
+      for (const r of puRows) await moveRow(r, r.quantity, destBin);
+      toast.success(`PU ${puCode.trim()} put away`);
+      setPuRows(null); setPuCode(''); setDestBin('');
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message || 'Put away failed');
+    } finally { setSaving(false); }
   };
 
   const doPutAway = async () => {
@@ -97,6 +136,20 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
     if (!(q > 0) || q > selected.quantity) { toast.error(`Enter a quantity between 0 and ${selected.quantity}`); return; }
     setSaving(true);
     try {
+      await moveRow(selected, q, destBin);
+      toast.success('Put away complete');
+      setSelected(null);
+      await openPutAway();
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message || 'Put away failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const moveRow = async (selected: StockRow, q: number, destBin: string) => {
+    {
       const remaining = selected.quantity - q;
       const src = remaining === 0
         ? await supabase.from('inventory').delete().eq('id', selected.id)
@@ -118,14 +171,6 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
         puId: selected.pu_id, sourceBinId: selected.bin_id, destinationBinId: destBin,
         referenceType: 'inventory_transfer', notes: 'Put away (Go)',
       });
-      toast.success('Put away complete');
-      setSelected(null);
-      await openPutAway();
-      onDone();
-    } catch (e: any) {
-      toast.error(e?.message || 'Put away failed');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -142,18 +187,46 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
       <div className="grid grid-cols-1 gap-2">
         <Card icon={PackageCheck} label="Receive Delivery" desc="Enter a delivery number to receive" onClick={() => openReceive('receive')} />
         <Card icon={Boxes} label="Receive PU" desc="Enter a PU number to receive" onClick={() => openReceive('receivePu')} />
-        <Card icon={ArrowDownToLine} label="Put Away" desc="Move received stock into bins" onClick={openPutAway} />
+        <Card icon={ArrowDownToLine} label="Put Away" desc="Move received stock into bins" onClick={() => setMode('putawayMenu')} />
       </div>
 
       <Dialog open={mode !== null && !receiving} onOpenChange={(o) => { if (!o && !saving) setMode(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : mode === 'receivePu' ? 'Receive PU' : 'Put Away'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : mode === 'receivePu' ? 'Receive PU' : mode === 'putawayPu' ? 'Put Away by PU' : mode === 'putaway' ? 'View Putaway' : 'Put Away'}</DialogTitle></DialogHeader>
           <div className="space-y-2 px-1 pb-2 max-h-[60vh] overflow-y-auto">
             {mode === 'receive' || mode === 'receivePu' ? (
               <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); lookup(); }}>
                 <Input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={mode === 'receive' ? 'Delivery number' : 'PU number'} />
                 <Button type="submit" className="w-full" disabled={loading || !code.trim()}>{loading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Receive</Button>
               </form>
+            ) : mode === 'putawayMenu' ? (
+              <div className="space-y-2">
+                <Card icon={Boxes} label="Put Away by PU" desc="Enter a PU number and move it to a bin" onClick={openPutAwayPu} />
+                <Card icon={ArrowDownToLine} label="View Putaway" desc="All stock waiting in goods receipt areas" onClick={openPutAway} />
+              </div>
+            ) : mode === 'putawayPu' ? (
+              puRows ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    {puRows.map((r) => (
+                      <div key={r.id} className="flex justify-between text-sm p-2 rounded border">
+                        <div><div className="font-medium">{r.product?.name}</div><div className="text-xs text-muted-foreground">{r.bin?.name}</div></div>
+                        <span className="tabular-nums">{r.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <SearchableSelect options={bins} value={destBin} onValueChange={setDestBin} placeholder="Destination bin" />
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => setPuRows(null)} disabled={saving}>Back</Button>
+                    <Button className="flex-1" onClick={doPutAwayPu} disabled={saving || !destBin}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Put Away PU</Button>
+                  </div>
+                </div>
+              ) : (
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); lookupPu(); }}>
+                  <Input autoFocus value={puCode} onChange={(e) => setPuCode(e.target.value)} placeholder="PU number" />
+                  <Button type="submit" className="w-full" disabled={loading || !puCode.trim()}>{loading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Find PU</Button>
+                </form>
+              )
             ) : loading ? (
               <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : selected ? (
@@ -169,7 +242,7 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
             ) : stock.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No stock waiting in goods receipt areas</p> :
               stock.map((s) => (
                 <button key={s.id} onClick={() => { setSelected(s); setQty(String(s.quantity)); setDestBin(''); }} className="w-full flex justify-between items-center p-3 rounded-lg border hover:bg-muted/50 text-left">
-                  <div><div className="text-sm font-medium">{s.product?.name}</div><div className="text-xs text-muted-foreground">{s.bin?.name}</div></div>
+                  <div><div className="text-sm font-medium">{s.product?.name}</div><div className="text-xs text-muted-foreground">{s.bin?.name}{s.pu_number ? ` · PU ${s.pu_number}` : ''}{s.product?.product_id ? ` · ${s.product.product_id}` : ''}</div></div>
                   <span className="text-sm tabular-nums">{s.quantity}</span>
                 </button>
               ))}
