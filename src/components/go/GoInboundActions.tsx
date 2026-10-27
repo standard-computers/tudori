@@ -7,7 +7,7 @@ import { SearchableSelect } from '@/components/SearchableSelect';
 import { ReceiveDeliveryDialog } from '@/components/ReceiveDeliveryDialog';
 import { logMaterialMovement } from '@/lib/material-movements';
 import { toast } from '@/lib/toast';
-import { Boxes, PackageCheck, ArrowDownToLine, Loader2, ChevronRight } from 'lucide-react';
+import { Boxes, PackageCheck, ArrowDownToLine, Loader2, ChevronRight, PackageSearch } from 'lucide-react';
 
 interface Props {
   locationId: string;
@@ -187,7 +187,7 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
       <div className="grid grid-cols-1 gap-2">
         <Card icon={PackageCheck} label="Receive Delivery" desc="Enter a delivery number to receive" onClick={() => openReceive('receive')} />
         <Card icon={Boxes} label="Receive PU" desc="Enter a PU number to receive" onClick={() => openReceive('receivePu')} />
-        <Card icon={Boxes} label="Put Away by PU" desc="Enter a PU number and move it to a bin" onClick={openPutAwayPu} />
+        <Card icon={PackageSearch} label="Put Away by PU" desc="Enter a PU number and move it to a bin" onClick={openPutAwayPu} />
         <Card icon={ArrowDownToLine} label="View Putaway" desc="All stock waiting in goods receipt areas" onClick={openPutAway} />
       </div>
 
