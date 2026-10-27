@@ -19,7 +19,7 @@ interface DeliveryRow { id: string; delivery_id: string; purchase_order_id: stri
 interface StockRow { pu_number?: string | null; id: string; product_id: string; quantity: number; bin_id: string; pu_id: string | null; uom_id: string | null; batch_id: string | null; product?: { name: string; product_id: string }; bin?: { bin_id: string; name: string } }
 
 export function GoInboundActions({ locationId, companyId, onDone }: Props) {
-  const [mode, setMode] = useState<'receive' | 'receivePu' | 'putawayMenu' | 'putawayPu' | 'putaway' | null>(null);
+  const [mode, setMode] = useState<'receive' | 'receivePu' | 'putawayPu' | 'putaway' | null>(null);
   const [loading, setLoading] = useState(false);
   const [receiving, setReceiving] = useState<DeliveryRow | null>(null);
   const [receivePuId, setReceivePuId] = useState<string | null>(null);
@@ -187,23 +187,19 @@ export function GoInboundActions({ locationId, companyId, onDone }: Props) {
       <div className="grid grid-cols-1 gap-2">
         <Card icon={PackageCheck} label="Receive Delivery" desc="Enter a delivery number to receive" onClick={() => openReceive('receive')} />
         <Card icon={Boxes} label="Receive PU" desc="Enter a PU number to receive" onClick={() => openReceive('receivePu')} />
-        <Card icon={ArrowDownToLine} label="Put Away" desc="Move received stock into bins" onClick={() => setMode('putawayMenu')} />
+        <Card icon={Boxes} label="Put Away by PU" desc="Enter a PU number and move it to a bin" onClick={openPutAwayPu} />
+        <Card icon={ArrowDownToLine} label="View Putaway" desc="All stock waiting in goods receipt areas" onClick={openPutAway} />
       </div>
 
       <Dialog open={mode !== null && !receiving} onOpenChange={(o) => { if (!o && !saving) setMode(null); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : mode === 'receivePu' ? 'Receive PU' : mode === 'putawayPu' ? 'Put Away by PU' : mode === 'putaway' ? 'View Putaway' : 'Put Away'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{mode === 'receive' ? 'Receive Delivery' : mode === 'receivePu' ? 'Receive PU' : mode === 'putawayPu' ? 'Put Away by PU' : 'View Putaway'}</DialogTitle></DialogHeader>
           <div className="space-y-2 px-1 pb-2 max-h-[60vh] overflow-y-auto">
             {mode === 'receive' || mode === 'receivePu' ? (
               <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); lookup(); }}>
                 <Input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={mode === 'receive' ? 'Delivery number' : 'PU number'} />
                 <Button type="submit" className="w-full" disabled={loading || !code.trim()}>{loading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}Receive</Button>
               </form>
-            ) : mode === 'putawayMenu' ? (
-              <div className="space-y-2">
-                <Card icon={Boxes} label="Put Away by PU" desc="Enter a PU number and move it to a bin" onClick={openPutAwayPu} />
-                <Card icon={ArrowDownToLine} label="View Putaway" desc="All stock waiting in goods receipt areas" onClick={openPutAway} />
-              </div>
             ) : mode === 'putawayPu' ? (
               puRows ? (
                 <div className="space-y-3">
