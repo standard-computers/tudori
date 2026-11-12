@@ -8,18 +8,15 @@ describe('createDeliveryPackages', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.from.mockReturnValue({ insert: mocks.insert });
-    mocks.insert.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
   });
 
   it('creates exactly the requested number of uniquely numbered units for the selected delivery', async () => {
-    for (const number of ['PU-001', 'PU-002', 'PU-003']) {
-      mocks.rpc.mockResolvedValueOnce({ data: number, error: null });
-    }
     await createDeliveryPackages('company', 'delivery', 3);
-    expect(mocks.rpc).toHaveBeenCalledTimes(3);
-    expect(mocks.insert).toHaveBeenCalledExactlyOnceWith(['PU-001', 'PU-002', 'PU-003'].map(pu_number => ({
-      pu_number, company_id: 'company', delivery_id: 'delivery', product_id: null, quantity: 0, status: 'active',
-    })));
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('create_delivery_packages', {
+      p_company_id: 'company', p_delivery_id: 'delivery', p_count: 3,
+    });
+    expect(mocks.insert).not.toHaveBeenCalled();
   });
 
   it('rejects fractional, empty, and invalid package counts without creating units', async () => {
@@ -30,10 +27,9 @@ describe('createDeliveryPackages', () => {
     expect(mocks.insert).not.toHaveBeenCalled();
   });
 
-  it('does not insert partial packages when number generation fails', async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: 'PU-001', error: null });
-    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Failed' } });
-    await expect(createDeliveryPackages('company', 'delivery', 3)).rejects.toThrow('Failed to generate');
+  it('reports transaction failures without falling back to non-atomic inserts', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Failed to create packages' } });
+    await expect(createDeliveryPackages('company', 'delivery', 3)).rejects.toThrow('Failed to create packages');
     expect(mocks.insert).not.toHaveBeenCalled();
   });
 });
