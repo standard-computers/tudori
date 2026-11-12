@@ -233,6 +233,7 @@ export const ReceiveDeliveryDialog = ({
         id,
         product_id,
         quantity,
+        received_quantity,
         notes,
         pu_id,
         uom_id,
@@ -248,13 +249,14 @@ export const ReceiveDeliveryDialog = ({
       return;
     }
 
-    const receivedItems: ReceivedItem[] = (data || []).map((item: any) => ({
+    const openLines = (data || []).filter((item: any) => Number(item.quantity) - Number(item.received_quantity || 0) > 0);
+    const receivedItems: ReceivedItem[] = openLines.map((item: any) => ({
       id: item.id,
       product_id: item.product_id,
       product_name: item.product?.name || 'Unknown',
       product_code: item.product?.product_id || '',
-      expected_quantity: item.quantity,
-      received_quantity: item.quantity,
+      expected_quantity: Number(item.quantity) - Number(item.received_quantity || 0),
+      received_quantity: Number(item.quantity) - Number(item.received_quantity || 0),
       pu_id: item.pu_id || null,
       pu_number: item.packaging_unit?.pu_number || null,
       hazardous: item.product?.hazardous ?? false,
@@ -381,7 +383,16 @@ export const ReceiveDeliveryDialog = ({
 
       // Step: Update delivery status
       step++;
-      const isPartialReceipt = items.some(item => item.received_quantity < item.expected_quantity);
+      // Line-level receipt: record received qty per line, then derive delivery status from ALL lines
+      for (const item of items) {
+        if (!(item.received_quantity > 0)) continue;
+        const { data: line } = await supabase.from('delivery_items').select('received_quantity').eq('id', item.id).single();
+        await supabase.from('delivery_items')
+          .update({ received_quantity: Number(line?.received_quantity || 0) + Number(item.received_quantity) })
+          .eq('id', item.id);
+      }
+      const { data: allLines } = await supabase.from('delivery_items').select('quantity, received_quantity').eq('delivery_id', deliveryId);
+      const isPartialReceipt = (allLines || []).some((l: any) => Number(l.received_quantity || 0) < Number(l.quantity));
       const { error: deliveryError } = await supabase
         .from('deliveries')
         .update({ 
