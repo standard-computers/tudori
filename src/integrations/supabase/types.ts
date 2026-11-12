@@ -1769,6 +1769,7 @@ export type Database = {
           product_id: string
           pu_id: string | null
           quantity: number
+          received_quantity: number
           uom_id: string | null
         }
         Insert: {
@@ -1779,6 +1780,7 @@ export type Database = {
           product_id: string
           pu_id?: string | null
           quantity?: number
+          received_quantity?: number
           uom_id?: string | null
         }
         Update: {
@@ -1789,6 +1791,7 @@ export type Database = {
           product_id?: string
           pu_id?: string | null
           quantity?: number
+          received_quantity?: number
           uom_id?: string | null
         }
         Relationships: [

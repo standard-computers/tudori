@@ -1,0 +1,2 @@
+ALTER TABLE public.delivery_items ADD COLUMN IF NOT EXISTS received_quantity numeric NOT NULL DEFAULT 0;
+UPDATE public.delivery_items di SET received_quantity = di.quantity FROM public.deliveries d WHERE d.id = di.delivery_id AND d.status = 'delivered';
