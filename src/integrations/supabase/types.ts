@@ -6127,6 +6127,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_delivery_packages: {
+        Args: { p_company_id: string; p_count: number; p_delivery_id: string }
+        Returns: undefined
+      }
       create_outbound_delivery:
         | {
             Args: {

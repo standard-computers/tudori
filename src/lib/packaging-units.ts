@@ -28,27 +28,17 @@ export async function generatePUNumber(companyId: string): Promise<string | null
   return data;
 }
 
-/** Create empty handling units reserved for one delivery in a single insert. */
+/** Create empty handling units in one transaction, generating each number after the previous insert. */
 export async function createDeliveryPackages(companyId: string, deliveryId: string, count: number): Promise<void> {
   if (!Number.isSafeInteger(count) || count < 1) {
     throw new Error('Enter a positive whole number of packages');
   }
 
-  const rows = [];
-  for (let index = 0; index < count; index += 1) {
-    const puNumber = await generatePUNumber(companyId);
-    if (!puNumber) throw new Error('Failed to generate PU number');
-    rows.push({
-      pu_number: puNumber,
-      company_id: companyId,
-      delivery_id: deliveryId,
-      product_id: null,
-      quantity: 0,
-      status: 'active',
-    });
-  }
-
-  const { error } = await supabase.from('packaging_units').insert(rows);
+  const { error } = await supabase.rpc('create_delivery_packages', {
+    p_company_id: companyId,
+    p_delivery_id: deliveryId,
+    p_count: count,
+  });
   if (error) throw new Error(error.message || 'Failed to create packages');
 }
 
