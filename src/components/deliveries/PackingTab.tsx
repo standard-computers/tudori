@@ -11,11 +11,12 @@ import {
   useDraggable,
 } from '@dnd-kit/core';
 import { supabase } from '@/integrations/supabase/client';
-import { generatePUNumber } from '@/lib/packaging-units';
+import { generatePUNumber, createDeliveryPackages } from '@/lib/packaging-units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Package, Plus, GripVertical, Undo2, Trash2, Scissors } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Package, Plus, GripVertical, Undo2, Trash2, Scissors, PackagePlus } from 'lucide-react';
 import { toast } from '@/lib/toast';
 
 interface DeliveryItem {
@@ -216,6 +217,10 @@ function DroppablePackage({
 export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItems }: PackingTabProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [packageCount, setPackageCount] = useState('');
+  const parsedPackageCount = Number(packageCount);
+  const validPackageCount = Number.isSafeInteger(parsedPackageCount) && parsedPackageCount > 0;
   const [emptyPackages, setEmptyPackages] = useState<Array<{ id: string; pu_number: string }>>([]);
 
   const sensors = useSensors(
@@ -315,6 +320,23 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
   };
 
   // ─── Delete empty package ─────────────────────────────────────────
+  const handleAddPackages = async () => {
+    if (isCreating || !validPackageCount) return;
+    setIsCreating(true);
+    try {
+      await createDeliveryPackages(companyId, deliveryId, parsedPackageCount);
+      toast.success(`${parsedPackageCount} packages created`);
+      setBulkOpen(false);
+      setPackageCount('');
+      await fetchEmptyPackages();
+      onRefreshItems();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create packages');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleDeletePackage = async (puId: string) => {
     const { error } = await supabase
       .from('packaging_units' as any)
@@ -470,6 +492,7 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
                 <span className="ml-1.5 text-muted-foreground font-normal">({packages.length})</span>
               )}
             </h4>
+            <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -480,6 +503,24 @@ export function PackingTab({ deliveryItems, companyId, deliveryId, onRefreshItem
               <Plus className="w-3.5 h-3.5" />
               Add Package
             </Button>
+            <Popover open={bulkOpen} onOpenChange={(open) => { if (!isCreating) setBulkOpen(open); }}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="icon" className="h-9 w-9" disabled={isCreating} title="Add multiple packages" aria-label="Add multiple packages">
+                  <PackagePlus className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" onInteractOutside={(event) => { if (isCreating) event.preventDefault(); }}>
+                <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void handleAddPackages(); }}>
+                  <label htmlFor="delivery-package-count" className="text-sm font-medium">Number of packages</label>
+                  <Input id="delivery-package-count" type="number" min={1} step={1} value={packageCount} onChange={(event) => setPackageCount(event.target.value)} disabled={isCreating} autoFocus />
+                  <Button type="submit" disabled={isCreating || !validPackageCount} className="w-full">
+                    <PackagePlus className="w-4 h-4" />
+                    {isCreating ? 'Generating packages…' : 'Generate Packages'}
+                  </Button>
+                </form>
+              </PopoverContent>
+            </Popover>
+            </div>
           </div>
 
           <ScrollArea className="flex-1 max-h-[340px]">
