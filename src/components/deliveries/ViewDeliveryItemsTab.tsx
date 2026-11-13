@@ -39,6 +39,7 @@ interface DeliveryItem {
     weight_uom?: string | null;
   };
   uom?: { id: string; name: string; abbreviation: string | null; conversion_factor?: number } | null;
+  packaging_unit?: { pu_number: string } | null;
 }
 
 interface Product {
@@ -81,6 +82,9 @@ export const ViewDeliveryItemsTab = ({
 }: ViewDeliveryItemsTabProps) => {
   const [newProductId, setNewProductId] = useState('');
   const [newQuantity, setNewQuantity] = useState(1);
+
+  // The PU column only appears once at least one line has been packed.
+  const showPu = viewItems.some(i => !!i.pu_id || !!i.packaging_unit);
 
   const handleAdd = async () => {
     if (!newProductId) return;
@@ -158,6 +162,7 @@ export const ViewDeliveryItemsTab = ({
                 <TableHead className="w-10">#</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>UoM</TableHead>
+                {showPu && <TableHead>PU</TableHead>}
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Volume</TableHead>
                 <TableHead className="text-right">Weight</TableHead>
@@ -205,6 +210,11 @@ export const ViewDeliveryItemsTab = ({
                         <span className="text-sm">{getUomDisplay(item)}</span>
                       )}
                     </TableCell>
+                    {showPu && (
+                      <TableCell className="text-sm font-mono text-muted-foreground">
+                        {item.packaging_unit?.pu_number || '—'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       {isEditable ? (
                         <Input
