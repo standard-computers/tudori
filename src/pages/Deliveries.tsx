@@ -186,6 +186,11 @@ interface DeliveryItem {
   uom?: { id: string; name: string; abbreviation: string | null; conversion_factor?: number } | null;
 }
 
+// A delivery line carries a PU once it has been packed. The items tab only shows
+// the PU column when at least one line is packed.
+const hasAnyPackagingUnit = (items: DeliveryItem[]) =>
+  items.some(i => !!i.pu_id || !!i.packaging_unit);
+
 interface PackingItem {
   id: string;
   product_id: string;
@@ -1389,6 +1394,9 @@ const Deliveries = () => {
                                   <TableHead className="w-10">#</TableHead>
                                   <TableHead>Product</TableHead>
                                   <TableHead>UoM</TableHead>
+                                  {hasAnyPackagingUnit(deliveryItems) && (
+                                    <TableHead>PU</TableHead>
+                                  )}
                                   <TableHead className="text-right">Qty</TableHead>
                                   <TableHead className="text-right">Volume</TableHead>
                                   <TableHead className="text-right">Weight</TableHead>
@@ -1463,6 +1471,11 @@ const Deliveries = () => {
                                         </span>
                                       )}
                                     </TableCell>
+                                    {hasAnyPackagingUnit(deliveryItems) && (
+                                      <TableCell className="p-2 text-sm font-mono text-muted-foreground">
+                                        {item.packaging_unit?.pu_number || '—'}
+                                      </TableCell>
+                                    )}
                                     <TableCell className="p-2">
                                       <Input
                                         type="number"

@@ -39,6 +39,7 @@ interface DeliveryItem {
     weight_uom?: string | null;
   };
   uom?: { id: string; name: string; abbreviation: string | null; conversion_factor?: number } | null;
+  packaging_unit?: { pu_number: string } | null;
 }
 
 interface Product {
